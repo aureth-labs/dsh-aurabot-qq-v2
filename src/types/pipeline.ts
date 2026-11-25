@@ -54,6 +54,12 @@ export type Middleware = (session: PipelineSession, next: Next) => unknown
 export type CommandHandler = (session: PipelineSession, args: string, command: string) => unknown
 export type LlmHandler = (session: PipelineSession) => unknown
 
+/** 某一段出错时抛给宿主的信息（插件写错了要有地方看见，不能静默吞掉）。 */
+export interface PipelineErrorInfo {
+  stage: string
+  error: unknown
+}
+
 /**
  * Session 需要的那一小块管线能力。
  *

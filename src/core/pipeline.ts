@@ -17,6 +17,7 @@ import type {
   MiddlewareOptions,
   Next,
   PipelineConfig,
+  PipelineErrorInfo,
   PipelineResult,
   PipelineSession,
 } from '../types/pipeline.ts'
@@ -28,10 +29,16 @@ export type {
   MiddlewareOptions,
   Next,
   PipelineConfig,
+  PipelineErrorInfo,
   PipelineResult,
   PipelineSession,
   StageName,
 } from '../types/pipeline.ts'
+
+export interface PipelineOptions extends Partial<PipelineConfig> {
+  /** 某段出错时的回调（中间件失败会被跳过，这里负责让它可见）。 */
+  onError?: (info: PipelineErrorInfo) => void
+}
 
 export const DEFAULT_CONFIG: PipelineConfig = {
   commandPrefixes: [null, '/'],
@@ -51,12 +58,15 @@ export class Pipeline {
   private readonly entries: Entry[] = []
   private readonly commands = new Map<string, CommandHandler>()
   private llmHandler: LlmHandler | null = null
+  private readonly onError?: (info: PipelineErrorInfo) => void
   private seq = 0
   private depth = 0
   config: PipelineConfig = { ...DEFAULT_CONFIG }
 
-  constructor(config: Partial<PipelineConfig> = {}) {
+  constructor(options: PipelineOptions = {}) {
+    const { onError, ...config } = options
     this.config = { ...DEFAULT_CONFIG, ...config }
+    this.onError = onError
   }
 
   /** 注册中间件，返回卸载函数。 */
@@ -120,6 +130,7 @@ export class Pipeline {
         const value = await handler(session, parsed.args, parsed.command)
         if (!this.config.middlewareAfterCommand) return { handled: true, by: 'command', value }
       } catch (error) {
+        this.report('command', error)
         return { handled: true, by: 'command', error: messageOf(error) }
       }
     }
@@ -133,6 +144,7 @@ export class Pipeline {
     try {
       return { handled: true, by: 'llm', value: await this.llmHandler(session) }
     } catch (error) {
+      this.report('llm', error)
       return { handled: true, by: 'llm', error: messageOf(error) }
     }
   }
@@ -189,8 +201,17 @@ export class Pipeline {
       return value as PipelineResult
     } catch (error) {
       // 失败隔离：默认跳过这一段，继续往后走
+      this.report(entry.name, error)
       if (entry.options.onError === 'throw') throw error
       return this.run(index + 1, session)
+    }
+  }
+
+  private report(stage: string, error: unknown): void {
+    try {
+      this.onError?.({ stage, error })
+    } catch {
+      // 报错回调自己炸了不能影响管线
     }
   }
 

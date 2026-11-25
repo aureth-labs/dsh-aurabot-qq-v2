@@ -503,6 +503,9 @@ export function apply(ctx) {
   const pipeline = new Pipeline({
     commandPrefixes: Array.isArray(cfg.commandPrefixes) ? cfg.commandPrefixes : [null, '/'],
     middlewareAfterCommand: Boolean(cfg.middlewareAfterCommand),
+    // 中间件 / 指令 / 模型段出错默认是「跳过这一段继续走」，
+    // 但插件作者得看得见自己那段炸了，否则表现就是「我写的中间件没生效」。
+    onError: ({ stage, error }) => log.warn(`管线「${stage}」出错：${String((error as Error)?.message ?? error)}`),
   })
   // 管线末段就是聊天中枢：非指令、非中间件消费的消息照旧进 AI。
   pipeline.onLlm((session) => (session.__ev && hub ? hub.onMessage(session.__ev) : undefined))

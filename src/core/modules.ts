@@ -226,6 +226,50 @@ export function checkDef(def, id) {
   return ''
 }
 
+/**
+ * 没有 default 导出时，从具名导出拼一个模块定义。
+ *
+ * 模板仓库 / Koishi 的习惯是 `export const name` + `export const config` + `export function apply`，
+ * 没有默认导出；这里把这种写法也认成模块，省得每个插件都改一遍。
+ */
+export function namedModuleDef(mod) {
+  if (!mod) return undefined
+  const apply = typeof mod.apply === 'function' ? mod.apply : typeof mod.setup === 'function' ? mod.setup : null
+  if (!apply) return undefined
+  const raw = {
+    name: mod.name,
+    description: mod.description,
+    version: mod.version,
+    config: mod.config,
+    defaults: mod.defaults,
+    settings: mod.settings,
+    capabilities: mod.capabilities,
+    api: mod.api,
+    apply: mod.apply,
+    setup: mod.setup,
+  }
+  return Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== undefined))
+}
+
+/**
+ * 从「别人家的 Schema」里捞默认值。
+ *
+ * 插件模板带的是自己实现的 Schema（`{ meta: { type, default, dict } }`），不是宿主的 Schema；
+ * 不认它的话 `config.enabled` 会是 undefined，插件一上来就是关着的。
+ * 这里只做一件保守的事：把 meta.default 一层层拼出来，面板存过的值仍然覆盖它。
+ */
+export function schemaDefaults(schema) {
+  if (!schema || typeof schema !== 'object') return undefined
+  const meta = (schema as { meta?: any }).meta
+  if (!meta || typeof meta !== 'object') return undefined
+  if (meta.type === 'object' && meta.dict && typeof meta.dict === 'object') {
+    const out = {}
+    for (const [key, sub] of Object.entries(meta.dict)) out[key] = schemaDefaults(sub)
+    return out
+  }
+  return meta.default
+}
+
 /** 把一份源码里指向插件内部的相对 import 改成走 lib()，这样复制出去也能跑。 */
 export function rewriteImports(code, fromKey, keep = new Set()) {
   const base = fromKey.split('/').slice(0, -1)
@@ -914,6 +958,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         } else {
           passed = checked.value
         }
+      } else if (entry === def.apply && def.config) {
+        // 别人家的 Schema（模板仓库自带的那份）：只取默认值，面板存过的值优先
+        const defaults = schemaDefaults(def.config)
+        if (defaults && typeof defaults === 'object') passed = { ...defaults, ...passed }
       }
       const r = entry === def.apply ? entry(ctx, passed) : entry(api)
       const exports = (r && typeof r.then === 'function' ? await r : r) ?? {}
@@ -1031,8 +1079,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     try {
       let imported = await importUser(u)
       const mod = imported.mod
-      def = imported.def
+      // v2 清单式写法：没有 default，直接 export name / config / apply（和 Koishi 一样）
+      def = imported.def ?? namedModuleDef(mod)
       stamp = imported.stamp
+      if (!def) throw new Error('入口文件没有模块定义：export default { apply }，或者 export function apply(ctx, config)')
       // v2：export default function apply(ctx, config) —— 用文件夹名补上 id
       if (typeof def === 'function') {
         def = {
@@ -1044,6 +1094,9 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           apply: def,
         }
       }
+      // 具名导出（export name / config / apply）没写 id：用文件夹名 / 单文件名补上，
+      // 注册表、路由前缀、配置存放位置全都按这个 id 走，缺了就到处是 undefined。
+      if (!def.id) def = { ...def, id: u.id }
       // v2 清单（package.json.aurabot）：入口里没写的字段从清单补上，
       // 这样面板显示的名字/版本、模块声明的 panel 和 capabilities 都只有一个来源。
       const { manifest } = readManifest(u.dir, { id: u.id })

@@ -26,6 +26,56 @@ export interface LlmSummaryOptions extends LlmTextOptions {
   maxLength?: number
 }
 
+/** 指令签名里解析出来的一个参数。 */
+export interface CommandArg {
+  name: string
+  /** 参数类型：string / number / text（text = 后面整段话）。 */
+  type: string
+  required: boolean
+}
+
+/** 指令回调拿到的上下文。 */
+export interface CommandActionContext {
+  session: any
+  /** 命中的指令名（第一个词）。 */
+  command: string
+  /** 指令后面那一整段原文。 */
+  args: string
+  options: Record<string, any>
+}
+
+/**
+ * `ctx.command('名字 <参数>')` 返回的构造器。
+ *
+ * 和 Koishi 一个写法：先描述，最后 `.action()` 真正注册；
+ * `.action()` 的返回值是卸载函数（模块卸载时宿主也会自动撤）。
+ */
+export interface CommandBuilder {
+  description(text: string): this
+  usage(text: string): this
+  alias(...names: string[]): this
+  action(fn: (context: CommandActionContext, ...values: any[]) => unknown): () => void
+  /** 手动撤销（一般不用，模块卸载会自动撤）。 */
+  dispose(): void
+}
+
+/** `ctx.server.get/post` 的处理函数，和 v1 的 api.route 同一套 req/res。 */
+export type RouteHandler = (req: any, res: any) => unknown
+
+/**
+ * `ctx.server`：给面板加接口。
+ *
+ * 默认带 `access: 'panel'`（复用宿主的回环 / 可信代理 / Host / CSRF 闸），
+ * 确实要对外开放时传 `{ access: null }`，自己在处理函数里验签。
+ */
+export interface ServerFacade {
+  get(path: string, handler: RouteHandler, options?: { access?: 'panel' | null }): () => void
+  post(path: string, handler: RouteHandler, options?: { access?: 'panel' | null }): () => void
+  put(path: string, handler: RouteHandler, options?: { access?: 'panel' | null }): () => void
+  patch(path: string, handler: RouteHandler, options?: { access?: 'panel' | null }): () => void
+  delete(path: string, handler: RouteHandler, options?: { access?: 'panel' | null }): () => void
+}
+
 /**
  * `ctx.llm`：宿主提供的模型能力。
  *
@@ -81,10 +131,27 @@ export interface PluginContext extends ApiLike {
   effect: (fn: unknown) => () => void
   /** 入站中间件，默认挂在 `middleware` 段。 */
   middleware: (fn: Middleware, options?: MiddlewareOptions) => () => void
-  /** 注册本地指令：**不经过 AI**，用户发「/名字 参数」就直接命中。 */
-  command: (name: string, handler: (...args: any[]) => unknown) => () => void
+  /**
+   * 注册本地指令：**不经过 AI**，用户发「/名字 参数」就直接命中。
+   *
+   * 两种写法都认：
+   * ```ts
+   * ctx.command('ping', (session) => session.send('pong'))
+   * ctx.command('hello <text:string>').description('打招呼').action(({ session }, text) => session.send(text))
+   * ```
+   */
+  command: {
+    (signature: string): CommandBuilder
+    (signature: string, handler: (...args: any[]) => unknown): () => void
+    /** v1 兼容：api.command({ name, run }) 注册的是「给 AI 调用的命令」。 */
+    (builder: any): () => void
+  }
   /** 注册给 AI 调用的工具：用户不能直接触发，得模型自己决定调用并传参。 */
   tool: (builder: unknown) => () => void
+  /** 给面板加 HTTP 接口（`/aurabot/api/ext/<id>/…`）。 */
+  server: ServerFacade
+  /** 和 `ctx.log` 同一个东西，写惯了 Koishi 的可以直接用。 */
+  logger?: { info: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void; debug: (...args: any[]) => void }
   /** 注册一个适配器实例：连接 → 上线 → 可用；模块卸载时自动断开。 */
   adapter: (spec: AdapterSpec, config?: unknown) => Promise<AdapterHandle>
   /** 已上线的机器人：`ctx.bots[0]` / `ctx.bots('号')` / `ctx.bots.list()`。 */

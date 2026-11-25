@@ -34,12 +34,17 @@ export type {
 } from './adapter.ts'
 export type {
   ApiLike,
+  CommandActionContext,
+  CommandArg,
+  CommandBuilder,
   LlmFacade,
   LlmSummaryOptions,
   LlmTextOptions,
   PipelineLike,
   PluginContext,
   PluginContextExtras,
+  RouteHandler,
+  ServerFacade,
   TtsFacade,
 } from './ctx.ts'
 export type {
