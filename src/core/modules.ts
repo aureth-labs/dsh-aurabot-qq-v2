@@ -155,12 +155,23 @@ function stampOf(dir) {
   for (const f of files) { try { t = Math.max(t, statSync(join(dir, f)).mtimeMs) } catch (error) {} }
   return Math.round(t) + files.length / 1000
 }
+/** 单个模块的版本戳：单文件插件只看它自己那一个文件，别被隔壁模块的改动带着重载。 */
+function stampOfTarget(u) {
+  if (!u) return 0
+  if (u.single) {
+    try { return Math.round(statSync(u.file).mtimeMs) } catch (error) { return 0 }
+  }
+  return stampOf(u.dir)
+}
 // 入口：package.json 的 main 优先，其次 index.mjs / index.js（见 core/manifest.ts）
 const entryOf = (dir) => entryOfManifest(dir)
 
 /**
  * 数据目录 modules/ 里有哪些模块（目录名以 _ 或 . 开头的跳过）：[{ id, dir, file }]
- * 支持两种布局：modules/<id>/ 和 modules/<owner>/<name>/（后者 id 是 owner/name）。
+ * 三种布局：
+ * - modules/<id>/            普通多文件模块
+ * - modules/<owner>/<name>/  带 scope 的模块（id 是 owner/name）
+ * - modules/<id>.mjs         单文件插件（只认 ESM；写起来就是一个 apply 函数）
  */
 export function scanUser() {
   const out = []
@@ -172,7 +183,16 @@ export function scanUser() {
     if (file) out.push({ id, dir, file })
   }
   for (const e of names) {
-    if (!e.isDirectory() || /^[_.]/.test(e.name)) continue
+    if (/^[_.]/.test(e.name)) continue
+    // 单文件插件：直接躺在 modules/ 下的 .mjs。
+    // 不认 .js —— 用户目录里没有 package.json 兜 type，.js 会被 Node 当成 CommonJS，import 必炸。
+    if (!e.isDirectory()) {
+      if (!e.isFile() || !e.name.endsWith('.mjs')) continue
+      const id = e.name.slice(0, -4)
+      if (!ID_RE.test(id)) continue
+      out.push({ id, dir: root, file: join(root, e.name), single: true })
+      continue
+    }
     const dir = join(root, e.name)
     // 自己有清单/入口 → 平铺模块；否则看它是不是 scope 目录（modules/<owner>/<name>）
     const own = existsSync(join(dir, 'package.json')) || existsSync(join(dir, 'module.json')) || entryOf(dir)
@@ -968,7 +988,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
    * 快照在模块文件夹里面，模块自己 npm install 的依赖（modules/<id>/node_modules）照样找得到。
    */
   async function importUser(u) {
-    const stamp = stampOf(u.dir)
+    const stamp = stampOfTarget(u)
+    // 单文件插件不拍快照：直接带 ?v=<版本戳> 重新 import。
+    // Node 按 URL 缓存，戳变了 URL 就变了，等于拿到一份新模块；同目录的兄弟文件照旧能 import。
+    if (u.single) {
+      const mod = await import(`${pathToFileURL(u.file).href}?v=${stamp}`)
+      return { def: mod.default, mod, stamp }
+    }
     const root = join(u.dir, SNAP)
     const snap = join(root, String(stamp).replace('.', '-'))
     if (!existsSync(snap)) {
@@ -1034,7 +1060,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       errors.set(u.id, { message: String(error.message || error).slice(0, 800), at: Date.now(), source: 'user', fallback: builtinDefs.has(u.id) })
       bumpNavigation() // 加载失败也进导航（availability=error）
       log.warn(`模块「${u.id}」加载失败：`, error.message)
-      userSeen.set(u.id, { ...u, stamp: stampOf(u.dir) })
+      userSeen.set(u.id, { ...u, stamp: stampOfTarget(u) })
       return null
     }
     userSeen.set(u.id, { ...u, stamp })
@@ -1131,7 +1157,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       }
       // 自己写的：没跑、换了文件、改过 → (重新)加载
       const seen = userSeen.get(id)
-      const changed = !seen || seen.file !== u.file || seen.stamp !== stampOf(u.dir)
+      const changed = !seen || seen.file !== u.file || seen.stamp !== stampOfTarget(u)
       if (rec && rec.source === 'user' && !changed) continue
       if (!changed && (!rec || rec.fallback)) continue // 上次加载失败、文件也没改：等改了再试
       if (rec) stop(id, { quiet: true })
@@ -1481,6 +1507,30 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   /** 删除用户模块：先停掉，再把源码和本地改动归档到 modules/.trash；默认保留数据和设置，purge 才清掉。 */
   async function removeModule(id, { purge = false } : RemoveModuleOptions = {}) {
     if (typeof id !== 'string' || !ID_RE.test(id)) return { ok: false, message: 'id 不对' }
+    // 单文件插件：modules/<id>.mjs。归档方式和文件夹模块一样，只是搬的是一个文件。
+    const singleFile = join(userDir(), `${id}.mjs`)
+    if (existsSync(singleFile)) {
+      const trashDir = join(userDir(), '.trash')
+      mkdirSync(trashDir, { recursive: true })
+      const folder = `${id}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`
+      stop(id)
+      try {
+        mkdirSync(join(trashDir, folder), { recursive: true })
+        renameSync(singleFile, join(trashDir, folder, `${id}.mjs`))
+        log.info(`面板删除单文件模块「${id}」，源码归档到 modules/.trash/${folder}`)
+        if (purge) {
+          rmSync(dataDir('modules-data', id), { recursive: true, force: true })
+          const cfg = getConfig()
+          const { [id]: _ext, ...ext } = cfg.ext || {}
+          const { [id]: _mod, ...modules } = cfg.modules || {}
+          setConfig({ ...cfg, ext, modules })
+        }
+      } finally {
+        await sync()
+      }
+      const dataStatus = purge ? '数据和设置已清除' : '数据和设置已保留'
+      return { ok: true, archive: `modules/.trash/${folder}`, message: `删掉了，源码已移到 modules/.trash/${folder}。${dataStatus}。` }
+    }
     const dir = idDir(id)
     if (!inside(userDir(), dir)) return { ok: false, message: 'id 不对' }
     if (!existsSync(dir)) return { ok: false, message: `modules/${id} 不存在` }

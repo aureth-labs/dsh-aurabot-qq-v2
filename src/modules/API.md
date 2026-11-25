@@ -11,6 +11,32 @@
 - **替换内置模块**：写一个**同名**的模块，内置的就不加载了，用你的
 - **复制内置模块来改**：面板「已安装」页点「复制一份来改」，内置模块的源码会复制到 `modules/<id>/`，改完保存就生效
 
+## 两种形态，挑一种就行
+
+| 形态 | 放哪 | 适合什么 |
+| --- | --- | --- |
+| 多文件模块 | `modules/<id>/`（有 `index.mjs` 或 `package.json`） | 要分文件、要装 npm 依赖、要带面板页 |
+| 单文件插件 | `modules/<id>.mjs` | 关键词回复、链接解析这种几十行就写完的小功能 |
+
+单文件插件就是一个 ESM 文件。**只认 `.mjs`**：`modules/` 下没有 `package.json` 兜底，
+`.js` 会被 Node 当成 CommonJS，加载直接失败。
+
+```js
+export const name = '关键词回复'
+
+export default function apply(ctx) {
+  ctx.middleware(async (session, next) => {
+    if (session.content === 'ping') {
+      await session.send('pong')
+      return
+    }
+    return next()
+  }, { name: 'ping' })
+}
+```
+
+改完保存就热重载，发行版里也一样，不用重启。
+
 ## 目录
 
 1. [最小的模块](#最小的模块)
