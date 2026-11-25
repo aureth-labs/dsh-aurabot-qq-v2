@@ -33,6 +33,7 @@ import { createLocal, fileOf, toImageBuffer } from './local/local.ts'
 import { createGroupRoles } from './chat/group-roles.ts'
 import { defaultModel, askModel, modelReasoning, modelVision, clearReasoningCache, clearVisionCache } from './core/llm.ts'
 import { createLlmFacade } from './core/llm-facade.ts'
+import { browserStatus } from './core/browser.ts'
 import { mimeOf } from './chat/inbound.ts'
 import { createMediaAccess } from './core/media.ts'
 import { buildFaceIndex } from './chat/faces.ts'
@@ -42,7 +43,7 @@ import { createUsageFx } from './core/usage-fx.ts'
 import { initUsage, usageReport, closeUsage } from './core/usage.ts'
 import { BotRegistry, createBotsAccessor } from './core/bot-registry.ts'
 import { AdapterRegistry } from './core/adapter-registry.ts'
-import { OneBotBot } from './adapters/onebot-bot.ts'
+import { OneBotBot } from './adapters/qq/onebot-v11/index.ts'
 import { Pipeline } from './core/pipeline.ts'
 import { Session } from './core/session.ts'
 import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from './core/update.ts'
@@ -1089,6 +1090,10 @@ export function apply(ctx) {
   // 机器人列表：内置 QQ + 插件通过 ctx.adapter() 挂上来的平台，面板「机器人」页用它
   route('/panel/bots', async () => {
     return { ok: true, bots: adapterRegistry.list() }
+  })
+  // 本机找到的浏览器：扫码登录 B 站 / 网易云时用，面板「浏览器」页展示
+  route('/panel/browser', async () => {
+    return { ok: true, ...browserStatus() }
   })
   route('/panel/config', async (req, res) => {
     if (bootstrapping(res)) return

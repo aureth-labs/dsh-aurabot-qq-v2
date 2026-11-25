@@ -997,15 +997,25 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     }
     const root = join(u.dir, SNAP)
     const snap = join(root, String(stamp).replace('.', '-'))
+    // 入口是 .ts = 作者还在写源码、没构建：把整个文件夹的 .ts 转成 .js 再拍快照。
+    // 已经有构建产物（package.json 的 main 指向 lib/…）的模块走不到这条分支，不会误伤。
+    const entryIsTs = /\.ts$/i.test(u.file)
     if (!existsSync(snap)) {
       for (const f of filesOf(u.dir)) {
-        mkdirSync(dirname(join(snap, f)), { recursive: true })
-        copyFileSync(join(u.dir, f), join(snap, f))
+        const target = join(snap, f)
+        mkdirSync(dirname(target), { recursive: true })
+        if (entryIsTs && /\.ts$/i.test(f) && !/\.d\.ts$/i.test(f)) {
+          writeFileSync(target.replace(/\.ts$/i, '.js'), transpileToJs(readFileSync(join(u.dir, f), 'utf8'), f), 'utf8')
+          continue
+        }
+        copyFileSync(join(u.dir, f), target)
       }
     }
     // 旧快照删掉（加载过的代码已经在内存里，删文件不影响）
     try { for (const n of readdirSync(root)) if (join(root, n) !== snap) rmSync(join(root, n), { recursive: true, force: true }) } catch (error) {}
-    const mod = await import(pathToFileURL(join(snap, relative(u.dir, u.file))).href)
+    const entryRel = relative(u.dir, u.file)
+    const importRel = entryIsTs ? entryRel.replace(/\.ts$/i, '.js') : entryRel
+    const mod = await import(pathToFileURL(join(snap, importRel)).href)
     return { def: mod.default, mod, stamp }
   }
 

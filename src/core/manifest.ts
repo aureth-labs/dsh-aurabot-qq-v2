@@ -32,7 +32,9 @@ export interface ManifestResult {
   error: string
 }
 
-const LEGACY_ENTRY = ['index.mjs', 'index.js']
+// 顺序即优先级：发行为主的 mjs / js 在前，TS 放最后 ——
+// 只有「本地在写源码、还没构建」时才会落到 index.ts（加载时转成 JS 再跑）。
+const LEGACY_ENTRY = ['index.mjs', 'index.js', 'index.ts']
 const DEFAULT_PANEL = './dist/panel.js'
 /** v2 的默认入口（和文档一致）；产物不存在时再回退旧入口，方便本地还没构建的情况。 */
 const DEFAULT_ENTRY = 'lib/index.js'

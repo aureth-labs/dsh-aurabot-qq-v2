@@ -1,6 +1,17 @@
 node_modules/
 *.log
 *.tmp-*
+# 编辑器 / 系统垃圾
+.DS_Store
+Thumbs.db
+*.tsbuildinfo
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+# 构建与测试产物
+coverage/
+.nyc_output/
 # 构建中间目录（npm run build 先编到这里再整体替换）
 .build/
 .dev-build.pid

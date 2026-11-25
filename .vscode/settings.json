@@ -1,0 +1,16 @@
+{
+  // 用仓库里这版 TypeScript，保证 VS Code 的报错和 `npm run check` 完全一致
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "files.eol": "\r\n",
+  "files.exclude": {
+    "lib": true,
+    "dist": true,
+    ".build": true
+  },
+  "search.exclude": {
+    "lib": true,
+    "dist": true,
+    "node_modules": true
+  }
+}

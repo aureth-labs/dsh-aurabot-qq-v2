@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { BotRegistry, createBotsAccessor } from '../src/core/bot-registry.ts'
 import { Session } from '../src/core/session.ts'
 import { BotStateError, assertOnline } from '../src/core/bot.ts'
-import { OneBotBot } from '../src/adapters/onebot-bot.ts'
+import { OneBotBot } from '../src/adapters/qq/onebot-v11/bot.ts'
 
 function fakeBot(overrides = {}) {
   const sent = []

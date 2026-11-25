@@ -16,10 +16,14 @@
 | 形态 | 放哪 | 适合什么 |
 | --- | --- | --- |
 | 多文件模块 | `modules/<id>/`（有 `index.mjs` 或 `package.json`） | 要分文件、要装 npm 依赖、要带面板页 |
+| 多文件模块（TS 源码） | `modules/<id>/index.ts` | 本地开发直接写 TS；加载时转成 JS 再跑，保存就热重载 |
 | 单文件插件 | `modules/<id>.mjs` | 关键词回复、链接解析这种几十行就写完的小功能 |
 
 单文件插件就是一个 ESM 文件。**只认 `.mjs`**：`modules/` 下没有 `package.json` 兜底，
 `.js` 会被 Node 当成 CommonJS，加载直接失败。
+
+TS 源码形态要本机有 `typescript`（源码仓库里 `npm install` 就有；插件市场装的包不带它），
+写 `import './helper.js'` 或 `import './helper.ts'` 都行，加载时会统一成 `.js`。
 
 ```js
 export const name = '关键词回复'

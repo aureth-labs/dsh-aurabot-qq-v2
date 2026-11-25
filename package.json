@@ -65,7 +65,8 @@
     "docs/DESIGN.md"
   ],
   "optionalDependencies": {
-    "onnxruntime-node": "^1.20.0"
+    "onnxruntime-node": "^1.20.0",
+    "puppeteer-finder": "^1.1.1"
   },
   "repository": {
     "type": "git",

@@ -1,10 +1,10 @@
 // OneBot v11（SnowLuma）的 Bot 实现。
 // 只做「平台动作 → OneBot action」的翻译，不碰业务逻辑，也不改消息内容。
 
-import type { BotLike, BotStatus, Capability, SendOptions } from '../core/bot.ts'
-import { BotStateError } from '../core/bot.ts'
-import { toOneBot, isElement, normalize } from '../core/element.ts'
-import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../core/voice-element.ts'
+import type { BotLike, BotStatus, Capability, SendOptions } from '../../../types/bot.ts'
+import { BotStateError } from '../../../core/bot.ts'
+import { toOneBot, isElement, normalize } from '../../../core/element.ts'
+import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../core/voice-element.ts'
 
 export interface OneBotCall {
   (action: string, params?: Record<string, unknown>, options?: { retries?: number; timeoutMs?: number }): Promise<any>
