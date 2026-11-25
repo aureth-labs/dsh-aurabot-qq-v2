@@ -9,9 +9,9 @@ import { createFakeDsh } from './helpers/fake-dsh.js'
 const previous = process.env.AURABOT_DATA_DIR
 const root = mkdtempSync(join(tmpdir(), 'aurabot-look-'))
 process.env.AURABOT_DATA_DIR = root
-const { readLook, lookImage, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook, MAX_LOOK_BYTES } = await import('../src/persona/persona-look.js')
-const { savePersona, deletePersona, resolvePersonaId } = await import('../src/persona/personas.js')
-const { clearVisionCache } = await import('../src/core/llm.js')
+const { readLook, lookImage, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook, MAX_LOOK_BYTES } = await import('../src/persona/persona-look.ts')
+const { savePersona, deletePersona, resolvePersonaId } = await import('../src/persona/personas.ts')
+const { clearVisionCache } = await import('../src/core/llm.ts')
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
 after(() => {
   if (previous === undefined) delete process.env.AURABOT_DATA_DIR

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanContent, cleanText, clipText } from '../src/core/text.js'
+import { cleanContent, cleanText, clipText } from '../src/core/text.ts'
 
 const thinking = '🤔'
 const half = thinking[0]
@@ -28,7 +28,7 @@ test('心情：半个 emoji 不进上下文，旧数据里的坏字符也不会'
   const { mkdtempSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')
-  const { createMood } = await import('../src/features/mood.js')
+  const { createMood } = await import('../src/features/mood.ts')
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-text-'))
   process.env.AURABOT_DATA_DIR = dir
   const m = createMood({ getConfig: () => ({ mood: { enabled: true, judge: false, base: 60 } }), log: {} })

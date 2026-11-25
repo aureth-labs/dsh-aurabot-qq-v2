@@ -6,8 +6,8 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-qzone-'))
 
-const { createQzone } = await import('../src/features/qzone.js')
-const { dataDir, readJson, writeJson } = await import('../src/core/store.js')
+const { createQzone } = await import('../src/features/qzone.ts')
+const { dataDir, readJson, writeJson } = await import('../src/core/store.ts')
 
 const noopLog = { info() {}, warn() {} }
 const hub = { chatLogOf: () => [] }

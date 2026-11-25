@@ -7,8 +7,8 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-memory-settings-'))
 
-const { normalize } = await import('../src/core/config.js')
-const { createMemoryStore } = await import('../src/features/memory.js')
+const { normalize } = await import('../src/core/config.ts')
+const { createMemoryStore } = await import('../src/features/memory.ts')
 
 const owner = '10000001'
 const log = { info () {}, warn () {}, debug () {} }

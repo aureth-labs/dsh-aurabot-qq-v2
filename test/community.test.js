@@ -80,8 +80,8 @@ test('registry 地址：配置为空时回落内置默认', async () => {
 before(async () => {
   root = mkdtempSync(join(tmpdir(), 'aurabot-community-'))
   process.env.AURABOT_DATA_DIR = root
-  ;({ createCommunity, readZip } = await import('../src/core/community.js'))
-  ;({ userDir } = await import('../src/core/modules.js'))
+  ;({ createCommunity, readZip } = await import('../src/core/community.ts'))
+  ;({ userDir } = await import('../src/core/modules.ts'))
   mkdirSync(userDir(), { recursive: true })
 })
 after(() => rmSync(root, { recursive: true, force: true }))
@@ -238,8 +238,8 @@ test('迁移：插件卸载后旧实例不再安装、不写配置', async () =>
 })
 
 test('测试版：版本比较、更新通道、市场最低版本', async () => {
-  const u = await import('../src/core/update.js')
-  const { compareVersions } = await import('../src/core/community.js')
+  const u = await import('../src/core/update.ts')
+  const { compareVersions } = await import('../src/core/community.ts')
   assert.ok(u.compareVersions('1.2.0-beta.1', '1.1.24') > 0)
   assert.ok(u.compareVersions('1.2.0-beta.2', '1.2.0-beta.1') > 0)
   assert.ok(u.compareVersions('1.2.0', '1.2.0-beta.2') > 0)

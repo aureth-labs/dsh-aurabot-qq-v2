@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createModules } from '../src/core/modules.js'
+import { createModules } from '../src/core/modules.ts'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const silent = { info() {}, debug() {}, warn() {}, error() {} }

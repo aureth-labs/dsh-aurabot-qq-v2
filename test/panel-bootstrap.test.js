@@ -48,7 +48,7 @@ before(async () => {
   writeFileSync(join(broken, 'index.mjs'), "export default { id: 'broken-mod', name: '坏模块', setup() { throw new Error('boom-测试炸') } }\n")
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.webServer.port = 5123
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
 })
@@ -87,7 +87,7 @@ async function callRaw(path, { method, headers = {}, body } = {}) {
 const get = (path) => fake.call(path)
 const jsonOf = async (path) => (await fake.call(path)).json()
 
-const hostSource = () => readFileSync(new URL('../src/host.js', import.meta.url), 'utf8')
+const hostSource = () => readFileSync(new URL('../src/host.ts', import.meta.url), 'utf8')
 
 // ================= 1. 三接口契约 =================
 
@@ -143,7 +143,7 @@ test('/panel/config 走 publicConfig 脱敏：密钥不回原文，只回 *Set �
   assert.equal(config.imageGen.apiKeySet, true)
   assert.equal(Object.hasOwn(config, 'ownerAuthorization'), false, '主人授权内部记录不能回面板')
   // 脱敏结果与直接调 publicConfig 一致（面板草稿的唯一来源就是它）
-  const { publicConfig } = await import('../src/core/config.js')
+  const { publicConfig } = await import('../src/core/config.ts')
   assert.deepEqual(config, publicConfig(api.getConfig()))
 })
 
@@ -250,7 +250,7 @@ test('保存回执：部分失败（控制台密码没改成）→ 回执仍含�
 // ================= 5. 版本语义 =================
 
 test('configRevision：api.setConfig 写入推进版本；值相同不递增（单调不回退）', async () => {
-  const { configRevision } = await import('../src/core/config.js')
+  const { configRevision } = await import('../src/core/config.ts')
   const r0 = configRevision()
   assert.equal((await jsonOf('/panel/pulse')).configRevision, r0, '面板接口报的版本要和 configRevision() 一致')
   api.setConfig({ ...api.getConfig(), ownerName: '版本递增主人' })
@@ -264,7 +264,7 @@ test('configRevision：api.setConfig 写入推进版本；值相同不递增（�
 test('重启语义：新实例（新 bootId）版本从 0 重算', async () => {
   // configRevision 计数器是模块级状态：真重启 = 新进程 = 新模块实例。这里用 cache-busting
   // import 拿一个全新实例来验证「实例内从 0 起算 + 实例内单调」。
-  const fresh = await import('../src/core/config.js?fresh-instance=1')
+  const fresh = await import('../src/core/config.ts?fresh-instance=1')
   assert.equal(fresh.configRevision(), 0, '全新实例版本从 0 起算')
   const c1 = fresh.commitConfig({ ownerName: '新实例甲' }, {})
   assert.equal(fresh.configRevision(), 1, '首次提交 → 1')
@@ -273,7 +273,7 @@ test('重启语义：新实例（新 bootId）版本从 0 重算', async () => {
   fresh.commitConfig({ ownerName: '新实例乙' }, c1)
   assert.equal(fresh.configRevision(), 2, '变化继续递增')
   // 宿主实例自己的版本不受新实例影响（各自独立计数）
-  const host = await import('../src/core/config.js')
+  const host = await import('../src/core/config.ts')
   const rev = host.configRevision()
   assert.ok(rev >= 0)
   assert.equal((await jsonOf('/panel/pulse')).configRevision, rev)
@@ -332,7 +332,7 @@ test('导航版本：模块停/起时 navigationRevision 递增，摘要同步�
 })
 
 test('summarizeModules 纯内存：不调 scanUser 重扫、不做文件系统遍历（静态契约）', async () => {
-  const src = readFileSync(new URL('../src/core/modules.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/core/modules.ts', import.meta.url), 'utf8')
   const start = src.indexOf('function summarizeModules')
   assert.ok(start > 0, '要有 summarizeModules')
   // 函数体截到下一个顶层函数为止

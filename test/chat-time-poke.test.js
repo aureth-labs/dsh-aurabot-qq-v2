@@ -4,12 +4,12 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { normalize } from '../src/core/config.js'
-import { currentTimeLine } from '../src/chat/time-context.js'
+import { normalize } from '../src/core/config.ts'
+import { currentTimeLine } from '../src/chat/time-context.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-time-poke-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../src/chat/hub.js')
+const { createHub } = await import('../src/chat/hub.ts')
 const OWNER = '10000001', BOT = '20000002', GROUP = '30000003'
 const CHAT = `private:${OWNER}`
 const deferred = () => {

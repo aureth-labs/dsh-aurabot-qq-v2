@@ -18,9 +18,9 @@ let askModel
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'aurabot-accounting-'))
   process.env.AURABOT_DATA_DIR = dir
-  usage = await import('../src/core/usage.js')
+  usage = await import('../src/core/usage.ts')
   usage.initUsage()
-  ;({ askModel } = await import('../src/core/llm.js'))
+  ;({ askModel } = await import('../src/core/llm.ts'))
 })
 
 after(() => {

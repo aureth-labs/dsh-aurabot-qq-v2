@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-const { isDangerousCommand, createDangerGuard } = await import('../src/security/danger.js')
+const { isDangerousCommand, createDangerGuard } = await import('../src/security/danger.ts')
 
 const owner = '10001'
 const ownerChat = `private:${owner}`

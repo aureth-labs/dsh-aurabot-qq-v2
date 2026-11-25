@@ -11,9 +11,9 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-bili-'))
-  api = await import('../src/bili/api.js')
-  duty = await import('../src/bili/duty.js')
-  ;({ normalize } = await import('../src/core/config.js'))
+  api = await import('../src/bili/api.ts')
+  duty = await import('../src/bili/duty.ts')
+  ;({ normalize } = await import('../src/core/config.ts'))
 })
 
 test('WBI 签名和文档里的例子一致', () => {
@@ -55,7 +55,7 @@ test('解析：Cookie 只取有用的、认出视频号和短链、QQ 分享卡�
   assert.deepEqual(api.findVideoId('av170001'), { aid: '170001' })
   assert.deepEqual(api.findVideoId('https://b23.tv/abc123 哈哈'), { short: 'https://b23.tv/abc123' })
   assert.equal(api.findVideoId('没有链接'), null)
-  const { cardText } = await import('../src/chat/inbound.js')
+  const { cardText } = await import('../src/chat/inbound.ts')
   const card = JSON.stringify({ meta: { detail_1: { title: '哔哩哔哩', desc: '猫猫做饭', qqdocurl: 'https://b23.tv/xyz?share=1' } } })
   assert.equal(cardText(card), '[分享卡片（哔哩哔哩）：猫猫做饭 https://b23.tv/xyz]')
   assert.equal(cardText('不是 json'), '[卡片消息]')
@@ -163,7 +163,7 @@ test('看你发来的视频（短链也行）；主人让她评论才发', async
 
 test('没登录不让她写评论；被风控就当天暂停评论和回复', async () => {
   const d = [{ i: 1, feeling: '好看', comment: '真好', share: '' }, { i: 2, feeling: '可爱', comment: '哈哈', share: '' }]
-  const { dataDir } = await import('../src/core/store.js')
+  const { dataDir } = await import('../src/core/store.ts')
   const { rmSync } = await import('node:fs')
   const fresh = () => rmSync(dataDir('bili.json'), { force: true }) // 前面的测试把这几个视频记成看过了
   fresh()
@@ -182,7 +182,7 @@ test('没登录不让她写评论；被风控就当天暂停评论和回复', as
 })
 
 test('B 站 Cookie 分两个框填：纯值、带前缀、整串都认；老配置自动拆开；面板只看得到结尾几位', async () => {
-  const { splitBiliCookie, publicConfig, mergeFromPanel } = await import('../src/core/config.js')
+  const { splitBiliCookie, publicConfig, mergeFromPanel } = await import('../src/core/config.ts')
   assert.equal(splitBiliCookie({ sessdata: 'aaa', biliJct: 'bbb' }).cookie, 'SESSDATA=aaa; bili_jct=bbb')
   assert.equal(splitBiliCookie({ sessdata: 'SESSDATA=aaa', biliJct: 'bili_jct=bbb' }).cookie, 'SESSDATA=aaa; bili_jct=bbb')
   assert.deepEqual(splitBiliCookie({ sessdata: 'buvid3=z; SESSDATA=a%2C1; bili_jct=b; x=1' }), { sessdata: 'a%2C1', biliJct: 'b', buvid3: 'z', buvid4: '', dedeUserId: '', cookie: 'SESSDATA=a%2C1; bili_jct=b; buvid3=z' })
@@ -278,13 +278,13 @@ test('#6 换 B 站头像：先下载图片再 multipart 上传到 face/update；
   const ok = await mkDuty(normalize({ dryRun: false, bili: { enabled: true, cookie: 'bili_jct=y' } })).setAvatar('https://x/a.png')
   assert.equal(ok.ok, true)
   assert.deepEqual(sent, ['https://x/a.png'])
-  const { normalize: n2 } = await import('../src/core/config.js')
+  const { normalize: n2 } = await import('../src/core/config.ts')
   assert.equal(n2({}).profilePerms.biliAvatar, 'owner')
   assert.equal(n2({ profilePerms: { biliAvatar: 'x' } }).profilePerms.biliAvatar, 'owner')
 })
 
 test('评论里的 @昵称 按昵称查到 mid 一起发，查不到的留作文字', async () => {
-  const { createBiliApi } = await import('../src/bili/api.js')
+  const { createBiliApi } = await import('../src/bili/api.ts')
   const posts = []
   const json = (data) => ({ ok: true, status: 200, headers: { getSetCookie: () => [], get: () => '' }, json: async () => ({ code: 0, data }) })
   const fetchImpl = async (url, opts = {}) => {

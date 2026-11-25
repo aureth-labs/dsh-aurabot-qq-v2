@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { officialCost } from '../src/core/official-reference.js'
+import { officialCost } from '../src/core/official-reference.ts'
 const cost = (model, row={}) => officialCost({model, at:Date.parse('2026-11-20T10:00:00+08:00'), in:1e6, ...row})
 test('官方标准价：按每次请求选档，仅接受完整模型名', () => {
  assert.equal(cost('relay/GLM-5.3-Flash'),0.15)

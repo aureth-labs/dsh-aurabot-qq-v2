@@ -3,12 +3,12 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { identityNote, flatHistory } from '../src/chat/identity.js'
-import { cleanOutboundText } from '../src/chat/reply.js'
-import { normalize } from '../src/core/config.js'
+import { identityNote, flatHistory } from '../src/chat/identity.ts'
+import { cleanOutboundText } from '../src/chat/reply.ts'
+import { normalize } from '../src/core/config.ts'
 const dir = mkdtempSync(join(tmpdir(), 'ab-identity-'))
 process.env.AURABOT_DATA_DIR = dir
-const { createMemoryStore } = await import('../src/features/memory.js')
+const { createMemoryStore } = await import('../src/features/memory.ts')
 after(() => rmSync(dir, { recursive: true, force: true }))
 
 test('补读同名群友和机器人：账号、@ 对象及自身标识不丢失', () => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createUsageFx } from '../src/core/usage-fx.js'
+import { createUsageFx } from '../src/core/usage-fx.ts'
 
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'usage-fx-')); t.after(() => rmSync(dir, {recursive:true,force:true}))

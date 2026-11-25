@@ -8,8 +8,8 @@ import { join } from 'node:path'
 let createMemoryStore, normalize
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-memretry-'))
-  ;({ createMemoryStore } = await import('../src/features/memory.js'))
-  ;({ normalize } = await import('../src/core/config.js'))
+  ;({ createMemoryStore } = await import('../src/features/memory.ts'))
+  ;({ normalize } = await import('../src/core/config.ts'))
 })
 
 function setup(answer, idle = false) {

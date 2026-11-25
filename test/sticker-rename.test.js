@@ -8,8 +8,8 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-sticker-'))
 
-const { createStickerStore } = await import('../src/features/stickers.js')
-const { normalize } = await import('../src/core/config.js')
+const { createStickerStore } = await import('../src/features/stickers.ts')
+const { normalize } = await import('../src/core/config.ts')
 
 function fakePng (w = 240, h = 240) {
   const b = Buffer.alloc(80)

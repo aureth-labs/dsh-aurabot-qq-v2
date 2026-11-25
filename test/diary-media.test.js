@@ -8,12 +8,12 @@ const root = mkdtempSync(join(tmpdir(), 'aurabot-diary-media-'))
 process.env.AURABOT_DATA_DIR = root
 after(() => rmSync(root, { recursive: true, force: true }))
 
-const { normalize } = await import('../src/core/config.js')
-const { createQzone } = await import('../src/features/qzone.js')
-const { collectSources, localPictures, clip } = await import('../src/modules/diary/sources.js')
-const { createDiaryAssets, downloadImage } = await import('../src/modules/diary/assets.js')
-const { createDiaryMedia, parseDraft, reselectPictures, withCredits } = await import('../src/modules/diary/media.js')
-const { readJson, writeJson, dataDir } = await import('../src/core/store.js')
+const { normalize } = await import('../src/core/config.ts')
+const { createQzone } = await import('../src/features/qzone.ts')
+const { collectSources, localPictures, clip } = await import('../src/modules/diary/sources.ts')
+const { createDiaryAssets, downloadImage } = await import('../src/modules/diary/assets.ts')
+const { createDiaryMedia, parseDraft, reselectPictures, withCredits } = await import('../src/modules/diary/media.ts')
+const { readJson, writeJson, dataDir } = await import('../src/core/store.ts')
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=', 'base64')
 const log = { info() {}, warn() {} }
 
@@ -313,7 +313,7 @@ test('草稿生成后撤销配图授权，原生 post 最后一道检查也会�
 })
 
 test('原生日记的预览接口拒绝 GET 和表单请求，JSON POST 不发布', async () => {
-  const definition = (await import('../src/modules/diary/index.js')).default
+  const definition = (await import('../src/modules/diary/index.ts')).default
   const f = fixture()
   const routes = new Map()
   const disposers = []

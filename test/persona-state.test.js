@@ -5,8 +5,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { createBook } from '../src/autotelic/book.js'
-import { createJournal } from '../src/autotelic/reflect.js'
+import { createBook } from '../src/autotelic/book.ts'
+import { createJournal } from '../src/autotelic/reflect.ts'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -28,7 +28,7 @@ before(async () => {
     snowluma: { autoStart: false, autoAttach: false, httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9', dir: join(dataDir, 'no-snowluma') },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await fake.call('/persona/save', { id: 'shoko', name: '翔子', tags: [], body: '你是牧之原翔子。' })
 })

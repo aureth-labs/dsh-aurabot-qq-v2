@@ -5,9 +5,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMood } from '../src/features/mood.js'
-import { normalize } from '../src/core/config.js'
-import moodModule from '../src/modules/mood/index.js'
+import { createMood } from '../src/features/mood.ts'
+import { normalize } from '../src/core/config.ts'
+import moodModule from '../src/modules/mood/index.ts'
 
 const now = new Date(2026, 10, 4, 14, 0).getTime()
 

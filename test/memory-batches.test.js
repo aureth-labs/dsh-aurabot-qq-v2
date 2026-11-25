@@ -5,8 +5,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { readMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMemoryStore } from '../src/features/memory.js'
-import { normalize } from '../src/core/config.js'
+import { createMemoryStore } from '../src/features/memory.ts'
+import { normalize } from '../src/core/config.ts'
 
 const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const log = { info() {}, warn() {}, debug() {} }

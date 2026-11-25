@@ -4,8 +4,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { retention } = await import('../src/features/memory.js')
-const { normalize, DEFAULTS } = await import('../src/core/config.js')
+const { retention } = await import('../src/features/memory.ts')
+const { normalize, DEFAULTS } = await import('../src/core/config.ts')
 
 const DAY = 86400_000
 

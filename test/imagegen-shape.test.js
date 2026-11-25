@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { SHAPE_SIZE, imageSizeFor } from '../src/features/image-shape.js'
-import { createImageGen } from '../src/features/imagegen.js'
-import { normalize } from '../src/core/config.js'
-import imagegenModule from '../src/modules/imagegen/index.js'
+import { SHAPE_SIZE, imageSizeFor } from '../src/features/image-shape.ts'
+import { createImageGen } from '../src/features/imagegen.ts'
+import { normalize } from '../src/core/config.ts'
+import imagegenModule from '../src/modules/imagegen/index.ts'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shape-'))
 const log = { info() {}, debug() {}, warn() {} }

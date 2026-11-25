@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { moveWorkspace, realWorkspace } from '../src/core/workspace-move.js'
+import { moveWorkspace, realWorkspace } from '../src/core/workspace-move.ts'
 
 function setup(t) {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-ws-'))

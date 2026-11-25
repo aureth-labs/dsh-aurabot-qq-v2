@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { createHub } from '../src/chat/hub.js'
-import imagegen from '../src/modules/imagegen/index.js'
+import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub.ts'
+import imagegen from '../src/modules/imagegen/index.ts'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 
 const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])

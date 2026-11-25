@@ -5,11 +5,11 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import qqTools from '../src/modules/qq-tools/index.js'
-import { createMemoryStore } from '../src/features/memory.js'
-import { matchSticker, pickForReply } from '../src/features/stickers.js'
-import { createImageGen } from '../src/features/imagegen.js'
-import { askModel } from '../src/core/llm.js'
+import qqTools from '../src/modules/qq-tools/index.ts'
+import { createMemoryStore } from '../src/features/memory.ts'
+import { matchSticker, pickForReply } from '../src/features/stickers.ts'
+import { createImageGen } from '../src/features/imagegen.ts'
+import { askModel } from '../src/core/llm.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 
@@ -263,7 +263,7 @@ test('模型一直没有正文：只调用两次并返回空字符串', async ()
 })
 
 test('桌宠行为回执只留 3 天，别的记忆不受影响（#138）', async () => {
-  const { shouldForget } = await import('../src/features/memory.js')
+  const { shouldForget } = await import('../src/features/memory.ts')
   const now = Date.now()
   const day = 86400_000
   assert.equal(shouldForget({ source: 'pet', at: now - 2 * day }, now), false)
@@ -272,13 +272,13 @@ test('桌宠行为回执只留 3 天，别的记忆不受影响（#138）', asyn
 })
 
 test('心情基线可配，衰减往基线靠（#139）', async () => {
-  const { decayed } = await import('../src/features/mood.js')
+  const { decayed } = await import('../src/features/mood.ts')
   assert.equal(Math.round(decayed(100, 0, 1, 100 * 3600_000, 40)), 40)
   assert.equal(Math.round(decayed(100, 0, 1, 100 * 3600_000)), 60)
 })
 
 test('聊天流水保留和新开关的配置规范化（#140 #141 #142 #143）', async () => {
-  const { normalize } = await import('../src/core/config.js')
+  const { normalize } = await import('../src/core/config.ts')
   const d = normalize({})
   assert.equal(d.memory.keepChatlogDays, 7)
   assert.equal(normalize({ memory: { keepChatlogDays: 0 } }).memory.keepChatlogDays, 7, '老配置的默认值')
@@ -291,8 +291,8 @@ test('聊天流水保留和新开关的配置规范化（#140 #141 #142 #143）'
 })
 
 test('@ 了别人时不算叫她，但只在开关打开时生效（#143）', async () => {
-  const { decideGroupReply } = await import('../src/chat/group-policy.js')
-  const { parseMessageEvent } = await import('../src/chat/inbound.js')
+  const { decideGroupReply } = await import('../src/chat/group-policy.ts')
+  const { parseMessageEvent } = await import('../src/chat/inbound.ts')
   const m = parseMessageEvent({ message_type: 'group', group_id: 1, user_id: 2, message: [{ type: 'at', data: { qq: '3' } }, { type: 'text', data: { text: ' 问问大肥鱼' } }] }, '9')
   assert.equal(m.atOthers, true)
   const base = { policy: { wakeWords: ['大肥鱼'] }, text: m.text, relevance: 0, now: 0 }

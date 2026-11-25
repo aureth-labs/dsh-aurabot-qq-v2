@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventEmitter } from 'node:events'
-import { createSnowLumaManager, shouldRefuseStart } from '../src/snowluma/manager.js'
+import { createSnowLumaManager, shouldRefuseStart } from '../src/snowluma/manager.ts'
 
 const noLog = { info() {}, warn() {}, debug() {} }
 

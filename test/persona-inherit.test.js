@@ -45,7 +45,7 @@ before(async () => {
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.llm.stream = stream
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await fake.call('/persona/save', { id: 'xiaoxing', name: '小星', tags: [], body: '你是小星，温柔安静。' })
   // 大肥鱼（根目录人格）攒下的记忆

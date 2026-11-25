@@ -50,7 +50,7 @@ before(async () => {
     merge: { waitSec: 0.2, maxSec: 1 },
   }))
   fake = createFakeDsh({ brain })
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await fake.call('/onebot/reconnect')
   await until(() => mock.connected() > 0)
@@ -160,8 +160,8 @@ test('会话事件在调用方异步链之外到达时，回复记到会话所�
 })
 
 test('人设图与外貌按会话人格读取，提示词遵循异步上下文人格', async () => {
-  const { personaScope } = await import('../src/persona/personas.js')
-  const { saveAppearance, saveLookImage } = await import('../src/persona/persona-look.js')
+  const { personaScope } = await import('../src/persona/personas.ts')
+  const { saveAppearance, saveLookImage } = await import('../src/persona/persona-look.ts')
   const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(64)])
   const other = Buffer.concat([png, Buffer.from([1])])
   saveAppearance('dafeiyu', '蓝色短发')
@@ -218,7 +218,7 @@ test('面板「清理某人的记忆」只清当前人格：截止时间记在�
 })
 
 test('后台任务跨过人格切换：剩下的后台轮次作废，不用旧人格的会话做事', async () => {
-  const { personaScope } = await import('../src/persona/personas.js')
+  const { personaScope } = await import('../src/persona/personas.ts')
   await use('xiaoxing')
   await assert.rejects(personaScope.run('dafeiyu', () => api.hub.runSystemTurn('probe', '探针', '随便说点什么')), /人格已切换/)
 })

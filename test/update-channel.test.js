@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { compareVersions, createUpdateChecker, updateCommand, updatePlan, wantsUnstable } from '../src/core/update.js'
+import { compareVersions, createUpdateChecker, updateCommand, updatePlan, wantsUnstable } from '../src/core/update.ts'
 
 const pkg = (version) => ({ version, repository: 'https://github.com/a/b' })
 const feed = (versions) => '<feed>' + versions.map((v) => `<entry><updated>2026-11-01T00:00:00Z</updated><link rel="alternate" href="https://github.com/a/b/releases/tag/v${v}"/><title>${v}</title></entry>`).join('') + '</feed>'

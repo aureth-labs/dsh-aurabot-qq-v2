@@ -5,12 +5,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
-import { normalize } from '../src/core/config.js'
-import { createMemoryStore } from '../src/features/memory.js'
+import { normalize } from '../src/core/config.ts'
+import { createMemoryStore } from '../src/features/memory.ts'
 import { readMemoryState } from './helpers/memory-state.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { createConversationArchive } from '../src/chat/conversation-context.js'
-import memoryModule from '../src/modules/memory/index.js'
+import { createConversationArchive } from '../src/chat/conversation-context.ts'
+import memoryModule from '../src/modules/memory/index.ts'
 
 const OWNER = '10000001'
 const ALICE = '30000001'
@@ -330,7 +330,7 @@ test('说忘掉时相处经验和说话习惯里的也一起忘', (t) => {
 })
 
 test('人物关系：只认本人或主人说的，别人传的和规则都不记', async () => {
-  const { normalizeRelation } = await import('../src/features/memory.js')
+  const { normalizeRelation } = await import('../src/features/memory.ts')
   const names = new Map([['111', '小明'], ['222', '路人'], ['999', '主人']])
   const base = { chatId: 'group:1', names, owner: '999' }
   assert.equal(normalizeRelation({ subj: '小明', pred: '的女朋友是', obj: '阿花', speaker: '111' }, base).subj, '小明')
@@ -405,7 +405,7 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
     snowluma: { autoStart: false, autoAttach: false }, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
   const fake = createFakeDsh({ brain: async () => '' })
   try {
-    const { apply } = await import('../src/host.js')
+    const { apply } = await import('../src/host.ts')
     const api = apply(fake.ctx)
     await api.ready
     const memory = api.modules.use('memory')

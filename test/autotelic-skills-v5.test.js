@@ -10,8 +10,8 @@ import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createSkillStore } from '../src/autotelic/skills.js'
-import { buildPrefix, hashPrefix, createPrefixCache } from '../src/autotelic/prefix.js'
+import { createSkillStore } from '../src/autotelic/skills.ts'
+import { buildPrefix, hashPrefix, createPrefixCache } from '../src/autotelic/prefix.ts'
 
 let root
 let t0 // 固定时间源：快照目录名可预测
@@ -30,7 +30,7 @@ const mkStore = (opts = {}) => createSkillStore(join(root, 'skills'), {
 })
 
 test('#523：异步提炼拒绝时记录原因、模板晋升，宿主进程继续运行', () => {
-  const moduleUrl = new URL('../src/autotelic/skills.js', import.meta.url).href
+  const moduleUrl = new URL('../src/autotelic/skills.ts', import.meta.url).href
   const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import assert from 'node:assert/strict'
     import { setImmediate } from 'node:timers/promises'

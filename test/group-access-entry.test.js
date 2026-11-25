@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
-import { normalize } from '../src/core/config.js'
+import { normalize } from '../src/core/config.ts'
 const source=readFileSync(new URL('../client/client.js',import.meta.url),'utf8')
 const publicPanel=source.includes('function GroupPermissions(')
 const entry=publicPanel?'GroupPermissions':'Access'

@@ -4,11 +4,11 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import voiceModule from '../src/modules/voice/index.js'
-import { voiceConverters } from '../src/voice/tts.js'
-import { buildWav } from '../src/voice/wav.js'
-import { normalize } from '../src/core/config.js'
-import { seedPersonas } from '../src/persona/personas.js'
+import voiceModule from '../src/modules/voice/index.ts'
+import { voiceConverters } from '../src/voice/tts.ts'
+import { buildWav } from '../src/voice/wav.ts'
+import { normalize } from '../src/core/config.ts'
+import { seedPersonas } from '../src/persona/personas.ts'
 
 function fixture(t, config = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-voice-rvc-compat-'))

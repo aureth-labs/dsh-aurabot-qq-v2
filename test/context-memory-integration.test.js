@@ -4,10 +4,10 @@ import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync } fro
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { normalize } from '../src/core/config.js'
-import { createHub } from '../src/chat/hub.js'
-import { createConversationArchive, queriesFor, retrieve } from '../src/chat/conversation-context.js'
-import { memoryPromptRanges, promptFingerprint } from '../src/security/leak-guard.js'
+import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub.ts'
+import { createConversationArchive, queriesFor, retrieve } from '../src/chat/conversation-context.ts'
+import { memoryPromptRanges, promptFingerprint } from '../src/security/leak-guard.ts'
 
 const OWNER = '10000001', OTHER = '10000002', BOT = '20000002'
 const ownerChat = { kind: 'private', chatId: 'private:' + OWNER, userId: OWNER, nickname: '虚构用户' }

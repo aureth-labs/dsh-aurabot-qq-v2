@@ -15,9 +15,9 @@ let fetchImage
 let formatBytes
 
 before(async () => {
-  stickersModule = (await import('../src/modules/stickers/index.js')).default
-  ;({ MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } = await import('../src/features/stickers.js'))
-  ;({ fetchImage, formatBytes } = await import('../src/core/net.js'))
+  stickersModule = (await import('../src/modules/stickers/index.ts')).default
+  ;({ MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } = await import('../src/features/stickers.ts'))
+  ;({ fetchImage, formatBytes } = await import('../src/core/net.ts'))
 })
 
 const OWNER = '10000001'

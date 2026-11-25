@@ -1,7 +1,7 @@
 // 回归：模型把换行写成 HTML <br> 时当换行处理，别把标签原样发到 QQ（来自社区 PR #207）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply } from '../src/chat/reply.js'
+import { parseReply } from '../src/chat/reply.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)
 

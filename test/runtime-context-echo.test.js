@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-const { memoryPromptRanges } = await import('../src/security/leak-guard.js')
+const { memoryPromptRanges } = await import('../src/security/leak-guard.ts')
 
 /** 按 memoryPromptRanges 给出的区间删掉注入内容，剩下的就是会发出去的话。 */
 function strip (text) {

@@ -1,7 +1,7 @@
 // 安全默认：危险命令（删文件、关机等）默认要二次确认；显式关闭仍然生效。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULTS, normalize } from '../src/core/config.js'
+import { DEFAULTS, normalize } from '../src/core/config.ts'
 
 test('dangerConfirm 默认开启', () => {
   assert.equal(DEFAULTS.security.dangerConfirm, true)

@@ -1,8 +1,8 @@
 // #47：生图配好了却没有 qq_draw_image —— 工具注册只看内置开关会漏掉本地接口/外部生图模块接管。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import imagegenModule from '../src/modules/imagegen/index.js'
-import { normalize } from '../src/core/config.js'
+import imagegenModule from '../src/modules/imagegen/index.ts'
+import { normalize } from '../src/core/config.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 

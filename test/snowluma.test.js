@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createServer } from 'node:net'
-import { createSnowLumaManager, generatePassword } from '../src/snowluma/manager.js'
+import { createSnowLumaManager, generatePassword } from '../src/snowluma/manager.ts'
 
 const FAKE = `
 import http from 'node:http'

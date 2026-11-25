@@ -2,7 +2,7 @@
 // 桌宠只该跟 DSH 自己发起的活儿走。这里测「是不是 QQ 聊天会话」这个判定。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isChatSession } from '../src/host.js'
+import { isChatSession } from '../src/host.ts'
 
 test('QQ 聊天会话：不转发给桌宠', () => {
   const hub = { chatOfSession: (id) => (id === 'session-qq' ? 'private:10001' : '') }

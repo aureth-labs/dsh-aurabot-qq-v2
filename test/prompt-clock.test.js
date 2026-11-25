@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { clockAt, clockLabel } from '../src/chat/reply.js'
-import { flatHistory } from '../src/chat/identity.js'
+import { clockAt, clockLabel } from '../src/chat/reply.ts'
+import { flatHistory } from '../src/chat/identity.ts'
 
 test('钟点统一按东八区压成 HH:MM', () => {
   assert.equal(clockAt(Date.UTC(2026, 10, 9, 13, 34)), '21:34')
@@ -15,7 +15,7 @@ test('钟点统一按东八区压成 HH:MM', () => {
 })
 
 test('私聊与群聊拼提示词时都带上钟点', () => {
-  const hub = readFileSync(new URL('../src/chat/hub.js', import.meta.url), 'utf8')
+  const hub = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
   // 私聊：钟点放在【私聊】之后，这样「去掉【私聊】某某(QQ)：头」的旧正则还能用
   assert.ok(
     hub.includes('`【私聊】[${clockLabel(now)}] ${msg.nickname}(${msg.userId})：`'),
@@ -24,11 +24,11 @@ test('私聊与群聊拼提示词时都带上钟点', () => {
   // 群聊：每行都挂，之前的背景句和这一段新说的话都算
   assert.ok(hub.includes('const line = (x) => `[${clockLabel(x.t)}] ${x.nick}'), '群聊每行应挂 [HH:MM]')
   // 引入不必逐字对上（不同分支的 import 还带着 itemsToLine 之类），只要求从 reply.js 引进来
-  assert.match(hub, /import \{[^}]*\bclockLabel\b[^}]*\} from '\.\/reply\.js'/)
+  assert.match(hub, /import \{[^}]*\bclockLabel\b[^}]*\} from '\.\/reply\.ts'/)
 })
 
 test('跨天时补日期：昨天 / 更早 / 跨年', async () => {
-  const { clockLabel } = await import('../src/chat/reply.js')
+  const { clockLabel } = await import('../src/chat/reply.ts')
   // 以东八区 2026-11-09 23:34 为「现在」
   const now = Date.UTC(2026, 10, 9, 15, 34) // 23:34 +08
   assert.equal(clockLabel(Date.UTC(2026, 10, 9, 15, 0), now), '23:00')            // 当天
@@ -42,7 +42,7 @@ test('跨天时补日期：昨天 / 更早 / 跨年', async () => {
 })
 
 test('补看历史与跨会话转达也带时间标签', () => {
-  const hub = readFileSync(new URL('../src/chat/hub.js', import.meta.url), 'utf8')
+  const hub = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
   // 补读已提取到 identity.js：检查调用方传入时钟，并直接验证历史日期行为。
   assert.match(hub, /flatHistory\(filterHistory\(chat.chatId, list\), selfId \|\| cfg.botQQ, \{ clockLabel \}\)/)
   const now = Date.UTC(2026, 10, 9, 15, 34)
@@ -58,7 +58,7 @@ test('补看历史与跨会话转达也带时间标签', () => {
 })
 
 test('秒级时间戳（OneBot 的 time）也能喂给 clockLabel', async () => {
-  const { clockLabel } = await import('../src/chat/reply.js')
+  const { clockLabel } = await import('../src/chat/reply.ts')
   const now = Date.UTC(2026, 10, 9, 15, 34) // 东八区 11-09 23:34
   const sec = Math.floor(Date.UTC(2026, 10, 8, 15, 5) / 1000) * 1000
   assert.equal(clockLabel(sec, now), '昨天 23:05')

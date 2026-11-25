@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const src = readFileSync(new URL('../src/chat/hub.js', import.meta.url), 'utf8')
+const src = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
 
 test('群聊图片内容带发送者昵称和 QQ', () => {
   assert.match(src, /发送者 \$\{msg\.nickname\}\(\$\{msg\.userId\}\)/)

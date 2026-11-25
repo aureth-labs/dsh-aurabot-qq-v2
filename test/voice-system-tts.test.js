@@ -2,9 +2,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { systemVoiceEngine, edgeAllowed } from '../src/voice/tts.js'
-import { asPcmWav } from '../src/modules/voice/index.js'
-import { buildWav } from '../src/voice/wav.js'
+import { systemVoiceEngine, edgeAllowed } from '../src/voice/tts.ts'
+import { asPcmWav } from '../src/modules/voice/index.ts'
+import { buildWav } from '../src/voice/wav.ts'
 
 test('系统语音兜底：Windows 用系统语音、macOS 用 say、其它平台没有', () => {
   assert.equal(systemVoiceEngine('win32'), 'windows')
@@ -20,7 +20,7 @@ test('明确要系统语音时不再先试 edge（否则 macOS 会被 edge 截�
 })
 
 test('自检：有系统语音就先用系统语音，不再写死 windows', () => {
-  const src = readFileSync(new URL('../src/modules/voice/index.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/modules/voice/index.ts', import.meta.url), 'utf8')
   assert.doesNotMatch(src, /textToSpeech\(text, \{ engine: 'windows' \}\)/)
   assert.match(src, /const system = systemVoiceEngine\(\)/)
   assert.match(src, /textToSpeech\(text, system \? \{ engine: system \} : \{\}\)/)
@@ -70,6 +70,6 @@ test('转换失败时报清楚原因，不留下临时文件', async () => {
 })
 
 test('macOS say 调用把文本放在 -- 之后，避免正文被当成选项', () => {
-  const src = readFileSync(new URL('../src/voice/tts.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/voice/tts.ts', import.meta.url), 'utf8')
   assert.match(src, /'--data-format=LEI16@16000'[\s\S]{0,80}'--', text\]/)
 })

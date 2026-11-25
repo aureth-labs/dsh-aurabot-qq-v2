@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.js'
-import { normalize } from '../src/core/config.js'
+import { createHub } from '../src/chat/hub.ts'
+import { normalize } from '../src/core/config.ts'
 
 function setup(t, { dryRun = false, enabled = true, onebotCall = null, files = null } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-proactive-'))

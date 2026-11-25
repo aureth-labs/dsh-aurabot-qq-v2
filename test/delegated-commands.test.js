@@ -4,8 +4,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../src/chat/delegated-commands.js'
-import { normalize } from '../src/core/config.js'
+import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../src/chat/delegated-commands.ts'
+import { normalize } from '../src/core/config.ts'
 
 const owner = '10000001'
 const guest = '10000002'
@@ -56,7 +56,7 @@ test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和�
   writeFileSync(join(dir, 'modules', 'probe', 'index.mjs'), `export default { id: 'probe', api: 1, setup(api) { api.command({ name: 'hello', delegatable: true, run: () => { globalThis.__delegatedProbe = (globalThis.__delegatedProbe || 0) + 1; return 'ok' } }) } }`)
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify({ chats: { [`private:${guest}`]: { sessionId: 'old-session' } } }))
   const fake = createFakeDsh({ brain: async () => '' })
-  const { apply } = await import('../src/host.js')
+  const { apply } = await import('../src/host.ts')
   const api = apply(fake.ctx)
   await api.ready
   t.after(() => { delete globalThis.__delegatedProbe; fake.dispose(); rmSync(dir, { recursive: true, force: true }) })

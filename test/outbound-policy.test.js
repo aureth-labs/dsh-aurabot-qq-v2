@@ -9,7 +9,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createOutboundPolicy } from '../src/chat/outbound-policy.js'
+import { createOutboundPolicy } from '../src/chat/outbound-policy.ts'
 
 // ── 测试夹具 ──────────────────────────────────────────────────────────────
 

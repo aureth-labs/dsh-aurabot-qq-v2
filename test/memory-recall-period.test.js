@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import memoryModule from '../src/modules/memory/index.js'
+import { normalize } from '../src/core/config.ts'
+import memoryModule from '../src/modules/memory/index.ts'
 
 const OWNER = '10000001'
 const DAY = 86400_000

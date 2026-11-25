@@ -5,9 +5,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { createHub } from '../src/chat/hub.js'
-import { normalize } from '../src/core/config.js'
-import { OneBotError } from '../src/onebot/client.js'
+import { createHub } from '../src/chat/hub.ts'
+import { normalize } from '../src/core/config.ts'
+import { OneBotError } from '../src/onebot/client.ts'
 
 function setup(t, failure, { ttsFailure = false, files = { enabled: true } } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-send-fallback-'))

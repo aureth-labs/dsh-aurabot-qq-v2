@@ -8,9 +8,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createSchedule } from '../src/autotelic/schedule.js'
-import { TRANSIENT_RE, isForbidden } from '../src/autotelic/exec.js'
-import { createFeedback } from '../src/autotelic/feedback.js'
+import { createSchedule } from '../src/autotelic/schedule.ts'
+import { TRANSIENT_RE, isForbidden } from '../src/autotelic/exec.ts'
+import { createFeedback } from '../src/autotelic/feedback.ts'
 
 const tmp = (t, name) => {
   const root = mkdtempSync(join(tmpdir(), `aurabot-autotelic-fix-${name}-`))

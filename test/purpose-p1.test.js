@@ -9,11 +9,11 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { purposeConfig } from '../src/purpose/module.js'
-import { quietWindowOf, inHourWindow } from '../src/core/time-window.js'
-import purposeDef from '../src/modules/purpose/index.js'
-import { createModules } from '../src/core/modules.js'
+import { normalize } from '../src/core/config.ts'
+import { purposeConfig } from '../src/purpose/module.ts'
+import { quietWindowOf, inHourWindow } from '../src/core/time-window.ts'
+import purposeDef from '../src/modules/purpose/index.ts'
+import { createModules } from '../src/core/modules.ts'
 
 // ---------- 1. purposeConfig 开关语义（纯函数，Q1 拍板：默认开） ----------
 

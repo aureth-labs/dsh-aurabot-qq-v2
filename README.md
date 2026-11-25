@@ -177,31 +177,62 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 带上面板「日志」里的报错和版本号来 QQ 群问（见下方二维码），或到 [GitHub issue](https://github.com/aureth-labs/dsh-aurabot-qq/issues) 反馈。
 </details>
 
-## 🧑💻 开发
+## 🧑‍💻 开发
 
 ```bash
 git clone https://github.com/aureth-labs/dsh-aurabot-qq.git
 cd dsh-aurabot-qq
+npm install     # typescript / esbuild / @types/node
+npm run build   # src/**/*.ts → lib/，client/**/*.ts → dist/client.js
+npm run check   # 类型检查 + 生命周期检查（和 VS Code 一致，0 报错）
 npm test        # 单元测试 + 假 DSH 宿主/模拟 OneBot 的端到端测试
 ```
 
-```
-src/host.js            插件入口（宿主半边）：核心 + 面板接口 /aurabot/api/*
-src/core/modules.js    模块内核：加载、开关、替换、热重载、出错隔离
+```text
+index.mjs              插件入口：只 re-export lib/host.js（DSH 只认根目录这一份）
+dev.mjs                开发入口：re-export src/host.ts，Node 直接剥类型跑 TS
+src/host.ts            插件入口（宿主半边）：核心 + 面板接口 /aurabot/api/*
+src/core/              内核：模块加载、ctx / session / bot、元素模型、管线、适配器契约
 src/modules/           内置模块 + 扩展接口 API.md + 类型 + 新模块模板
 src/chat/              消息中枢、群聊策略、回复解析、白名单与权限
-src/onebot/client.js   OneBot v11 客户端（HTTP + WS，自动重连）
-src/snowluma/          SnowLuma 管理（检测、启停、只注入机器人号）
-src/features/          表情包、空间、心情、记忆、主动搭话、生图
-src/song/              翻唱流水线（网易云 → 分离 → 变声 → 混音）
-src/voice/             文字转语音、WAV 处理
-client/client.js       网页半边：侧栏入口 + 面板
+src/onebot/            OneBot v11 客户端（QQ 适配器用）
+src/song/  src/voice/  翻唱流水线、文字转语音
+client/**/*.ts         网页半边：侧栏入口 + 面板（打包成 dist/client.js）
 personas/dafeiyu.md    默认人格
-cordis.patch.yml       插件与两个 preset 的挂载声明
+cordis.patch.yml       插件与 preset 的挂载声明
 test/                  单元测试 + 端到端测试
 ```
 
-需要 Node.js ≥ 22.13.0。
+需要 Node.js ≥ 22.18.0（原生剥离 TypeScript 类型）。
+
+### 热重载
+
+改代码不重启 DSH，两步：
+
+1. 在 DSH profile 的 `cordis.patch.yml`（本机是 `~/.dsh/profiles/web/cordis.patch.yml`）里加一段，
+   把监听目录指到本仓库。`disabled: false` 不能省，少了它这条配置不会生效：
+
+```yaml
+- id: hmr
+  disabled: false
+  config:
+    base: 'file:///D:/QQbots/project/github/aurabot/plugins/dsh-aurabot-qq-v2/'
+    root: ['.']
+```
+
+2. 起 DSH 时带 `AURABOT_DEV=1`，插件走 `dev.mjs` 直接加载 `src/**/*.ts`，改哪个 `.ts` 都立刻热重载：
+
+```powershell
+$env:AURABOT_DEV='1'; dsh web --no-open --port 8787
+```
+
+```bash
+AURABOT_DEV=1 dsh web --no-open --port 8787
+```
+
+不带 `AURABOT_DEV=1` 时走发布态 `index.mjs → lib/`：改完要 `npm run build` 才生效，
+HMR 重载的是上次构建出来的 `lib/`。
+
 
 ## 🤝 参与贡献
 

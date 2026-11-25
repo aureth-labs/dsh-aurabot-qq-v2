@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { actualQqVersion } from '../src/snowluma/manager.js'
-import { classifyQqVersion } from '../src/snowluma/qq-version.js'
+import { actualQqVersion } from '../src/snowluma/manager.ts'
+import { classifyQqVersion } from '../src/snowluma/qq-version.ts'
 
 test('QQ 版本优先读热更新后的 curVersion', () => {
   const dir = mkdtempSync(join(tmpdir(), 'qq-version-'))

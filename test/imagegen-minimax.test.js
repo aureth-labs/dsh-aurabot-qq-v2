@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createImageGen, minimaxImageBody, minimaxBaseUrl, minimaxImageKey, MINIMAX_IMAGE_MODELS } from '../src/features/imagegen.js'
-import { normalize } from '../src/core/config.js'
-import imagegenModule from '../src/modules/imagegen/index.js'
+import { createImageGen, minimaxImageBody, minimaxBaseUrl, minimaxImageKey, MINIMAX_IMAGE_MODELS } from '../src/features/imagegen.ts'
+import { normalize } from '../src/core/config.ts'
+import imagegenModule from '../src/modules/imagegen/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(64, 1)])

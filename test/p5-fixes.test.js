@@ -31,7 +31,7 @@ before(async () => {
   const ctl = fake.ctx.services.sessionController
   const origRename = ctl.rename.bind(ctl)
   ctl.rename = async (arg) => { renamed.push(arg.title); return origRename(arg) }
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
 })
 

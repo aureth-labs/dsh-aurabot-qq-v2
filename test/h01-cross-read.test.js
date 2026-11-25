@@ -43,7 +43,7 @@ before(async () => {
     }
     return '嗯'
   } })
-  const host = await import(`file://${REPO}/src/host.js`)
+  const host = await import(`file://${REPO}/src/host.ts`)
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
   await fake.call('/onebot/reconnect')

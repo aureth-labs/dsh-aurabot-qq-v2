@@ -1,10 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { normalize } from '../src/core/config.js'
-import { presetFor } from '../src/chat/access.js'
-import { rulesText } from '../src/persona/personas.js'
-import { createDangerGuard } from '../src/security/danger.js'
+import { normalize } from '../src/core/config.ts'
+import { presetFor } from '../src/chat/access.ts'
+import { rulesText } from '../src/persona/personas.ts'
+import { createDangerGuard } from '../src/security/danger.ts'
 
 test('新安装默认打开长任务模式，老用户存过的不变', () => {
   assert.equal(normalize({}).longTasks, true)

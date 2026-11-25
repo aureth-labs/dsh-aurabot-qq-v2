@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply } from '../src/chat/reply.js'
+import { parseReply } from '../src/chat/reply.ts'
 
 const text = value => ({ kind: 'text', value })
 const parse = (...parts) => parseReply(parts.join('|||')).items

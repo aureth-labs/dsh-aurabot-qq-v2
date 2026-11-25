@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { rulesText } from '../src/persona/personas.js'
-import { normalize } from '../src/core/config.js'
-import qqApi from '../src/modules/qq-api/index.js'
+import { rulesText } from '../src/persona/personas.ts'
+import { normalize } from '../src/core/config.ts'
+import qqApi from '../src/modules/qq-api/index.ts'
 
 const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '123456789', ownerName: 'PRIVATE_OWNER_NAME', allow: { groups: ['555'] } })
 

@@ -4,12 +4,12 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import qqTools from '../src/modules/qq-tools/index.js'
-import { createHub } from '../src/chat/hub.js'
-import { hasInvalidVoiceMarkup } from '../src/chat/reply.js'
-import { normalize } from '../src/core/config.js'
-import { scopeCoreForModule } from '../src/core/modules.js'
-import { OneBotError } from '../src/onebot/client.js'
+import qqTools from '../src/modules/qq-tools/index.ts'
+import { createHub } from '../src/chat/hub.ts'
+import { hasInvalidVoiceMarkup } from '../src/chat/reply.ts'
+import { normalize } from '../src/core/config.ts'
+import { scopeCoreForModule } from '../src/core/modules.ts'
+import { OneBotError } from '../src/onebot/client.ts'
 
 function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, hooks, level = 'full', kind = 'private' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-cross-voice-'))

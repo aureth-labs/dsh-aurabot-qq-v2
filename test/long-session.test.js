@@ -19,8 +19,8 @@ test('每个预设的会话压缩都在窗口 25% 时触发、保留 5%（默认
 test('召回提示有总长度上限：聊天原文再多也不超过 recallHintMaxChars', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'hint-cap-'))
   process.env.AURABOT_DATA_DIR = dir
-  const { normalize } = await import('../src/core/config.js')
-  const { createMemoryStore } = await import('../src/features/memory.js')
+  const { normalize } = await import('../src/core/config.ts')
+  const { createMemoryStore } = await import('../src/features/memory.ts')
   const cfg = normalize({ ownerQQ: '10001', memory: { enabled: true, recallHintMaxChars: 400 } })
   assert.equal(normalize({ memory: { recallHintMaxChars: 99 } }).memory.recallHintMaxChars, 300)
   const day = new Date().toISOString().slice(0, 10)

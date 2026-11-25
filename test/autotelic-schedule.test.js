@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { scheduleConfig, quietOf, computeNextFire, createSchedule } from '../src/autotelic/schedule.js'
+import { scheduleConfig, quietOf, computeNextFire, createSchedule } from '../src/autotelic/schedule.ts'
 
 const BASE = {
   enabled: true,

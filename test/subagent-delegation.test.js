@@ -7,8 +7,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { normalize } from '../src/core/config.js'
-import { createHub } from '../src/chat/hub.js'
+import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub.ts'
 
 const OWNER = '10001'
 const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate) }
@@ -166,7 +166,7 @@ test('后台开关：config.subagentBackground 打开后才允许无主人活动
 })
 
 test('模块可见的 core：委派原始入口被遮蔽，原型链也摸不回去（三审 #177）', async (t) => {
-  const { scopeCoreForModule } = await import('../src/core/modules.js')
+  const { scopeCoreForModule } = await import('../src/core/modules.ts')
   const s = setup(t)
   const core = { hub: s.hub }
   const scoped = scopeCoreForModule(core, 'phone')

@@ -19,7 +19,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
     assert.equal(result.ok, !text.includes('不是主人'), result.message)
     return '' // 不发送 QQ 回复；这里只验证 Agent 工具链。
   } })
-  const app = (await import('../src/host.js')).apply(fake.ctx)
+  const app = (await import('../src/host.ts')).apply(fake.ctx)
   t.after(async () => { fake.dispose(); await app.dispose?.(); rmSync(root, { recursive: true, force: true }) })
   await app.ready
   const old = (await fake.call('/state')).json().config
@@ -35,7 +35,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
   assert.deepEqual(app.getConfig().group.overrides, current.group.overrides)
   await app.hub.pushToSession(ownerChat, [{ type: 'text', text: '不是主人尝试修改' }], '10000002')
   assert.deepEqual(app.getConfig().group.overrides, current.group.overrides)
-  const { createMutes } = await import('../src/chat/commands.js')
+  const { createMutes } = await import('../src/chat/commands.ts')
   createMutes().set(`group:${G}`, 0)
   const pausedFile = readFileSync(join(root, 'mutes.json'), 'utf8')
   const read = (await fake.call('/modules/tool', { as: 'owner', kind: 'private', name: 'qq_group_settings', args: { action: 'get', group_id: G } })).json()

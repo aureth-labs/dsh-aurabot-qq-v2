@@ -1,7 +1,7 @@
 // #256：Codex 生图模型名只校验格式，不再按固定白名单静默改成 gpt-image-2。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize } from '../src/core/config.js'
+import { normalize } from '../src/core/config.ts'
 
 const codexModel = (model) => normalize({ imageGen: { provider: 'codex', codex: { model } } }).imageGen.codex.model
 

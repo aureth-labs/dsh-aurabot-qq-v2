@@ -25,6 +25,7 @@
 10. [内部源码](#内部源码)
 11. [升级会不会坏](#升级会不会坏)
 12. [排查问题](#排查问题)
+13. [v2 写法：apply(ctx) 与清单](#v2-写法applyctx-与清单)
 
 ## 最小的模块
 
@@ -449,3 +450,67 @@ return function Panel({ settings, save, toast }) {
 - 不会写？在「已安装」页点「复制给 DSH 的话」，粘给 DSH，写上你想要什么，它会读这份说明帮你写
 
 原话档案通过 `conversationContext.enabled` 显式开启，默认关闭。`prompt` 的 `recentMessages` 是当前输入之前的同一人物/聊天记录；关闭时为空。具体保留范围、微信历史资料接入和模块权限边界见 [对话上下文说明](../../docs/MEMORY-CONTEXT.md)。
+
+## v2 写法：apply(ctx) 与清单
+
+上面讲的 `setup(api)` 是 v1，**永远有效**。v2 只是多了一种写法：入口导出 `apply(ctx, config)`，
+字段都挂在 `ctx` 上（`api` 的别名 + 少量新增），老模块一行不改照样跑。
+
+```js
+// modules/weather/package.json —— v2 清单，缺省回退 module.json
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "aurabot": {
+    "displayName": "天气",
+    "category": "tool",
+    "api": 2,
+    "capabilities": ["network"],
+    "panel": "./dist/panel.js"
+  }
+}
+```
+
+```js
+// modules/<id>/index.mjs（或清单 main 指向的文件）
+export default function apply(ctx, config) {
+  ctx.setInterval(60_000, () => { /* 卸载时自动清掉 */ })
+  ctx.command('weather', async (session, args) => {  // 用户发的「/weather 杭州」；args 是后面那一整段
+    await session.send(`正在查 ${args}`)
+  })
+  ctx.middleware(async (session, next) => {                 // 拦在 AI 前面
+    if (session.content === 'ping') return 'pong'           // 不调 next() = 这条处理完了
+    return next()
+  }, { name: 'ping', before: 'llm' })
+}
+```
+
+| 能力 | 说明 |
+| --- | --- |
+| `ctx.command(name, fn)` | 注册指令（不经过 AI）。前缀由全局配置 `commandPrefixes` 决定，默认无前缀和 `/` |
+| `ctx.middleware(fn, opts)` | 管线中间件，顺序 `command → middleware → llm`；`return` 不调 `next()` 就是消费掉这条 |
+| `ctx.tool(builder)` | 注册给 AI 调用的工具。用户不能直接触发，得模型自己决定调用并传参数 |
+| `ctx.on(event, fn)` | 事件。插件可以自定义事件名，别的插件用同一个名字 `ctx.on` 监听 |
+| `ctx.setInterval` / `ctx.setTimeout` | 定时器，随模块卸载自动回收（不要用裸 `setInterval`） |
+| `ctx.bots[0]` / `ctx.bots('1787850032')` / `ctx.bots.list()` | 已上线的机器人；按 id 取用 `ctx.bots(id)` |
+| `ctx.adapter(spec, config)` | 注册一个平台适配器：`connect` 成功才上线，模块卸载自动断开 |
+| `ctx.h` | 元素构造与解析：`h('text', { content })`、`h.image(url)`、`h.parse(xml)`、`h.select(tree, 'image')` |
+
+发送一律异步，返回值要 `await`：
+
+```js
+await session.send('群里发群、私聊发私聊')
+await session.sendPrivateMessage(userId, '主动私聊某个人')
+await session.sendMessage(channelId, '主动发到某个频道')
+await session.execute('tell 主人的插件坏了')   // 以当前会话身份把这条再跑一遍管线（会真的发出去）
+```
+
+配置用 `Schema` 声明（可选），面板会按它生成表单，坏数据回落默认值：
+
+```js
+export const config = ctx.Schema.object({
+  greeting: ctx.Schema.string().default('你好'),
+})
+```

@@ -7,9 +7,9 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-debug-'))
 
-const { normalize, publicConfig } = await import('../src/core/config.js')
-const { createMemoryStore } = await import('../src/features/memory.js')
-const { createStickerStore } = await import('../src/features/stickers.js')
+const { normalize, publicConfig } = await import('../src/core/config.ts')
+const { createMemoryStore } = await import('../src/features/memory.ts')
+const { createStickerStore } = await import('../src/features/stickers.ts')
 
 const logs = []
 const log = { info: (...a) => logs.push(a.join(' ')), warn () {}, debug () {} }

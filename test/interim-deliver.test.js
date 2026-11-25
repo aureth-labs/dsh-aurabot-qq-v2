@@ -5,8 +5,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.js'
-import { normalize } from '../src/core/config.js'
+import { createHub } from '../src/chat/hub.ts'
+import { normalize } from '../src/core/config.ts'
 
 function setup(t, patch = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-interim-deliver-'))

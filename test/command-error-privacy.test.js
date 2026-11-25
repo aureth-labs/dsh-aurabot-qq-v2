@@ -4,11 +4,11 @@ import {mkdtempSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createFakeDsh} from './helpers/fake-dsh.js'
-import {normalize} from '../src/core/config.js'
+import {normalize} from '../src/core/config.ts'
 process.env.AURABOT_DATA_DIR=mkdtempSync(join(tmpdir(),'cmd-privacy-'))
-const {createHub}=await import('../src/chat/hub.js')
-const {runCommand,parseCommand}=await import('../src/chat/commands.js')
-const {createSongStudio,songFailureReason}=await import('../src/song/studio.js')
+const {createHub}=await import('../src/chat/hub.ts')
+const {runCommand,parseCommand}=await import('../src/chat/commands.ts')
+const {createSongStudio,songFailureReason}=await import('../src/song/studio.ts')
 const errors=['ENOENT C:\\Users\\Private\\config.json','failed at /home/private/run.js:20:3','Traceback \\wsl.localhost\\Ubuntu\\root\\secret','const password = "hidden"; internal detail']
 const owner='10000001',cfg=normalize({enabled:true,dryRun:false,ownerQQ:owner,botQQ:'20000002',merge:{enabled:false},voice:{enabled:false}})
 test('斜杠命令异常只回安全提示，详细错误留日志，下一条命令仍可执行',async t=>{

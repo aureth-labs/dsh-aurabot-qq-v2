@@ -4,10 +4,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { createImageGen, customRequest, isUnsupportedReference } from '../src/features/imagegen.js'
-import { createLocal } from '../src/local/local.js'
-import imagegenModule from '../src/modules/imagegen/index.js'
+import { normalize } from '../src/core/config.ts'
+import { createImageGen, customRequest, isUnsupportedReference } from '../src/features/imagegen.ts'
+import { createLocal } from '../src/local/local.ts'
+import imagegenModule from '../src/modules/imagegen/index.ts'
 
 const PNG = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(64)])
 const log = { info() {}, debug() {}, warn() {} }

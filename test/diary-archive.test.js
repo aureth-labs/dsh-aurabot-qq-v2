@@ -7,11 +7,11 @@ import { join } from 'node:path'
 const root = mkdtempSync(join(tmpdir(), 'aurabot-diary-archive-'))
 process.env.AURABOT_DATA_DIR = root
 after(() => rmSync(root, { recursive: true, force: true }))
-const { normalize } = await import('../src/core/config.js')
-const { createDiaryArchive, archiveDate } = await import('../src/modules/diary/archive.js')
-const { createDiaryAssets } = await import('../src/modules/diary/assets.js')
-const { localPictures } = await import('../src/modules/diary/sources.js')
-const { withCredits } = await import('../src/modules/diary/media.js')
+const { normalize } = await import('../src/core/config.ts')
+const { createDiaryArchive, archiveDate } = await import('../src/modules/diary/archive.ts')
+const { createDiaryAssets } = await import('../src/modules/diary/assets.ts')
+const { localPictures } = await import('../src/modules/diary/sources.ts')
+const { withCredits } = await import('../src/modules/diary/media.ts')
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=', 'base64')
 const now = Date.parse('2026-10-31T10:00:00+08:00')
 let seq = 0

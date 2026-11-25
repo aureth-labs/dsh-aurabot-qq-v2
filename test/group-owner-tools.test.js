@@ -4,9 +4,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { groupOwnerTools, levelFor, presetFor } from '../src/chat/access.js'
-import { normalize, DEFAULTS } from '../src/core/config.js'
-import { rulesText } from '../src/persona/personas.js'
+import { groupOwnerTools, levelFor, presetFor } from '../src/chat/access.ts'
+import { normalize, DEFAULTS } from '../src/core/config.ts'
+import { rulesText } from '../src/persona/personas.ts'
 
 const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8')
 const GROUP = { kind: 'group', chatId: 'group:100200300', groupId: '100200300', userId: '100200300' }
@@ -73,11 +73,11 @@ test('接线契约：preset、人格变量、闸门、面板开关都在', () =>
   assert.ok(yml.includes('{{aurabot_rules_group_owner}}'), 'preset 要挂 group-owner 的人格变量')
   assert.ok(/order: 62/.test(yml), 'order 62 与 social(61)/autotelic(63) 不能撞')
 
-  const host = read('src/host.js')
+  const host = read('src/host.ts')
   assert.ok(host.includes("variable('aurabot_rules_group_owner'"), 'host 没定义 aurabot_rules_group_owner')
   assert.ok(host.includes("rulesText('group-owner'"), 'host 没把 group-owner 传给 rulesText')
 
-  const hub = read('src/chat/hub.js')
+  const hub = read('src/chat/hub.ts')
   assert.ok(hub.includes('applyGroupGate(key, turnSendersAllOwner(sessionId, st))'), 'pushToSession 没按发言人开合')
   assert.ok(hub.includes('const GROUP_GUEST_SAFE'), '非主人那一轮要有能力白名单')
   assert.ok(hub.includes('restrict({ allow })'), '闸门要用 allow 白名单收工具')
@@ -113,7 +113,7 @@ test('闸门：群里非主人说话时本机工具被收走', async () => {
   const { join } = await import('node:path')
   process.env.AURABOT_WORKSPACE = mkdtempSync(join(tmpdir(), 'aurabot-group-gate-'))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-  const { createHub } = await import('../src/chat/hub.js')
+  const { createHub } = await import('../src/chat/hub.ts')
 
   const OWNER = '10001'
   const OTHER = '20002'
@@ -146,7 +146,7 @@ test('工具闸：新会话第一条消息就按说话人判定（首轮不再�
   const { join } = await import('node:path')
   process.env.AURABOT_WORKSPACE = mkdtempSync(join(tmpdir(), 'aurabot-group-tools-first-'))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-  const { createHub } = await import('../src/chat/hub.js')
+  const { createHub } = await import('../src/chat/hub.ts')
 
   const OWNER = '10001'
   const OTHER = '30003'

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { readJson } from '../src/core/store.js'
+import { readJson } from '../src/core/store.ts'
 
 const dir = mkdtempSync(join(tmpdir(), 'aurabot-readjson-'))
 const file = (name) => join(dir, name)

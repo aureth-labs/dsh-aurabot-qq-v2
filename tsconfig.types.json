@@ -1,0 +1,11 @@
+{
+  // 只给插件作者出声明：src/types/** -> lib/types/*.d.ts
+  // 不把整个 src 都导出成 .d.ts（内部实现不该变成公开契约，量也大得多）。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "removeComments": false
+  },
+  "include": ["src/types/**/*.ts"]
+}

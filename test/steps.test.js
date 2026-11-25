@@ -2,7 +2,7 @@
 // 两个开关都默认关，所以这里只测「打开以后按什么规则工作」。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { takeInterim, reasoningOf, rescueFromThinking, everyStepMode, mergeStepText, similarText } from '../src/chat/steps.js'
+import { takeInterim, reasoningOf, rescueFromThinking, everyStepMode, mergeStepText, similarText } from '../src/chat/steps.ts'
 
 const blank = () => ({ interimTurn: -1, interimText: '', interimStep: -1 })
 

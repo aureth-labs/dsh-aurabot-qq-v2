@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMood } from '../src/features/mood.js'
-import { normalize } from '../src/core/config.js'
-import { moodReason } from '../src/features/mood-context.js'
-import moodModule from '../src/modules/mood/index.js'
+import { createMood } from '../src/features/mood.ts'
+import { normalize } from '../src/core/config.ts'
+import { moodReason } from '../src/features/mood-context.ts'
+import moodModule from '../src/modules/mood/index.ts'
 
 const HOUR = 3600_000
 const now = new Date(2026, 10, 4, 14, 0).getTime()

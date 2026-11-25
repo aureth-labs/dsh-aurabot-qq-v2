@@ -4,14 +4,14 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { groupResponseMode } from '../src/chat/access.js'
-import { planGroupSettings, readSettings } from '../src/modules/contacts/group-settings.js'
-import { planWhitelist } from '../src/modules/contacts/index.js'
+import { normalize } from '../src/core/config.ts'
+import { groupResponseMode } from '../src/chat/access.ts'
+import { planGroupSettings, readSettings } from '../src/modules/contacts/group-settings.ts'
+import { planWhitelist } from '../src/modules/contacts/index.ts'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 const root = mkdtempSync(join(tmpdir(), 'aurabot-group-mode-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../src/chat/hub.js')
+const { createHub } = await import('../src/chat/hub.ts')
 after(() => rmSync(root, { recursive: true, force: true }))
 const G = '30000003', H = '40000004', OWNER = '10000001', BOT = '20000002'
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }

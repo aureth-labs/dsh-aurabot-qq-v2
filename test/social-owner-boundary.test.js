@@ -4,7 +4,7 @@
 // （2026-11-19 实测：对私聊陌生人喊「老板」并事事顺从）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { rulesText } from '../src/persona/personas.js'
+import { rulesText } from '../src/persona/personas.ts'
 
 const base = { ownerQQ: '10001', ownerName: '主人' }
 

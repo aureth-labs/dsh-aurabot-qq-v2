@@ -13,7 +13,7 @@ test('persona 数据目录不可写时 seed/list 不抛错，当前人格有兜�
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = blocker
   try {
-    const { seedPersonas, listPersonas, currentPersonaText } = await import('../src/persona/personas.js')
+    const { seedPersonas, listPersonas, currentPersonaText } = await import('../src/persona/personas.ts')
     assert.doesNotThrow(() => seedPersonas())
     assert.deepEqual(listPersonas(), [])
     assert.equal(typeof currentPersonaText('default'), 'string')

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import {
   probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView,
   AUTONOMY_KEY, EXCEPTIONS,
-} from '../src/autotelic/takeover.js'
+} from '../src/autotelic/takeover.ts'
 
 /** 内存配置：getConfig 读它，setConfig 深合并写它（跟 modules.js 的 deepMerge 一个口径）。 */
 function memConfig(initial = {}) {

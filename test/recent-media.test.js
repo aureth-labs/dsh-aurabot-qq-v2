@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.js'
-import { normalize } from '../src/core/config.js'
-import stickersModule from '../src/modules/stickers/index.js'
+import { createHub } from '../src/chat/hub.ts'
+import { normalize } from '../src/core/config.ts'
+import stickersModule from '../src/modules/stickers/index.ts'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -207,7 +207,7 @@ test('宿主卸载会关闭媒体缓存，旧中枢不能继续读写暂存文�
   const s = setup()
   writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, snowluma: { ...s.cfg.snowluma, autoStart: false, autoAttach: false, dir: join(s.dir, 'none') } }))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-  const { apply } = await import('../src/host.js')
+  const { apply } = await import('../src/host.ts')
   const fake = createFakeDsh({ brain: async () => '' }), api = apply(fake.ctx)
   try {
     await api.ready

@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, readdirSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { medianF0, autoShift, voiceKind, pcm16ToFloat } from '../src/song/pitch.js'
-import { pruneCache } from '../src/song/studio.js'
-import { normalize } from '../src/core/config.js'
+import { medianF0, autoShift, voiceKind, pcm16ToFloat } from '../src/song/pitch.ts'
+import { pruneCache } from '../src/song/studio.ts'
+import { normalize } from '../src/core/config.ts'
 
 const rate = 8000
 function voice (f, sec = 6) {

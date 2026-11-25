@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { createStickerStore } from '../src/features/stickers.js'
+import { normalize } from '../src/core/config.ts'
+import { createStickerStore } from '../src/features/stickers.ts'
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
 const base64 = 'base64://' + png.toString('base64')

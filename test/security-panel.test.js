@@ -2,11 +2,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { normalize } from '../src/core/config.js'
+import { normalize } from '../src/core/config.ts'
 
 const client = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-const host = readFileSync(new URL('../src/host.js', import.meta.url), 'utf8')
-const config = readFileSync(new URL('../src/core/config.js', import.meta.url), 'utf8')
+const host = readFileSync(new URL('../src/host.ts', import.meta.url), 'utf8')
+const config = readFileSync(new URL('../src/core/config.ts', import.meta.url), 'utf8')
 
 test('安全防护页接上了页签、组件、搜索和 SSRF 模式配置', () => {
   assert.ok(client.includes("{ id: 'security', label: '安全防护' }"), '缺安全防护页签')

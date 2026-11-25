@@ -2,7 +2,7 @@
 // 模块侧按下标取「今天第几篇」，所以空项必须原样保留位置；话题上限要和模块一致（4 个）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize } from '../src/core/config.js'
+import { normalize } from '../src/core/config.ts'
 
 test('dailyPosts 里的空项要保留位置，不能被过滤掉', () => {
   const raw = {

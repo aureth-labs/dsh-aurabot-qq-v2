@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { askModel, modelReasoning, pickReasoningEffort, clearReasoningCache } = await import('../src/core/llm.js')
+const { askModel, modelReasoning, pickReasoningEffort, clearReasoningCache } = await import('../src/core/llm.ts')
 
 const CFG = { model: { provider: 'p', model: 'm' } }
 

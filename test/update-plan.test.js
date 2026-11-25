@@ -1,7 +1,7 @@
 // 更新命令/链接要按宿主平台和安装形态给，不能写死 Windows 桌面版路径。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { hostEnv, updateCommand, updatePlan } from '../src/core/update.js'
+import { hostEnv, updateCommand, updatePlan } from '../src/core/update.ts'
 
 test('updateCommand：Windows 用 PowerShell 写法，Linux/macOS 用 shell 写法', () => {
   const win = updateCommand('a/b', 'beta', { env: hostEnv({ platform: 'win32', cli: 'C:\\tools\\dsh.cmd', profile: 'desktop' }) })

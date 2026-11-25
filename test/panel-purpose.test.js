@@ -43,7 +43,7 @@ before(async () => {
   fake = createFakeDsh({ brain })
   // DSH 的 webServer 服务带真实端口（真机同理）：host.js 靠它给 pet 模块注入端口、破「host.json 写 :0」的自举死锁
   fake.ctx.webServer.port = 5099
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
   await fake.call('/onebot/reconnect')
@@ -137,7 +137,7 @@ test('追问开关写 ext.purpose.nudge（P1 翻键），读侧双层兼容', as
   assert.equal(saved.ext.purpose.nudge, false, '追问写入口在 ext.purpose.nudge')
   assert.equal(saved.speakUp.nudge, true, 'speakUp.nudge 键不被动')
   // 读侧 fallback：ext 覆写位优先，老用户 speakUp.nudge 仍生效，缺省默认开
-  const { purposeConfig } = await import('../src/purpose/module.js')
+  const { purposeConfig } = await import('../src/purpose/module.ts')
   assert.equal(purposeConfig({ speakUp: { nudge: true }, ext: { purpose: { nudge: false } } }).nudge, false, '覆写位优先')
   assert.equal(purposeConfig({ speakUp: { nudge: false } }).nudge, false, '老用户 speakUp.nudge=false 仍生效')
   assert.equal(purposeConfig({ speakUp: { nudge: false }, ext: { purpose: { nudge: true } } }).nudge, true, '显式 ext 覆写可重新打开')

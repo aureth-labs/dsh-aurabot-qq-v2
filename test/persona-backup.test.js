@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMemoryStorage } from '../src/features/memory-store.js'
-import { createBackup, stageRestore, applyPendingRestore } from '../src/core/backup.js'
+import { createMemoryStorage } from '../src/features/memory-store.ts'
+import { createBackup, stageRestore, applyPendingRestore } from '../src/core/backup.ts'
 
 let Database
 try { ({ DatabaseSync: Database } = await import('node:sqlite')) } catch {}

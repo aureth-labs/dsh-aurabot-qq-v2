@@ -6,17 +6,17 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, appendFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createObserve, createChatCollector } from '../src/autotelic/observe.js'
+import { createObserve, createChatCollector } from '../src/autotelic/observe.ts'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
 
 test('core 暴露 identity.owner()，否则采集器会静默零采集', () => {
-  const host = read('../src/host.js')
+  const host = read('../src/host.ts')
   const a = host.indexOf('const core = {')
   const b = host.indexOf('mods = createModules', a)
   assert.ok(a > 0 && b > a, '应能定位 core 定义')
   assert.match(host.slice(a, b), /identity\s*:\s*\{[^}]*owner\s*:/, 'core 必须暴露 identity.owner()')
-  assert.match(read('../src/modules/autotelic/index.js'), /identity:\s*api\.core\?\.identity/)
+  assert.match(read('../src/modules/autotelic/index.ts'), /identity:\s*api\.core\?\.identity/)
 })
 
 test('identity 有效时，主人私聊流水进观察层', (t) => {
@@ -44,7 +44,7 @@ test('identity 有效时，主人私聊流水进观察层', (t) => {
 })
 
 test('观察窗按来源分配额，情绪打点挤不掉聊天', () => {
-  const mod = read('../src/modules/autotelic/index.js')
+  const mod = read('../src/modules/autotelic/index.ts')
   assert.doesNotMatch(mod, /observe\.list\(\{\s*since,\s*limit:\s*120\s*\}\)/)
   assert.match(mod, /limit:\s*100000/)
   assert.match(mod, /source\s*===\s*'chat'/)
@@ -52,8 +52,8 @@ test('观察窗按来源分配额，情绪打点挤不掉聊天', () => {
 })
 
 test('schedule 透出真实 outcome，status 返回 running', () => {
-  assert.match(read('../src/autotelic/schedule.js'), /result\.outcome/)
-  assert.match(read('../src/modules/autotelic/index.js'), /running:\s*!!schedule\.view\(\)\.inFlight/)
+  assert.match(read('../src/autotelic/schedule.ts'), /result\.outcome/)
+  assert.match(read('../src/modules/autotelic/index.ts'), /running:\s*!!schedule\.view\(\)\.inFlight/)
 })
 
 test('窗口条目超过旧去重上限时，第二轮不重复写', (t) => {

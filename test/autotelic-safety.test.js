@@ -9,10 +9,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, existsSync, readFileSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createAuditor } from '../src/autotelic/audit.js'
-import { createBook } from '../src/autotelic/book.js'
-import { createSchedule } from '../src/autotelic/schedule.js'
-import { LEVELS } from '../src/autotelic/exec.js'
+import { createAuditor } from '../src/autotelic/audit.ts'
+import { createBook } from '../src/autotelic/book.ts'
+import { createSchedule } from '../src/autotelic/schedule.ts'
+import { LEVELS } from '../src/autotelic/exec.ts'
 
 const root = () => mkdtempSync(join(tmpdir(), 'aurabot-safety-'))
 // 审计账本按本地时区命名（audit.js 的 dayFile 用 getFullYear/getMonth/getDate）

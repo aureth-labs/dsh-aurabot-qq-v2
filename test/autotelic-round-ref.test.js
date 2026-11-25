@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import module from '../src/modules/autotelic/index.js'
+import module from '../src/modules/autotelic/index.ts'
 
 test('runRound 真实回路：观察窗口足够时走到决策环，不因 planner 未定义整轮 failed', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-autotelic-round-'))

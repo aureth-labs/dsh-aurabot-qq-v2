@@ -1,7 +1,7 @@
 // SnowLuma 版本兼容性提示：旧版本有已知 bug 时面板要能提示升级。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { snowlumaCompat, SNOWLUMA_MIN, SNOWLUMA_RECOMMENDED, SNOWLUMA_TESTED_MAX, SNOWLUMA_QQ_MIN } from '../src/snowluma/compat.js'
+import { snowlumaCompat, SNOWLUMA_MIN, SNOWLUMA_RECOMMENDED, SNOWLUMA_TESTED_MAX, SNOWLUMA_QQ_MIN } from '../src/snowluma/compat.ts'
 
 test('低于最低版本：判为有已知问题', () => {
   const c = snowlumaCompat('2.2.0')

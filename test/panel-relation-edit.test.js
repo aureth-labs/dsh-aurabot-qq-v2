@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const client = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-const mod = readFileSync(new URL('../src/modules/memory/index.js', import.meta.url), 'utf8')
+const mod = readFileSync(new URL('../src/modules/memory/index.ts', import.meta.url), 'utf8')
 
 test('人物关系卡片有「改」入口，保存走 /memory/relations/save', () => {
   assert.match(client, /relationEdit/)

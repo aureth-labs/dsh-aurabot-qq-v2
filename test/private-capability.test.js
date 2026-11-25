@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { privateCapabilityAllowed } from '../src/chat/access.js'
-import { normalize } from '../src/core/config.js'
+import { privateCapabilityAllowed } from '../src/chat/access.ts'
+import { normalize } from '../src/core/config.ts'
 
 test('功能授权要求私聊白名单和对应功能名单同时匹配', () => {
   const cfg = normalize({ allow: { private: ['12345'] }, capabilityAllow: { image: ['12345', '99999'], song: ['12345'] } })

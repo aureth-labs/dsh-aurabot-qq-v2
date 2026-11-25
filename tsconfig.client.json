@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    // 前端是从 client.js 拆出来的：原来那份 .js 从来没进过类型检查（checkJs: false）。
+    // 拆成 .ts 之后先锁住「语法/引用/导出」这一层，严格空值与隐式 any 后面再逐步收紧。
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "removeComments": true,
+    "declaration": false
+  },
+  "include": ["client/**/*.ts"],
+  "exclude": ["node_modules", "lib", "dist"]
+}

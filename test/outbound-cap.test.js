@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { MAX_OUTBOUND_CHARS, capOutboundSegments } from '../src/chat/reply.js'
+import { MAX_OUTBOUND_CHARS, capOutboundSegments } from '../src/chat/reply.ts'
 
 const text = (value) => ({ type: 'text', data: { text: value } })
 const quote = { type: 'reply', data: { id: '42' } }

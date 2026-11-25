@@ -6,10 +6,10 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../src/chat/forward.js'
-import { normalize } from '../src/core/config.js'
+import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../src/chat/forward.ts'
+import { normalize } from '../src/core/config.ts'
 
-const hubSrc = readFileSync(new URL('../src/chat/hub.js', import.meta.url), 'utf8')
+const hubSrc = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
 const clientSrc = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
 
 const node = (name, message) => ({ sender: { nickname: name, user_id: 2 }, message })
@@ -98,7 +98,7 @@ const groupEvent = (extra = []) => ({
 
 let createHubRef = null
 test('早展开开着：消息一进来就拉一次（哪怕这条不回她）', async (t) => {
-  const { createHub } = await import('../src/chat/hub.js')
+  const { createHub } = await import('../src/chat/hub.ts')
   createHubRef = createHub
   const { hub, calls } = setup(t, { forward: { expandEarly: true } })
   await hub.onMessage(groupEvent())
@@ -108,7 +108,7 @@ test('早展开开着：消息一进来就拉一次（哪怕这条不回她）',
 })
 
 test('早展开关着：不叫她的时候一次都不拉', async (t) => {
-  const { createHub } = await import('../src/chat/hub.js')
+  const { createHub } = await import('../src/chat/hub.ts')
   createHubRef = createHub
   const { hub, calls } = setup(t, { forward: { expandHistory: true } })
   await hub.onMessage(groupEvent())

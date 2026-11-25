@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { isDangerousCommand, createDangerGuard, safeOwnedSession } from '../src/security/danger.js'
+import { isDangerousCommand, createDangerGuard, safeOwnedSession } from '../src/security/danger.ts'
 
 const OWNER = '10000001'
 const ownerChat = `private:${OWNER}`

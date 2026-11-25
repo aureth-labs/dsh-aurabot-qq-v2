@@ -53,7 +53,7 @@ before(async () => {
     merge: { enabled: false },
   }))
   fake = createFakeDsh({ brain: async () => '收到啦' })
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   host.apply(fake.ctx)
 
   // 全新启动：第一轮连接就在核对。注意 reconnect 要等核对通过才返回，所以先不 await

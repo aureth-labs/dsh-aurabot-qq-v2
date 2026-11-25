@@ -2,8 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { ssrfBlocked, setSsrpMode, currentSsrpMode, assertPublicUrl, isPrivateIp, fetchImage } = await import('../src/core/net.js')
-const { normalize } = await import('../src/core/config.js')
+const { ssrfBlocked, setSsrpMode, currentSsrpMode, assertPublicUrl, isPrivateIp, fetchImage } = await import('../src/core/net.ts')
+const { normalize } = await import('../src/core/config.ts')
 
 // 本机代理 DNS 的真实形态：公网 A + IPv6 ULA
 const MIXED = ['28.0.0.162', 'fdfe:dcba:9876::96']

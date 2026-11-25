@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseCommand, runCommand } from '../src/chat/commands.js'
-import { runPermissionsCommand } from '../src/chat/permissions-command.js'
+import { parseCommand, runCommand } from '../src/chat/commands.ts'
+import { runPermissionsCommand } from '../src/chat/permissions-command.ts'
 
 const owner = { kind: 'private', userId: '123456' }
 const guest = { kind: 'private', userId: '10000002' }

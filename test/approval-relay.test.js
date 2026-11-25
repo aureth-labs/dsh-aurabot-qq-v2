@@ -1,6 +1,6 @@
 ﻿import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createApprovalRelay } from '../src/security/approval.js'
+import { createApprovalRelay } from '../src/security/approval.ts'
 
 function setup({ over = {}, timeoutMs = 60_000 } = {}) {
   const sent = []

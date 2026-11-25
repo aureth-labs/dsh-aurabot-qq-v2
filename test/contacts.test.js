@@ -5,8 +5,8 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const { default: contacts, planWhitelist, cleanId } = await import('../src/modules/contacts/index.js')
-const { normalize } = await import('../src/core/config.js')
+const { default: contacts, planWhitelist, cleanId } = await import('../src/modules/contacts/index.ts')
+const { normalize } = await import('../src/core/config.ts')
 
 const OWNER = '10001'
 const BOT = '20002'

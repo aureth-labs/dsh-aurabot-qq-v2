@@ -3,7 +3,7 @@
 // 普通括号动作、颜文字、占位符和代码示例都不能误伤。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply, cleanOutboundText, cleanOutboundSegments } from '../src/chat/reply.js'
+import { parseReply, cleanOutboundText, cleanOutboundSegments } from '../src/chat/reply.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)
 const text = (value) => ({ type: 'text', data: { text: value } })

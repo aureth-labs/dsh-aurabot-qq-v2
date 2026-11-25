@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import net from 'node:net'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 
-const { endpointHostPort, portOpen, gatewayHealthy, waitPortFree } = await import('../src/snowluma/manager.js')
-const { createOneBotClient, OneBotError, messageDedupeKey } = await import('../src/onebot/client.js')
+const { endpointHostPort, portOpen, gatewayHealthy, waitPortFree } = await import('../src/snowluma/manager.ts')
+const { createOneBotClient, OneBotError, messageDedupeKey } = await import('../src/onebot/client.ts')
 
 const silent = { info () {}, warn () {}, debug () {}, error () {} }
 

@@ -12,8 +12,8 @@ let normalize
 const OWNER = '10000001'
 
 before(async () => {
-  ;({ createPurpose } = await import('../src/purpose/module.js'))
-  ;({ normalize } = await import('../src/core/config.js'))
+  ;({ createPurpose } = await import('../src/purpose/module.ts'))
+  ;({ normalize } = await import('../src/core/config.ts'))
 })
 
 beforeEach(() => {

@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createKeyRouter, retryDelay } from '../src/voice/key-pool.mjs'
-import { normalize, mergeFromPanel, publicConfig } from '../src/core/config.js'
-import { textToSpeech } from '../src/voice/tts.js'
+import { createKeyRouter, retryDelay } from '../src/voice/key-pool.ts'
+import { normalize, mergeFromPanel, publicConfig } from '../src/core/config.ts'
+import { textToSpeech } from '../src/voice/tts.ts'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -60,3 +60,4 @@ test('one utterance has a bounded retry budget; the next utterance can start wit
   const work=async k=>{used.push(k);if(k!=='5')throw fail(429,'40');return k}
   await assert.rejects(run('fish-free','1',cfg,work));assert.deepEqual(used,['1','2','3','4']);assert.equal(await run('fish-free','1',cfg,work),'5')
 })
+

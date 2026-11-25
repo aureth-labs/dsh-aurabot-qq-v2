@@ -5,15 +5,23 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "main": "src/host.js",
+  "main": "index.mjs",
+  "types": "./lib/types/index.d.ts",
   "exports": {
-    ".": "./src/host.js",
-    "./client": "./client/client.js",
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./index.mjs"
+    },
+    "./dev": "./dev.mjs",
+    "./client": "./dist/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\""
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit && node scripts/check-lifecycle.mjs",
+    "test": "node --import ./scripts/ts-resolution.mjs --test \"test/**/*.test.js\""
   },
   "dsh": {
     "bundle": {
@@ -36,8 +44,11 @@
     "onebot"
   ],
   "files": [
+    "dev.mjs",
     "src",
     "client",
+    "lib",
+    "dist",
     "models",
     "personas",
     "assets",
@@ -62,6 +73,11 @@
   },
   "homepage": "https://github.com/aureth-labs/dsh-aurabot-qq",
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=22.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.7",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
   }
 }

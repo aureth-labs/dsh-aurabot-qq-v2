@@ -1,7 +1,7 @@
 // 解析 PID|路径|版本 输出：路径可能带空格/中文，版本可能为空。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseProcessLines } from '../src/snowluma/process-info.js'
+import { parseProcessLines } from '../src/snowluma/process-info.ts'
 
 test('解析正常的 PID / 路径 / 版本', () => {
   const rows = parseProcessLines('21340|D:\\software\\Tencent\\QQ_NT\\QQ.exe|9.9.22.40990\r\n28368|D:\\software\\Tencent\\QQ_NT\\QQ.exe|9.9.22.40990')

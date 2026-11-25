@@ -1,7 +1,7 @@
 // QQ 版本软判断：只决定提示文案，不拦注入。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyQqVersion } from '../src/snowluma/qq-version.js'
+import { classifyQqVersion } from '../src/snowluma/qq-version.ts'
 
 test('QQ NT 9.9 及以上判为 NT；9.9.33 以下标成过低', () => {
   for (const v of ['9.9.0', '9.9.20.36330', '9.9.36-53644', '10.0.0']) {

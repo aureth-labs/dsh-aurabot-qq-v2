@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { gifFrames, isStickerSegment, parseMessageEvent } from '../src/chat/inbound.js'
-import { readQqFile } from '../src/features/qq-file.js'
+import { gifFrames, isStickerSegment, parseMessageEvent } from '../src/chat/inbound.ts'
+import { readQqFile } from '../src/features/qq-file.ts'
 
 const file = (over = {}) => ({ name: 'a.txt', size: 5, id: 'f1', url: 'https://x/a', hash: '', busid: 0, ...over })
 const download = (text) => async () => Buffer.from(text)
@@ -74,7 +74,7 @@ test('图片文件只在确认能看图时下载；大小、地址和文件内�
 })
 
 test('群内 JPEG 和 PNG 文件生成有尺寸上限的真实预览，只返回已登记附件', async (t) => {
-  const { findSharp } = await import('../src/core/img.js')
+  const { findSharp } = await import('../src/core/img.ts')
   const sharp = await findSharp()
   if (!sharp) return t.skip('需要桌面宿主的 sharp 图片解码器')
   for (const format of ['jpeg', 'png']) {

@@ -1,7 +1,7 @@
 // chat.dupSimilarity 出界时收进 0–1：负数会让「相似度 ≥ 阈值」恒真（什么都判重复），>1 会恒假。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize } from '../src/core/config.js'
+import { normalize } from '../src/core/config.ts'
 
 const val = (v) => normalize({ chat: { dupSimilarity: v } }).chat.dupSimilarity
 

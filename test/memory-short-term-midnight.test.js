@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { createHub } from '../src/chat/hub.js'
-import { createMemoryStore } from '../src/features/memory.js'
+import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub.ts'
+import { createMemoryStore } from '../src/features/memory.ts'
 
 test('短期状态读取跨午夜的流水并去掉记忆提示', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'short-midnight-'))

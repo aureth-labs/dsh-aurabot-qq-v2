@@ -3,14 +3,14 @@ import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { validateSongClip, selectedWindow, SongClipError, parseSingRequest, clipCacheParts, clipFade } from '../src/song/segment.js'
+import { validateSongClip, selectedWindow, SongClipError, parseSingRequest, clipCacheParts, clipFade } from '../src/song/segment.ts'
 let module, normalize, commands, root
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'song-segment-'))
   root = mkdtempSync(join(tmpdir(), 'song-root-'))
-  module = await import('../src/modules/song/index.js')
-  ;({ normalize } = await import('../src/core/config.js'))
-  commands = await import('../src/chat/commands.js')
+  module = await import('../src/modules/song/index.ts')
+  ;({ normalize } = await import('../src/core/config.ts'))
+  commands = await import('../src/chat/commands.ts')
 })
 test('片段不改旧默认；时长单独填写从头，开始单独填写用上限', () => {
   assert.deepEqual(validateSongClip({}, 120), { ok: true, clip: null })
@@ -58,7 +58,7 @@ test('工具和面板透传片段；群/私聊所有者权限不放宽',async()=
   assert.equal(calls.length,2)
 })
 test('错误参数在探测和排队前拒绝',async()=>{
-  const {createSongStudio}=await import('../src/song/studio.js')
+  const {createSongStudio}=await import('../src/song/studio.ts')
   const s=createSongStudio({getConfig:()=>normalize({song:{enabled:true,root}}),log:{warn(){},info(){}}})
   assert.match(s.request({song:'红日',durationSec:121}).message,/最多唱/)
   assert.equal(s.status().current,null);assert.deepEqual(s.status().queue,[])

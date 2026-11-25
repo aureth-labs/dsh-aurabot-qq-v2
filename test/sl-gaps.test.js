@@ -3,13 +3,13 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseMessageEvent, cardText } from '../src/chat/inbound.js'
-import { decideGroupReply } from '../src/chat/group-policy.js'
-import { normalize } from '../src/core/config.js'
-import contacts from '../src/modules/contacts/index.js'
-import qqTools from '../src/modules/qq-tools/index.js'
-import { QQ_API, paramsOf } from '../src/modules/qq-api/actions.js'
-import qqApi, { refusal, pickParams } from '../src/modules/qq-api/index.js'
+import { parseMessageEvent, cardText } from '../src/chat/inbound.ts'
+import { decideGroupReply } from '../src/chat/group-policy.ts'
+import { normalize } from '../src/core/config.ts'
+import contacts from '../src/modules/contacts/index.ts'
+import qqTools from '../src/modules/qq-tools/index.ts'
+import { QQ_API, paramsOf } from '../src/modules/qq-api/actions.ts'
+import qqApi, { refusal, pickParams } from '../src/modules/qq-api/index.ts'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 
@@ -159,7 +159,7 @@ test('临时私聊保存来源群，普通好友不带来源群', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-sl-temp-'))
   process.env.AURABOT_DATA_DIR = join(root, 'data')
   process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-  const { createHub } = await import('../src/chat/hub.js')
+  const { createHub } = await import('../src/chat/hub.ts')
   const fake = createFakeDsh({ brain: async () => '' })
   const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: OWNER, botQQ: BOT, allow: { private: [OTHER], groups: [] }, stickers: { collect: false } })
   const calls = []
@@ -342,7 +342,7 @@ test('账号离线只记 warn，不走聊天通知或发送 QQ 消息', { timeou
   const fake = createFakeDsh({ brain: async () => '' })
   t.after(async () => { fake.dispose(); await mock.close() })
   writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true, gateway: 'onebot', botQQ: BOT, ownerQQ: OWNER, snowluma: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, autoStart: false, autoAttach: false } }))
-  const { apply } = await import('../src/host.js')
+  const { apply } = await import('../src/host.ts')
   const app = apply(fake.ctx)
   await app.ready
   assert.equal((await fake.call('/onebot/reconnect')).json().ok, true)
@@ -360,7 +360,7 @@ test('账号离线只记 warn，不走聊天通知或发送 QQ 消息', { timeou
 })
 
 test('卡片里的地址只认网址，本机路径发不出去', async () => {
-  const { default: mod } = await import('../src/modules/qq-tools/index.js')
+  const { default: mod } = await import('../src/modules/qq-tools/index.ts')
   const sent = []
   let build
   mod.setup({
@@ -378,7 +378,7 @@ test('卡片里的地址只认网址，本机路径发不出去', async () => {
 })
 
 test('跨聊天发消息：群里只有主人那一轮能发，别人私聊没有这个工具', async () => {
-  const { default: mod } = await import('../src/modules/qq-tools/index.js')
+  const { default: mod } = await import('../src/modules/qq-tools/index.ts')
   const sent = []
   let owner = false
   let build

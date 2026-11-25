@@ -2,7 +2,7 @@
 // 与 quietHours 正交——那个管她别插话（对主人），这个管别人别叫醒她。
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { DEFAULT_GROUP_POLICY, decideGroupReply, policyFor } from '../src/chat/group-policy.js'
+import { DEFAULT_GROUP_POLICY, decideGroupReply, policyFor } from '../src/chat/group-policy.ts'
 
 // 本地时间构造，避免时区把分钟算歪
 const at = (h, m = 0) => new Date(2026, 0, 1, h, m, 0, 0).getTime()

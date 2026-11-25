@@ -9,10 +9,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { buildTicket, createPlanner, trimGateInput, DEFAULT_BUDGETS } from '../src/autotelic/plan.js'
-import { createPrefixCache, hashPrefix } from '../src/autotelic/prefix.js'
-import { createSkillStore } from '../src/autotelic/skills.js'
-import { createFeedback } from '../src/autotelic/feedback.js'
+import { buildTicket, createPlanner, trimGateInput, DEFAULT_BUDGETS } from '../src/autotelic/plan.ts'
+import { createPrefixCache, hashPrefix } from '../src/autotelic/prefix.ts'
+import { createSkillStore } from '../src/autotelic/skills.ts'
+import { createFeedback } from '../src/autotelic/feedback.ts'
 
 const tmp = (t, name) => {
   const root = mkdtempSync(join(tmpdir(), `aurabot-autotelic-v5fix-${name}-`))

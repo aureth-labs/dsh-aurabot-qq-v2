@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { normalize } from '../src/core/config.js'
+import { normalize } from '../src/core/config.ts'
 
 const CLIENT = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
 

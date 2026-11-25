@@ -11,9 +11,9 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-stickers-'))
-  ;({ createStickerStore } = await import('../src/features/stickers.js'))
-  ;({ rulesText } = await import('../src/persona/personas.js'))
-  ;({ normalize } = await import('../src/core/config.js'))
+  ;({ createStickerStore } = await import('../src/features/stickers.ts'))
+  ;({ rulesText } = await import('../src/persona/personas.ts'))
+  ;({ normalize } = await import('../src/core/config.ts'))
 })
 
 // 120x120 的 GIF 头 + 两个图形控制扩展（算两帧），够 imageSize / mimeOf 认出来

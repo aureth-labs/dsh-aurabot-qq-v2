@@ -25,9 +25,9 @@ await new Promise((done) => server.listen(0, '127.0.0.1', done))
 // 接口地址本来写死在上游，这里指到假服务
 process.env.AURABOT_VOLCANO_URL = `http://127.0.0.1:${server.address().port}/tts`
 
-const { volcanoSynth, volcanoResourceFor } = await import('../src/voice/tts.js')
-const { VOLCANO_VOICES } = await import('../src/voice/volcano-voices.js')
-const { normalize, publicConfig, mergeFromPanel, DEFAULTS } = await import('../src/core/config.js')
+const { volcanoSynth, volcanoResourceFor } = await import('../src/voice/tts.ts')
+const { VOLCANO_VOICES } = await import('../src/voice/volcano-voices.ts')
+const { normalize, publicConfig, mergeFromPanel, DEFAULTS } = await import('../src/core/config.ts')
 
 const mp3 = Buffer.alloc(900, 0x55)
 mp3.write('ID3', 0, 'ascii')

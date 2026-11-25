@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { runCommand, parseCommand } from '../src/chat/commands.js'
+import { runCommand, parseCommand } from '../src/chat/commands.ts'
 
 let fake, app, dir
 const G = '30000003'
@@ -21,7 +21,7 @@ before(async () => {
     ownerQQ: '10000001', botQQ: '20000002', voice: { enabled: false },
     snowluma: { autoStart: false, autoAttach: false, dir: join(dir, 'no-snowluma') } }))
   fake = createFakeDsh({ brain: async () => { throw new Error('设置保存不应开启对话') } })
-  app = (await import('../src/host.js')).apply(fake.ctx)
+  app = (await import('../src/host.ts')).apply(fake.ctx)
   await app.ready
 })
 after(async () => { fake?.dispose(); await app?.dispose?.(); rmSync(dir, { recursive: true, force: true }) })

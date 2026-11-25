@@ -13,8 +13,8 @@ const log = { info: (...a) => logs.push(a.join(' ')), warn: (...a) => logs.push(
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-local-'))
-  L = await import('../src/local/local.js')
-  ;({ normalize } = await import('../src/core/config.js'))
+  L = await import('../src/local/local.ts')
+  ;({ normalize } = await import('../src/core/config.ts'))
   cfg = normalize({})
 })
 
@@ -77,7 +77,7 @@ test('生图：脚本返回 Buffer / base64 / 文件都认；接管后不需要�
   const local = L.createLocal({ getConfig: () => cfg, log })
   local.template('image')
   writeFileSync(local.pathOf('image'), `export default async ({ prompt, size }) => ({ base64: Buffer.from(prompt + '|' + size).toString('base64') })`)
-  const { createImageGen } = await import('../src/features/imagegen.js')
+  const { createImageGen } = await import('../src/features/imagegen.ts')
   const gen = createImageGen({ getConfig: () => cfg, log, local })
   assert.equal(gen.enabled(), false)
   cfg.local.image = true
@@ -88,7 +88,7 @@ test('生图：脚本返回 Buffer / base64 / 文件都认；接管后不需要�
 })
 
 test('翻唱报错翻译成人话；本地换声接管时不需要内置音色', async () => {
-  const studio = await import('../src/song/studio.js')
+  const studio = await import('../src/song/studio.ts')
   assert.match(studio.explainSongError('RuntimeError: Error(s) in loading state_dict for Synthesizer: size mismatch for enc_p'), /不兼容/)
   assert.match(studio.explainSongError('torch.OutOfMemoryError: CUDA out of memory'), /显存/)
   assert.equal(studio.explainSongError('网易云上没搜到「x」'), '网易云上没搜到「x」')
@@ -98,7 +98,7 @@ test('翻唱报错翻译成人话；本地换声接管时不需要内置音色',
 })
 
 test('模型文件能读就放行，不存在的跳过', async () => {
-  const studio = await import('../src/song/studio.js')
+  const studio = await import('../src/song/studio.ts')
   const { mkdtempSync, writeFileSync } = await import('node:fs')
   const { tmpdir } = await import('node:os')
   const { join } = await import('node:path')

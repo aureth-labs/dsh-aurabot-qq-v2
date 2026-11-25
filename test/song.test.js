@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { nudgeMoodAfterSong } from '../src/modules/song/index.js'
+import { nudgeMoodAfterSong } from '../src/modules/song/index.ts'
 
 let studio
 let netease
@@ -13,10 +13,10 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-song-'))
-  studio = await import('../src/song/studio.js')
-  netease = await import('../src/song/netease.js')
-  commands = await import('../src/chat/commands.js')
-  ;({ normalize } = await import('../src/core/config.js'))
+  studio = await import('../src/song/studio.ts')
+  netease = await import('../src/song/netease.ts')
+  commands = await import('../src/chat/commands.ts')
+  ;({ normalize } = await import('../src/core/config.ts'))
 })
 
 /** 合成一段 16-bit 单声道 PCM：每段给振幅（可传函数），方波让 RMS 等于振幅。 */
@@ -127,7 +127,7 @@ test('cutFirst：注入假 readPcm，成功用副歌入口、失败回退 30%', 
 })
 
 test('readPcm 会消费 stderr（改动后的源码契约）', () => {
-  const src = readFileSync(new URL('../src/song/studio.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/song/studio.ts', import.meta.url), 'utf8')
   const start = src.indexOf('async function readPcm')
   const end = src.indexOf('async function meanVolume', start)
   assert.ok(start >= 0 && end > start)
@@ -407,7 +407,7 @@ test('下载源：自动模式下官方源慢就用国内镜像；老配置自�
 })
 
 test('检查更新：Release Atom 连不上就走 GitHub API', async () => {
-  const u = await import('../src/core/update.js')
+  const u = await import('../src/core/update.ts')
   const seen = []
   const check = u.createUpdateChecker({ pkg: { version: '0.2.0', repository: 'https://github.com/a/b' }, fetchImpl: async (url) => { seen.push(url); if (url.includes('releases.atom')) throw new Error('reset'); return { ok: true, json: async () => [{ tag_name: 'v0.3.0', draft: false }] } } })
   const r = await check({ force: true })
@@ -416,7 +416,7 @@ test('检查更新：Release Atom 连不上就走 GitHub API', async () => {
 })
 
 test('翻唱失败那句话：让她自己说，提示词带上歌名和真实原因、明说别念内部信息', async () => {
-  const { failPrompt } = await import('../src/modules/song/index.js')
+  const { failPrompt } = await import('../src/modules/song/index.ts')
   const p = failPrompt('雨爱', '翻唱环境不完整，在面板里点「重新检查」')
   assert.ok(p.includes('《雨爱》'))
   assert.ok(p.includes('翻唱环境不完整'))
@@ -425,7 +425,7 @@ test('翻唱失败那句话：让她自己说，提示词带上歌名和真实�
 })
 
 test('翻唱失败那句话：清洗只留一句口语，[沉默] 和念了内部信息的都当没说话', async () => {
-  const { cleanFailLine } = await import('../src/modules/song/index.js')
+  const { cleanFailLine } = await import('../src/modules/song/index.ts')
   assert.equal(cleanFailLine('  「这次嗓子有点哑，等我润润再来～」\n后面还有废话'), '这次嗓子有点哑，等我润润再来～')
   assert.equal(cleanFailLine('大肥鱼：刚没唱成，回头再试试？'), '刚没唱成，回头再试试？')
   assert.equal(cleanFailLine('**好，我记下了。**'), '好，我记下了。')

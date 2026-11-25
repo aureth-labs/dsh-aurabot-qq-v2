@@ -97,7 +97,7 @@ before(async () => {
     return { nextTime: () => 0, history: () => [], writeDiary: async () => { globalThis.__wrote = (globalThis.__wrote || 0) + 1; return { ok: true } } }
   } }`)
   fake = createFakeDsh({ brain })
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await api.ready
   await fake.call('/onebot/reconnect')
@@ -449,7 +449,7 @@ test('#3 控制台密码：不合格的不会只改配置；主人设的密码�
   assert.equal(r.ok, false)
   assert.match(r.message, /控制台密码没改.*至少 10 位/)
   assert.equal(api.getConfig().snowluma.webuiPassword, before)
-  const { passwordProblems } = await import('../src/snowluma/manager.js')
+  const { passwordProblems } = await import('../src/snowluma/manager.ts')
   assert.deepEqual(passwordProblems('Abcdefgh1!'), [])
   assert.deepEqual(passwordProblems('abc def'), ['至少 10 位', '要有大写字母', '要有符号（比如 ! @ #）', '不能有空格'])
   // 这台测试机没装 SnowLuma：好密码也改不了，会说清原因，配置不动

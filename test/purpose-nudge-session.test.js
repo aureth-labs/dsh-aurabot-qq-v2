@@ -11,8 +11,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { createHub } from '../src/chat/hub.js'
-import { normalize } from '../src/core/config.js'
+import { createHub } from '../src/chat/hub.ts'
+import { normalize } from '../src/core/config.ts'
 
 const OWNER = '10000001'
 const CHAT = `private:${OWNER}`

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-const HUB = () => readFileSync(new URL('../src/chat/hub.js', import.meta.url), 'utf8')
+const HUB = () => readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
 
 test('流水只记实际发出去的条目，不记打算发的全部', () => {
   const src = HUB()

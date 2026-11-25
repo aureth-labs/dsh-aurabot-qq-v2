@@ -1,0 +1,87 @@
+// Session：一条入站消息一个实例。
+// 群消息、私聊、定时任务、指令回调都走同一个工厂，插件拿到的永远是这一套字段。
+// 所有发送方法都是异步的，调用方一律 await。
+
+import type { BotLike, SendOptions } from '../types/bot.ts'
+import type { Element } from '../types/element.ts'
+import type { PipelineResult, PipelineRunner } from '../types/pipeline.ts'
+import type { SessionInit, SessionLike } from '../types/session.ts'
+import type { Target, TargetType } from '../types/target.ts'
+import { targetOfBot } from './bot.ts'
+
+export type { SessionInit, SessionLike } from '../types/session.ts'
+
+export interface ExecuteResult {
+  handled: boolean
+  value?: unknown
+}
+
+export class Session implements SessionLike {
+  readonly bot: BotLike
+  readonly type: TargetType
+  readonly channelId: string
+  readonly userId: string
+  readonly userName: string
+  readonly content: string
+  readonly messageId?: string
+  readonly guildId?: string
+  readonly elements: Element[]
+  readonly timestamp: number
+  /** 过渡期：OneBot 原始事件的挂载位（S8 收口后删）。 */
+  __ev?: unknown
+  readonly target: Target
+  readonly pipeline?: PipelineRunner
+
+  constructor(init: SessionInit) {
+    this.bot = init.bot
+    this.type = init.type
+    this.channelId = init.channelId
+    this.userId = init.userId
+    this.userName = init.userName ?? ''
+    this.content = init.content
+    this.messageId = init.messageId
+    this.guildId = init.guildId
+    this.elements = init.elements ?? []
+    this.timestamp = init.timestamp ?? Date.now()
+    this.target = targetOfBot(init.bot, init.type, init.type === 'private' ? init.userId : init.channelId)
+    this.pipeline = init.pipeline
+  }
+
+  get platform(): string {
+    return this.bot.platform
+  }
+
+  get isPrivate(): boolean {
+    return this.type === 'private'
+  }
+
+  /** 发回当前会话（群发群、私聊发私聊）。可以多次调用，每次都是一条独立消息。 */
+  async send(content: unknown, options?: SendOptions): Promise<unknown> {
+    if (this.type === 'private') return this.bot.sendPrivateMessage(this.userId, content, options)
+    return this.bot.sendMessage(this.channelId, content, options)
+  }
+
+  /** 主动私聊指定用户，和当前会话在哪儿无关。 */
+  async sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown> {
+    return this.bot.sendPrivateMessage(userId, content, options)
+  }
+
+  /** 主动发到指定频道。 */
+  async sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown> {
+    return this.bot.sendMessage(channelId, content, options)
+  }
+
+  /**
+   * 以当前会话身份本地跑一遍管线：等价于「这条消息又发了一次」。
+   * 会经过指令 / 中间件 / 模型三段，该发出去的就真发。
+   */
+  async execute(text: string): Promise<PipelineResult> {
+    if (!this.pipeline) throw new Error('当前会话没有挂管线，execute 不可用')
+    return this.pipeline.execute(this, text)
+  }
+}
+
+/** 定时任务等没有真实入站消息的场景，用这个造一个 Session。 */
+export function createSystemSession(bot: BotLike, type: TargetType, channelId: string, userId = bot.selfId): Session {
+  return new Session({ bot, type, channelId, userId, content: '' })
+}

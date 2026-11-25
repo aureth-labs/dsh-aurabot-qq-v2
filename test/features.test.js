@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { planDiaryTimes } from '../src/features/qzone.js'
-import { moodLabel, scoreText, decayed } from '../src/features/mood.js'
-import { matchSticker, pickForReply } from '../src/features/stickers.js'
-import { pickBotProcess, readOneBotEndpoint } from '../src/snowluma/manager.js'
+import { planDiaryTimes } from '../src/features/qzone.ts'
+import { moodLabel, scoreText, decayed } from '../src/features/mood.ts'
+import { matchSticker, pickForReply } from '../src/features/stickers.ts'
+import { pickBotProcess, readOneBotEndpoint } from '../src/snowluma/manager.ts'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,7 +93,7 @@ test('从 SnowLuma 配置读出 OneBot 地址和令牌（单号覆盖全局）',
 })
 
 test('WAV 转 16kHz 单声道（给 DSH 语音识别）', async () => {
-  const { buildWav, parseWav, toMono16k } = await import('../src/voice/wav.js')
+  const { buildWav, parseWav, toMono16k } = await import('../src/voice/wav.ts')
   // 48kHz 立体声 0.5 秒
   const frames = 24000
   const pcm = Buffer.alloc(frames * 4)
@@ -108,7 +108,7 @@ test('WAV 转 16kHz 单声道（给 DSH 语音识别）', async () => {
 })
 
 test('记忆检索：切词、相关度、去重', async () => {
-  const { tokenize, buildIndex, search, similarity } = await import('../src/features/memory.js')
+  const { tokenize, buildIndex, search, similarity } = await import('../src/features/memory.ts')
   assert.deepEqual(tokenize('喜欢吃白米饭'), ['喜欢', '欢吃', '吃白', '白米', '米饭'])
   const items = [
     { id: 'a', text: '主人最爱吃白米饭', importance: 0.8, at: Date.now() },
@@ -131,8 +131,8 @@ test('心情：对她说的话、主人的话影响更大；心情明显时每�
   const prev = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-mood-'))
   try {
-    const { createMood, moodEffects } = await import('../src/features/mood.js')
-    const { normalize } = await import('../src/core/config.js')
+    const { createMood, moodEffects } = await import('../src/features/mood.ts')
+    const { normalize } = await import('../src/core/config.ts')
     const m = createMood({ getConfig: () => normalize({}) })
     const v0 = m.current()
     m.observe('你好可爱', '路人', { direct: false })
@@ -161,7 +161,7 @@ test('心情：对她说的话、主人的话影响更大；心情明显时每�
 })
 
 test('表情库上限：只清偷来的、最少用的、最老的', async () => {
-  const { pickEvict } = await import('../src/features/stickers.js')
+  const { pickEvict } = await import('../src/features/stickers.ts')
   const items = [
     { md5: 'a', from: 'group:1', uses: 3, at: 1 },
     { md5: 'b', from: 'group:1', uses: 0, at: 5 },
@@ -179,8 +179,8 @@ test('模型判心情：解析结果，没把握的不算，开了就不再按�
   const prev = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-judge-'))
   try {
-    const { createMood, parseMoodJudge } = await import('../src/features/mood.js')
-    const { normalize } = await import('../src/core/config.js')
+    const { createMood, parseMoodJudge } = await import('../src/features/mood.ts')
+    const { normalize } = await import('../src/core/config.ts')
     assert.deepEqual(parseMoodJudge('好的 {"delta": 30, "reason": "被夸了", "confidence": 0.9}'), { delta: 15, reason: '被夸了', confidence: 0.9 })
     assert.equal(parseMoodJudge('不是 JSON'), null)
     let answer = '{"delta": 8, "reason": "主人惦记她", "confidence": 0.9}'
@@ -203,7 +203,7 @@ test('模型判心情：解析结果，没把握的不算，开了就不再按�
 })
 
 test('语音：语速 / 音调只认 ±N% 和 ±NHz，写着玩的和超范围的都回落/夹回来', async () => {
-  const { normalize } = await import('../src/core/config.js')
+  const { normalize } = await import('../src/core/config.ts')
   const v = (voice) => normalize({ voice }).voice
   // 音调（edge-tts 的 --pitch）
   assert.equal(v({ pitch: '+20Hz' }).pitch, '+20Hz')

@@ -70,7 +70,7 @@ before(async () => {
     }
     return '嗯'
   } })
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await fake.call('/onebot/reconnect')
   await until(() => mock.connected() > 0)

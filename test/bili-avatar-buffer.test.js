@@ -1,7 +1,7 @@
 // B 站换头像除了图片网址，也要接受图片 Buffer（她画的图 / 聊天里收到的图）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createBiliApi } from '../src/bili/api.js'
+import { createBiliApi } from '../src/bili/api.ts'
 
 // 1x1 PNG
 const PNG = Buffer.from(

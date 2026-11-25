@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resolveChatModel, normalizeChatModels, normalizeSelection } from '../src/chat/chat-model.js'
-import { normalize, mergeFromPanel } from '../src/core/config.js'
+import { resolveChatModel, normalizeChatModels, normalizeSelection } from '../src/chat/chat-model.ts'
+import { normalize, mergeFromPanel } from '../src/core/config.ts'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 
@@ -128,7 +128,7 @@ before(async () => {
     modules: { bili: { enabled: false } },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
-  const host = await import('../src/host.js')
+  const host = await import('../src/host.ts')
   api = host.apply(fake.ctx)
   await api.ready
   await fake.call('/onebot/reconnect')

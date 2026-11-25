@@ -5,8 +5,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { createMemoryStore } from '../src/features/memory.js'
+import { normalize } from '../src/core/config.ts'
+import { createMemoryStore } from '../src/features/memory.ts'
 
 const OWNER = '10000001'
 const DAY = 86400_000

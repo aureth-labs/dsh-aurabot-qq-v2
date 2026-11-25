@@ -5,9 +5,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
-import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config.js'
-import { createMemoryStore } from '../src/features/memory.js'
-import { createMemoryStorage } from '../src/features/memory-store.js'
+import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config.ts'
+import { createMemoryStore } from '../src/features/memory.ts'
+import { createMemoryStorage } from '../src/features/memory-store.ts'
 
 function panelHarness(initial = {}) {
   const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')

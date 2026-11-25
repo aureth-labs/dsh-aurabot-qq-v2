@@ -5,7 +5,7 @@
 // （2026-11-19 实测：备忘原文被发到 QQ，对方问「你咋还出现状态栏嘞」）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanOutboundText } from '../src/chat/reply.js'
+import { cleanOutboundText } from '../src/chat/reply.ts'
 
 test('备忘块：出现多个备忘头时，从第一个头连到末尾整段删除', () => {
   const leak = '合着你搁这扮二郎神呢 那我可等着了\n\n【目的】他自报我是杨戬，我接住身份梗继续斗嘴\n【需求】玩 / 陪\n【情绪】轻松，被逗乐，跃跃欲试\n【感受】玩+0.10 陪+0.05 喜+0.03\n【类型】分享\n【状态】待续\n【持续】还想弄清他看的哪版杨戬'

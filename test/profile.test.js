@@ -1,9 +1,9 @@
 // QQ 资料读取：仅主人私聊、只查自身、真实字段语义及按需视觉。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import profileModule from '../src/modules/profile/index.js'
-import { createQqProfile } from '../src/features/qq-profile.js'
-import { normalize } from '../src/core/config.js'
+import profileModule from '../src/modules/profile/index.ts'
+import { createQqProfile } from '../src/features/qq-profile.ts'
+import { normalize } from '../src/core/config.ts'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 
 const OWNER = '10000001'

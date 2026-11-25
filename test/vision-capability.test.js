@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const REPO = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
-const { modelVision, canSeeImages, clearVisionCache } = await import(`file:///${REPO}/src/core/llm.js`)
+const { modelVision, canSeeImages, clearVisionCache } = await import(`file:///${REPO}/src/core/llm.ts`)
 
 const stub = (resolveModelInfo) => ({ llm: { resolveModelInfo }, get: () => null })
 
@@ -81,7 +81,7 @@ const { createFakeDsh } = await import(`file:///${REPO}/test/helpers/fake-dsh.js
 const fake = createFakeDsh({ brain: async () => '我看见啦' })
 // 让宿主能回答「这个模型支不支持图片」
 fake.ctx.llm.resolveModelInfo = async (p, m) => ({ inputModalities: m === 'see' ? ['text', 'image'] : ['text'] })
-const host = await import(`file:///${REPO}/src/host.js`)
+const host = await import(`file:///${REPO}/src/host.ts`)
 const api = host.apply(fake.ctx)
 await api.ready
 await new Promise((r) => setTimeout(r, 400))

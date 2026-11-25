@@ -4,15 +4,15 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { dataDir } from '../src/core/store.js'
+import { dataDir } from '../src/core/store.ts'
 
 // dataDir() 每次调用都读这个环境变量，所以测试之间换目录就能隔离
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-'))
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-')) }
 
-const { clockOf, pickShot, createShotStore, loadShots } = await import('../src/bili/shots.js')
-const { createBili } = await import('../src/bili/duty.js')
-const { normalize } = await import('../src/core/config.js')
+const { clockOf, pickShot, createShotStore, loadShots } = await import('../src/bili/shots.ts')
+const { createBili } = await import('../src/bili/duty.ts')
+const { normalize } = await import('../src/core/config.ts')
 
 test('clockOf：秒数转 mm:ss', () => {
   assert.equal(clockOf(0), '0:00')
@@ -282,7 +282,7 @@ test('自动截图：只发主人私聊、使用真实文件路径，试运行�
 
 test('B 站模块：截图库路由预览 / 删除、工具固定发当前会话、关闭后隐藏', async () => {
   freshDir()
-  const { default: module } = await import('../src/modules/bili/index.js')
+  const { default: module } = await import('../src/modules/bili/index.ts')
   const { cfg, sent } = makeBili()
   const routes = new Map(), builders = []
   const fake = {

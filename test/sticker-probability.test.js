@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.js'
-import { normalize, mergeFromPanel } from '../src/core/config.js'
-import { rulesText } from '../src/persona/personas.js'
+import { createHub } from '../src/chat/hub.ts'
+import { normalize, mergeFromPanel } from '../src/core/config.ts'
+import { rulesText } from '../src/persona/personas.ts'
 
 const item = { name: '开心', md5: '1234567890abcdef' }
 function setup(t, patch = {}, options = {}) {

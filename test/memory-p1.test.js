@@ -4,9 +4,9 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.js'
-import { createHub } from '../src/chat/hub.js'
-import { buildIndex, createMemoryStore, memoryLine, parseMemoryCommand, search, shouldForget, tokenize } from '../src/features/memory.js'
+import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub.ts'
+import { buildIndex, createMemoryStore, memoryLine, parseMemoryCommand, search, shouldForget, tokenize } from '../src/features/memory.ts'
 
 const OWNER = '10000001'
 const A = '30000001'
@@ -413,7 +413,7 @@ test('空闲提炼等待模型时阻止并发整理，期间忘记不会把旧�
 })
 
 test('即时记忆：聊天用语和说不清的内容不触发，密码不记', async () => {
-  const { parseMemoryCommand: p } = await import('../src/features/memory.js')
+  const { parseMemoryCommand: p } = await import('../src/features/memory.ts')
   for (const t of ['你记住了吗', '记住了', '记住了没', '忘掉吧', '别记这个', '忘掉那个', '记住 ok', '记住密码是123456', '记住 token abc']) assert.equal(p(t), null, t)
   assert.deepEqual(p('记住我喜欢吃辣'), { action: 'remember', text: '我喜欢吃辣' })
   assert.equal(p('你要记得明天叫我').action, 'remember')

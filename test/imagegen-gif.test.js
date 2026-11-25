@@ -3,11 +3,11 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, extname } from 'node:path'
-import { createImageGen } from '../src/features/imagegen.js'
-import { gifFrameCount } from '../src/features/image-format.js'
-import { normalize, mergeFromPanel } from '../src/core/config.js'
-import { imageToolBlock, findFfmpeg } from '../src/core/img.js'
-import imagegen from '../src/modules/imagegen/index.js'
+import { createImageGen } from '../src/features/imagegen.ts'
+import { gifFrameCount } from '../src/features/image-format.ts'
+import { normalize, mergeFromPanel } from '../src/core/config.ts'
+import { imageToolBlock, findFfmpeg } from '../src/core/img.ts'
+import imagegen from '../src/modules/imagegen/index.ts'
 const GIF = Buffer.from('R0lGODlhEAAQAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQAFAAAACwAAAAAEAAQAAAIHQABCBxIsKDBgwgTKlzIsKHDhxAjSpxIsaLFgQEBACH5BAEUAAEALAAAAAAQABAAgQAA/wAAAAAAAAAAAAgdAAEIHEiwoMGDCBMqXMiwocOHECNKnEixosWBAQEAOw==', 'base64')
 const PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc(64)])
 const log = { info(){},warn(){},debug(){} }
