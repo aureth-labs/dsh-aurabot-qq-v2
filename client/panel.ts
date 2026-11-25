@@ -6,6 +6,7 @@ import { Btn, Switch, cx, h, useStyle } from './core/ui.ts'
 import { Access, Group } from './tabs/access.ts'
 import { Autotelic } from './tabs/autotelic.ts'
 import { Connect, avatarSrc, pickAvatar } from './tabs/connect.ts'
+import { Bots } from './tabs/bots.ts'
 import { ContentTab } from './tabs/content.ts'
 import { Diary, SpeakUp } from './tabs/diary.ts'
 import { ImageGen, Video } from './tabs/media.ts'
@@ -486,7 +487,7 @@ function AurabotPage() {
   const curTab = tabs.find((t) => t.id === tab) || tabs[0]
   const voiceExtensions = curTab.id === 'voice' ? mods.filter(m => hasUi(m) && tabOf(m) === 'voice') : []
   const body = curTab.ext ? ExtPage : {
-    overview: Overview, manage: Manage, connect: Connect, character: Persona, access: Access, group: Group, model: Model, voice: VoiceTab,
+    overview: Overview, manage: Manage, bots: Bots, connect: Connect, character: Persona, access: Access, group: Group, model: Model, voice: VoiceTab,
     stickers: Stickers, imagegen: ImageGen, video: Video, diary: Diary, speakup: SpeakUp, autotelic: Autotelic, pet: PetPanel, mood: Mood, memory: MemoryTab, song: Song, content: ContentTab, local: LocalApi, browser: Browser, security: Security, market: Market, modules: Modules, logs: Logs, about: About, backup: Backup,
   }[curTab.id] || Overview
   // 哪些标签有没保存的改动

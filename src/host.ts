@@ -41,8 +41,8 @@ import { dataDir, ensureDir } from './core/store.ts'
 import { createUsageFx } from './core/usage-fx.ts'
 import { initUsage, usageReport, closeUsage } from './core/usage.ts'
 import { BotRegistry, createBotsAccessor } from './core/bot-registry.ts'
+import { AdapterRegistry } from './core/adapter-registry.ts'
 import { OneBotBot } from './adapters/onebot-bot.ts'
-import { startAdapter } from './core/adapter.ts'
 import { Pipeline } from './core/pipeline.ts'
 import { Session } from './core/session.ts'
 import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from './core/update.ts'
@@ -488,6 +488,14 @@ export function apply(ctx) {
     log: logger.child('voice'),
   })
   botRegistry.add(onebotBot)
+  // 面板「机器人列表」的数据源：QQ 是内置适配器，用 adopt 挂进来；
+  // 插件用 ctx.adapter(spec) 拉起来的走 start()，两边一起在这里列出来。
+  const adapterRegistry = new AdapterRegistry({
+    bots: botRegistry,
+    log: (message) => logger.child('adapter').info(message),
+  })
+  adapterRegistry.adopt(onebotBot)
+  ctx.effect(() => () => { adapterRegistry.stopAll().catch(() => {}) }, 'aurabot: 适配器下线')
 
   // ---------- S5：入站管线 ----------
   // command → middleware → llm。顺序与开关都在配置里（开发中配置项）。
@@ -971,10 +979,8 @@ export function apply(ctx) {
     pipeline,
     // S8：适配器插件化。插件调 ctx.adapter(spec, config) 就能挂一个平台上来
     adapters: {
-      start: (spec, config) => startAdapter(botRegistry, spec, config, {
-        platform: String(spec?.platform || 'unknown'),
-        log: (message) => logger.child('adapter').info(message),
-      }),
+      start: (spec, config) => adapterRegistry.start(spec, config),
+      list: () => adapterRegistry.list(),
     },
     root: ROOT,
     // 模块经 api.proactive 访问出站治理面（modules.js 里读它）
@@ -1079,6 +1085,10 @@ export function apply(ctx) {
       controls: controlsView(),
       connections: connectionsView(),
     }
+  })
+  // 机器人列表：内置 QQ + 插件通过 ctx.adapter() 挂上来的平台，面板「机器人」页用它
+  route('/panel/bots', async () => {
+    return { ok: true, bots: adapterRegistry.list() }
   })
   route('/panel/config', async (req, res) => {
     if (bootstrapping(res)) return
