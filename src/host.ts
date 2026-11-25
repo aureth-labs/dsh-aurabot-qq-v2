@@ -479,6 +479,13 @@ export function apply(ctx) {
       return onebot.call(action, params, options)
     },
     isConnected: () => onebot.isConnected(),
+    // `<voice>要念的话</voice>`：发之前先合成音频。语音模块关着就退回文字（见 voice-element.ts），
+    // 这里晚绑定（tts 在下面才声明），发送发生在启动之后，不存在取不到的问题。
+    speak: async (text) => {
+      const voice = await tts.speak(text)
+      return String(voice?.file ?? '')
+    },
+    log: logger.child('voice'),
   })
   botRegistry.add(onebotBot)
 

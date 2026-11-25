@@ -12,7 +12,9 @@ import type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } 
 
 export type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../types/element.ts'
 
-const VOID_TYPES = new Set(['at', 'image', 'voice', 'video', 'file', 'face', 'quote', 'forward', 'reply', 'br'])
+// voice 不在这里：`<voice>要念的话</voice>` 需要保留里面的文字，交给 TTS 换成音频。
+// 自闭合的 `<voice url="…"/>` 走 selfClose 分支，照样是空元素。
+const VOID_TYPES = new Set(['at', 'image', 'video', 'file', 'face', 'quote', 'forward', 'reply', 'br'])
 
 function create(type: string, attrs: Record<string, unknown> = {}, children?: Element[]): Element {
   const element: Element = { type, attrs: { ...attrs } }

@@ -497,6 +497,15 @@ export default function apply(ctx, config) {
 | `ctx.bots[0]` / `ctx.bots('1787850032')` / `ctx.bots.list()` | 已上线的机器人；按 id 取用 `ctx.bots(id)` |
 | `ctx.adapter(spec, config)` | 注册一个平台适配器：`connect` 成功才上线，模块卸载自动断开 |
 | `ctx.h` | 元素构造与解析：`h('text', { content })`、`h.image(url)`、`h.parse(xml)`、`h.select(tree, 'image')` |
+| `ctx.llm` | 模型能力：`polish` 润色、`rewrite` 改写、`summarize` 摘要。后台调用，不进聊天上下文；失败退回原文 |
+| `ctx.tts` | 文字转语音：`await ctx.tts.speak('你好')` 返回音频地址，可以直接塞进 `<voice url="…"/>` |
+
+消息里可以直接写元素标签，能不能发出去由适配器决定（不支持就降级成文字或占位符）：
+
+```js
+await session.send('<text>文件给你递过来啦</text><file url="file:///D:/demo/LICENSE"/>')
+await session.send('<voice>这句话会先合成为语音再发</voice>')   // 合成失败自动改发文字
+```
 
 发送一律异步，返回值要 `await`：
 
