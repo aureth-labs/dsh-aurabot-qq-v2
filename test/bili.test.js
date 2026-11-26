@@ -11,7 +11,7 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-bili-'))
-  api = await import('../src/bili/api/index.ts')
+  api = await import('../src/bili/api.ts')
   duty = await import('../src/bili/live/duty.ts')
   ;({ normalize } = await import('../src/core/config/index.ts'))
 })
@@ -163,7 +163,7 @@ test('看你发来的视频（短链也行）；主人让她评论才发', async
 
 test('没登录不让她写评论；被风控就当天暂停评论和回复', async () => {
   const d = [{ i: 1, feeling: '好看', comment: '真好', share: '' }, { i: 2, feeling: '可爱', comment: '哈哈', share: '' }]
-  const { dataDir } = await import('../src/core/config/store.ts')
+  const { dataDir } = await import('../src/core/store/index.ts')
   const { rmSync } = await import('node:fs')
   const fresh = () => rmSync(dataDir('bili.json'), { force: true }) // 前面的测试把这几个视频记成看过了
   fresh()
@@ -284,7 +284,7 @@ test('#6 换 B 站头像：先下载图片再 multipart 上传到 face/update；
 })
 
 test('评论里的 @昵称 按昵称查到 mid 一起发，查不到的留作文字', async () => {
-  const { createBiliApi } = await import('../src/bili/api/index.ts')
+  const { createBiliApi } = await import('../src/bili/api.ts')
   const posts = []
   const json = (data) => ({ ok: true, status: 200, headers: { getSetCookie: () => [], get: () => '' }, json: async () => ({ code: 0, data }) })
   const fetchImpl = async (url, opts = {}) => {

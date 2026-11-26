@@ -1,6 +1,6 @@
 // 内置模块：群管。主人开口时禁言、解禁、踢人、改头衔、发公告；她知道自己在每个群是什么身份。
 
-import { defineTool, str, int } from '../../tools/tools.ts'
+import { defineTool, str, int } from '../../tools/index.ts'
 
 export default {
   id: 'group-admin',

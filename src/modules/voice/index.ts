@@ -9,9 +9,9 @@ import { fishBalances, fishPrimary } from '../../voice/tts/fish.ts'
 import { runCloud } from '../../voice/tts/index.ts'
 import { VOLCANO_VOICES } from '../../voice/tts/volcano-voices.ts'
 import { breezeBalance, breezeClaim, breezeSession, autoClaimOnce, breezeVoices } from '../../voice/asr/breeze.ts'
-import { createSongVoice } from '../../voice/convert/rvc.ts'
+import { createSongVoice } from '../../voice/audio/rvc.ts'
 import { toMono16k } from '../../voice/audio/wav.ts'
-import { fileOf } from '../../local/local.ts'
+import { fileOf } from '../../local/index.ts'
 
 /** 识别链路只吃 PCM16 WAV：自检拿到 mp3 时先用 ffmpeg 转一道（#255）。 */
 export function asPcmWav (file, buf, ffmpegPath = '', { platform = process.platform, findFfmpegFn = findFfmpeg, runFn = spawnSync } : AsPcmWavOptions = {}) {

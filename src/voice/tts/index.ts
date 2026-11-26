@@ -1,4 +1,4 @@
-import { createKeyRouter, rateMeta } from '../support/key-pool.ts'
+import { createKeyRouter, rateMeta } from './key-pool.ts'
 export const runCloud = createKeyRouter()
 // 文字 → 语音文件。
 //   首选：edge-tts（微软在线朗读，音色好），装在插件自己的 Python 虚拟环境 C:\Aurabot\pyenv 里，不污染系统。
@@ -12,7 +12,7 @@ import { buildWav } from '../audio/wav.ts'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RunOptions = Partial<Record<'timeoutMs' | 'input' | 'env', any>>
@@ -128,7 +128,7 @@ async function findOrFetchUv(log) {
   const tmp = join(dirname(PYENV_DIR), 'bin', 'uv-src')
   mkdirSync(dirname(zip), { recursive: true })
   // 和翻唱安装用同一组下载源：国内镜像上的 uv 安装包优先，最后才试 GitHub；有校验值的核对一下
-  const { UV_SOURCES } = await import('../../song/studio.ts')
+  const { UV_SOURCES } = await import('../../song/studio/index.ts')
   const ps = "$ProgressPreference='SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri $env:AB_URL -OutFile $env:AB_OUT -UseBasicParsing -TimeoutSec 300; if ($env:AB_SHA -and (Get-FileHash $env:AB_OUT -Algorithm SHA256).Hash.ToLower() -ne $env:AB_SHA) { throw 'sha256 mismatch' }; if (Test-Path $env:AB_TMP) { Remove-Item $env:AB_TMP -Recurse -Force }; Expand-Archive -LiteralPath $env:AB_OUT -DestinationPath $env:AB_TMP -Force; $e = Get-ChildItem $env:AB_TMP -Recurse -Filter uv.exe | Select-Object -First 1; Copy-Item $e.FullName $env:AB_DEST -Force; Remove-Item $env:AB_OUT; Remove-Item $env:AB_TMP -Recurse -Force"
   for (const src of UV_SOURCES) {
     const r = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { timeoutMs: 400000, env: { AB_URL: src.url, AB_OUT: zip, AB_TMP: tmp, AB_DEST: local, AB_SHA: src.sha256 || '' } })

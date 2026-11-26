@@ -1,7 +1,7 @@
 // 面向模块的媒体读取：返回字节，不暴露全局数据目录或素材文件路径。
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { dataDir } from '../config/store.ts'
+import { dataDir } from '../store/index.ts'
 import { findFfmpeg } from './img.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
 import { parseWav, toMono16k } from '../../voice/audio/wav.ts'

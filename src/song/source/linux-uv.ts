@@ -2,7 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { readZip } from './zip.ts'
+import { readZip } from '../audio/zip.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type InstallLinuxUvOptions = Partial<Record<'arch' | 'fetcher' | 'note', any>>

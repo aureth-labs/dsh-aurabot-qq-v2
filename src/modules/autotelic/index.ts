@@ -35,7 +35,7 @@ import { probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTak
 import { reconcileDay, problemsText } from '../../autotelic/feedback/reconcile.ts'
 import { createJournal } from '../../autotelic/observe/reflect.ts'
 import { inQuietHours } from '../../purpose/engine.ts'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 import { personaDataDir, personaNow, currentPersonaText } from '../../persona/personas.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

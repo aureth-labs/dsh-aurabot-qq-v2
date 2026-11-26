@@ -128,7 +128,7 @@ before(async () => {
     modules: { bili: { enabled: false } },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   api = host.apply(fake.ctx)
   await api.ready
   await fake.call('/onebot/reconnect')

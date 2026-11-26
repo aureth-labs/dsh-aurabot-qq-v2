@@ -144,7 +144,7 @@ before(async () => {
     files: { enabled: true, maxMB: 1, dirs: [] },
   }))
   fake = createFakeDsh({ brain })
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   api = host.apply(fake.ctx)
   await fake.call('/onebot/reconnect')
   await until(() => mock.connected() > 0)

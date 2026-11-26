@@ -1,12 +1,12 @@
-import { normalizePools, maskPools, restorePoolKeys } from '../../voice/support/key-pool.ts'
-import type { KeyPools, RawPools } from '../../voice/support/key-pool.ts'
+import { normalizePools, maskPools, restorePoolKeys } from '../../voice/tts/key-pool.ts'
+import type { KeyPools, RawPools } from '../../voice/tts/key-pool.ts'
 import { normalizeMemberFilter } from '../../chat/inbound/member-filter.ts'
 import type { MemberFilterRule } from '../../chat/inbound/member-filter.ts'
 // 插件配置：默认值 + 归一化 + 读写。配置文件 ~/.dsh/plugins-data/aurabot/config.json
 
 import { randomUUID } from 'node:crypto'
 import { normalizeChatEfforts } from '../../chat/commands/effort-command.ts'
-import { dataDir, readJson, writeJson } from './store.ts'
+import { dataDir, readJson, writeJson } from '../store/index.ts'
 import { DEFAULT_GROUP_POLICY } from '../../chat/policy/group-policy.ts'
 import { LEVELS, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, profilePermDefault } from '../../chat/policy/access.ts'
 import { normalizeChatModels } from '../../chat/hub/chat-model.ts'

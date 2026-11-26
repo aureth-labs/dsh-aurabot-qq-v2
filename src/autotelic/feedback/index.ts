@@ -16,7 +16,7 @@
 // 纯逻辑 + 注入式依赖（now/settings/落盘路径全部可注入），可单测；中文注释。
 
 import { appendFileSync } from 'node:fs'
-import { readJson, writeJson } from '../../core/config/store.ts'
+import { readJson, writeJson } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateFeedbackOptions = Partial<Record<'file' | 'decisionsFile' | 'settings' | 'now' | 'log', any>>

@@ -11,7 +11,7 @@
 import { spawn } from 'node:child_process'
 import { writeFileSync, mkdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { readJson, writeJson } from '../../core/config/store.ts'
+import { readJson, writeJson } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ProbeOneOptions = Partial<Record<'run' | 'timeoutMs', any>>

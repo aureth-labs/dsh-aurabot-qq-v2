@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { messageLogOf } from '../../src/core/storage/messages.ts'
+import { messageLogOf } from '../../src/core/store/messages.ts'
 
 /** 根目录下的聊天流水库：`chatlog/` 与 `persona-data/<id>/chatlog/`。 */
 function dirsOf(root) {

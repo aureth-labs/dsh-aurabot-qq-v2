@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 
 const { drawResultBlocks, imageToolBlock, drawToolMessage, createImageGen } = await import('../src/features/media/imagegen.ts')
 const { shrinkImage, shrinkWithSharp, findSharp } = await import('../src/core/message/img.ts')
-const { defineTool } = await import('../src/tools/tools.ts')
+const { defineTool } = await import('../src/tools/index.ts')
 
 test('drawResultBlocks：有图时文字 + image 块，没图时只有文字', () => {
   // 正常走的是 DSH 附件块（imageToolBlock() 登记过），要原样透传

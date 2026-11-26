@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { memoryLine } from '../src/features/memory/index.ts'
 import video, { videoFile, videoReady, minimaxBody, customRequestParts, clampResolution, fillJson, fillUrl } from '../src/modules/video/index.ts'
-import { SLOTS } from '../src/local/local.ts'
+import { SLOTS } from '../src/local/index.ts'
 import { readClientSource } from './helpers/client-source.js'
 
 function setup({ owner = true, result = 'D:/out/a.mp4', active = true, sendFails = false, confirm = false, enhance = false, provider = 'local', minimaxKey = '', customReady = false, asked = [], selfView = false } = {}) {

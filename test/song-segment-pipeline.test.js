@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path'
 
 test('片段无人声不封禁整首；越界不发语音；失败后下一首照常运行并按片段缓存', {skip:process.platform==='win32'}, async()=>{
   const data=mkdtempSync(join(tmpdir(),'song-flow-'));process.env.AURABOT_DATA_DIR=data
-  const {createSongStudio}=await import('../src/song/studio.ts')
+  const {createSongStudio}=await import('../src/song/studio/index.ts')
   const {normalize}=await import('../src/core/config/index.ts')
   const root=join(data,'engine'),calls=join(root,'calls.jsonl'),mode=join(root,'volume')
   function put(file,text,executable=false){mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);if(executable)chmodSync(file,0o755)}

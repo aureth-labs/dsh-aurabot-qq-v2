@@ -48,7 +48,7 @@ before(async () => {
   writeFileSync(join(broken, 'index.mjs'), "export default { id: 'broken-mod', name: '坏模块', setup() { throw new Error('boom-测试炸') } }\n")
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.webServer.port = 5123
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
 })
@@ -87,7 +87,7 @@ async function callRaw(path, { method, headers = {}, body } = {}) {
 const get = (path) => fake.call(path)
 const jsonOf = async (path) => (await fake.call(path)).json()
 
-const hostSource = () => readFileSync(new URL('../src/host.ts', import.meta.url), 'utf8')
+const hostSource = () => readFileSync(new URL('../src/plugin/index.ts', import.meta.url), 'utf8')
 
 // ================= 1. 三接口契约 =================
 
@@ -264,7 +264,7 @@ test('configRevision：api.setConfig 写入推进版本；值相同不递增（�
 test('重启语义：新实例（新 bootId）版本从 0 重算', async () => {
   // configRevision 计数器是模块级状态：真重启 = 新进程 = 新模块实例。这里用 cache-busting
   // import 拿一个全新实例来验证「实例内从 0 起算 + 实例内单调」。
-  const fresh = await import('../src/core/config.ts?fresh-instance=1')
+  const fresh = await import('../src/core/config/index.ts?fresh-instance=1')
   assert.equal(fresh.configRevision(), 0, '全新实例版本从 0 起算')
   const c1 = fresh.commitConfig({ ownerName: '新实例甲' }, {})
   assert.equal(fresh.configRevision(), 1, '首次提交 → 1')
@@ -332,7 +332,7 @@ test('导航版本：模块停/起时 navigationRevision 递增，摘要同步�
 })
 
 test('summarizeModules 纯内存：不调 scanUser 重扫、不做文件系统遍历（静态契约）', async () => {
-  const src = readFileSync(new URL('../src/core/modules.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/core/module/index.ts', import.meta.url), 'utf8')
   const start = src.indexOf('function summarizeModules')
   assert.ok(start > 0, '要有 summarizeModules')
   // 函数体截到下一个顶层函数为止

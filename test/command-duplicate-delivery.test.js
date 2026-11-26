@@ -41,7 +41,7 @@ before(async () => {
     merge: { enabled: false },
   }))
   fake = createFakeDsh({ brain: async () => '收到啦' })
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   host.apply(fake.ctx)
   await until(() => fake.logs.some((line) => String(line).includes('Aurabot v')), 5000)
   const reconnect = await fake.call('/onebot/reconnect')

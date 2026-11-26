@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config/index.ts'
 import { createImageGen, customRequest, isUnsupportedReference } from '../src/features/media/imagegen.ts'
-import { createLocal } from '../src/local/local.ts'
+import { createLocal } from '../src/local/index.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 
 const PNG = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(64)])

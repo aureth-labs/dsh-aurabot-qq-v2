@@ -4,8 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, readdirSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { medianF0, autoShift, voiceKind, pcm16ToFloat } from '../src/song/pitch.ts'
-import { pruneCache } from '../src/song/studio.ts'
+import { medianF0, autoShift, voiceKind, pcm16ToFloat } from '../src/song/audio/pitch.ts'
+import { pruneCache } from '../src/song/studio/index.ts'
 import { normalize } from '../src/core/config/index.ts'
 
 const rate = 8000

@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize } from '../src/core/config/index.ts'
-import { createSongVoice } from '../src/voice/convert/rvc.ts'
+import { createSongVoice } from '../src/voice/audio/rvc.ts'
 
 test('语音变声配置：默认不变声；变调夹在 ±24 半音', () => {
   const d = normalize({})

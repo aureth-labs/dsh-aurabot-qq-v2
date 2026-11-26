@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { loginSessionKey } from '../../bili/login/login-pause.ts'
-import { prepareDanmaku } from '../../bili/api/index.ts'
-import { readJson, writeJson } from '../../core/config/store.ts'
+import { prepareDanmaku } from '../../bili/api.ts'
+import { readJson, writeJson } from '../../core/store/index.ts'
 import { clipText } from '../../core/support/text.ts'
 import { cleanOutboundText } from '../../chat/reply/index.ts'
 

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createKeyRouter, retryDelay } from '../src/voice/support/key-pool.ts'
+import { createKeyRouter, retryDelay } from '../src/voice/tts/key-pool.ts'
 import { normalize, mergeFromPanel, publicConfig } from '../src/core/config/index.ts'
 import { textToSpeech } from '../src/voice/tts/index.ts'
 import { mkdtempSync, rmSync } from 'node:fs'

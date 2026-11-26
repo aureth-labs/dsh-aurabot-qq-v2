@@ -10,12 +10,12 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 import { fetchGuarded } from '../../core/net/index.ts'
 import { findFfmpeg } from '../../core/message/img.ts'
 import { askModel, canSeeImages } from '../../core/llm/index.ts'
 import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
-import { defineTool, str } from '../../tools/tools.ts'
+import { defineTool, str } from '../../tools/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RequestJsonOptions = Partial<Record<'label' | 'method' | 'headers' | 'body' | 'timeoutMs' | 'retry', any>>

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import biliModule from '../src/modules/bili/index.ts'
 import { normalize } from '../src/core/config/index.ts'
-import { dataDir } from '../src/core/config/store.ts'
+import { dataDir } from '../src/core/store/index.ts'
 
 test('B站头像：last / 最近图片 / 网址、主人权限和开关在模块内正确解析', async () => {
   const cfg = normalize({ enabled: true, dryRun: true, ownerQQ: '10000001', bili: { enabled: true } })

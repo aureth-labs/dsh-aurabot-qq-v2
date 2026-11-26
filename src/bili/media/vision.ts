@@ -5,7 +5,7 @@
 // 不影响原来「标题 + 简介 + 字幕 + 热评」的文本流程。
 
 import { spawn } from 'node:child_process'
-import { UA } from '../api/index.ts'
+import { UA } from '../api.ts'
 import { askModel, canSeeImages } from '../../core/llm/index.ts'
 import { findFfmpeg } from '../../core/message/img.ts'
 import { assertPublicUrl } from '../../core/net/index.ts'

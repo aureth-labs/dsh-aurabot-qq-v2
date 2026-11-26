@@ -8,7 +8,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import { readdirSync, readFileSync, renameSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { ensureDir } from '../config/store.ts'
+import { ensureDir } from './index.ts'
 
 export interface MessageLog {
   append(day: string, row: Record<string, any>): void

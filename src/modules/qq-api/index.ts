@@ -1,7 +1,7 @@
 // 内置模块：QQ 接口。SnowLuma 能做的事太多，不一个个写工具：一张权限表（actions.js）加两个工具，
 // 工具定义短，不占提示词；她要用时先查再调。
 
-import { defineTool, str } from '../../tools/tools.ts'
+import { defineTool, str } from '../../tools/index.ts'
 import { QQ_API, paramsOf } from './actions.ts'
 import { clipText } from '../../core/support/text.ts'
 import { cleanOutboundText } from '../../chat/reply/index.ts'

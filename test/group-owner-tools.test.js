@@ -74,7 +74,7 @@ test('接线契约：preset、人格变量、闸门、面板开关都在', () =>
   assert.ok(yml.includes('{{aurabot_rules_group_owner}}'), 'preset 要挂 group-owner 的人格变量')
   assert.ok(/order: 62/.test(yml), 'order 62 与 social(61)/autotelic(63) 不能撞')
 
-  const host = read('src/host.ts')
+  const host = read('src/plugin/index.ts')
   assert.ok(host.includes("variable('aurabot_rules_group_owner'"), 'host 没定义 aurabot_rules_group_owner')
   assert.ok(host.includes("rulesText('group-owner'"), 'host 没把 group-owner 传给 rulesText')
 

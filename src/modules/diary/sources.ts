@@ -5,7 +5,7 @@ import { lstatSync, readdirSync, realpathSync, readFileSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { stickerPath } from '../../features/stickers/index.ts'
 import { loadShots, shotPath } from '../../bili/media/shots.ts'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 import { clipText } from '../../core/support/text.ts'
 
 export const clip = (value, max = 160) => clipText(String(value || '').replace(/[\r\n\t]+/g, ' ').trim(), max)

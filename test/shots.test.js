@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { dataDir } from '../src/core/config/store.ts'
+import { dataDir } from '../src/core/store/index.ts'
 
 // dataDir() 每次调用都读这个环境变量，所以测试之间换目录就能隔离
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-'))

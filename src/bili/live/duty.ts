@@ -1,9 +1,9 @@
 // 刷 B 站：定时挑她和你感兴趣的方向去搜视频，读简介、字幕、热评，再按她的人格决定评不评论、分不分享给你、记住什么；
 // 定时看别人回她的评论并接着回；你在 QQ 里发链接，她也能点进去看完再聊。看过的、评过的都记成她的经历。
 
-import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { isPeak } from '../../core/llm/offpeak.ts'
-import { createBiliApi, findVideoId, parseCookie } from '../api/index.ts'
+import { createBiliApi, findVideoId, parseCookie } from '../api.ts'
 import { loginSessionKey, recoverLoginPause } from '../login/login-pause.ts'
 import { isSessionBackoff } from '../../chat/hub/session-backoff.ts'
 import { lookWithVision, visionState } from '../media/vision.ts'

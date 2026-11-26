@@ -207,7 +207,7 @@ test('宿主卸载会关闭媒体缓存，旧中枢不能继续读写暂存文�
   const s = setup()
   writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, snowluma: { ...s.cfg.snowluma, autoStart: false, autoAttach: false, dir: join(s.dir, 'none') } }))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-  const { apply } = await import('../src/host.ts')
+  const { apply } = await import('../src/plugin/index.ts')
   const fake = createFakeDsh({ brain: async () => '' }), api = apply(fake.ctx)
   try {
     await api.ready

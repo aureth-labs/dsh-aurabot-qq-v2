@@ -14,7 +14,7 @@
 // 静默时段不触发：awakeFrom/awakeTo 取补集得安静窗口（core/time-window.js 的 quietWindowOf，
 // 判定复用 purpose 引擎的 inQuietHours——同一套跨天窗口口径，别另写一份）。
 
-import { readJson, writeJson } from '../../core/config/store.ts'
+import { readJson, writeJson } from '../../core/store/index.ts'
 import { quietWindowOf } from '../../core/support/time-window.ts'
 import { inQuietHours, quietEndAfter, nextDayStartAfter, bestReplyHourShift } from '../../purpose/engine.ts'
 

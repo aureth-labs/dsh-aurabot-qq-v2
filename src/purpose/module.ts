@@ -9,7 +9,7 @@
 // （ext.purpose.enabled 缺省=开、显式 false 尊重）；旧的「主动搭话」模块（speakup）在迁移期
 // （P1~P3）仍在，companion 会见目的引擎开着而自动让位，迁移说明见 docs/PURPOSE_MODULE_API.md。
 
-import { dataDir, readJson, writeJson } from '../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../core/store/index.ts'
 import { randomUUID } from 'node:crypto'
 import { quietWindowOf } from '../core/support/time-window.ts'
 import { cleanOutboundText } from '../chat/reply/index.ts'

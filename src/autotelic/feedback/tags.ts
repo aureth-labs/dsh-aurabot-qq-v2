@@ -12,7 +12,7 @@
 //
 // 坑#1 提醒：api.dataDir() 已带 modules-data/autotelic/ 前缀，直接 api.dataDir('tags-user.json')。
 
-import { readJson } from '../../core/config/store.ts'
+import { readJson } from '../../core/store/index.ts'
 
 /** 内置默认词表（心念五源头 §2.1 + 生活面补充，≤20 个）。顺序即面板展示顺序。
  *  本文件是词表的**唯一来源**（集成裁决 2026-11-17）：plan.js 的决策环词表从这里解析，

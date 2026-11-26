@@ -1,5 +1,5 @@
 // Only provider-reported usage; no text/token estimation and no guessed gateway prices.
-import { dataDir, readJson, writeJson } from '../config/store.ts'
+import { dataDir, readJson, writeJson } from '../store/index.ts'
 import { officialCost, REFERENCE_DATE } from '../support/official-reference.ts'
 import { beijingDayKey } from './offpeak.ts'
 export const KEEP_DAYS = 90

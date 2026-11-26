@@ -2,17 +2,17 @@
 // 推理引擎用 Applio（MIT，固定版本），人声分离用 audio-separator，都装在一个独立的 Python 环境里，不碰系统环境。
 
 import { spawn, execFileSync } from 'node:child_process'
-import { autoShift, medianF0, pcm16ToFloat, voiceKind } from './pitch.ts'
+import { autoShift, medianF0, pcm16ToFloat, voiceKind } from '../audio/pitch.ts'
 import { chmodSync, existsSync, mkdirSync, readdirSync, statSync, statfsSync, writeFileSync, readFileSync, rmSync, copyFileSync, renameSync, openSync, readSync, closeSync } from 'node:fs'
 import { join, basename, dirname, delimiter, posix, win32 } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { homedir } from 'node:os'
 import { createHash } from 'node:crypto'
-import { dataDir, readJson, writeJson } from '../core/config/store.ts'
-import { searchSongs, songUrl, account } from './netease.ts'
-import { readZip } from './zip.ts'
-import { installLinuxUv } from './linux-uv.ts'
-import { SongClipError, validateSongClip, selectedWindow, clipCacheParts, clipLabel, clipFade } from './segment.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
+import { searchSongs, songUrl, account } from '../source/netease.ts'
+import { readZip } from '../audio/zip.ts'
+import { installLinuxUv } from '../source/linux-uv.ts'
+import { SongClipError, validateSongClip, selectedWindow, clipCacheParts, clipLabel, clipFade } from '../audio/segment.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type PathsOfOptions = Partial<Record<'platform' | 'allowLegacy', any>>
@@ -203,7 +203,7 @@ export const SEPARATOR_FILES: Record<string, Array<[string, string[], string?]>>
     [`${BS_ROFORMER}.yaml`, [`${GH_AS}/${BS_ROFORMER}.yaml`], '2bfdd16c656bd9519aba757cc4f8834b7ede675eb1e00ec4772d74ae1c41af7f'],
   ],
 }
-const BUNDLED_SEP = fileURLToPath(new URL('./separator/', import.meta.url))
+const BUNDLED_SEP = fileURLToPath(new URL('../separator/', import.meta.url))
 
 /** 手动下载用的地址（面板里给用户复制，用浏览器或下载工具下好再拖进来）。 */
 export function separatorLinks(model) {
@@ -996,7 +996,7 @@ export function createSongStudio({ getConfig, log, sendVoiceFile, sendText, say,
     const p = P()
     const out = join(dir, 'vocals_rvc.wav')
     if (local?.active('song')) {
-      const { fileOf } = await import('../local/local.ts')
+      const { fileOf } = await import('../../local/index.ts')
       const r = await local.call('song', { input: vocals, output: out, pitch, voice: voice?.id || '', voiceFile: voice?.pth || '', indexFile: voice?.index || '' })
       const file = fileOf(r) || out
       if (!existsSync(file)) throw new Error('本地换声脚本没写出文件：' + file)

@@ -1,9 +1,9 @@
 // QQ 里的主人命令：/silent /active 之类，直接在 QQ 上管她。只认主人；在总开关关着时也能用（所以 /on 才有用）。
 
-import { parseSingRequest } from '../../song/segment.ts'
+import { parseSingRequest } from '../../song/audio/segment.ts'
 import { runEffortCommand } from './effort-command.ts'
 import { policyFor } from '../policy/group-policy.ts'
-import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { runGroupSettingsCommand } from './group-settings-command.ts'
 import { runPermissionsCommand } from './permissions-command.ts'
 

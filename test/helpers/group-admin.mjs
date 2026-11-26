@@ -1,7 +1,7 @@
 const __lib = globalThis.aurabot.lib // 插件内部源码（复制出来后靠它找到插件里的文件）
 // 社区模块（原内置）：群管。主人开口时禁言、解禁、踢人、改头衔、发公告；她知道自己在每个群是什么身份。
 
-const { defineTool, str, int } = __lib('tools/tools.js')
+const { defineTool, str, int } = __lib('tools/index.js')
 
 export default {
   id: 'group-admin',

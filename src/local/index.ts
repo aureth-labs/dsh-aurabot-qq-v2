@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, copyFileSync, statSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { dataDir } from '../core/config/store.ts'
+import { dataDir } from '../core/store/index.ts'
 import { selfName } from '../persona/personas.ts'
 
 const TEMPLATES = fileURLToPath(new URL('./templates/', import.meta.url))

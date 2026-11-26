@@ -1,4 +1,4 @@
-import { dataDir, readJson, writeJson } from '../config/store.ts'
+import { dataDir, readJson, writeJson } from '../store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateUsageFxOptions = Partial<Record<'request' | 'now' | 'file', any>>

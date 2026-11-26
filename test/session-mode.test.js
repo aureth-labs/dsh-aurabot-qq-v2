@@ -24,7 +24,7 @@ writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
 
 const { createFakeDsh } = await import(`file:///${REPO}/test/helpers/fake-dsh.js`)
 const fake = createFakeDsh({ brain: async () => '嗯嗯' })
-const host = await import(`file:///${REPO}/src/host.ts`)
+const host = await import(`file:///${REPO}/src/plugin/index.ts`)
 const api = host.apply(fake.ctx)
 await api.ready
 await new Promise((r) => setTimeout(r, 400))

@@ -21,7 +21,7 @@ before(async () => {
     ownerQQ: '10000001', botQQ: '20000002', voice: { enabled: false },
     snowluma: { autoStart: false, autoAttach: false, dir: join(dir, 'no-snowluma') } }))
   fake = createFakeDsh({ brain: async () => { throw new Error('设置保存不应开启对话') } })
-  app = (await import('../src/host.ts')).apply(fake.ctx)
+  app = (await import('../src/plugin/index.ts')).apply(fake.ctx)
   await app.ready
 })
 after(async () => { fake?.dispose(); await app?.dispose?.(); rmSync(dir, { recursive: true, force: true }) })

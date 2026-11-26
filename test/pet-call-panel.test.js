@@ -43,7 +43,7 @@ before(async () => {
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.webServer.port = 5101
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
   await fake.call('/onebot/reconnect')
@@ -58,7 +58,7 @@ after(async () => {
 const extPet = () => JSON.parse(readFileSync(join(dataDir, 'config.json'), 'utf8')).ext?.pet || {}
 // 面板是单文件源码软链（数据目录没有构建产物），只能在源码上断言。
 const clientSrc = () => readClientSource()
-const hostSrc = () => readFileSync(new URL('../src/host.ts', import.meta.url), 'utf8')
+const hostSrc = () => readFileSync(new URL('../src/plugin/index.ts', import.meta.url), 'utf8')
 
 test('对讲引擎枚举 / RVC 开关：枚举限定 native|sovits|voice（talkMode 兼容 toggle|free|ptt），布尔透传，坏值不落盘', async () => {
   const r = await call('/panel/pet/config', {

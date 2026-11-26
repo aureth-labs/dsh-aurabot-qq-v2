@@ -1,6 +1,6 @@
 // QQ 空间：发说说 + 空间日记（每天 N 次，时间窗里随机，结合当天聊天）。
 
-import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { fetchImage } from '../../core/net/index.ts'
 import { windowMinutes } from '../../core/support/time-window.ts'
 import { resolveAudience } from './audience.ts'

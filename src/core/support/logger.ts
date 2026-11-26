@@ -2,7 +2,7 @@
 
 import { appendFileSync, readdirSync, unlinkSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { dataDir, ensureDir } from '../config/store.ts'
+import { dataDir, ensureDir } from '../store/index.ts'
 import { redact } from './redact.ts'
 
 const RING = 500

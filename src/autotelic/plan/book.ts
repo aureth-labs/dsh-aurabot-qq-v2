@@ -4,7 +4,7 @@
 // 落盘 ledger.json（writeJson 原子写）；纯数据 + 注入式依赖，可单测。
 
 import { randomUUID } from 'node:crypto'
-import { readJson, writeJson } from '../../core/config/store.ts'
+import { readJson, writeJson } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateBookOptions = Partial<Record<'file' | 'now' | 'maxActive' | 'maxSteps' | 'actionsPerHour' | 'log', any>>

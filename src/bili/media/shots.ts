@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto'
 import { unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { dataDir, ensureDir, existsSync, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, ensureDir, existsSync, readJson, writeJson } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateShotStoreOptions = Partial<Record<'max', any>>

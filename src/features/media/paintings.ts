@@ -6,7 +6,7 @@
 import { readdirSync, statSync, unlinkSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { basename, extname, isAbsolute, join, normalize, relative } from 'node:path'
-import { dataDir, ensureDir } from '../../core/config/store.ts'
+import { dataDir, ensureDir } from '../../core/store/index.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

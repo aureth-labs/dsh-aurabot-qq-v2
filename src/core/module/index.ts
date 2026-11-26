@@ -17,9 +17,9 @@ import { readManifest, entryOf as entryOfManifest } from '../config/manifest.ts'
 import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { dataDir } from '../config/store.ts'
+import { dataDir } from '../store/index.ts'
 import { registerSecretField } from '../config/index.ts'
-import { defineTool } from '../../tools/tools.ts'
+import { defineTool } from '../../tools/index.ts'
 import { selfName, personaScope, personaNow } from '../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../support/persona-memory-bridge.ts'
 
@@ -113,6 +113,9 @@ export const builtinDir = () => BUILTIN_DIR
 const ID_RE = /^[a-z][a-z0-9-]{1,39}(\/[a-z][a-z0-9-]{1,39})?$/
 const DOC = 'API.md'
 const TYPES = 'aurabot.d.ts'
+// 文档与类型声明放在 sdk/ 下：内置模块目录只留实现，用户目录仍拿平铺文件名。
+const DOC_SRC = 'sdk/API.md'
+const TYPES_SRC = 'sdk/aurabot.d.ts'
 // 从内置搬到社区库的模块：接口路径不变，面板页照常能用
 const STABLE_ROUTES = new Set(['pet', 'douyin', 'heybox', 'group-admin'])
 
@@ -1838,8 +1841,14 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     const dir = idDir(id)
     if (existsSync(dir)) return { ok: false, message: `modules/${id} 已经有了，先挪走它` }
     const own = new Map() // 源码 key → 复制后的文件名
+    // 目录入口（a/b/index.js）复制出来用目录名当文件名：studio.js 比 index.js 好认，也不会和入口 index.mjs 混。
+    const flatName = (key) => {
+      const parts = key.split('/')
+      const base = parts.pop()
+      return base === 'index.js' ? `${parts.pop() || 'index'}.js` : base
+    }
     own.set(`modules/${id}/index.js`, 'index.mjs')
-    for (const f of b.files || []) own.set(f, f.split('/').pop())
+    for (const f of b.files || []) own.set(f, flatName(f))
     mkdirSync(dir, { recursive: true })
     for (const [key, name] of own) {
       // 指向插件其他文件的改成走 lib()；一起复制过来的文件之间互相引用的，改成同目录
@@ -1917,11 +1926,11 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function installDocs() {
     try {
       mkdirSync(userDir(), { recursive: true })
-      const doc = readFileSync(join(BUILTIN_DIR, DOC), 'utf8').replaceAll('{{VERSION}}', version).replaceAll('{{API}}', String(API_VERSION)).replace('{{LIB}}', libKeys().map((k) => '- `' + k + '`').join('\n'))
+  const doc = readFileSync(join(BUILTIN_DIR, DOC_SRC), 'utf8').replaceAll('{{VERSION}}', version).replaceAll('{{API}}', String(API_VERSION)).replace('{{LIB}}', libKeys().map((k) => '- `' + k + '`').join('\n'))
       const dest = join(userDir(), DOC)
       if (!existsSync(dest) || readFileSync(dest, 'utf8') !== doc) writeFileSync(dest, doc, 'utf8')
       // 类型提示：模块开头写 /** @type {import('../aurabot').AurabotModule} */，编辑器就有补全
-      const types = readFileSync(join(BUILTIN_DIR, TYPES), 'utf8')
+  const types = readFileSync(join(BUILTIN_DIR, TYPES_SRC), 'utf8')
       const tdest = join(userDir(), TYPES)
       if (!existsSync(tdest) || readFileSync(tdest, 'utf8') !== types) writeFileSync(tdest, types, 'utf8')
     } catch (error) {}

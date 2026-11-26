@@ -404,7 +404,7 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
     snowluma: { autoStart: false, autoAttach: false }, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
   const fake = createFakeDsh({ brain: async () => '' })
   try {
-    const { apply } = await import('../src/host.ts')
+    const { apply } = await import('../src/plugin/index.ts')
     const api = apply(fake.ctx)
     await api.ready
     const memory = api.modules.use('memory')

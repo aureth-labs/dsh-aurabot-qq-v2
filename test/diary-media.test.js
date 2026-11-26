@@ -13,7 +13,7 @@ const { createQzone } = await import('../src/features/qzone/index.ts')
 const { collectSources, localPictures, clip } = await import('../src/modules/diary/sources.ts')
 const { createDiaryAssets, downloadImage } = await import('../src/modules/diary/assets.ts')
 const { createDiaryMedia, parseDraft, reselectPictures, withCredits } = await import('../src/modules/diary/media.ts')
-const { readJson, writeJson, dataDir } = await import('../src/core/config/store.ts')
+const { readJson, writeJson, dataDir } = await import('../src/core/store/index.ts')
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=', 'base64')
 const log = { info() {}, warn() {} }
 

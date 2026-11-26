@@ -24,7 +24,7 @@ test('模块声明 panel 路由复用完整管理闸，普通客户端路由保�
     for (const [key, value] of [['AURABOT_DATA_DIR', old.data], ['AURABOT_WORKSPACE', old.workspace]]) { if (value === undefined) delete process.env[key]; else process.env[key] = value }
     rmSync(dir, { recursive: true, force: true })
   })
-  const app = (await import('../src/host.ts')).apply(fake.ctx); await app.ready
+  const app = (await import('../src/plugin/index.ts')).apply(fake.ctx); await app.ready
   const path = '/ext/route-probe/manage'
   assert.equal((await fake.call(path)).status, 200)
   assert.equal((await fake.call(path, undefined, {}, '127.0.0.1')).json().managed, true)

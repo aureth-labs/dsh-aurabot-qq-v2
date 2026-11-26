@@ -6,7 +6,7 @@
 // 好友申请 / 加群申请 / 白名单工具共用「处理好友申请」这一档权限（面板「权限」页）：off 关 / owner 仅主人私聊（默认）/ all 所有人。
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
-import { defineTool, str, bool, int } from '../../tools/tools.ts'
+import { defineTool, str, bool, int } from '../../tools/index.ts'
 import { profileToolVisible, profilePermits } from '../../chat/policy/access.ts'
 import { groupSettingsTool } from './group-settings.ts'
 

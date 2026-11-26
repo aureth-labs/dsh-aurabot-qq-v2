@@ -1,7 +1,7 @@
 // 陪伴类小功能：心情、主动搭话。
 
 import { randomUUID } from 'node:crypto'
-import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { askModel } from '../../core/llm/index.ts'
 import { cleanText, clipText } from '../../core/support/text.ts'
 import { shouldDeferBackground } from '../../core/llm/offpeak.ts'

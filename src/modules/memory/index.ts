@@ -9,9 +9,9 @@ export { looksLikeRuleMemory } from '../../features/memory/index.ts'
 import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../features/memory/graph.ts'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 import { personaScope, personaNow, personaDataDir, personaDataRoots, readPersona, safeId } from '../../persona/personas.ts'
-import { defineTool, str } from '../../tools/tools.ts'
+import { defineTool, str } from '../../tools/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type SetupOptions = Partial<Record<'fetchImpl' | 'registerNativePreview', any>>

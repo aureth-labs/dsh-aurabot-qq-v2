@@ -13,8 +13,8 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-song-'))
-  studio = await import('../src/song/studio.ts')
-  netease = await import('../src/song/netease.ts')
+  studio = await import('../src/song/studio/index.ts')
+  netease = await import('../src/song/source/netease.ts')
   commands = await import('../src/chat/commands/index.ts')
   ;({ normalize } = await import('../src/core/config/index.ts'))
 })
@@ -127,7 +127,7 @@ test('cutFirst：注入假 readPcm，成功用副歌入口、失败回退 30%', 
 })
 
 test('readPcm 会消费 stderr（改动后的源码契约）', () => {
-  const src = readFileSync(new URL('../src/song/studio.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/song/studio/index.ts', import.meta.url), 'utf8')
   const start = src.indexOf('async function readPcm')
   const end = src.indexOf('async function meanVolume', start)
   assert.ok(start >= 0 && end > start)

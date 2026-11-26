@@ -3,14 +3,14 @@
 import { readFileSync } from 'node:fs'
 import { createBili } from '../../bili/live/duty.ts'
 import { createGroupShare } from '../../bili/live/group-share.ts'
-import { defineTool, str } from '../../tools/tools.ts'
+import { defineTool, str } from '../../tools/index.ts'
 import { permOf, profileToolVisible, profilePermits } from '../../chat/policy/access.ts'
 import { avatarSource } from '../profile/index.ts'
 import { resolvePainting } from '../../features/media/paintings.ts'
 import { segmentBytes } from '../../core/net/index.ts'
 import { createDanmaku, danmakuPanelRequest } from './danmaku.ts'
 import { createQrLogin } from '../../bili/login/qr-login.ts'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 
 export default {
   id: 'bili',
@@ -18,7 +18,7 @@ export default {
   version: '1.1.0',
   description: '看别人发的 B 站视频；定时自己刷、评论、回评论；可选发弹幕；抽帧看画面、发截图；按权限改自己的头像 / 签名（bili_watch / bili_comment / bili_danmaku / qq_send_shot / bili_set_avatar / bili_set_sign）',
   tab: 'bili',
-  files: ['bili/live/duty.js', 'bili/live/group-share.js', 'bili/api/index.js', 'bili/media/vision.js', 'bili/media/shots.js', 'bili/live/danmaku.js', 'bili/login/login-pause.js', 'bili/login/qr-login.js'],
+  files: ['bili/live/duty.js', 'bili/live/group-share.js', 'bili/api.js', 'bili/media/vision.js', 'bili/media/shots.js', 'bili/live/danmaku.js', 'bili/login/login-pause.js', 'bili/login/qr-login.js'],
   setup(api) {
     const { hub } = api.core
     const lastImage = new Map() // chatId → 最近一张图的网址（给 bili_set_avatar 的 last 用）

@@ -25,7 +25,7 @@ before(async () => {
     snowluma: { autoStart: false, autoAttach: false, httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9', dir: join(dataDir, 'no-snowluma') },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   api = host.apply(fake.ctx)
 })
 

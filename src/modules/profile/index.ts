@@ -4,13 +4,13 @@
 
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { defineTool, str } from '../../tools/tools.ts'
+import { defineTool, str } from '../../tools/index.ts'
 import { isOwner, profileToolVisible, profilePermits } from '../../chat/policy/access.ts'
 import { createQqProfile } from '../../features/qq/profile.ts'
 import { resolvePainting } from '../../features/media/paintings.ts'
 import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../core/message/img.ts'
 import { segmentBytes } from '../../core/net/index.ts'
-import { dataDir } from '../../core/config/store.ts'
+import { dataDir } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type SetupOptions = Partial<Record<'fetchAvatar' | 'ask', any>>

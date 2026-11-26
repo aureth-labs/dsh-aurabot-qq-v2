@@ -14,7 +14,7 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { askModel, lastEmptyInfo } from '../../core/llm/index.ts'
 import { clipText } from '../../core/support/text.ts'
 import { createVectorIndexByMode } from './vector/index.ts'

@@ -8,8 +8,8 @@
 // 能发给谁：白名单里的人和群（或者只能发给主人，看设置）。总开关、试运行照常管着。
 
 import { randomBytes, timingSafeEqual } from 'node:crypto'
-import { defineTool } from '../../tools/tools.ts'
-import type { JsonSchemaProp } from '../../tools/tools.ts'
+import { defineTool } from '../../tools/index.ts'
+import type { JsonSchemaProp } from '../../tools/index.ts'
 import { selfName } from '../../persona/personas.ts'
 import type { AurabotConfig } from '../config/index.ts'
 import type { AreaLogger } from '../support/logger.ts'

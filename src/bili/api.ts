@@ -3,8 +3,8 @@
 // 登录凭证由配置提供，接口不刷新或保存账号。
 
 import { createHash } from 'node:crypto'
-import { cleanOutboundText } from '../../chat/reply/index.ts'
-import { bangumiEpisode, videoPart, danmakuParams, danmakuResponse } from '../live/danmaku.ts'
+import { cleanOutboundText } from '../chat/reply/index.ts'
+import { bangumiEpisode, videoPart, danmakuParams, danmakuResponse } from './live/danmaku.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ReqOptions = Partial<Record<'method' | 'form' | 'multipart' | 'timeoutMs' | 'signal' | 'envelope', any>>

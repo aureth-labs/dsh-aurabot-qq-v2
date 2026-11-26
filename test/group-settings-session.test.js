@@ -19,7 +19,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
     assert.equal(result.ok, !text.includes('不是主人'), result.message)
     return '' // 不发送 QQ 回复；这里只验证 Agent 工具链。
   } })
-  const app = (await import('../src/host.ts')).apply(fake.ctx)
+  const app = (await import('../src/plugin/index.ts')).apply(fake.ctx)
   t.after(async () => { fake.dispose(); await app.dispose?.(); rmSync(root, { recursive: true, force: true }) })
   await app.ready
   const old = (await fake.call('/state')).json().config

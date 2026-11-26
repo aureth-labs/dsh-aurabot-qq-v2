@@ -56,7 +56,7 @@ test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和�
   writeFileSync(join(dir, 'modules', 'probe', 'index.mjs'), `export default { id: 'probe', api: 1, setup(api) { api.command({ name: 'hello', delegatable: true, run: () => { globalThis.__delegatedProbe = (globalThis.__delegatedProbe || 0) + 1; return 'ok' } }) } }`)
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify({ chats: { [`private:${guest}`]: { sessionId: 'old-session' } } }))
   const fake = createFakeDsh({ brain: async () => '' })
-  const { apply } = await import('../src/host.ts')
+  const { apply } = await import('../src/plugin/index.ts')
   const api = apply(fake.ctx)
   await api.ready
   t.after(() => { delete globalThis.__delegatedProbe; fake.dispose(); rmSync(dir, { recursive: true, force: true }) })

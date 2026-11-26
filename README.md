@@ -183,8 +183,8 @@ npm test        # 单元测试 + 假 DSH 宿主/模拟 OneBot 的端到端测试
 
 ```text
 index.mjs              插件入口：只 re-export lib/src/host.js（DSH 只认根目录这一份）
-dev.mjs                开发入口：re-export src/host.ts，Node 直接剥类型跑 TS
-src/host.ts            插件入口（宿主半边）：核心 + 面板接口 /aurabot/api/*
+dev.mjs                开发入口：re-export src/plugin/index.ts，Node 直接剥类型跑 TS
+src/plugin/index.ts            插件入口（宿主半边）：核心 + 面板接口 /aurabot/api/*
 src/core/              内核：模块加载、ctx / session / bot、元素模型、管线、适配器契约
 src/adapters/          平台适配器：现在有 qq/onebot-v11（QQ 官方机器人、QQ 频道留了位，未实现）
 src/modules/           内置模块 + 扩展接口 API.md + 类型 + 新模块模板

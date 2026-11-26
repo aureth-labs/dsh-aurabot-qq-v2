@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createBiliApi } from '../src/bili/api/index.ts'
+import { createBiliApi } from '../src/bili/api.ts'
 import { videoPart, danmakuResponse } from '../src/bili/live/danmaku.ts'
 
 const video = 'BV1xx411c7mD'

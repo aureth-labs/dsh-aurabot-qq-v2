@@ -1,4 +1,4 @@
-import { rateMeta } from '../support/key-pool.ts'
+import { rateMeta } from './key-pool.ts'
 // Only send speech to the free endpoint selected here. Never redirect credentials.
 export async function fishSpeech(text, key, request = fetch, referenceId = '', signal = AbortSignal.timeout(90000)) {
   if (!key?.trim()) throw new Error('请在「语音 → 扩展服务 → Fish Audio」填写 API Key')

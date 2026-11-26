@@ -5,7 +5,7 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { dataDir } from '../core/config/store.ts'
+import { dataDir } from '../core/store/index.ts'
 import { deleteLook } from './persona-look.ts'
 import { ROOT } from '../core/support/root.ts'
 

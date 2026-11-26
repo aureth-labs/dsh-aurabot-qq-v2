@@ -6,4 +6,4 @@
 // 这里必须是**静态** re-export：dsh-hmr 沿 Node 的 ESM 模块图找文件，
 // 静态 import 的每一步都留在图里，改任何一个 .ts 都会热重载。
 // 动态 import 不进模块图，那条路是没有热重载的。
-export * from './src/host.ts'
+export * from './src/plugin/index.ts'

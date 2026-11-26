@@ -81,7 +81,7 @@ const { createFakeDsh } = await import(`file:///${REPO}/test/helpers/fake-dsh.js
 const fake = createFakeDsh({ brain: async () => '我看见啦' })
 // 让宿主能回答「这个模型支不支持图片」
 fake.ctx.llm.resolveModelInfo = async (p, m) => ({ inputModalities: m === 'see' ? ['text', 'image'] : ['text'] })
-const host = await import(`file:///${REPO}/src/host.ts`)
+const host = await import(`file:///${REPO}/src/plugin/index.ts`)
 const api = host.apply(fake.ctx)
 await api.ready
 await new Promise((r) => setTimeout(r, 400))

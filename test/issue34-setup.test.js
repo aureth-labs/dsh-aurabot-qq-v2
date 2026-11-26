@@ -21,7 +21,7 @@ test('未核对不能跳过；已有连接核对机器人号后可以完成并�
     enabled: true, setupDone: false, botQQ: BOT, ownerQQ: OWNER,
     snowluma: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
   }))
-  const { apply } = await import('../src/host.ts')
+  const { apply } = await import('../src/plugin/index.ts')
   const api = apply(fake.ctx)
   await api.ready
   let result = (await fake.call('/setup/done', { existingConnection: true })).json()

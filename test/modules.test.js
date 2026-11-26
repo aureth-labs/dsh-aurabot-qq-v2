@@ -111,7 +111,7 @@ export function apply(_ctx, config) {
     return { nextTime: () => 0, history: () => [], writeDiary: async () => { globalThis.__wrote = (globalThis.__wrote || 0) + 1; return { ok: true } } }
   } }`)
   fake = createFakeDsh({ brain })
-  const host = await import('../src/host.ts')
+  const host = await import('../src/plugin/index.ts')
   api = host.apply(fake.ctx)
   await api.ready
   await fake.call('/onebot/reconnect')
@@ -234,7 +234,7 @@ test('复制内置模块来改：复制出来的能直接跑（连翻唱这种�
     assert.equal((await mod(id)).running, 'user', (await mod(id)).error)
   }
   assert.ok(existsSync(join(modDir('song'), 'studio.js')))
-  assert.match(readFileSync(join(modDir('song'), 'studio.js'), 'utf8'), /new URL\('song\/fetch_file\.py', globalThis\.aurabot\.src\)/)
+  assert.match(readFileSync(join(modDir('song'), 'studio.js'), 'utf8'), /new URL\('song\/studio\/fetch_file\.py', globalThis\.aurabot\.src\)/)
   assert.equal((await fake.call('/song/status')).json().ok, true)
   // 说明文档放进了 modules/
   assert.match(readFileSync(join(dataDir, 'modules', 'API.md'), 'utf8'), /api\.on\('message'/)

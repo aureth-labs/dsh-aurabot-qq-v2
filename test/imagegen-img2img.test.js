@@ -7,7 +7,7 @@ import { basename, join } from 'node:path'
 import { createImageGen, customRequest, resolveDrawImage } from '../src/features/media/imagegen.ts'
 import { createHub } from '../src/chat/hub/index.ts'
 import { normalize } from '../src/core/config/index.ts'
-import { createLocal } from '../src/local/local.ts'
+import { createLocal } from '../src/local/index.ts'
 import { savePainting } from '../src/features/media/paintings.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 

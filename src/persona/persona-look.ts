@@ -1,7 +1,7 @@
 // 人格外貌：独立保存多张人设图与文字，图片仅供视觉解析和生图参考。
 import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
-import { dataDir, readJson, writeJson, ensureDir } from '../core/config/store.ts'
+import { dataDir, readJson, writeJson, ensureDir } from '../core/store/index.ts'
 import { askModel, canSeeImages } from '../core/llm/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

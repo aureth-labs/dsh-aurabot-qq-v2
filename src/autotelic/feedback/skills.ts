@@ -28,7 +28,7 @@
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, copyFileSync, unlinkSync } from 'node:fs'
 import { join, dirname, basename } from 'node:path'
-import { readJson, writeJson } from '../../core/config/store.ts'
+import { readJson, writeJson } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateSkillStoreOptions = Partial<Record<'now' | 'distill' | 'personaFile' | 'log', any>>

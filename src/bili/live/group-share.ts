@@ -7,7 +7,7 @@
 //   understand —— 主人回「那就发吧，多发几个群也行」这种自然话，交给模型听懂
 // 规则快判（发 1 / 不发）仍然保留：秒回，也让模型挂掉时还有路可走。
 
-import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { reallySent } from '../../chat/hub/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
