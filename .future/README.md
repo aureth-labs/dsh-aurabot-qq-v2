@@ -1,11 +1,11 @@
 # .future — 待办与审查意见索引
 
-每条建议一份文件，写清现状 / 目标 / 验收。完成一项就把「状态」改成 done，并在 commit 里带上编号。
+每条建议一份文件，写清现状 / 目标 / 验收。完成一项就把「状态」改成 done，并在 commit 里带上编号。 4 / 58 done.
 
 | 编号 | 事项 | 优先级 | 状态 |
 | --- | --- | --- | --- |
-| 01 | [删除 packages/_template/index.mjs](./01-delete-template-mjs.md) | P0 | todo |
-| 02 | [packages/adapters/qq/common 并入 qq-official](./02-merge-qq-common.md) | P0 | todo |
+| 01 | [删除 packages/_template/index.mjs](./01-delete-template-mjs.md) | P0 | done |
+| 02 | [packages/adapters/qq/common 并入 qq-official](./02-merge-qq-common.md) | P0 | done |
 | 03 | [内置插件全部改成 v2 写法](./03-builtin-plugins-v2.md) | P0 | todo |
 | 04 | [qq-api / qq-tools 改用 Bot 实例 API](./04-bot-api-session.md) | P0 | todo |
 | 05 | [sandbox 改 v2 + 页面不用字符串拼 HTML](./05-sandbox-v2-page.md) | P0 | todo |
@@ -53,8 +53,8 @@
 | 47 | [QQ 空间与 B 站拆成两个插件](./47-qzone-bili-plugins.md) | P2 | todo |
 | 48 | [memory/mood 暂留并确认默认值](./48-memory-mood-default.md) | P3 | todo |
 | 49 | [「用户发完消息」判定参考 AstrBot](./49-notices-astrbot.md) | P3 | todo |
-| 50 | [src/features/platform/qq/profile.ts 抽成插件](./50-qq-profile-plugin.md) | P1 | todo |
-| 51 | [src/features/qzone/social.ts 抽成插件](./51-qzone-social-plugin.md) | P1 | todo |
+| 50 | [src/features/platform/qq/profile.ts 抽成插件](./50-qq-profile-plugin.md) | P1 | done |
+| 51 | [src/features/qzone/social.ts 抽成插件](./51-qzone-social-plugin.md) | P1 | done |
 | 52 | [本地接口文档口径：TS 插件 + ESM 小脚本](./52-readme-module-js.md) | P2 | todo |
 | 53 | [删掉设置向导，直接进 UI](./53-no-setup-wizard.md) | P0 | todo |
 | 54 | [删试运行，日志四级别 + 日志页](./54-no-dryrun-logger.md) | P1 | todo |
