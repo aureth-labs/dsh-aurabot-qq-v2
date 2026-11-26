@@ -234,7 +234,7 @@ test('复制内置模块来改：复制出来的能直接跑（连翻唱这种�
     assert.equal((await mod(id)).running, 'user', (await mod(id)).error)
   }
   assert.ok(existsSync(join(modDir('song'), 'studio.js')))
-  assert.match(readFileSync(join(modDir('song'), 'install.js'), 'utf8'), /new URL\('song\/studio\/fetch_file\.py', globalThis\.aurabot\.src\)/)
+  assert.match(readFileSync(join(modDir('song'), 'install.js'), 'utf8'), /new URL\('song\/studio\/env\/fetch_file\.py', globalThis\.aurabot\.src\)/)
   assert.equal((await fake.call('/song/status')).json().ok, true)
   // 说明文档放进了 modules/
   assert.match(readFileSync(join(dataDir, 'modules', 'API.md'), 'utf8'), /api\.on\('message'/)
