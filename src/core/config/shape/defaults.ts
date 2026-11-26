@@ -1,12 +1,13 @@
 // 配置的唯一形状来源：默认值 + 由它派生的类型。
 // 这里只放数据与类型，不放读写与归一化（那些在 ./index.ts）。
 
-import type { KeyPools } from '../../../voice/tts/key-pool.ts'
+import type { KeyPools } from '../state/key-pool.ts'
 import { DEFAULT_GROUP_POLICY } from '../../../chat/policy/rules/group.ts'
 import { DEFAULT_TIER_DAYS } from '../../../features/memory/query/rules.ts'
 import { defaultEmotions } from '../../../features/mood/emotions.ts'
 import { DELEGATED_COMMANDS } from '../../../chat/commands/delegated-commands.ts'
 import type { MemberFilterRule } from '../../../chat/inbound/filter/member-filter.ts'
+import { GLOBAL_CONFIG_DEFAULTS } from '../global.ts'
 
 /** 面板「服务地址」下拉里用户自添的一项。 */
 export interface BaseUrlOption { name: string; url: string }
@@ -35,16 +36,11 @@ export type UsagePricing = Record<string, Record<string, number>>
 export interface NoticeWorkspace { approval?: boolean; question?: boolean }
 
 export const DEFAULTS = {
+  ...GLOBAL_CONFIG_DEFAULTS,
   enabled: false, // 总开关：关着一句都不发
   debug: false, // 调试：不写记忆/流水，只在日志里看；debug 日志只写进日志
-  // 入站管线（开发中配置项）：指令前缀 null = 无前缀；中间件默认排在指令之后、模型之前
-  commandPrefixes: [null, '/'],
-  middlewareAfterCommand: false, // 指令消费后要不要继续走中间件（默认 false，和 Koishi 一致）
   communityMigrated: {} as Record<string, string>, // 搬到社区库的模块处理过没有（id → installed / skipped / kept），只处理一次
-  botQQ: '', // 机器人 QQ 号（向导里填）
-  ownerQQ: '', // 主人 QQ 号（向导里填）
-  ownerName: '主人',
-  ownerLevel: 'full', // full | social | chat
+  botQQ: '', // 机器人 QQ 号（OneBot 配置里也会覆盖）
   approvalNotify: true, // DSH 要授权时把请求发到主人私聊
   // 什么情况往主人 QQ 上报：enabled 是总开关，approval = 工具要授权，question = 她要向人提问选选项。
   // workspaces 按工作区单独覆盖：{ "<工作区路径>": { approval?: bool, question?: bool } }，没写的项跟随总开关。
@@ -59,7 +55,6 @@ export const DEFAULTS = {
   // 后台子智能体委派（默认关）：模块用 hub.runSubagentTurn 派子智能体时，正常要求「主人开口」的来源；
   // 定时任务这类没人应答的场合，只有打开这个开关才允许派活。关着 = 一律拒绝（一审 #177 的审批策略）。
   subagentBackground: false,
-  allow: { private: [] as string[], groups: [] as string[] }, // 主人永远能私聊，不用写进白名单
   // OneBot v11 连接：NapCat、LLOneBot、Lagrange、Docker 里的协议端都行，插件只连接。
   onebot: { httpUrl: '', wsUrl: '', httpToken: '', wsToken: '' },
   workspaceDir: '', // QQ 会话放在哪个文件夹（DSH 里的「Aurabot · QQ」工作区）；留空 = 默认（用户目录下 Aurabot\\qq-chats）

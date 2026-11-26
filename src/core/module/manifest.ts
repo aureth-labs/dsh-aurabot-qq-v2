@@ -1,4 +1,4 @@
-// 模块清单：v2 读 package.json 的 `aurabot` 段，v1 回退 module.json。
+// 模块清单：只读 package.json 的 `aurabot` 段。
 // 面板、市场、加载器都走这一个函数，避免三处各读各的。
 
 import { existsSync, readFileSync, statSync } from 'node:fs'
@@ -7,7 +7,7 @@ import { join } from 'node:path'
 export interface ModuleManifest {
   /** 对外 ID：平铺模块就是包名，装了 scope 的是 `owner/name` */
   id: string
-  /** 收录地址里的作者，v1 模块没有 */
+  /** 收录地址里的作者 */
   owner: string
   /** 展示名 */
   name: string
@@ -29,8 +29,6 @@ export interface ModuleManifest {
   /** 入口绝对路径；找不到就是 '' */
   entry: string
   dir: string
-  /** 清单来自哪儿 */
-  source: 'package' | 'module.json'
 }
 
 export interface ManifestResult {
@@ -40,9 +38,9 @@ export interface ManifestResult {
 
 // 顺序即优先级：发行为主的 mjs / js 在前，TS 放最后 ——
 // 只有「本地在写源码、还没构建」时才会落到 index.ts（加载时转成 JS 再跑）。
-const LEGACY_ENTRY = ['index.mjs', 'index.js', 'index.ts']
+const FALLBACK_ENTRY = ['index.mjs', 'index.js', 'index.ts']
 const DEFAULT_PANEL = './dist/panel.js'
-/** v2 的默认入口（和文档一致）；产物不存在时再回退旧入口，方便本地还没构建的情况。 */
+/** 默认入口；产物不存在时再回退到源码入口，方便本地还没构建的情况。 */
 const DEFAULT_ENTRY = 'lib/index.js'
 
 function readJson(file: string): any {
@@ -71,7 +69,7 @@ export function entryOf(dir: string): string {
     const file = join(dir, main)
     if (existsSync(file)) return file
   }
-  for (const name of LEGACY_ENTRY) {
+  for (const name of FALLBACK_ENTRY) {
     const file = join(dir, name)
     if (existsSync(file)) return file
   }
@@ -91,8 +89,8 @@ export function assertEsm(dir: string, entry: string): string {
 }
 
 /**
- * 读一个模块目录的清单。v2（package.json.aurabot）优先，没有就回退 v1 的 module.json。
- * 两个都没有时返回 error，让调用方决定是跳过还是报错。
+ * 读一个模块目录的清单。只认 package.json.aurabot。
+ * 没有时返回 error，让调用方决定是跳过还是报错。
  */
 export function readManifest(dir: string, options: { id?: string } = {}): ManifestResult {
   const pkg = readJson(join(dir, 'package.json'))
@@ -123,37 +121,11 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
       reloadOnConfig: aurabot.reloadOnConfig === true,
       entry,
       dir,
-      source: 'package',
     }
     // 常见情况：main 指向 lib/index.js，但本地还没构建。给出的是「入口问题」不是「清单问题」。
     const error = entry ? assertEsm(dir, entry) : `找不到入口文件（${DEFAULT_ENTRY} 还没构建？跑一次 npm run build）`
     return { manifest, error }
   }
 
-  const legacy = readJson(join(dir, 'module.json'))
-  if (!legacy) {
-    return { manifest: null, error: '没有 package.json.aurabot，也没有 module.json' }
-  }
-  const id = options.id || str(legacy.id, '')
-  const manifest: ModuleManifest = {
-    id,
-    owner: '',
-    name: str(legacy.name, id),
-    version: str(legacy.version, '0.0.0'),
-    description: str(legacy.description),
-    category: str(legacy.category, 'other'),
-    kind: 'plugin',
-    reusable: legacy.reusable === true,
-    platforms: strings(legacy.platforms, ['qq']),
-    capabilities: strings(legacy.capabilities),
-    minPluginVersion: str(legacy.minPluginVersion),
-    api: Number(legacy.api ?? 1) || 1,
-    requires: strings(legacy.requires),
-    panel: str(legacy.panel, 'panel.js'),
-    reloadOnConfig: legacy.reloadOnConfig === true,
-    entry,
-    dir,
-    source: 'module.json',
-  }
-  return { manifest, error: entry ? '' : '找不到入口文件（index.mjs / index.js）' }
+  return { manifest: null, error: '没有 package.json.aurabot' }
 }

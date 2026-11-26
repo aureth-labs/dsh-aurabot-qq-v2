@@ -51,7 +51,6 @@ export type {
   TelegramSendMessageParams,
 } from './adapter/adapter.ts'
 export type {
-  ApiLike,
   BotAccessor,
   BroadcastResult,
   CommandActionContext,

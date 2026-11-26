@@ -9,7 +9,7 @@ import { registerOutboundPanelRoutes } from './outbound-panel.ts'
 // 这个文件只管「核心」：配置、QQ 网关、聊天中枢、人格、面板接口、模块内核和联动。
 // 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（packages/），能单独关掉，也能用自己写的替换。
 //
-// ⚠ 安全默认：总开关关、试运行开。不手动打开，一句都不会真的发到 QQ。
+// ⚠ 安全默认：总开关关、调试模式开。不手动打开，一句都不会真的发到 QQ。
 
 import { readFileSync, existsSync, writeFileSync, unlinkSync, statSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -350,7 +350,7 @@ export function apply(ctx) {
   // 给 v2 插件用 session.bot / ctx.bots 发消息，行为与旧链路一致。
   const botRegistry = new BotRegistry()
   const onebotBot = new OneBotBot({
-    // 试运行 / 总开关关着时，v2 的 send 也不许真发出去——和旧链路一个口径。
+    // 调试模式 / 总开关关着时，v2 的 send 也不许真发出去——和旧链路一个口径。
     call: (action, params, options) => {
       const live = getConfig()
       if (!live.enabled) {
@@ -383,7 +383,7 @@ export function apply(ctx) {
         logger.child('adapter').warn(`适配器事件「${event}」处理出错：`, String((error as Error)?.message ?? error))
       }
     },
-    // 所有平台的发送都过同一道闸：试运行不真发、<voice> 先合成、发不了的元素降级
+    // 所有平台的发送都过同一道闸：调试模式不真发、<voice> 先合成、发不了的元素降级
     wrapBot: (bot) => wrapAdapterBot(bot, {
       allowed: () => {
         const live = getConfig()
@@ -596,11 +596,13 @@ export function apply(ctx) {
     outbox,
     stickers,
     tts,
+    // 语音识别同样按服务取：语音插件关掉就退回 QQ / DSH 识别。
+    asr: () => mods?.services?.get?.('asr') ?? null,
     // ACP 标记的模型兜底（chat.acpSanitize.modelFallback，默认关）要用它问一次宿主模型。
     // 走的是「不进会话」的既有封装 askModel，不占聊天会话、不计入她的上下文。
     askModel: (opts) => askModel(ctx, { cfg: getConfig(), ...opts }),
     buildTools: (where) => mods.buildTools(where),
-    // 模块声明的能力（module.json capabilities）：子智能体委派这类要本机权限的能力靠它把关（一审 #177）
+    // 模块声明的能力（package.json.aurabot.capabilities）：子智能体委派这类要本机权限的能力靠它把关（一审 #177）
     capabilitiesOf: (id) => (typeof mods.capabilitiesOf === 'function' ? mods.capabilitiesOf(id) : []),
     contextProviders: [(args) => mods.contextFor(args)],
     onActivity: (a) => mods.emit('activity', a),
@@ -759,7 +761,7 @@ export function apply(ctx) {
   // ---------- 面板首屏：三条轻量只读接口（GET /panel/bootstrap|pulse|config，方案 §二/§2.1） ----------
   // 铁规矩：只读宿主内存——绝不触发 OneBot 网络探测、不启动网关、不重扫模块目录。
   // 鉴权/Host/CSRF 与其它管理面一致（route() 内统一过闸）；no-store 由 send() 统一带上。
-  // 常用开关的界面显示值（试运行口径与 publicConfig 相同：调试开着时试运行显示为关）。
+  // 常用开关的界面显示值（调试模式口径与 publicConfig 相同：调试开着时调试模式显示为关）。
   const controlsView = () => ({
     enabled: Boolean(cfg.enabled),
     debug: Boolean(cfg.debug),

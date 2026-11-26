@@ -5,7 +5,7 @@
 //    那边的 AI 能让她发 QQ、查她的记忆、调用模块。她自己的 QQ 会话里会屏蔽这些工具。
 // 3. 别的程序：开放 HTTP 接口 /aurabot/api/open/*，要带密钥（请求头 Authorization: Bearer 密钥）
 //
-// 能发给谁：白名单里的人和群（或者只能发给主人，看设置）。总开关、试运行照常管着。
+// 能发给谁：白名单里的人和群（或者只能发给主人，看设置）。总开关、调试模式照常管着。
 
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { defineTool } from '../../tools/index.ts'

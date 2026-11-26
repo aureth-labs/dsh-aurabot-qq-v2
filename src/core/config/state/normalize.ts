@@ -1,5 +1,5 @@
-import { normalizePools } from '../../../voice/tts/key-pool.ts'
-import type { RawPools } from '../../../voice/tts/key-pool.ts'
+import { normalizePools } from './key-pool.ts'
+import type { RawPools } from './key-pool.ts'
 import { normalizeMemberFilter } from '../../../chat/inbound/filter/member-filter.ts'
 import { normalizeChatEfforts } from '../../../chat/commands/effort-command.ts'
 import { normalizeChatModels } from '../../../chat/hub/store/chat-model.ts'
@@ -100,6 +100,8 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.conversationContext = { enabled: bool(c.conversationContext?.enabled, false) }
   c.botQQ = qq(c.botQQ)
   c.ownerQQ = qq(c.ownerQQ)
+  c.ownerIds = [...new Set((Array.isArray(c.ownerIds) ? c.ownerIds : String(c.ownerIds || '').split(/[\s,，;；]+/)).map(qq).filter(Boolean))]
+    .filter((id) => id !== c.ownerQQ)
   c.approvalNotify = bool(c.approvalNotify, true)
   // 老配置只有 approvalNotify：没写过 notice 时用它当审批上报的默认值，免得更一次版本被重新打开
   c.notice = normalizeNotice(isObj(raw?.notice) ? raw.notice : null, raw?.approvalNotify)

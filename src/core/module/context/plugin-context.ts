@@ -42,6 +42,7 @@ interface KernelApi {
   use: (id: string) => Record<string, any> | null
   lazy: (id: string) => Record<string, any>
   has: (id: string) => boolean
+  isOwner: (userId: string | number) => boolean
   defineTool: (spec: any) => any
   tool: (builder: any) => () => void
   on: (event: string, fn: (...args: any[]) => unknown) => () => void
@@ -116,6 +117,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
     names: () => services?.names() ?? [],
   })
   value('has', (id: string) => api.has(id))
+  value('isOwner', (userId: any) => api.isOwner(userId))
   value('lazy', (id: string) => lazyService(id))
   getter('voice', () => services?.get('voice') ?? null)
   getter('sing', () => services?.get('sing') ?? null)

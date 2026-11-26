@@ -1,4 +1,4 @@
-// 模块拿到的 api：v1 的字段原样保留，再挂上 v2 的捷径；归属、停止、权限都在这里收口。
+// 内核给插件包的内部句柄：归属、停止、权限都在这里收口；插件看到的是 v2 的 ctx 视图。
 
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -10,10 +10,11 @@ import { dataDir } from '../../store/index.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { personaScope, personaNow } from '../../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
+import { isOwnerOf } from '../../config/global.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
+/** 路由选项。 */
 export type RouteOptions = Partial<Record<'access', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
+/** 系统回合选项。 */
 export type ThinkOptions = Partial<Record<'title', any>>
 
 export interface ApiDeps {
@@ -209,7 +210,7 @@ export function createApi(deps: ApiDeps) {
       sendText: writable('sendText', (chatId, text, opts) => governedSend(core, id, { chatId: String(chatId), text: String(text ?? '') }, (extra) => core.hub.sendText(String(chatId), String(text ?? ''), undefined, undefined, undefined, logAsModuleSpeech(extra, opts, id)), obLog)),
       // 回某一条消息：群里以「引用回复」发出，私聊直接发
       reply: writable('reply', (msg, text) => core.hub.sendText(String(msg.chatId), String(text ?? ''), msg.kind === 'group' ? msg.messageId : undefined)),
-      isOwner: (userId) => String(userId) === String(getConfig().ownerQQ),
+      isOwner: (userId) => isOwnerOf(getConfig(), userId),
       sendImage: writable('sendImage', (chatId, src) => governedSend(core, id, { chatId: String(chatId) }, (extra) => core.hub.sendImage(String(chatId), src, undefined, undefined, extra), obLog)),
       // sendSegments(chatId, segs, note, opts)：opts 同上，供带 @ / 引用 / 图片段的发送声明留痕。
       sendSegments: writable('sendSegments', (chatId, segs, note, opts) => governedSend(core, id, { chatId: String(chatId) }, (extra) => core.hub.sendSegments(String(chatId), segs, note || `[${id}]`, logAsModuleSpeech(extra, opts, id)), obLog)),

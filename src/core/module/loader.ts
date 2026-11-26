@@ -8,11 +8,11 @@ import { dataDir } from '../store/index.ts'
 import { ROOT } from '../support/util/root.ts'
 import { createRequire } from 'node:module'
 
-/** 扩展接口版本：只加不改。哪天不得不改已有的东西才升到 2，并在更新说明里写清楚怎么迁移。 */
+/** 扩展接口版本。v2 起不再兼容 v1 的 api 对象。 */
 export const API_VERSION = 2
-export const MIN_API_VERSION = 1
+export const MIN_API_VERSION = 2
 
-/** 模块清单：内置模块的 def，或 v2 package.json.aurabot / v1 module.json 读出来的东西。 */
+/** 模块清单：内置模块的 def，或 package.json.aurabot 读出来的东西。 */
 export interface ModuleDef {
   id: string
   name?: string
@@ -27,10 +27,8 @@ export interface ModuleDef {
   capabilities?: string[]
   defaults?: Record<string, unknown>
   settings?: Array<{ key?: string; type?: string; label?: string; [key: string]: unknown }>
-  files?: string[]
   config?: unknown
   apply?: (...args: never[]) => unknown
-  setup?: (...args: never[]) => unknown
   [key: string]: unknown
 }
 
@@ -48,9 +46,9 @@ export interface ModuleRecord {
   exports: Record<string, any> | null
   offs: Array<() => void>
   tools: any[]
-  /** 每轮回复前由模块追加的上下文片段（v1 的 context 钩子）。 */
+  /** 每轮回复前由模块追加的上下文片段。 */
   contexts: any[]
-  /** 追加到系统提示的规则行（v1 的 rules 钩子）。 */
+  /** 追加到系统提示的规则行。 */
   rules: any[]
   commands: Array<{ name: string; [key: string]: unknown }>
   dshTools: any[]
@@ -86,7 +84,7 @@ export const builtinDir = () => BUILTIN_DIR
  * 插件源码的根目录解析。key 是仓库相对路径：
  * - `src/...`      → 内核源码（编译产物在 lib/src）
  * - `packages/...` → 包源码（编译产物在 lib/packages）
- * 老模块的 files 用裸键（如 `features/memory.js`），按内核 src 解析，保持兼容。
+ * 裸键（如 `features/memory.js`）按内核 src 解析。
  */
 export function sourceRootOf(key: string) {
   const k = String(key || '').replace(/^\.?\//, '')
@@ -94,7 +92,7 @@ export function sourceRootOf(key: string) {
   if (k.startsWith('src/')) return { root: SRC, rel: k.slice('src/'.length) }
   return { root: SRC, rel: k }
 }
-// 平铺 id（v1 老模块）或 owner/name（v2 带 scope 安装）
+// 平铺 id 或 owner/name（带 scope 安装）
 export const ID_RE = /^[a-z][a-z0-9-]{1,39}(\/[a-z][a-z0-9-]{1,39})?$/
 export const DOC = 'API.md'
 export const TYPES = 'aurabot.d.ts'
@@ -205,7 +203,7 @@ export function scanUser() {
     }
     const dir = join(root, e.name)
     // 自己有清单/入口 → 平铺模块；否则看它是不是 scope 目录（modules/<owner>/<name>）
-    const own = existsSync(join(dir, 'package.json')) || existsSync(join(dir, 'module.json')) || entryOf(dir)
+    const own = existsSync(join(dir, 'package.json')) || entryOf(dir)
     if (own) { push(dir, e.name); continue }
     let subs = []
     try { subs = readdirSync(dir, { withFileTypes: true }) } catch (error) { continue }
@@ -230,7 +228,7 @@ export function checkDef(def, id) {
   if (!ID_RE.test(String(def.id || id || ''))) return `模块 id「${def.id ?? id ?? ''}」不对：小写字母开头，只能有小写字母、数字和 -，2~40 个字`
   // 带 scope 的安装目录是 modules/<owner>/<name>，入口里写 <name> 就行
   if (id && def.id && def.id !== id && def.id !== String(id).split('/').pop()) return `模块 id「${def.id}」要和文件夹名「${id}」一样`
-  const want = Number(def.api ?? 1)
+  const want = Number(def.api ?? API_VERSION)
   if (want > API_VERSION) return `这个模块要扩展接口 v${want}，现在的插件只有 v${API_VERSION}，先更新插件`
   if (want < MIN_API_VERSION) return `这个模块是按扩展接口 v${want} 写的，现在最低支持 v${MIN_API_VERSION}，按更新说明改一下`
   return ''

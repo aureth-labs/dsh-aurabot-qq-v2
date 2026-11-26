@@ -81,7 +81,7 @@ export interface CommandBuilder {
   dispose(): void
 }
 
-/** `ctx.server.get/post` 的处理函数，和 v1 的 api.route 同一套 req/res。 */
+/** `ctx.server.get/post` 的处理函数，参数就是 Node 的 req/res。 */
 export type RouteHandler = (req: any, res: any) => unknown
 
 /**
@@ -139,17 +139,6 @@ export interface ScopeFactory {
   private(): this
 }
 
-/** v1 的 api 对象：老插件靠它，这里只声明本框架用到的部分。 */
-export interface ApiLike {
-  every?: (ms: number, fn: () => unknown, label?: string) => () => void
-  later?: (ms: number, fn: () => unknown) => () => void
-  onDispose?: (fn: () => unknown) => () => void
-  /** 任意自定义事件名都收：插件之间可以自己约定事件。 */
-  on?: (event: string, fn: (...args: any[]) => unknown) => () => void
-  settings?: () => Record<string, any>
-  [key: string]: any
-}
-
 export interface PluginContextExtras {
   bots?: BotsAccessor
   bot?: BotLike
@@ -178,10 +167,12 @@ export interface PluginPage {
   icon?: string
   /** 排序权重，小的在前。 */
   order?: number
+  /** 页面地址。给绝对地址（http://…）时直接用它，否则按插件路由前缀拼。 */
+  url?: string
 }
 
 /**
- * 插件上下文：只暴露 v2 的能力，不再有 v1 的 `setup(api)` 字段。
+ * 插件上下文：只有 `apply(ctx, config)` 这一种写法。
  *
  * `ctx.config` 是本插件自己的配置（面板按 config.ts 的 Schema 渲染）；
  * `ctx.root.config` 是全局配置。两者都是活对象，改配置后读到的就是最新值。
@@ -235,6 +226,8 @@ export interface PluginContext extends ScopeFactory {
   lazy: <T = unknown>(id: string) => T
   /** 另一个模块是否在跑。 */
   has: (id: string) => boolean
+  /** 这个 ID 是不是主人（支持多个主人 ID）。 */
+  isOwner: (userId: string | number) => boolean
   /** 每轮回复前追加一段上下文。 */
   prompt: (fn: (args: any) => unknown) => () => void
   /** 追加到系统提示的规则行。 */

@@ -1,5 +1,5 @@
-import { maskPools, restorePoolKeys } from '../../voice/tts/key-pool.ts'
-import type { RawPools } from '../../voice/tts/key-pool.ts'
+import { maskPools, restorePoolKeys } from './state/key-pool.ts'
+import type { RawPools } from './state/key-pool.ts'
 import { normalize } from './state/normalize.ts'
 import { allSecrets, getAt, HINTED, parentOf } from './state/secrets.ts'
 import { deepMerge, isObj } from './state/shared.ts'

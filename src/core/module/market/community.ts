@@ -383,15 +383,14 @@ export function createCommunity ({ mods, getConfig, setConfig, log, version, ali
 
   /**
    * 解压到 .<id>.installing/，检查通过再换上去。
-   * 清单两种都认：v2 的 package.json.aurabot，v1 的 module.json。
+   * 清单只认 package.json.aurabot。
    */
   function place(e, files) {
     const pkg = JSON.parse(files.get('package.json')?.toString('utf8') || 'null')
-    const legacy = JSON.parse(files.get('module.json')?.toString('utf8') || 'null')
     const v2 = pkg && typeof pkg.aurabot === 'object' && pkg.aurabot ? pkg.aurabot : null
     const flatName = String(pkg?.name || '').split('/').pop()
-    const manifestId = v2 ? String(v2.id || flatName || '') : String(legacy?.id || '')
-    const manifestVersion = String((v2 ? pkg.version : legacy?.version) || '')
+    const manifestId = v2 ? String(v2.id || flatName || '') : ''
+    const manifestVersion = String(pkg?.version || '')
     const idOk = manifestId === e.id || manifestId === String(e.id).split('/').pop()
     if (!idOk || manifestVersion !== e.version) throw new Error('安装包内容和索引对不上')
     // id 里可能带 scope（owner/name），临时目录名要拍平，不然会往 modules/ 外面跳

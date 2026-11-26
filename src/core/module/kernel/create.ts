@@ -132,7 +132,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       name: String(page.name || path),
       icon: String(page.icon || ''),
       order: Number(page.order) || 0,
-      url: '/aurabot/api' + prefix + path,
+      url: /^https?:\/\//i.test(String(page.url || '')) ? String(page.url) : '/aurabot/api' + prefix + path,
     }
     pages.set(path, item)
     rec.offs.push(() => { if (pages.get(path) === item) pages.delete(path) })
@@ -767,7 +767,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   }
 
   /**
-   * 模块声明的能力（package.json.aurabot.capabilities，v1 回退 module.json）：
+   * 模块声明的能力（package.json.aurabot.capabilities）：
    * 内置模块没有清单就当未声明（[]）。子智能体委派这类「要本机权限」的能力靠它把关（一审 #177）。
    */
   function capabilitiesOf(id) {
