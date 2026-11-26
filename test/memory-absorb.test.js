@@ -10,6 +10,7 @@ import { createMemoryStore, buildIndex, search, memoryLine } from '../src/featur
 import { FACT_TIERS, tierDays, strongerTier, memoryPlatforms } from '../src/features/memory-rules.ts'
 import memoryModule from '../src/modules/memory/index.ts'
 import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 const OWNER = '10000001', A = '30000001', B = '30000002', C = '30000003'
 const DAY = 86400_000
@@ -368,7 +369,7 @@ test('三个管理只读路由复用 store，查看后不新增持久化文件',
 
 // 用实际面板函数验证交互和窄宽 SVG 的坐标边界，不依赖 DOM 或浏览器。
 function panelHarness(name, props, respond = async () => ({ ok: true })) {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const source = clientBundleText()
   let loader
   const requests = [], slots = [], pendingEffects = []
   let hook = 0
@@ -386,8 +387,7 @@ function panelHarness(name, props, respond = async () => ({ ok: true })) {
       }
     },
   }
-  const marker = '    exports.apply = apply'
-  new Script(source.replace(marker, '    exports.absorbTest = { PersonaGraph, PersonaDetail, RelatedMemories, PersonaFact, MemoryPlatforms, starPositions, Mood, MemoryPage }\n' + marker)).runInNewContext({
+  new Script(injectExports(source, '{ absorbTest: { PersonaGraph, PersonaDetail, RelatedMemories, PersonaFact, MemoryPlatforms, starPositions, Mood, MemoryPage } }')).runInNewContext({
     setTimeout, clearTimeout,
     window: { innerWidth: 360, __ModuleLoader__: { load: (value) => { loader = value } } },
     fetch: async (url, options) => { requests.push({ url, options }); return { json: async () => respond(url, options) } },

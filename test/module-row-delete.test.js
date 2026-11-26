@@ -2,12 +2,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readClientSource } from './helpers/client-source.js'
 
 const readRow = () => {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const source = readClientSource()
   const start = source.indexOf('function ModuleRow(')
   const end = source.indexOf('/** 模拟测试', start)
-  assert.ok(start > 0 && end > start, 'client/client.js 里找不到 ModuleRow')
+  assert.ok(start > 0 && end > start, 'client 源码里找不到 ModuleRow')
   return source.slice(start, end)
 }
 

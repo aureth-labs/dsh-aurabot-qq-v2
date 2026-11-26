@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { readClientSource } from './helpers/client-source.js'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-debug-'))
 
@@ -67,7 +68,7 @@ test('调试模式：不整理记忆（不然流水还是会被提炼进来）',
 })
 
 test('面板有调试开关 / 调试对话，不会在合并上游后丢失', () => {
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   assert.ok(src.includes("toggleRun('debug', v)"), '右上角缺调试开关')
   assert.ok(src.includes("post('/debug/session')"), '缺新建 / 打开调试会话')
   assert.ok(src.includes("post('/debug/say'"), '缺调试对话发送')

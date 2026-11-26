@@ -1,12 +1,13 @@
 // 面板「小黑盒」页的源码契约：排期可编辑 + 卡片说明与模块新行为一致。
-// 客户端是单文件 client/client.js，只能在源码上断言。
+// 客户端拆成 client/**/*.ts，契约只能在源码上断言。
 // 这些点在 2026-11-02 集中修过（排期从只读改可编辑、配图文案、刷新按钮的 ok 判断），
 // 回退会直接红。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readClientSource } from './helpers/client-source.js'
 
-const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const src = readClientSource()
 
 test('「今天发什么」的每一项都可改：风格/分区/字数/话题/额外要求', () => {
   // 排期从只读展示改成可编辑（对照模块 dailyPosts 的字段）

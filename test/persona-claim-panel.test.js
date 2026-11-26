@@ -1,14 +1,12 @@
 // 总览的认领横幅（#379）：老用户待认领时才出现，选人格、确认后发 /persona/data-owner，认领后消失。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 function loadPanel() {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker))
-  const script = new Script(source.replace(marker, '    exports.panelTest = { ClaimBanner }\n' + marker), { filename: 'client/client.js' })
+  const source = clientBundleText()
+  const script = new Script(injectExports(source, '{ panelTest: { ClaimBanner } }'), { filename: 'dist/client.js' })
   const calls = []
   const env = { answer: true, reply: { ok: true, message: '认领好了' } }
   let loader

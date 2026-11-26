@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs'
 import { groupOwnerTools, levelFor, presetFor } from '../src/chat/access.ts'
 import { normalize, DEFAULTS } from '../src/core/config.ts'
 import { rulesText } from '../src/persona/personas.ts'
+import { readClientSource } from './helpers/client-source.js'
 
 const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8')
 const GROUP = { kind: 'group', chatId: 'group:100200300', groupId: '100200300', userId: '100200300' }
@@ -101,7 +102,7 @@ test('接线契约：preset、人格变量、闸门、面板开关都在', () =>
   }
   assert.ok(hub.includes("level === 'group-full'"), 'mount 没给 group-full 登记闸门')
 
-  const client = read('client/client.js')
+  const client = readClientSource()
   assert.ok(client.includes("f.choices('group.ownerTools'"), '面板缺 group.ownerTools 选择')
   assert.ok(!/group\.ownerTools'[^)]*value: 'all'/.test(client), '面板不得再提供 all 档')
   assert.ok(client.includes("f.list('group.ownerToolsGroups'"), '面板缺 ownerToolsGroups 列表')

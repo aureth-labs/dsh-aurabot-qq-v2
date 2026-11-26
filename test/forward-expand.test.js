@@ -8,9 +8,10 @@ import { join } from 'node:path'
 
 import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../src/chat/forward.ts'
 import { normalize } from '../src/core/config.ts'
+import { readClientSource } from './helpers/client-source.js'
 
 const hubSrc = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
-const clientSrc = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const clientSrc = readClientSource()
 
 const node = (name, message) => ({ sender: { nickname: name, user_id: 2 }, message })
 const text = (t) => ({ type: 'text', data: { text: t } })

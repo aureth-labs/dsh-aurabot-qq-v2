@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { readClientSource } from './helpers/client-source.js'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -56,7 +57,7 @@ after(async () => {
 
 const extPet = () => JSON.parse(readFileSync(join(dataDir, 'config.json'), 'utf8')).ext?.pet || {}
 // 面板是单文件源码软链（数据目录没有构建产物），只能在源码上断言。
-const clientSrc = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const clientSrc = () => readClientSource()
 const hostSrc = () => readFileSync(new URL('../src/host.ts', import.meta.url), 'utf8')
 
 test('对讲引擎枚举 / RVC 开关：枚举限定 native|sovits|voice（talkMode 兼容 toggle|free|ptt），布尔透传，坏值不落盘', async () => {

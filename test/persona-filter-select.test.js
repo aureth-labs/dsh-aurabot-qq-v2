@@ -1,15 +1,13 @@
 // 人物墙的筛选控件：替换原生下拉后仍能筛选并支持键盘。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 function setupPanel() {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker))
+  const source = clientBundleText()
   let loader
-  new Script(source.replace(marker, '    exports.filterTest = { PersonaWall, Select }\n' + marker)).runInNewContext({
+  new Script(injectExports(source, '{ filterTest: { PersonaWall, Select } }')).runInNewContext({
     window: { innerWidth: 1200, __ModuleLoader__: { load: (value) => { loader = value } } },
   })
   let hook = 0

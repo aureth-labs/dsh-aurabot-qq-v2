@@ -2,8 +2,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readClientSource } from './helpers/client-source.js'
 
-const client = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const client = readClientSource()
 const mod = readFileSync(new URL('../src/modules/memory/index.ts', import.meta.url), 'utf8')
 
 test('人物关系卡片有「改」入口，保存走 /memory/relations/save', () => {

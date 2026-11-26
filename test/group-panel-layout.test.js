@@ -1,17 +1,20 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
+import { readClientSource } from './helpers/client-source.js'
 import { Script } from 'node:vm'
 import { normalize } from '../src/core/config.ts'
 
-const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const source = clientBundleText()
+// 文本契约看源码（打包会把单引号换成双引号、把注释去掉），行为跑产物
+const srcText = readClientSource()
 const G = '30000003', H = '40000004', P = '50000005'
 function panel() {
   let loader, cursor = 0, slots = [], draft = normalize({ allow: { groups: [G, H] }, group: { overrides: { [G]: { proactiveEnabled: false } } }, memory: { passiveGroups: [P] } })
   const React = { Component: class {}, createElement: (type, props, ...children) => ({ type, props: props || {}, children }),
     useState: init => { const i = cursor++; if (!(i in slots)) slots[i] = typeof init === 'function' ? init() : init; return [slots[i], v => { slots[i] = typeof v === 'function' ? v(slots[i]) : v }] },
     useRef: v => ({ current: v }), useEffect: () => {}, useMemo: fn => (typeof fn === 'function' ? fn() : fn), useCallback: fn => fn, Fragment: 'fragment' }
-  new Script(source.replace('exports.AurabotPage = AurabotPage', 'exports.GroupOverrides = GroupOverrides; exports.Group = Group; exports.AurabotPage = AurabotPage')).runInNewContext({ window: { __ModuleLoader__: { load: v => { loader = v } } } })
+  new Script(injectExports(source, '{ GroupOverrides, Group }')).runInNewContext({ window: { __ModuleLoader__: { load: v => { loader = v } } } })
   const { GroupOverrides, Group } = loader.factory(() => React)
   return { get draft() { return draft }, render(component = GroupOverrides) { cursor = 0; return component({ draft, setDraft: v => { draft = JSON.parse(JSON.stringify(v)) }, setSection() {}, st: { modules: [] }, go() {} }) }, Group }
 }
@@ -100,10 +103,10 @@ test('页面默认展示按群设置，分区切换不修改配置，旧入口�
     find(tree, n => n.type === 'button' && text(n) === label).props.onClick(); tree = p.render(p.Group)
   }
   assert.deepEqual(p.draft, before)
-  assert.match(source, /打开群聊设置/)
-  assert.match(source, /group: '群聊 发言 白名单 仅模块 主动 窗口 插话 旁听 静默 合并 不回应 不理 屏蔽 黑名单 通用设置 继续回应 回复方式 权限与限制'/)
-  assert.match(source, /const base = draftBaseRef\.current \|\| cfg/)
-  assert.match(source, /JSON\.stringify\(draft\.allow\?\.groups\) !== JSON\.stringify\(base\.allow\?\.groups\)/)
+  assert.match(srcText, /打开群聊设置/)
+  assert.match(srcText, /group: '群聊 发言 白名单 仅模块 主动 窗口 插话 旁听 静默 合并 不回应 不理 屏蔽 黑名单 通用设置 继续回应 回复方式 权限与限制'/)
+  assert.match(srcText, /const base = draftBaseRef\.current \|\| cfg/)
+  assert.match(srcText, /JSON\.stringify\(draft\.allow\?\.groups\) !== JSON\.stringify\(base\.allow\?\.groups\)/)
 })
 
 
@@ -123,10 +126,10 @@ test('群聊首卡直接显示通用设置，选择群紧随其后；更多默�
 test('通用规则只改通用字段，不覆盖单群选择；回复页不再混入群叫醒规则', () => {
   // 融合：通用区改走 Seg 的「所有群默认」段（源码契约断言；单群开关的交互在「按群设置」用例覆盖，
   // 群命令侧的通用/单群隔离在 group-settings-command / group-access-entry 用例覆盖）。
-  assert.match(source, /label: '没人叫时主动插话', hint: '没人叫它、也没在聊天时，偶尔加入话题。' }, f\.sw\('group\.proactiveEnabled'/, '通用区保留「没人叫时主动插话」开关')
-  assert.match(source, /label: '聊起来后继续回应'[\s\S]{0,200}f\.sw\('group\.engagedEnabled'/, '通用区保留「聊起来后继续回应」开关')
-  assert.match(source, /setPath\(draft, 'group\.quietHours'/, '通用区保留安静时段设置')
-  assert.match(source, /label: '连发合并'[\s\S]{0,120}f\.sw\('merge\.enabled'\)/, '连发合并在自己的卡里')
+  assert.match(srcText, /label: '没人叫时主动插话', hint: '没人叫它、也没在聊天时，偶尔加入话题。' }, f\.sw\('group\.proactiveEnabled'/, '通用区保留「没人叫时主动插话」开关')
+  assert.match(srcText, /label: '聊起来后继续回应'[\s\S]{0,200}f\.sw\('group\.engagedEnabled'/, '通用区保留「聊起来后继续回应」开关')
+  assert.match(srcText, /setPath\(draft, 'group\.quietHours'/, '通用区保留安静时段设置')
+  assert.match(srcText, /label: '连发合并'[\s\S]{0,120}f\.sw\('merge\.enabled'\)/, '连发合并在自己的卡里')
   // 通用区（所有群默认）不含「单个群」的唤醒词编辑（群叫醒规则不混进回复页）
   assert.doesNotMatch(source, /label: '用哪些称呼叫它'[\s\S]{0,400}merge\.enabled/)
 })

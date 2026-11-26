@@ -54,7 +54,7 @@ export default {
     'autotelic/exec.js', 'autotelic/feedback.js', 'autotelic/skills.js', 'autotelic/reflect.js',
     'autotelic/python.js', 'autotelic/takeover.js', 'autotelic/reconcile.js',
   ],
-  // 独立标签页「自驱引擎」（页面在 client/client.js）。
+  // 独立标签页「自驱引擎」（页面在 client/tabs/autotelic.ts）。
   tab: 'autotelic',
   defaults: {
     // —— 总开关与生活节奏（裁决三：对齐目的引擎风格）——

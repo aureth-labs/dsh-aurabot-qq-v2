@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { isPeak, isOffPeak, nextChange, shouldDeferBackground } from '../src/core/offpeak.ts'
 import { offpeakSkipReason } from '../src/bili/duty.ts'
 import { normalize } from '../src/core/config.ts'
+import { readClientSource } from './helpers/client-source.js'
 
 // 2026-11-02 是周一，2026-11-06 周五，2026-11-07 周六，2026-11-08 周日。
 // 下面都用 UTC 时间戳，注释里给对应的北京时间。
@@ -82,7 +83,7 @@ test('shouldDeferBackground：配置缺失/关闭永远 false，开着且峰时�
 
 test('面板：模型页有峰谷开关和节假日输入（源码契约）', async () => {
   const { readFileSync } = await import('node:fs')
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   for (const text of ['DeepSeek 峰谷省钱模式', "f.sw('cost.offPeak')", "f.list('cost.offPeakHolidays'", '下次切换 ', 'isPeakAt', 'nextChangeAt']) {
     assert.ok(src.includes(text), '面板缺：' + text)
   }

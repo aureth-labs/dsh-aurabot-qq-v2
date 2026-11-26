@@ -8,15 +8,14 @@ import { Script } from 'node:vm'
 import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config.ts'
 import { createMemoryStore } from '../src/features/memory.ts'
 import { createMemoryStorage } from '../src/features/memory-store.ts'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 function panelHarness(initial = {}) {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker))
+  const source = clientBundleText()
   let loader
   // 1.3-beta 把「记忆」从心情页拆出去但没单独导出 MemoryPage，直接写进对象字面量
   // 会 ReferenceError。用 typeof 兜底成 undefined，再按 CANDIDATES 逐个试。
-  new Script(source.replace(marker, '    exports.capacityTest = { Mood, MemoryPage: typeof MemoryPage === "function" ? MemoryPage : undefined, resizeMemoryCapacity }\n' + marker)).runInNewContext({
+  new Script(injectExports(source, '{ capacityTest: { Mood, MemoryPage: typeof MemoryPage === "function" ? MemoryPage : undefined, resizeMemoryCapacity } }')).runInNewContext({
     window: { __ModuleLoader__: { load: (value) => { loader = value } } },
   })
   let hook = 0

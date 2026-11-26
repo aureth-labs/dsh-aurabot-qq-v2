@@ -1,6 +1,6 @@
 // 阶段二·分级导航语音试点 回归测试（feat/panel-firstscreen）
 //
-// 被测：client/client.js 未提交改动（阶段二）：
+// 被测：client/**/*.ts 里的阶段二改动：
 //   1. TABS 新增 manage 删 asr；TAB_MODS / NAV_GROUPS / NAV_ALIAS 同步。
 //   2. 旧页签迁移：aurabot.tab==='asr' → 'voice' + voice-view='listen'；navlast 里 asr 同映射；哨兵只跑一次。
 //   3. VoiceTab 子视图：send=Voice、listen=Asr；send 视图不挂载 AsrStatus（ASR 请求与 5 秒轮询为 0）。
@@ -12,10 +12,13 @@
 // 迁移块直接从源码切片在沙箱里执行（测的是真代码）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
+import { readClientSource } from './helpers/client-source.js'
 import { Script } from 'node:vm'
 
-const CLIENT = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+// 文本契约看源码，渲染跑真产物
+const CLIENT = () => readClientSource()
+const BUNDLE = () => clientBundleText()
 
 // ---- 假 React：state 跨渲染保留（模拟重渲染），hook 序号每次渲染归零 ----
 function makeReact() {
@@ -41,12 +44,10 @@ function makeReact() {
 
 // ---- 加载 client.js，导出内部组件与常量；记录 fetch 与 localStorage ----
 function loadPanel() {
-  const source = CLIENT()
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker), 'client.js 的导出锚点变了，测试要跟着改')
+  const source = BUNDLE()
   const script = new Script(
-    source.replace(marker, '    exports.panelTest = { TABS, TAB_MODS, NAV_GROUPS, NAV_ALIAS, MANAGE_FEATURES, Manage, VoiceTab, Voice, VoiceServices, VoiceServiceFields, Asr, AsrStatus, Card }\n' + marker),
-    { filename: 'client/client.js' },
+    injectExports(source, '{ panelTest: { TABS, TAB_MODS, NAV_GROUPS, NAV_ALIAS, MANAGE_FEATURES, Manage, VoiceTab, Voice, VoiceServices, VoiceServiceFields, Asr, AsrStatus, Card } }'),
+    { filename: 'dist/client.js' },
   )
   const store = new Map()
   const calls = []
@@ -155,9 +156,16 @@ test('语音页注册：curTab.voice 映射到 VoiceTab（不再是裸 Voice）�
 // 从源码里切出真实的迁移块执行（不是复刻逻辑，是测真代码）
 function migrationBlock() {
   const src = CLIENT()
-  const m = src.match(/if \(!localStorage\.getItem\('aurabot\.voice-tab-v1'\)\) \{[\s\S]*?\n          \}/)
-  assert.ok(m, '找不到 asr→voice 迁移块（源码结构变了，测试要跟着改）')
-  return m[0]
+  // 花括号配对取块：块里还有内层 if，正则会被内层的 } 提前截断
+  const at = src.indexOf("if (!localStorage.getItem('aurabot.voice-tab-v1')) {")
+  assert.ok(at > 0, '找不到 asr→voice 迁移块（源码结构变了，测试要跟着改）')
+  let depth = 0
+  let end = src.indexOf('{', at)
+  for (; end < src.length; end += 1) {
+    if (src[end] === '{') depth += 1
+    else if (src[end] === '}') { depth -= 1; if (depth === 0) break }
+  }
+  return src.slice(at, end + 1)
 }
 function runMigration(store) {
   const ls = {

@@ -9,6 +9,7 @@ import { createHub } from '../src/chat/hub.ts'
 import memoryModule from '../src/modules/memory/index.ts'
 import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { readClientSource } from './helpers/client-source.js'
 
 const OWNER = '10000001', A = '30000001', B = '30000002', BOT = '20000001'
 const log = { info() {}, warn() {}, debug() {}, error() {} }
@@ -308,7 +309,7 @@ test('面板路由复用人物删除与不再记住接口；前端保留筛选�
   assert.equal((await routes.get('/persona/person/delete')({ qq: OWNER })).ok, false)
   assert.equal((await routes.get('/persona/person/delete')({ qq: A })).ok, true)
   assert.equal(f.state().profiles[A], undefined)
-  const client = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const client = readClientSource()
   const deleteAction = client.slice(client.indexOf('const forgetPerson ='), client.indexOf('const toggleNoMemory ='))
   assert.equal((deleteAction.match(/confirm\(/g) || []).length, 2)
   for (const label of ['所有群', '所有标签', '所有状态', '不再记住', '删除这个人', '只记住有交集的人']) assert.ok(client.includes(label), label)

@@ -2,11 +2,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readClientSource } from './helpers/client-source.js'
 
-const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const src = readClientSource()
 const start = src.indexOf('const smStarMatches =')
 const end = src.indexOf('const smTintIndexOf', start)
-assert.ok(start > 0 && end > start, 'client/client.js 里找不到 smStarMatches 定义')
+assert.ok(start > 0 && end > start, 'client 源码里找不到 smStarMatches 定义')
 const smStarMatches = new Function(src.slice(start, end) + '; return smStarMatches')()
 const now = Date.now()
 

@@ -81,7 +81,24 @@ function EmotionEditor({ value, onChange, disabled }) {
           onChange: (e) => setItem(i, { arousal: Number(e.target.value) }),
         }),
         h('span', { className: 'ab-muted ab-small', style: { width: 34, textAlign: 'right' } }, (Number(item.arousal) || 0).toFixed(1))),
-      h('div', { className: 'ab-muted ab-small', style: { marginTop: 4 } }, '键名（模型对齐用，一般不用改）：' + (item.key || '—'))))
+      // 键名可改但要合规：后端 / 模型都按这套规则对齐，写进去一个坏键以后对不上
+      h('div', { className: 'ab-flex', style: { gap: 6, marginTop: 4, alignItems: 'center' } },
+        h('span', { className: 'ab-muted ab-small', style: { flexShrink: 0 } }, '键名'),
+        h('input', {
+          className: 'ab-input sm',
+          style: { width: 120 },
+          value: item.key || '',
+          maxLength: 24,
+          title: '模型对齐用：小写字母开头，1~24 位（a-z 0-9 _ -）',
+          disabled,
+          onChange: (e) => {
+            const key = String(e.target.value || '').trim()
+            if (!EMOTION_KEY_RE.test(key)) return
+            if (list.some((other, j) => j !== i && other.key === key)) return
+            setItem(i, { key })
+          },
+        }),
+        h('span', { className: 'ab-muted ab-small' }, '（模型对齐用，一般不用改）'))))
     ,
     h('div', { className: 'ab-flex', style: { gap: 8, marginTop: 4 } },
       h(Btn, { small: true, disabled: disabled || list.length >= 24, onClick: add }, '＋ 添加一项'),

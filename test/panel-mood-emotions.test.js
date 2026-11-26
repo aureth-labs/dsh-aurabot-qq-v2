@@ -9,10 +9,11 @@
 // 不展开就只能拿到 h(Card) 那层壳，文本断言全落空——这坑在写第一版用例时踩过）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
+import { readClientFile } from './helpers/client-source.js'
 
-const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const source = clientBundleText()
 
 function makeReact() {
   let hook = 0
@@ -36,11 +37,9 @@ function makeReact() {
 }
 
 function loadPanel() {
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker), 'client.js 的导出锚点变了，测试要跟着改')
   const script = new Script(
-    source.replace(marker, '    exports.panelTest = { Mood, PurposeStatus, EmotionEditor, EMOTION_DEFAULTS, EMOTION_KEY_RE }\n' + marker),
-    { filename: 'client/client.js' },
+    injectExports(source, '{ panelTest: { Mood, PurposeStatus, EmotionEditor, EMOTION_DEFAULTS, EMOTION_KEY_RE } }'),
+    { filename: 'dist/client.js' },
   )
   const calls = []
   let fetchReply = { ok: true }
@@ -209,7 +208,8 @@ test('心情页：情绪数据读 st.mood.emotionsItems，不再读目的引擎�
 })
 
 test('心情页：历史从 /mood/history 拉（/state 已剥掉 history，过去这段渲染不出来）', () => {
-  const moodSrc = source.slice(source.indexOf('function Mood('), source.indexOf('function MemoryTab('))
+  // 契约按文件读：打包后模块顺序会变，跨文件切片切不出心情页这一段
+  const moodSrc = readClientFile('tabs/mood.ts')
   assert.match(moodSrc, /\/mood\/history/, '心情页要主动拉 /mood/history')
   assert.doesNotMatch(moodSrc, /st\.mood\.history/, '不能再指望 /state 带 history')
 })

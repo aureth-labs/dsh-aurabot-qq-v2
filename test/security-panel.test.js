@@ -3,14 +3,15 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { normalize } from '../src/core/config.ts'
+import { readClientSource } from './helpers/client-source.js'
 
-const client = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const client = readClientSource()
 const host = readFileSync(new URL('../src/host.ts', import.meta.url), 'utf8')
 const config = readFileSync(new URL('../src/core/config.ts', import.meta.url), 'utf8')
 
 test('安全防护页接上了页签、组件、搜索和 SSRF 模式配置', () => {
   assert.ok(client.includes("{ id: 'security', label: '安全防护' }"), '缺安全防护页签')
-  assert.ok(client.includes("tabs: ['connect', 'model', 'access', 'browser', 'security', 'backup', 'about', 'logs']"), '安全防护要注册在系统组')
+  assert.ok(client.includes("tabs: ['bots', 'connect', 'model', 'access', 'browser', 'security', 'backup', 'about', 'logs']"), '安全防护要注册在系统组')
   assert.ok(client.includes('security: Security'), '组件表缺 security → Security')
   assert.ok(client.includes('function Security({ st, draft, setDraft })'), '缺 Security 组件')
   assert.ok(client.includes("security: '安全 防护 ssrf 内网 图片"), '搜索索引缺安全防护关键词')

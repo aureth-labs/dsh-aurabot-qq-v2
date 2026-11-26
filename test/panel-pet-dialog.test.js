@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { readClientSource } from './helpers/client-source.js'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -52,8 +53,8 @@ after(async () => {
 })
 
 const extPet = () => JSON.parse(readFileSync(join(dataDir, 'config.json'), 'utf8')).ext?.pet || {}
-// 客户端是单文件 client/client.js（数据目录里没有构建产物），面板行只能在源码上断言。
-const clientSrc = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+// 客户端拆成 client/**/*.ts（数据目录里没有构建产物），面板行只能在源码上断言。
+const clientSrc = () => readClientSource()
 
 test('对话框开关：布尔直接透传，未知键与错误类型一律不收', async () => {
   const r = await call('/panel/pet/config', { petChatEnabled: true, petChatBlurHide: false, petChatFoo: 1 })

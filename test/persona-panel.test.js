@@ -11,6 +11,7 @@ import { readMemoryState } from './helpers/memory-state.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 import { createConversationArchive } from '../src/chat/conversation-context.ts'
 import memoryModule from '../src/modules/memory/index.ts'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 const OWNER = '10000001'
 const ALICE = '30000001'
@@ -196,11 +197,9 @@ test('人物和记忆面板路由接到同一份 store', async (t) => {
 })
 
 test('面板注册人物记忆及四个子页，旧人格页仍可访问', () => {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker))
-  const instrumented = source.replace(marker, '    exports.panelTest = { TABS, TAB_MODS, NAV_GROUPS, AurabotPage, PersonaMemory, PersonaFact, GistLine }\n' + marker)
-  const script = new Script(instrumented, { filename: 'client/client.js' })
+  const source = clientBundleText()
+  const instrumented = injectExports(source, '{ panelTest: { TABS, TAB_MODS, NAV_GROUPS, AurabotPage, PersonaMemory, PersonaFact, GistLine } }')
+  const script = new Script(instrumented, { filename: 'dist/client.js' })
   const storage = new Map()
   const localStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, String(value)) }
   let loader

@@ -3,8 +3,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { normalize } from '../src/core/config.ts'
+import { readClientSource } from './helpers/client-source.js'
 
-const CLIENT = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const CLIENT = () => readClientSource()
 
 test('面板写自驱设置用 ext.autotelic，不再带末尾点', () => {
   const src = CLIENT()

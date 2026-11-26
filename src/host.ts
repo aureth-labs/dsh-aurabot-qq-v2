@@ -3,7 +3,7 @@ import { validMemberFilter } from './chat/member-filter.ts'
 //
 // 让 DSH 里的 AI 以独立 QQ 号「大肥鱼」住在 QQ 里：
 //   SnowLuma（OneBot v11）⇄ 本插件 ⇄ DSH 会话（Aurabot 自带的 preset + 人格）
-// 面板在侧栏「自动化任务」下面（网页半边见 client/client.js），这里提供它要的 /aurabot/api/* 接口。
+// 面板在侧栏「自动化任务」下面（网页半边见 client/**/*.ts，打包成 dist/client.js），这里提供它要的 /aurabot/api/* 接口。
 //
 // 这个文件只管「核心」：配置、QQ 网关、聊天中枢、人格、面板接口、模块内核和联动。
 // 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（src/modules/），能单独关掉，也能用自己写的替换。
@@ -1960,7 +1960,7 @@ export function apply(ctx) {
     // ---------- 物理三参数 + 余额开关 + 抓鼠标两开关（pet 1.0.14 起在模块库） ----------
     // 【教训 · 三处必须同步】模块 settings 里新增一个键 → 必须同时补
     //   ① 本白名单（否则保存被「没有可保存的字段」挡回）
-    //   ② client/client.js 里的控件（面板是硬编码 React，不会按 settings 渲染）
+    //   ② client 面板里的控件（面板是硬编码 React，不会按 settings 渲染）
     //   ③ 模块自己的 defaults/settings 声明
     // 三处缺一即「假控件」：面板上看得见、点了存不进去，而且因为写不进 ext.pet，
     // 8 秒轮询还会把刚拖好的值弹回原处。桌宠是内置模块，它的 settings 同样不渲染成表单。
@@ -1992,7 +1992,7 @@ export function apply(ctx) {
     if (Number.isFinite(b.petChatRetentionDays)) patch.petChatRetentionDays = Math.min(3650, Math.max(0, Math.round(b.petChatRetentionDays)))
     // ---------- 语音对讲（pet 1.2.0 起在模块库）：独立设置键的唯一写入通道 ----------
     // 同「三处必须同步」：模块 defaults/settings 已声明这些键，这里补白名单，
-    // client/client.js 桌宠页另起一张独立的「语音对讲」卡（不塞进对话框卡）。
+    // client 桌宠页另起一张独立的「语音对讲」卡（不塞进对话框卡）。
     // toggle 模式：按一下开始听、再按一下发送，不再需要 PTT 键与静音断句秒数，
     // 因此 callPttKey / callVadSilence 不再写入（旧配置里残留的值也不再被面板改动）。
     // 口径与现有键一致：类型/枚举/协议不对的坏值忽略（不写 patch，保持原值）；

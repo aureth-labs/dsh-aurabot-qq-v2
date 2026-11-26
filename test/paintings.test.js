@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { readClientSource } from './helpers/client-source.js'
 
 const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-paint-'))
 process.env.AURABOT_DATA_DIR = dataDir
@@ -120,7 +121,7 @@ test('画作引用：记住后能按编号 / 别名 / 文件名解析；不认�
 
 test('面板：图库要拿到 toast，删完才会自动刷新', async () => {
   const { readFileSync } = await import('node:fs')
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   assert.match(src, /function PaintGallery\(\{ draft, setDraft, toast \}\)/, 'PaintGallery 要接收 toast')
   assert.match(src, /h\(PaintGallery, \{ draft, setDraft, toast \}\)/, '渲染时要传 toast')
   // 删完要重新拉列表

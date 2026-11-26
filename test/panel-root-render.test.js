@@ -13,10 +13,10 @@
 // 用 state[3] 断言 tab 也印证这个顺序）。用例里先做槽位哨兵校验，结构变了会明确报错。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
-const CLIENT = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const CLIENT = () => injectExports(clientBundleText(), '{ panelTest: { AurabotPage, TABS } }')
 
 // ---- 假 React：state 跨渲染保留（驱动 ready 用），hook 序号每次渲染归零 ----
 function makeReact() {
@@ -43,10 +43,7 @@ function makeReact() {
 // ---- 加载 client.js：stub fetch/localStorage/document/AbortController 等 ----
 function loadPanel() {
   const source = CLIENT()
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker), 'client.js 的导出锚点变了，测试要跟着改')
-  const inject = '    exports.panelTest = { AurabotPage, TABS }\n' + marker
-  const script = new Script(source.replace(marker, inject), { filename: 'client/client.js' })
+  const script = new Script(source, { filename: 'dist/client.js' })
   const store = new Map()
   const calls = []
   const intervals = []

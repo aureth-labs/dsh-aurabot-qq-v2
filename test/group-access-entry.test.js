@@ -1,16 +1,16 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 import { Script } from 'node:vm'
 import { normalize } from '../src/core/config.ts'
-const source=readFileSync(new URL('../client/client.js',import.meta.url),'utf8')
+const source=clientBundleText()
 const publicPanel=source.includes('function GroupPermissions(')
 const entry=publicPanel?'GroupPermissions':'Access'
 function fixture(){
  let loader,cursor=0,slots=[],draft=normalize({ownerQQ:'10000001',allow:{private:['10000001','20000002'],groups:['30000003']},group:{moduleOnlyGroups:['30000003']}})
  const visits=[]
  const React={Component:class{},createElement:(type,props,...children)=>({type,props:props||{},children}),useRef:v=>({current:v}),useState:init=>{const i=cursor++;if(!(i in slots))slots[i]=typeof init==='function'?init():init;return[slots[i],v=>slots[i]=typeof v==='function'?v(slots[i]):v]}}
- new Script(source.replace('exports.AurabotPage = AurabotPage',`exports.Entry = ${entry}; exports.GroupOverrides = GroupOverrides; exports.AurabotPage = AurabotPage`)).runInNewContext({window:{__ModuleLoader__:{load:v=>loader=v}}})
+ new Script(injectExports(source, `{ Entry: ${entry}, GroupOverrides }`)).runInNewContext({window:{__ModuleLoader__:{load:v=>loader=v}}})
  const components=loader.factory(()=>React)
  return{visits,get draft(){return draft},render(name='Entry'){cursor=0;return components[name]({draft,setDraft:v=>draft=JSON.parse(JSON.stringify(v)),st:{config:draft,modules:[]},toast(){},reload(){},go:tab=>visits.push(tab),setSection(){}})}}
 }

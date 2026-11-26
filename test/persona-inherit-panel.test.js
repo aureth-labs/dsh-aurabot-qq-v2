@@ -1,14 +1,12 @@
 // 记忆页「从其他人格导入」卡片：确认会花 token → 一批批整理（失败只重试那一批）→ 预览勾选、可改字 → 提交勾选的。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 function loadPanel(routes) {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker))
-  const script = new Script(source.replace(marker, '    exports.panelTest = { MemoryInherit }\n' + marker), { filename: 'client/client.js' })
+  const source = clientBundleText()
+  const script = new Script(injectExports(source, '{ panelTest: { MemoryInherit } }'), { filename: 'dist/client.js' })
   const calls = []
   const env = { answer: true, asked: [] }
   let loader

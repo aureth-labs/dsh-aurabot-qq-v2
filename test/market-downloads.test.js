@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { crc32, deflateRawSync } from 'node:zlib'
+import { readClientSource } from './helpers/client-source.js'
 
 let root, createCommunity, userDir
 
@@ -152,20 +153,20 @@ test('下载量有缓存：连着打开市场不重复打 GitHub 接口；刷新
 })
 
 test('市场面板：卡片显示下载次数、可以按热度排', () => {
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   assert.match(src, /'下载 ' \+ num\(m\.downloads\) \+ ' 次'/)
   assert.match(src, /按热度/)
   assert.match(src, /sortMarketModules/)
 })
 
 test('市场面板：连续滚动时延迟视口外卡片的布局', () => {
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   assert.match(src, /\.ab-market-grid>\.ab-card\{[^}]*content-visibility:auto/)
   assert.match(src, /\.ab-market-grid>\.ab-card\{[^}]*contain-intrinsic-block-size:auto \d+px/)
 })
 
 test('市场面板：标题跳仓库，只认 http(s) 的 homepage', () => {
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   // 默认深入到模块库里该模块自己的目录（有的 homepage 指向别处仓库根，不准）
   assert.match(
     src,
@@ -178,7 +179,7 @@ test('市场面板：标题跳仓库，只认 http(s) 的 homepage', () => {
 })
 
 test('市场面板：地址设置默认折叠、放在市场上方', () => {
-  const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const src = readClientSource()
   const market = src.indexOf("title: '模块市场'")
   const registry = src.indexOf("title: '模块市场地址'")
   assert.ok(registry >= 0 && market > registry, '地址卡要在市场卡的上方')

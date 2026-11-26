@@ -6,7 +6,7 @@
 //
 // 产物形状和拆分前手写的完全一致，宿主读到的仍是 apply / inject：
 //   window.__ModuleLoader__.load({ id, factory: (require) => { ... return module.exports } })
-import { build, context } from 'esbuild'
+import { build, buildSync, context } from 'esbuild'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -51,6 +51,17 @@ export async function bundleClient(outFile) {
   await mkdir(dirname(outFile), { recursive: true })
   await writeFile(outFile, wrap(text), 'utf8')
   return text.length
+}
+
+/**
+ * 同步版：只返回包装好的文本，不落盘。
+ *
+ * 给测试用——`node --test` 的用例大量是同步写法，为了读产物把它们全改成 async
+ * 只会让断言更难读。esbuild 的 buildSync 开销和异步版一样。
+ */
+export function bundleClientSync() {
+  const result = buildSync({ ...baseOptions, write: false })
+  return wrap(result.outputFiles[0].text)
 }
 
 /** 开发期用：只监听、不阻塞，保存 client 下的 .ts 就重打 dist/client.js。 */

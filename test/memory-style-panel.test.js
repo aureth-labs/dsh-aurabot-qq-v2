@@ -5,14 +5,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
 import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config.ts'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 const label = '使用学来的语气与相处建议'
 function harness(initial) {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker))
+  const source = clientBundleText()
   let loader
-  new Script(source.replace(marker, '    exports.styleTest = Mood\n' + marker)).runInNewContext({
+  new Script(injectExports(source, '{ styleTest: Mood }')).runInNewContext({
     window: { __ModuleLoader__: { load: value => { loader = value } } },
   })
   const React = {

@@ -1,10 +1,10 @@
 // 人设图面板：执行组件事件和 effect，验证异步结果不覆盖较新的编辑。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { Script } from 'node:vm'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
-const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const source = clientBundleText()
 const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve() }
 function mount(component, props, respond) {
   let loader, cursor = 0, effects = [], tree
@@ -24,7 +24,7 @@ function mount(component, props, respond) {
     },
     useMemo: (fn) => fn(), useCallback: (fn) => fn,
   }
-  const instrumented = source.replace('    exports.apply = apply', '    exports.panelTest = { PersonaLook, Persona, PersonaImageSettings }\n    exports.apply = apply')
+  const instrumented = injectExports(source, '{ panelTest: { PersonaLook, Persona, PersonaImageSettings } }')
   new Script(instrumented).runInNewContext({
     window: { __ModuleLoader__: { load: (value) => { loader = value } } },
     localStorage: { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) },

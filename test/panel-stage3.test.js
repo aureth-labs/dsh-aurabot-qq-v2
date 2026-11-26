@@ -15,10 +15,13 @@
 // 【坑】改这个文件禁用 pwsh Get-Content/Set-Content 转写（会毁 UTF-8，见 docs/MEMORY.md §3.12），用编辑工具。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { clientBundleText, injectExports } from './helpers/client-bundle.js'
+import { readClientSource } from './helpers/client-source.js'
 import { Script } from 'node:vm'
 
-const CLIENT = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+// 文本契约看源码，渲染跑真产物
+const CLIENT = () => readClientSource()
+const BUNDLE = () => clientBundleText()
 
 // ---- 假 React：state 跨渲染保留，hook 序号每次渲染归零；副作用真跑（用于断言请求/轮询） ----
 function makeReact() {
@@ -42,18 +45,17 @@ function makeReact() {
 }
 
 function loadPanel() {
-  const source = CLIENT()
-  const marker = '    exports.apply = apply'
-  assert.ok(source.includes(marker), 'client.js 的导出锚点变了，测试要跟着改')
+  const source = BUNDLE()
   // 组件按「是否已定义」导出：实现未落地时不炸加载，测试侧用 skip 守卫
-  const inject = '    exports.panelTest = Object.assign({},\n'
-    + '      typeof MemoryTab !== "undefined" && { MemoryTab },\n'
-    + '      typeof MemoryPage !== "undefined" && { MemoryPage },\n'
-    + '      typeof PersonaMemory !== "undefined" && { PersonaMemory },\n'
-    + '      typeof ContentTab !== "undefined" && { ContentTab },\n'
-    + '      typeof Card !== "undefined" && { Card },\n'
-    + '      { TABS, TAB_MODS, NAV_GROUPS, NAV_ALIAS })\n' + marker
-  const script = new Script(source.replace(marker, inject), { filename: 'client/client.js' })
+  // 表达式是在打包产物内部求值的，typeof 守卫必须原样带进去
+  const injected = injectExports(source, '{ panelTest: Object.assign({},'
+    + ' typeof MemoryTab !== "undefined" && { MemoryTab },'
+    + ' typeof MemoryPage !== "undefined" && { MemoryPage },'
+    + ' typeof PersonaMemory !== "undefined" && { PersonaMemory },'
+    + ' typeof ContentTab !== "undefined" && { ContentTab },'
+    + ' typeof Card !== "undefined" && { Card },'
+    + ' { TABS, TAB_MODS, NAV_GROUPS, NAV_ALIAS }) }')
+  const script = new Script(injected, { filename: 'dist/client.js' })
   const store = new Map()
   const calls = []
   let fetchReply = { ok: true }
@@ -117,8 +119,25 @@ const text = (node) => (node == null || node === false || node === true ? '' : t
 // 迁移块提取：扫所有「哨兵 if 块」（哨兵名含数字，如 -v1/-v2），按块体特征挑出目标块再沙箱执行
 function findMigrationBlocks(keyword) {
   const src = CLIENT()
-  const blocks = src.match(/if \(!localStorage\.getItem\('aurabot\.[a-z0-9-]+'\)\) \{[\s\S]*?\n          \}/g) || []
-  return blocks.filter((b) => b.includes(keyword))
+  // 用花括号配对取块，不靠缩进正则：块里还有内层 if，正则会被内层的 } 提前截断
+  const blocks = []
+  const opener = /if \(!localStorage\.getItem\('aurabot\.[a-z0-9-]+'\)\) \{/g
+  let match
+  while ((match = opener.exec(src))) {
+    let depth = 0
+    let at = src.indexOf('{', match.index)
+    for (; at < src.length; at += 1) {
+      if (src[at] === '{') depth += 1
+      else if (src[at] === '}') {
+        depth -= 1
+        if (depth === 0) break
+      }
+    }
+    const block = src.slice(match.index, at + 1)
+    if (block.includes(keyword)) blocks.push(block)
+    opener.lastIndex = at + 1
+  }
+  return blocks
 }
 function migrationBlockOrNull(keyword) {
   const hits = findMigrationBlocks(keyword)

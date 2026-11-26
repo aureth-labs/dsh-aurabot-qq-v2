@@ -1,15 +1,16 @@
 // 面板「关于」页的源码契约：页签注册、组件接线、核心开发者与贡献者头像墙。
-// 客户端是单文件 client/client.js（数据目录里没有构建产物），只能在源码上断言；
+// 客户端拆成 client/**/*.ts（数据目录里没有构建产物），契约只能在源码上断言；
 // 这样合并或重构时把这一页连同接线丢掉会直接红，而不是上线后才发现点不开。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { readClientSource } from './helpers/client-source.js'
 
-const src = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const src = readClientSource()
 
 test('面板源码契约：「关于」页签注册在系统组，组件表与搜索索引都接上了', () => {
   assert.ok(src.includes("{ id: 'about', label: '关于' }"), '缺「关于」页签')
-  assert.ok(src.includes("tabs: ['connect', 'model', 'access', 'browser', 'security', 'backup', 'about', 'logs']"), '「关于」要排在「日志」前面')
+  assert.ok(src.includes("tabs: ['bots', 'connect', 'model', 'access', 'browser', 'security', 'backup', 'about', 'logs']"), '「关于」要排在「日志」前面')
   assert.ok(src.includes('about: About'), '组件表缺 about → About 的接线')
   assert.ok(src.includes("about: '关于 关于我们 版本 许可 鸣谢 开源'"), '搜索索引缺「关于」关键词')
   assert.ok(src.includes('function About({ st })'), '缺 About 组件')

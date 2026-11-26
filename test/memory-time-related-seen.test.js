@@ -5,6 +5,8 @@ import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
+import { clientBundleText } from './helpers/client-bundle.js'
+import { readClientSource } from './helpers/client-source.js'
 import { normalize } from '../src/core/config.ts'
 import { createMemoryStore, buildIndex, search, memoryLine, parseValidityDate, pastWindow, compressionClusters, shouldForget, SEEN_META_LIMITS, RELATED_LIMIT } from '../src/features/memory.ts'
 import memoryModule from '../src/modules/memory/index.ts'
@@ -299,11 +301,12 @@ test('流水压成 gist 时保留所有 via，seen 不混入聊天梗概', async
 })
 
 test('面板脚本可解析，人物详情显示时间段和相关事实，时间轴提供类型/平台筛选', () => {
-  const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-  new Script(source)
+  // 可解析性跑真产物；文本契约看源码（打包会把单引号换成双引号）
+  new Script(clientBundleText())
+  const source = readClientSource()
   assert.match(source, /m\.validityText/)
   assert.match(source, /m\.relatedItems/)
   assert.match(source, /筛选经历类型/)
   assert.match(source, /筛选平台/)
-  assert.match(source, /getCached\('\/memory\/timeline\?/)
+  assert.match(source, /getCached\(['"]\/memory\/timeline\?/)
 })

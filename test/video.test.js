@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { memoryLine } from '../src/features/memory.ts'
 import video, { videoFile, videoReady, minimaxBody, customRequestParts, clampResolution, fillJson, fillUrl } from '../src/modules/video/index.ts'
 import { SLOTS } from '../src/local/local.ts'
+import { readClientSource } from './helpers/client-source.js'
 
 function setup({ owner = true, result = 'D:/out/a.mp4', active = true, sendFails = false, confirm = false, enhance = false, provider = 'local', minimaxKey = '', customReady = false, asked = [], selfView = false } = {}) {
   const sent = []
@@ -208,7 +209,7 @@ test('一次只跑一段', async () => {
 })
 
 test('面板注册齐全：标签、模块归属、分组、渲染、脏值、别名', () => {
-  const c = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+  const c = readClientSource()
   assert.match(c, /\{ id: 'video', label: '视频'/) // 后面跟着 flagFn 也算
   assert.match(c, /video: \['video'\],/)
   assert.match(c, /'imagegen', 'video', 'song', 'pet'\]/)

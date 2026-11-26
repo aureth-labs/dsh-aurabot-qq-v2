@@ -5,8 +5,9 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { commitConfig, loadConfig, mergeFromPanel, normalize, publicConfig, saveConfig } from '../src/core/config.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { readClientSource } from './helpers/client-source.js'
 
-const CLIENT = () => readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
+const CLIENT = () => readClientSource()
 
 test('publicConfig 回传可枚举的 vector.mode（在线服务不会回退本地模型）', () => {
   const cfg = normalize({ memory: { vector: { enabled: true, mode: 'remote', baseUrl: 'https://api.example.com', model: 'm', apiKey: 'secret-key' } } })

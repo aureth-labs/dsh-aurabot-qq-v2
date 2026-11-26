@@ -2,9 +2,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
-const source = readFileSync(new URL('../client/client.js', import.meta.url), 'utf8')
-const start = source.indexOf('    const fmtTokens = ')
-const end = source.indexOf('    /**', start)
+// 从源码文件里切这一段：函数体没有类型标注，切出来能直接跑
+const source = readFileSync(new URL('../client/core/format.ts', import.meta.url), 'utf8')
+const start = source.indexOf('const fmtTokens = ')
+const end = source.indexOf('/**', start)
 const format = runInNewContext('(() => {' + source.slice(start, end) + '; return fmtTokens })()')
 test('Token 简写：零、小数位、K/M/B 以及舍入跨单位', () => {
   for (const [n, expected] of [
@@ -15,8 +16,11 @@ test('Token 简写：零、小数位、K/M/B 以及舍入跨单位', () => {
 })
 
 test('显示币种用交叉汇率换算；保留原价、未知单位、微量费用和零', () => {
-  const cost = source.slice(source.indexOf('    const fmtCost = '),source.indexOf('    /** chatId'))
-  const currency = source.slice(source.indexOf('    const usageCurrencies = '),source.indexOf('    function UsageSummary'))
+  // 拆文件之后 fmtCost 在 format.ts、货币表在 overview.ts：各读各的，切片锚点跟着缩进变
+  const costSrc = readFileSync(new URL('../client/core/format.ts', import.meta.url), 'utf8')
+  const cost = costSrc.slice(costSrc.indexOf('const fmtCost = '), costSrc.indexOf('const chatLabel = '))
+  const currencySrc = readFileSync(new URL('../client/tabs/overview.ts', import.meta.url), 'utf8')
+  const currency = currencySrc.slice(currencySrc.indexOf('const usageCurrencies = '), currencySrc.indexOf('function UsageSummary'))
   const money=runInNewContext('(() => {'+cost+currency+'; return usageMoney })()')
   const fx={rates:{EUR:1,USD:2,CNY:14,JPY:160}}
   assert.equal(money(3,'USD','CNY',fx),'21.00 元');assert.equal(money(14,'元','USD',fx),'2.00 美元')
