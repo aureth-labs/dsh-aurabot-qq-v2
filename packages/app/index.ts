@@ -307,7 +307,7 @@ export function apply(ctx) {
     generate: (prompt, turn) => generate({ ...prompt, module: 'chat-bridge', turn }),
   })
   mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION,
-    builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue } })
+    builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue, 'log-stream': logger } })
   bridge = createBridge({ ctx, getConfig, setConfig, hub, mods, log: logger.child('bridge'), version: String(VERSION), apiVersion: API_VERSION, overview: () => overview() })
   core.bridge = bridge
   core.modules = mods

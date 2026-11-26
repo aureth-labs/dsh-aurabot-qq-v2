@@ -1,30 +1,30 @@
-// 内置插件：日志。内存环给面板实时看，按天写的文件在这里列出来、按需读末尾。
-export { Config } from './config.ts'
+import { dataDir } from '../../../src/core/store/index.ts'
+import type { Logger } from '../../../src/core/support/log/logger.ts'
+import type { PluginContext } from '../../../src/types/plugin/ctx.ts'
+import { createArchive } from './archive.ts'
 
+export { Config, Config as config } from './config.ts'
 export const name = '日志'
 export const version = '3.0.0'
-export const description = '运行日志：内存最近 500 条 + 数据目录 logs/ 下的按天文件'
+export const description = '按级别查看运行日志，日志文件按日期和大小轮转'
+export const inject = ['log-stream']
 
-export function apply(ctx, config) {
-  const store = () => ctx.host.logger
-  ctx.server.get('/logs/files', async () => ({
-    ok: true,
-    dir: store().dir(),
-    files: store().files(),
-  }))
-  ctx.server.get('/logs/tail', async (req) => {
-    const url = new URL(String(req.url || '/'), 'http://x')
-    const name = url.searchParams.get('name') || ''
-    const limit = Number(url.searchParams.get('limit')) || Number(ctx.config.pageSize) || 300
+export function apply(ctx: PluginContext) {
+  const stream = ctx.require<Logger>('log-stream')
+  const archive = createArchive(dataDir('logs'), () => Number(ctx.config.retainDays) || 14)
+  const service = { ...stream.child(ctx.id), child: stream.child, recent: stream.recent,
+    files: archive.files, tail: archive.tail, dir: archive.dir }
+  ctx.provide('logger', service)
+  ctx.effect(stream.onEntry(archive.write, { replayStartup: true }))
+  ctx.server.get('/logs/files', () => ({ ok: true, dir: archive.dir(), files: archive.files() }))
+  ctx.server.get('/logs/tail', req => {
+    const query = new URL(req.url || '/', 'http://localhost').searchParams
+    const name = query.get('name') || ''
     try {
-      return { ok: true, name, lines: store().tail(name, limit) }
+      return { ok: true, name, lines: archive.tail(name, Number(query.get('limit')) || Number(ctx.config.pageSize)) }
     } catch (error) {
       return { ok: false, message: String(error?.message || error) }
     }
   })
-  return {
-    recent: (limit, filter) => store().recent(limit, filter),
-    files: () => store().files(),
-    tail: (name, limit) => store().tail(name, limit),
-  }
+  return service
 }
