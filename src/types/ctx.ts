@@ -206,6 +206,12 @@ export interface PluginContext extends ApiLike, ScopeFactory {
   emit: (event: string, ...args: any[]) => void
   /** 根上下文：读宿主的全局配置用。 */
   root: { config: Record<string, any> }
+  /** 这个模块专属的数据目录（自动建好）：`modules-data/<id>/`，多实例时按实例分开。 */
+  dataDir: (...parts: string[]) => string
+  /** 取另一个模块的导出对象（模块间调用）；模块没在跑时返回空对象。 */
+  use: <T = unknown>(id: string) => T
+  /** 另一个模块是否在跑。 */
+  has: (id: string) => boolean
   Schema?: unknown
   h?: ElementFactory
   llm?: LlmFacade
