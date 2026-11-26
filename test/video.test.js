@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { memoryLine } from '../src/features/memory.ts'
+import { memoryLine } from '../src/features/memory/index.ts'
 import video, { videoFile, videoReady, minimaxBody, customRequestParts, clampResolution, fillJson, fillUrl } from '../src/modules/video/index.ts'
 import { SLOTS } from '../src/local/local.ts'
 import { readClientSource } from './helpers/client-source.js'

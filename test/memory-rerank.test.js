@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize, publicConfig } from '../src/core/config.ts'
-import { createReranker } from '../src/features/rerank.ts'
+import { createReranker } from '../src/features/memory/rerank.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const hits = () => [

@@ -11,7 +11,7 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-stickers-'))
-  ;({ createStickerStore } = await import('../src/features/stickers.ts'))
+  ;({ createStickerStore } = await import('../src/features/stickers/index.ts'))
   ;({ rulesText } = await import('../src/persona/personas.ts'))
   ;({ normalize } = await import('../src/core/config.ts'))
 })

@@ -6,7 +6,7 @@ import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config.ts'
-import { createMemoryStore } from '../src/features/memory.ts'
+import { createMemoryStore } from '../src/features/memory/index.ts'
 
 const OWNER = '10000001'
 const DAY = 86400_000

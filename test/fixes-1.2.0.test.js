@@ -6,9 +6,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import qqTools from '../src/modules/qq-tools/index.ts'
-import { createMemoryStore } from '../src/features/memory.ts'
-import { matchSticker, pickForReply } from '../src/features/stickers.ts'
-import { createImageGen } from '../src/features/imagegen.ts'
+import { createMemoryStore } from '../src/features/memory/index.ts'
+import { matchSticker, pickForReply } from '../src/features/stickers/index.ts'
+import { createImageGen } from '../src/features/media/imagegen.ts'
 import { askModel } from '../src/core/llm.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
@@ -263,7 +263,7 @@ test('模型一直没有正文：只调用两次并返回空字符串', async ()
 })
 
 test('桌宠行为回执只留 3 天，别的记忆不受影响（#138）', async () => {
-  const { shouldForget } = await import('../src/features/memory.ts')
+  const { shouldForget } = await import('../src/features/memory/index.ts')
   const now = Date.now()
   const day = 86400_000
   assert.equal(shouldForget({ source: 'pet', at: now - 2 * day }, now), false)
@@ -272,7 +272,7 @@ test('桌宠行为回执只留 3 天，别的记忆不受影响（#138）', asyn
 })
 
 test('心情基线可配，衰减往基线靠（#139）', async () => {
-  const { decayed } = await import('../src/features/mood.ts')
+  const { decayed } = await import('../src/features/mood/index.ts')
   assert.equal(Math.round(decayed(100, 0, 1, 100 * 3600_000, 40)), 40)
   assert.equal(Math.round(decayed(100, 0, 1, 100 * 3600_000)), 60)
 })

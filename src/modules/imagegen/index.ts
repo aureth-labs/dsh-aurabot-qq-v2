@@ -2,13 +2,13 @@
 
 import { readFileSync } from 'node:fs'
 import { privateCapabilityAllowed } from '../../chat/access.ts'
-import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from '../../features/imagegen.ts'
-import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removePainting, savePainting } from '../../features/paintings.ts'
+import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from '../../features/media/imagegen.ts'
+import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removePainting, savePainting } from '../../features/media/paintings.ts'
 import { defineTool, str, int } from '../../tools/tools.ts'
-import { SIZE_OPTIONS } from '../../features/image-shape.ts'
+import { SIZE_OPTIONS } from '../../features/media/shape.ts'
 import { dataDir } from '../../core/store.ts'
 import { mimeOf } from '../../chat/inbound.ts'
-import { drawFormat, gifFrameCount } from '../../features/image-format.ts'
+import { drawFormat, gifFrameCount } from '../../features/media/format.ts'
 import { mergeFromPanel } from '../../core/config.ts'
 import { redact } from '../../core/redact.ts'
 
@@ -20,7 +20,14 @@ export default {
   version: '1.0.0',
   description: '画一张图发到聊天里（qq_draw_image）',
   tab: 'imagegen',
-  files: ['features/imagegen.js', 'features/image-format.js', 'features/image-shape.js', 'features/paintings.js', 'features/codex-auth.js', 'features/codex-image.js'],
+  files: [
+    'features/media/imagegen.js',
+    'features/media/format.js',
+    'features/media/shape.js',
+    'features/media/paintings.js',
+    'features/codex/auth.js',
+    'features/codex/image.js',
+  ],
   setup(api) {
     const { hub, local } = api.core
     const memory = api.lazy('memory')

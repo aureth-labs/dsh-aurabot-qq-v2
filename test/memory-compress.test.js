@@ -17,7 +17,7 @@ let parseAbstract
 let checkAbstractText
 before(async () => {
   ;({ normalize } = await import('../src/core/config.ts'))
-  ;({ createMemoryStore, compressionClusters, parseAbstract, checkAbstractText } = await import('../src/features/memory.ts'))
+  ;({ createMemoryStore, compressionClusters, parseAbstract, checkAbstractText } = await import('../src/features/memory/index.ts'))
 })
 
 const OWNER = '10000001'

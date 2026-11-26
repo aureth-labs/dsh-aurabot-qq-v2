@@ -9,7 +9,7 @@ process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-addsticker-')
 // 每条用例换一个数据目录，互不干扰（dataDir() 每次都读这个环境变量）
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-addsticker-')) }
 
-const { createStickerStore } = await import('../src/features/stickers.ts')
+const { createStickerStore } = await import('../src/features/stickers/index.ts')
 const { normalize } = await import('../src/core/config.ts')
 
 function fakePng (salt = 0) {

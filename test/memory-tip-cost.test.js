@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createMemoryStore } from '../src/features/memory.ts'
+import { createMemoryStore } from '../src/features/memory/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const owner = '10000000'

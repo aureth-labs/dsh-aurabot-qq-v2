@@ -2,11 +2,11 @@
 // 导出 createMemoryStore 的返回值：add / addEvent / recall / list / contextFor / topicScore / consolidate ……
 // 别的模块（空间日记、B 站、翻唱）会往这里记她的经历；记忆模块关着时它们自己跳过。
 
-import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, parseMemoryCommand, NATIVE_MEMORY_VIEW } from '../../features/memory.ts'
-export { looksLikeRuleMemory } from '../../features/memory.ts'
+import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, parseMemoryCommand, NATIVE_MEMORY_VIEW } from '../../features/memory/index.ts'
+export { looksLikeRuleMemory } from '../../features/memory/index.ts'
 // 记忆星图：算法全在 memory-graph.js（原样搬自记忆中枢 0.9.2 的 graph.mjs，纯函数）。
 // 这里只用它的建边/布局/亮度和 tier 值域映射，不搬中枢的 assoc.mjs 和 pipeline.mjs。
-import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../features/memory-graph.ts'
+import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../features/memory/graph.ts'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dataDir } from '../../core/store.ts'
@@ -41,7 +41,12 @@ export default {
   description: '长期记忆：记事、想起、每日整理、小档案和相处经验',
   // 面板拆页后记忆有自己的页（beta 原先挂在心情页）
   tab: 'memory',
-  files: ['features/memory.js', 'features/memory-rules.js', 'features/memory-store.js', 'features/memory-vector.js'],
+  files: [
+    'features/memory/index.js',
+    'features/memory/rules.js',
+    'features/memory/store.js',
+    'features/memory/vector.js',
+  ],
   setup(api, { fetchImpl, registerNativePreview } : SetupOptions = {}) {
     const { hub, http } = api.core
     // 每个人格一个记忆库，目录见 personas.js。同一个目录只开一个实例（老用户还没认领时大家共用根目录那一个）；

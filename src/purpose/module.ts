@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { quietWindowOf } from '../core/time-window.ts'
 import { cleanOutboundText } from '../chat/reply.ts'
 import { isSessionBackoff } from '../chat/session-backoff.ts'
-import { followUpHint } from '../features/memory.ts'
+import { followUpHint } from '../features/memory/index.ts'
 import { selfName, selfNames, personaDataDir, personaNow } from '../persona/personas.ts'
 import { normalizeSelection } from '../chat/chat-model.ts'
 import {
@@ -28,7 +28,7 @@ import {
   summarizePurposeState, recordOwnerReplyHours, formatMaterialLine,
 } from './engine.ts'
 // 心情项的唯一真相在心情模块：这里只读配置、不自己存一份情绪表。
-import { normalizeEmotions, resolveEmotion } from '../features/mood-emotions.ts'
+import { normalizeEmotions, resolveEmotion } from '../features/mood/emotions.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type PurposeConfigOptions = Partial<Record<'speakUp' | 'ext' | 'enabled' | 'ownerQQ' | 'ownerName', any>>

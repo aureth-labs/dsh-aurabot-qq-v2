@@ -20,7 +20,7 @@ test('召回提示有总长度上限：聊天原文再多也不超过 recallHint
   const dir = mkdtempSync(join(tmpdir(), 'hint-cap-'))
   process.env.AURABOT_DATA_DIR = dir
   const { normalize } = await import('../src/core/config.ts')
-  const { createMemoryStore } = await import('../src/features/memory.ts')
+  const { createMemoryStore } = await import('../src/features/memory/index.ts')
   const cfg = normalize({ ownerQQ: '10001', memory: { enabled: true, recallHintMaxChars: 400 } })
   assert.equal(normalize({ memory: { recallHintMaxChars: 99 } }).memory.recallHintMaxChars, 300)
   const day = new Date().toISOString().slice(0, 10)

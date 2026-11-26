@@ -2,7 +2,7 @@
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { customRequest, createImageGen } = await import('../src/features/imagegen.ts')
+const { customRequest, createImageGen } = await import('../src/features/media/imagegen.ts')
 
 const PNG = (() => {
   const b = Buffer.alloc(64)

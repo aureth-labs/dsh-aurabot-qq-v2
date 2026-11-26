@@ -59,7 +59,7 @@ import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lo
 import { createModules, API_VERSION } from './core/modules.ts'
 import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from './core/community.ts'
 import { createApprovalRelay } from './security/approval.ts'
-import { createNoticeRelay, normalizeWorkspace } from './features/notice.ts'
+import { createNoticeRelay, normalizeWorkspace } from './features/notices/index.ts'
 import { captureSystemPrompt } from './security/leak-guard.ts'
 import { applyPendingRestore, cancelRestore, createBackup, listBackups, pendingModules, pendingRestore, setPendingModules, stageReceivedBackup, stageRestore } from './core/backup.ts'
 import { pushBackup, listWebdavBackups, downloadWebdavBackup } from './core/backup-push.ts'
@@ -71,7 +71,7 @@ import { createAuditor } from './autotelic/audit.ts'
 import { setSsrpMode, assertPublicUrl, fetchGuarded } from './core/net.ts'
 import { BUILTINS } from './modules/index.ts'
 import { createOutboundPolicy } from './chat/outbound-policy.ts'
-import { createPurposePolicy, createSharedBudget } from './features/proactive-policy.ts'
+import { createPurposePolicy, createSharedBudget } from './features/proactive/policy.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RouteOptions = Partial<Record<'skipHostCheck', any>>

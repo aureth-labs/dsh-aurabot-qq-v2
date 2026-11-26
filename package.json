@@ -21,8 +21,7 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
     "check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit && node scripts/check-lifecycle.mjs",
-    "test": "node --import ./scripts/ts-resolution.mjs --test \"test/**/*.test.js\"",
-    "pack:api": "npm pack ./packages/plugin-api --silent"
+    "test": "node --import ./scripts/ts-resolution.mjs --test \"test/**/*.test.js\""
   },
   "dsh": {
     "bundle": {
@@ -58,15 +57,9 @@
     "assets",
     "cordis.patch.yml",
     "README.md",
-    "docs/USER-MANUAL.md",
-    "docs/USAGE.md",
-    "docs/MODULE-TUTORIAL.md",
-    "docs/EMBEDDING.md",
-    "docs/SILICONFLOW.md",
     "LICENSE",
     "CHANGELOG.md",
-    "README_EN.md",
-    "docs/DESIGN.md"
+    "README_EN.md"
   ],
   "optionalDependencies": {
     "onnxruntime-node": "^1.20.0",

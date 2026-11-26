@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config.ts'
 import { createHub } from '../src/chat/hub.ts'
-import { createMemoryStore } from '../src/features/memory.ts'
+import { createMemoryStore } from '../src/features/memory/index.ts'
 
 const OWNER = '10000001'
 const OTHER = '10000002'

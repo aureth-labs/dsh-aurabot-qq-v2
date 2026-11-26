@@ -5,12 +5,12 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config.ts'
-import { createMemoryStore } from '../src/features/memory.ts'
+import { createMemoryStore } from '../src/features/memory/index.ts'
 import { writeMemoryState } from './helpers/memory-state.js'
 import {
   brightness, brightnessLabel, buildEdges, layoutGraph3d, regionOf, grams, similarity,
   initialStability, toStarTier, toHostTier, FADING_THRESHOLD, LAYOUT_VERSION,
-} from '../src/features/memory-graph.ts'
+} from '../src/features/memory/graph.ts'
 
 const OWNER = '10000001'
 const DAY = 86400_000

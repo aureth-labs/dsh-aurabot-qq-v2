@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config.ts'
-import { createMemoryStore, buildIndex, search, cleanAssocMap, assocSignature, retention, ASSOC_LIMIT } from '../src/features/memory.ts'
+import { createMemoryStore, buildIndex, search, cleanAssocMap, assocSignature, retention, ASSOC_LIMIT } from '../src/features/memory/index.ts'
 import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 
 const OWNER = '10000001'

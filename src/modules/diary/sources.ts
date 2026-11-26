@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto'
 import { lstatSync, readdirSync, realpathSync, readFileSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
-import { stickerPath } from '../../features/stickers.ts'
+import { stickerPath } from '../../features/stickers/index.ts'
 import { loadShots, shotPath } from '../../bili/shots.ts'
 import { dataDir } from '../../core/store.ts'
 import { clipText } from '../../core/text.ts'

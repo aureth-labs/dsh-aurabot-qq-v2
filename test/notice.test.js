@@ -1,7 +1,7 @@
 // 上报通道的纯逻辑：开关判定、去重、合并窗口、失败重试。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createNoticeRelay, normalizeWorkspace } from '../src/features/notice.ts'
+import { createNoticeRelay, normalizeWorkspace } from '../src/features/notices/index.ts'
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const cfg = (over = {}) => ({

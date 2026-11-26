@@ -2,10 +2,10 @@
 // 导出的就是表情库（createStickerStore 的返回值），聊天中枢发表情、偷表情都找它。
 
 import { readFileSync, existsSync } from 'node:fs'
-import { createStickerStore, stickerPath, MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } from '../../features/stickers.ts'
+import { createStickerStore, stickerPath, MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } from '../../features/stickers/index.ts'
 import { defineTool, int, str } from '../../tools/tools.ts'
 import { fetchImage, segmentBytes, formatBytes } from '../../core/net.ts'
-import { resolvePainting } from '../../features/paintings.ts'
+import { resolvePainting } from '../../features/media/paintings.ts'
 import { imageSize } from '../../chat/inbound.ts'
 
 export default {
@@ -14,7 +14,7 @@ export default {
   version: '1.0.0',
   description: '偷表情、回复时按情绪配表情、她自己改名删图；关掉后不发也不收表情',
   tab: 'stickers',
-  files: ['features/stickers.js'],
+  files: ['features/stickers/index.js'],
   setup(api) {
     const { hub, onebot, http } = api.core
     const store = createStickerStore({ dsh: api.dsh, getConfig: api.config, onebot, log: api.log })

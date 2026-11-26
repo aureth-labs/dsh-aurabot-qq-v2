@@ -8,7 +8,7 @@ import { checkAllowed, shouldObserveGroup } from '../src/chat/access.ts'
 import { decideGroupReply, policyFor } from '../src/chat/group-policy.ts'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 import { createHub } from '../src/chat/hub.ts'
-import { createMemoryStore } from '../src/features/memory.ts'
+import { createMemoryStore } from '../src/features/memory/index.ts'
 
 const G = '30000003', U = '10000002', BOT = '20000002'
 const now = 5_000_000

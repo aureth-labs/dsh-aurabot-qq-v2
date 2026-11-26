@@ -11,9 +11,9 @@ import { DEFAULT_GROUP_POLICY } from '../chat/group-policy.ts'
 import { LEVELS, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, profilePermDefault } from '../chat/access.ts'
 import { normalizeChatModels } from '../chat/chat-model.ts'
 import { DELEGATED_COMMANDS, isDelegatedCommandKey } from '../chat/delegated-commands.ts'
-import { DIARY_AUDIENCES } from '../features/qzone-audience.ts'
-import { DEFAULT_TIER_DAYS } from '../features/memory-rules.ts'
-import { defaultEmotions, normalizeEmotions } from '../features/mood-emotions.ts'
+import { DIARY_AUDIENCES } from '../features/qzone/audience.ts'
+import { DEFAULT_TIER_DAYS } from '../features/memory/rules.ts'
+import { defaultEmotions, normalizeEmotions } from '../features/mood/emotions.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type BuildBiliCookieOptions = Partial<Record<'sessdata' | 'biliJct' | 'buvid3' | 'buvid4' | 'dedeUserId', any>>

@@ -1,7 +1,7 @@
 // 内置模块：基础 QQ 工具。翻聊天记录；主人私聊里还能让她主动给别人发消息、发文件。
 
 import { defineTool, str, int, bool } from '../../tools/tools.ts'
-import { readQqFile } from '../../features/qq-file.ts'
+import { readQqFile } from '../../features/qq/file.ts'
 import { parseMessageEvent } from '../../chat/inbound.ts'
 import { hasInvalidVoiceMarkup } from '../../chat/reply.ts'
 

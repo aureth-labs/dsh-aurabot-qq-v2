@@ -58,7 +58,7 @@ let mem
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-mem-'))
-  ;({ createMemoryStore } = await import('../src/features/memory.ts'))
+  ;({ createMemoryStore } = await import('../src/features/memory/index.ts'))
   ;({ normalize } = await import('../src/core/config.ts'))
   cfg = normalize({ model: { provider: 'p', model: 'm' }, ownerQQ: '10000001', ownerName: '主人', allow: { private: ['30000003'] }, memory: { keepChatlogDays: 0, keepChatlogSet: true } })
   mem = createMemoryStore({ dsh, getConfig: () => cfg, hub, log: { info() {}, warn() {}, debug() {} } })
@@ -105,7 +105,7 @@ test('过了一天的流水整理完删掉', async () => {
 })
 
 test('检索：同时偏向好几个说话人（群里这一段谁在说）', async () => {
-  const { buildIndex, search } = await import('../src/features/memory.ts')
+  const { buildIndex, search } = await import('../src/features/memory/index.ts')
   const idx = buildIndex([
     { id: 'a', text: '阿花养了一只猫', about: '30000003', importance: 0.5, at: Date.now() },
     { id: 'b', text: '小明在学吉他', about: '30000004', importance: 0.5, at: Date.now() },
@@ -148,7 +148,7 @@ test('整理：群聊和空间里的事按 QQ 号记到人头上；空间动态�
 })
 
 test('遗忘：自动记忆按遗忘曲线淡去，普通经历超过 90 天过期', async () => {
-  const { shouldForget } = await import('../src/features/memory.ts')
+  const { shouldForget } = await import('../src/features/memory/index.ts')
   const old = Date.now() - 91 * 86400_000
   assert.equal(shouldForget({ source: 'auto', importance: 0.4, at: old }), true)
   assert.equal(shouldForget({ source: 'auto', importance: 0.4, at: old, lastHit: Date.now() }), false, '最近被想起过')
@@ -158,7 +158,7 @@ test('遗忘：自动记忆按遗忘曲线淡去，普通经历超过 90 天过�
 })
 
 test('想起来的记忆带时间；最近想起了什么有记录（含想不起来的那次）', async () => {
-  const { whenText } = await import('../src/features/memory.ts')
+  const { whenText } = await import('../src/features/memory/index.ts')
   const now = new Date(2026, 9, 25, 12).getTime()
   assert.equal(whenText(now, now), '今天')
   assert.equal(whenText(now - 86400_000, now), '昨天')
@@ -187,7 +187,7 @@ test('导入旧档案：挑出候选、去掉已经记过的，勾选后存进�
 })
 
 test('遗忘曲线：没被想起的两个月左右淡掉；隔几天就被想起的记得久', async () => {
-  const { retention, shouldForget } = await import('../src/features/memory.ts')
+  const { retention, shouldForget } = await import('../src/features/memory/index.ts')
   const now = Date.now()
   const base = { source: 'auto', importance: 0.5, at: now - 60 * 86400_000 }
   assert.ok(retention(base, now) < 0.06)

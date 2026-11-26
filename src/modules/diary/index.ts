@@ -1,9 +1,9 @@
 // 内置模块：空间日记。每天挑几个时间，按当天的聊天和心情写一条 QQ 空间说说；主人私聊里也能让她发说说。
 // 导出 createQzone 的返回值：writeDiary / post / remove / history / nextTime / tick。
 
-import { createQzone } from '../../features/qzone.ts'
-import { resolveAudience } from '../../features/qzone-audience.ts'
-import { pickDiaryImage } from '../../features/diary-image.ts'
+import { createQzone } from '../../features/qzone/index.ts'
+import { resolveAudience } from '../../features/qzone/audience.ts'
+import { pickDiaryImage } from '../../features/media/diary-image.ts'
 import { defineTool, str } from '../../tools/tools.ts'
 import { mimeOf } from '../../chat/inbound.ts'
 import { createDiaryMedia } from './media.ts'
@@ -15,7 +15,7 @@ export default {
   version: '1.0.0',
   description: '每天自己写几条 QQ 空间说说；主人私聊里能让她发说说（qq_send_qzone）',
   tab: 'diary',
-  files: ['features/qzone.js', 'features/qzone-audience.js', 'features/diary-image.js'],
+  files: ['features/qzone/index.js', 'features/qzone/audience.js', 'features/media/diary-image.js'],
   setup(api) {
     const { hub, onebot, http } = api.core
     const panelAction = (run) => async (req) => {

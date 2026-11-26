@@ -12,7 +12,7 @@ import {
   createPurposePolicy,
   createSharedBudget,
   resetSharedBudgets,
-} from '../src/features/proactive-policy.ts'
+} from '../src/features/proactive/policy.ts'
 
 const MIN = 60_000
 const OWNER = '10000001'

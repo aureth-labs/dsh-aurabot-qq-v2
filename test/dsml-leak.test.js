@@ -7,8 +7,8 @@ import { cleanOutboundText, cleanOutboundSegments, stripToolText, parseReply } f
 import { createHub } from '../src/chat/hub.ts'
 import { normalize } from '../src/core/config.ts'
 import { createBiliApi } from '../src/bili/api.ts'
-import { createQzone } from '../src/features/qzone.ts'
-import { cleanComment } from '../src/features/qzone-social.ts'
+import { createQzone } from '../src/features/qzone/index.ts'
+import { cleanComment } from '../src/features/qzone/social.ts'
 import { cleanReply } from '../src/purpose/module.ts'
 
 const screenshot = ['@苏眠眠 </ | | DSML | | invoke>', '</ | | DSML | | calls>']

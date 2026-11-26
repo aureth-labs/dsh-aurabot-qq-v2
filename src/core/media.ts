@@ -5,7 +5,7 @@ import { dataDir } from './store.ts'
 import { findFfmpeg } from './img.ts'
 import { mimeOf } from '../chat/inbound.ts'
 import { parseWav, toMono16k } from '../voice/wav.ts'
-import { stickerPath } from '../features/stickers.ts'
+import { stickerPath } from '../features/stickers/index.ts'
 
 export function createMediaAccess({ root, use, config }) {
   function picture(path) {

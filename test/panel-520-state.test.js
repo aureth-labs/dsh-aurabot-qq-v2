@@ -55,7 +55,7 @@ test('vector.mode 真的落盘：mergeFromPanel 后 commitConfig 返回 local，
 })
 
 test('显式 local 模式不会回退远端（隐私承诺）', () => {
-  const src = readFileSync(new URL('../src/features/memory-vector.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../src/features/memory/vector.ts', import.meta.url), 'utf8')
   assert.match(src, /if \(hasBase && c\.mode !== 'local'\) return createVectorIndex/)
   assert.match(src, /hasBase && c\.mode !== 'local' \? createVectorIndex/)
 })

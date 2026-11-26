@@ -4,11 +4,11 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
-import { createImageGen, customRequest, resolveDrawImage } from '../src/features/imagegen.ts'
+import { createImageGen, customRequest, resolveDrawImage } from '../src/features/media/imagegen.ts'
 import { createHub } from '../src/chat/hub.ts'
 import { normalize } from '../src/core/config.ts'
 import { createLocal } from '../src/local/local.ts'
-import { savePainting } from '../src/features/paintings.ts'
+import { savePainting } from '../src/features/media/paintings.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])

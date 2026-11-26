@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMood } from '../src/features/mood.ts'
+import { createMood } from '../src/features/mood/index.ts'
 import { normalize } from '../src/core/config.ts'
 import moodModule from '../src/modules/mood/index.ts'
 

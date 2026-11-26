@@ -713,7 +713,7 @@ test('引用消息：拉不到内容时明确告诉她没读到（不装看见�
 })
 
 test('空间日记：手动写一篇（仅自己可见），配今天画的图，不往聊天里发，然后删除', async () => {
-  const { savePainting } = await import('../src/features/paintings.ts')
+  const { savePainting } = await import('../src/features/media/paintings.ts')
   const { unlinkSync } = await import('node:fs')
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
   const painting = savePainting(png, '日记配图测试', { now: new Date() })
@@ -1072,7 +1072,7 @@ test('生图工具结果：能看图时带 image 块，纯文本模型只给文�
   assert.equal(withImg.image.type, 'image')
   assert.ok(withImg.image.attachment?.attachmentId, '要登记成附件块')
   assert.equal(withImg.image.data, undefined, '不要裸 base64')
-  const blocks = (await import('../src/features/imagegen.ts')).drawResultBlocks({}, withImg)
+  const blocks = (await import('../src/features/media/imagegen.ts')).drawResultBlocks({}, withImg)
   assert.equal(blocks.length, 2)
   assert.equal(blocks[1].type, 'image')
   assert.doesNotMatch(withImg.message, /你自己看到的画面/, '不再额外调模型写描述')

@@ -6,8 +6,8 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-audience-'))
 
-const { resolveAudience, parseAudienceQQs, AUDIENCE_RIGHTS } = await import('../src/features/qzone-audience.ts')
-const { createQzone } = await import('../src/features/qzone.ts')
+const { resolveAudience, parseAudienceQQs, AUDIENCE_RIGHTS } = await import('../src/features/qzone/audience.ts')
+const { createQzone } = await import('../src/features/qzone/index.ts')
 const { normalize } = await import('../src/core/config.ts')
 
 const cfg = (visibility, audienceQQs = '') => ({ enabled: true, dryRun: false, diary: { visibility, audienceQQs, minChars: 10, maxChars: 140 } })

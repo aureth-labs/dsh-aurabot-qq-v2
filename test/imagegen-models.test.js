@@ -1,7 +1,7 @@
 // 「获取模型」：按面板当前填的服务地址拉 OpenAI 兼容的 /models，并把错误说成人话。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fetchOpenAIModels } from '../src/features/imagegen.ts'
+import { fetchOpenAIModels } from '../src/features/media/imagegen.ts'
 import { normalize, mergeFromPanel } from '../src/core/config.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 
