@@ -1,6 +1,6 @@
 import type { Element } from '../../../types/core/element.ts'
 
-const supported = new Set(['text', 'at', 'image', 'img', 'voice', 'audio', 'video', 'file', 'face', 'quote', 'reply', 'forward', 'message', 'author', 'br',
+const supported = new Set(['text', 'at', 'image', 'img', 'voice', 'audio', 'video', 'file', 'face', 'poke', 'quote', 'reply', 'forward', 'message', 'author', 'br',
   'translatevoice', 'sharp', 'emoji', 'a', 'b', 'strong', 'i', 'em', 'u', 'ins', 's', 'del', 'spl', 'code', 'sup', 'sub', 'p', 'button'])
 const entities: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
 

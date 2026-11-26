@@ -26,6 +26,7 @@ export const h: ElementFactory = Object.assign(
     video: (url: string, extra: Record<string, unknown> = {}) => create('video', { url, ...extra }),
     file: (url: string, name?: string) => create('file', name ? { url, name } : { url }),
     face: (id: string | number) => create('face', { id: String(id) }),
+    poke: (id?: string | number) => create('poke', id == null ? {} : { id: String(id) }),
     quote: (id: string | number) => create('quote', { id: String(id) }),
     forward: (idOrChildren: string | number | Element[]) =>
       Array.isArray(idOrChildren) ? create('forward', {}, idOrChildren) : create('forward', { id: String(idOrChildren) }),
@@ -124,11 +125,13 @@ const MEDIA_CAPABILITY: Record<string, Capability> = {
   file: 'file',
   forward: 'forward',
   quote: 'quote',
+  poke: 'poke',
 }
 
 const PLACEHOLDER: Record<string, (element: Element) => string> = {
   image: () => '[图片]',
   voice: () => '[语音]',
+  poke: () => '[戳一戳]',
   video: () => '[视频]',
   file: (element) => '[文件] ' + String(element.attrs.name || element.attrs.url || ''),
   forward: () => '[合并转发]',

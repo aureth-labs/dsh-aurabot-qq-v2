@@ -23,6 +23,7 @@ export type Capability =
   | 'html'
   | 'satori'
   | 'quote'
+  | 'poke'
   | 'reaction'
 
 export interface SendOptions {

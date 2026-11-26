@@ -15,8 +15,9 @@ import type {
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
 import { createForwardExpansion, forwardBudget } from './message/project.ts'
 import { messageSource } from './message/source.ts'
+import { planPokes } from './message/poke.ts'
 import { toOneBot, fromOneBot } from './element.ts'
-import { isElement, normalize, degrade, toText } from '../../../../../src/core/message/element/element.ts'
+import { isElement, normalize, degrade, toText, type ElementSource } from '../../../../../src/core/message/element/element.ts'
 import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
 
 export interface OneBotCall {
@@ -34,7 +35,7 @@ export interface OneBotBotInit {
   log?: { warn: (...args: any[]) => void }
 }
 
-const CAPABILITIES: Capability[] = ['text', 'at', 'face', 'image', 'voice', 'video', 'file', 'forward', 'quote', 'reaction']
+const CAPABILITIES: Capability[] = ['text', 'at', 'face', 'image', 'voice', 'video', 'file', 'forward', 'quote', 'reaction', 'poke']
 
 export class OneBotBot extends Bot {
   readonly platform = 'qq'
@@ -100,11 +101,11 @@ export class OneBotBot extends Bot {
   }
 
   async sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown> {
-    return this.deliver('send_group_msg', { group_id: String(channelId), message: await this.toMessage(content) }, options)
+    return this.deliver('send_group_msg', { group_id: String(channelId) }, content, options)
   }
 
   async sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown> {
-    return this.deliver('send_private_msg', { user_id: String(userId), message: await this.toMessage(content) }, options)
+    return this.deliver('send_private_msg', { user_id: String(userId) }, content, options)
   }
 
   /**
@@ -241,19 +242,30 @@ export class OneBotBot extends Bot {
     return this.call(action, params)
   }
 
-  private async toMessage(content: unknown): Promise<unknown> {
-    if (typeof content === 'string' && !/[<&]/.test(content)) return content
-    if (typeof content !== 'string' && !isElement(content) && !(Array.isArray(content) && content.every(isElement))) return content
-    const elements = normalize(content)
-    const resolved = this.speak && needsVoiceResolve(elements) ? await resolveVoice(elements, this.speak, this.log) : elements
-    return toOneBot(degrade(resolved, capability => this.supports(capability)))
-  }
-
-  private async deliver(action: string, params: Record<string, unknown>, options?: SendOptions): Promise<unknown> {
-    if (this.status !== 'online') throw new BotStateError(this, action)
-    if (params.message === '' || (Array.isArray(params.message) && !params.message.length)) return { ok: false, skipped: true }
-    const result = await this.call(action, params, { timeoutMs: options?.timeoutMs })
-    return result
+  private async deliver(action: string, target: { user_id?: string; group_id?: string }, content: unknown, options?: SendOptions): Promise<unknown> {
+    const self = this.selfId
+    const call = (method: string, params: Record<string, unknown>, retries?: number) => {
+      if (this.status !== 'online' || this.selfId !== self) throw new BotStateError(this, method)
+      return this.call(method, params, { timeoutMs: options?.timeoutMs, retries })
+    }
+    let message = content
+    const markup = typeof content === 'string' ? /[<&]/.test(content) : isElement(content) || Array.isArray(content) && content.every(isElement)
+    if (markup) {
+      const elements = normalize(content as ElementSource)
+      const resolved = this.speak && needsVoiceResolve(elements) ? await resolveVoice(elements, this.speak, this.log) : elements
+      const segments = toOneBot(degrade(resolved, cap => this.supports(cap)))
+      if (segments.some(seg => seg.type === 'poke')) {
+        const receipts: unknown[] = []
+        for (const step of planPokes(action, target, segments)) {
+          const result = await call(step.action, step.params, 0)
+          receipts.push(step.action === 'send_poke' ? { ok: true } : result)
+        }
+        return receipts.length === 1 ? receipts[0] : receipts
+      }
+      message = segments
+    }
+    if (message === '' || Array.isArray(message) && !message.length) return { ok: false, skipped: true }
+    return call(action, { ...target, message })
   }
 }
 

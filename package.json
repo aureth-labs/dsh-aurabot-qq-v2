@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "pack:sdk": "npm run build && npm pack ./dist/sdk --pack-destination ./dist",
     "dev": "node scripts/dsh.mjs dev",
     "start": "node scripts/dsh.mjs start",
     "dev:client": "node scripts/dev.mjs",

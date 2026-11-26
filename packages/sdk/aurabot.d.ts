@@ -26,6 +26,7 @@ export interface ElementFactory {
   video(url: string, extra?: Record<string, any>): Element
   file(url: string, name?: string): Element
   face(id: string | number): Element
+  poke(id?: string | number): Element
   quote(id: string | number): Element
   forward(idOrChildren: string | number | Element[]): Element
   parse(source: string): Element[]
@@ -38,7 +39,7 @@ export interface ElementFactory {
 
 export type Capability =
   | 'text' | 'at' | 'face' | 'image' | 'voice' | 'video' | 'file'
-  | 'forward' | 'markdown' | 'html' | 'satori' | 'quote' | 'reaction'
+  | 'forward' | 'markdown' | 'html' | 'satori' | 'quote' | 'reaction' | 'poke'
 
 export type BotStatus = 'registered' | 'connecting' | 'online' | 'offline' | 'error'
 

@@ -276,7 +276,7 @@ export function createDeliver(deps: DeliverDeps) {
         } else if (it.kind === 'sticker') await sendSticker(chatId, it.value, replyId, userId)
         // `<file>路径</file>`：平台能发文件就发文件；发文件关着/目录不允许时由 sendFile 抛出原因，按发送失败记。
         else if (it.kind === 'file') await sendFile(chatId, it.value, it.name)
-        else if (it.kind === 'poke') { if (!opts.simulate) await pokeBack(chatId) }
+        else if (it.kind === 'poke') { if (!opts.simulate) await pokeBack(chatId, it.value || undefined) }
         else if (it.kind === 'image') {
           if (localImageBlocked(chatId, it.value)) log.warn(`${chatId}：回复里的本机图片不在允许的目录里，没发`)
           else await sendImage(chatId, it.value, replyId, userId)

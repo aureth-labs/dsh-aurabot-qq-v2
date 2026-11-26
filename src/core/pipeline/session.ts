@@ -3,7 +3,7 @@
 // 所有发送方法都是异步的，调用方一律 await。
 
 import type { BotLike, SendOptions } from '../../types/adapter/bot.ts'
-import type { Element } from '../../types/core/element.ts'
+import type { Element, ElementSource } from '../../types/core/element.ts'
 import type { PipelineResult, PipelineRunner } from '../../types/plugin/pipeline.ts'
 import type { MessageQuote, SessionInit, SessionLike } from '../../types/core/session.ts'
 import type { Target, TargetType } from '../../types/core/target.ts'
@@ -34,6 +34,18 @@ function sentTextOf(content: unknown): string {
     }
   }
   return String(content ?? '').trim()
+}
+
+function replyContent(content: unknown, sender: string): unknown {
+  if (typeof content === 'string' ? !/<poke\b/i.test(content) :
+    !isElement(content) && !(Array.isArray(content) && content.every(isElement))) return content
+  const elements = normalize(content as ElementSource)
+  if (!h.select(elements, el => el.type === 'poke' && !el.attrs.id).length) return content
+  const address = (el: Element): Element => {
+    if (el.type === 'poke' && !el.attrs.id) return h.poke(sender)
+    return el.children ? h(el.type, el.attrs, el.children.map(address)) : el
+  }
+  return elements.map(address)
 }
 
 export class Session implements SessionLike {
@@ -111,9 +123,10 @@ export class Session implements SessionLike {
   /** 发回当前会话（群发群、私聊发私聊）。可以多次调用，每次都是一条独立消息。 */
   async send(content: unknown, options?: SendOptions): Promise<unknown> {
     this.sentCount += 1
+    const reply = replyContent(content, this.userId)
     const result = await withSendSession(this, () => this.type === 'private'
-      ? this.bot.sendPrivateMessage(this.userId, content, options)
-      : this.bot.sendMessage(this.channelId, content, options))
+      ? this.bot.sendPrivateMessage(this.userId, reply, options)
+      : this.bot.sendMessage(this.channelId, reply, options))
     if (acknowledged(result)) this.rememberSent(content)
     return result
   }

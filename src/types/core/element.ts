@@ -36,6 +36,7 @@ export interface ElementFactory {
   video(url: string, extra?: Record<string, any>): Element
   file(url: string, name?: string): Element
   face(id: string | number): Element
+  poke(id?: string | number): Element
   quote(id: string | number): Element
   forward(idOrChildren: string | number | Element[]): Element
   parse(source: string): Element[]

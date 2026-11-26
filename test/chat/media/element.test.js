@@ -147,3 +147,25 @@ test('降级：图片 / 语音 / 视频 / 转发各有一句话', () => {
   const out = degrade(tree, () => false)
   assert.equal(toText(out), '[图片][语音][视频][合并转发]')
 })
+
+test('会话戳发言人，原生动作与气泡依次投递，私聊校验先于发送', async () => {
+  const { Session } = await import('../../../src/core/pipeline/session.ts')
+  const { OneBotBot } = await import('../../../packages/adapters/qq/onebot-v11/src/bot.ts')
+  const calls = []
+  const bot = new OneBotBot({ selfId: '11', isConnected: () => true, call: async (action, params) => {
+    calls.push({ action, params })
+    return action === 'send_poke' ? null : { message_id: calls.length }
+  } })
+  bot.markOnline()
+  const session = new Session({ bot, type: 'group', channelId: '23', userId: '45', content: 'hi' })
+  await session.send('甲<poke/>乙')
+  assert.deepEqual(calls.map(call => call.action), ['send_group_msg', 'send_poke', 'send_group_msg'])
+  assert.deepEqual(calls[1].params, { group_id: '23', user_id: 45 })
+  assert.equal(toText(degrade('甲<poke/>乙', () => false)), '甲[戳一戳]乙')
+  assert.deepEqual(await bot.sendPrivateMessage('45', h.poke()), { ok: true })
+  await assert.rejects(bot.sendPrivateMessage('45', [h.text('前'), h.poke(67)]), /当前接收人/)
+  await assert.rejects(bot.sendMessage('23', h.poke()), /用户 ID/)
+  assert.equal(calls.length, 4)
+  await bot.sendMessage('23', h.forward([h.poke(45)]))
+  assert.deepEqual(calls.at(-1).params.message, [{ type: 'text', data: { text: '[戳一戳]' } }])
+})

@@ -11,6 +11,8 @@ import { activeCapture, failStore, workspaceDirOf } from '../context/context.ts'
 import type { OutputScope } from '../context/context.ts'
 import { dataDir } from '../../../../../src/core/store/index.ts'
 import { fetchImage } from '../../../../../src/core/net/index.ts'
+import { h } from '../../../../../src/core/message/element/element.ts'
+import { acknowledged } from '../../../../../src/core/bot/send-events.ts'
 import { isDefiniteFailure } from '../../../../../src/core/bot/delivery.ts'
 
 /** 出站用到的调用参数：字段名固定，值由调用方传。 */
@@ -287,14 +289,18 @@ export function createOutbound(deps: OutboundDeps) {
    * - 设计稿 §2 非目标明确写了「不拦回应型发言」。
    * 戳一戳也不产生消息、不占发言额度，硬塞进治理只会让「回敬一下」也被拦，反而伤手感。
    */
-  async function pokeBack(chatId) {
+  async function pokeBack(chatId, userId?: string) {
     const cfg = getConfig()
     const group = chatId.startsWith('group:') ? chatId.slice(6) : ''
-    const target = group ? lastPoker.get(chatId) || lastSpeaker.get(chatId) : chatId.slice(8)
+    const target = userId || (group ? lastPoker.get(chatId) || lastSpeaker.get(chatId) : chatId.slice(8))
     if (!target) return
     if (!cfg.enabled) return log.info(`总开关关着（没真戳）→ ${chatId}：戳了戳 ${target}`)
     try {
-      await onebot.call('send_poke', { user_id: Number(target), ...(group ? { group_id: Number(group) } : {}) }, { timeoutMs: 10000 })
+      const bot = onebot.bot
+      if (!bot) return
+      const content = h.poke(target)
+      const receipt = await (group ? bot.sendMessage(group, content) : bot.sendPrivateMessage(chatId.slice(8), content))
+      if (!acknowledged(receipt)) return
       recordDeliveryTypes(chatId, [{ type: 'poke' }])
       log.info(`${chatId}：她戳了戳 ${target}`)
     } catch (error) {
