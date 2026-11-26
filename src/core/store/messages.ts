@@ -7,7 +7,7 @@
 
 import { DatabaseSync } from 'node:sqlite'
 import { readdirSync, readFileSync, renameSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { ensureDir } from './index.ts'
 
 export interface MessageLog {
@@ -24,33 +24,58 @@ interface CachedRow {
   data: Record<string, any>
 }
 
-const stores = new Map<string, MessageLog>()
+interface OpenLog {
+  directory: string
+  store: MessageLog
+  owners: Set<symbol>
+}
+const stores = new Map<string, OpenLog>()
+const defaultOwner = Symbol('default')
 
-export function messageLogOf(dir: string): MessageLog {
-  const key = join(dir)
-  const hit = stores.get(key)
-  if (hit) return hit
-  const store = createMessageLog(key)
-  stores.set(key, store)
-  return store
+function acquire(dir: string, owner: symbol) {
+  const directory = resolve(dir)
+  const key = process.platform === 'win32' ? directory.toLowerCase() : directory
+  let entry = stores.get(key)
+  if (!entry) {
+    const store = createMessageLog(directory, () => stores.delete(key))
+    entry = { directory, store, owners: new Set() }
+    stores.set(key, entry)
+  }
+  entry.owners.add(owner)
+  return entry.store
 }
 
-export function closeAllMessageLogs(): void {
-  for (const store of stores.values()) store.close()
-  stores.clear()
-}
+export const messageLogOf = (dir: string) => acquire(dir, defaultOwner)
 
-/** 关掉某个目录（含子目录）下的库：删人格数据前要先放开 Windows 的文件句柄。 */
-export function closeMessageLogsUnder(dir: string): void {
-  const target = resolve(dir).toLowerCase()
-  for (const [key, store] of [...stores]) {
-    if (!resolve(key).toLowerCase().startsWith(target)) continue
-    store.close()
-    stores.delete(key)
+export function createMessageLogScope() {
+  const owner = Symbol('message log scope')
+  let disposed = false
+  return {
+    open(dir: string) {
+      if (disposed) throw Error('聊天记录已关闭')
+      return acquire(dir, owner)
+    },
+    close() {
+      disposed = true
+      for (const { store, owners } of stores.values()) {
+        if (owners.delete(owner) && !owners.size) store.close()
+      }
+    },
   }
 }
 
-function createMessageLog(dir: string): MessageLog {
+export function closeAllMessageLogs(): void {
+  for (const { store } of stores.values()) store.close()
+}
+
+export function closeMessageLogsUnder(dir: string): void {
+  for (const { directory, store } of stores.values()) {
+    const rel = relative(resolve(dir), directory)
+    if (rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel)) store.close()
+  }
+}
+
+function createMessageLog(dir: string, release: () => void): MessageLog {
   ensureDir(dir)
   const db = new DatabaseSync(join(dir, 'messages.db'))
   try {
@@ -125,6 +150,7 @@ function createMessageLog(dir: string): MessageLog {
   }
 
   migrate()
+  let closed = false
 
   return {
     append(day, row) {
@@ -155,9 +181,10 @@ function createMessageLog(dir: string): MessageLog {
       cache.delete(day)
     },
     close() {
-      try {
-        db.close()
-      } catch {}
+      if (closed) return
+      db.close()
+      closed = true
+      release()
     },
   }
 }

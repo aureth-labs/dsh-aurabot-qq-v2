@@ -13,7 +13,6 @@ import { ignoredGroupMember } from '../inbound/filter/member-filter.ts'
 
 import { createDeliverySources } from './delivery/sources.ts'
 import { dataDir } from '../../core/store/index.ts'
-import { closeAllMessageLogs } from '../../core/store/messages.ts'
 import { parseReply, bubbleDelay, itemsToLine, cleanOutboundText, cleanOutboundSegments,
   tidyPunctuation, hasSuspectTagShape } from '../reply/index.ts'
 import { groupResponseMode, isOwner } from '../policy/rules/access.ts'
@@ -163,7 +162,7 @@ export function createHub({
 
   const sentIds = new Set()
   const stats = createStats({ file: dataDir('stats.json'), log })
-  const { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity } = createTimeline({
+  const { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity, closeLogs } = createTimeline({
     getConfig,
     log,
     store,
@@ -580,7 +579,7 @@ export function createHub({
     quoteCache.clear()
     recentMedia.dispose()
 
-    closeAllMessageLogs()
+    closeLogs()
   }
 
   return {

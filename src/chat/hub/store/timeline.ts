@@ -4,11 +4,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { matchesMemoryKeyword } from '../../../features/memory/index.ts'
 import { createConversationArchive } from '../context/conversation-context.ts'
 import { createChatLog } from './chatlog.ts'
-import { messageLogOf } from '../../../core/store/messages.ts'
+import { createMessageLogScope } from '../../../core/store/messages.ts'
 
 export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, proactiveLogAt, cleaningFor }) {
   const { isBeforeMemoryReset, memoryCutoffs, chatDir, chatMemoryCutoff } = store
 
+  const logs = createMessageLogScope()
   const archives = new Map()
 
   let forgottenRules = null
@@ -63,6 +64,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
   }
 
   const chatLog = createChatLog({
+    openLog: logs.open,
     getConfig,
     log,
     hooks,
@@ -111,7 +113,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
     }
     let marked = 0
     try {
-      const store = messageLogOf(chatDir())
+      const store = logs.open(chatDir())
       for (const day of store.days()) {
         marked += store.mutate(day, (row) => {
           const own =
@@ -143,5 +145,5 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
     }
   }
   restoreProactiveFromChatLog()
-  return { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity }
+  return { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity, closeLogs: logs.close }
 }

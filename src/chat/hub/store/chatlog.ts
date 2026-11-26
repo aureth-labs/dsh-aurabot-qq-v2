@@ -2,7 +2,7 @@
 // 只依赖传进来的取配置 / 取目录 / 清理规则，不碰 hub 的其他状态。
 
 import { mkdirSync } from 'node:fs'
-import { messageLogOf } from '../../../core/store/messages.ts'
+import type { MessageLog } from '../../../core/store/messages.ts'
 import { redact } from '../../../core/support/log/redact.ts'
 import { parseMemoryCommand } from '../../../features/memory/index.ts'
 import { cleanOutboundText } from '../../reply/index.ts'
@@ -37,13 +37,14 @@ export interface ChatLogDeps {
   /** chatId → 已从流水回捞过的最大时间戳 */
   proactiveLogAt: Map<string, number>
   isBeforeMemoryReset: (chatId: string, uid?: string, at?: number) => boolean
+  openLog: (dir: string) => MessageLog
   chatDir: (pid?: string) => string
   chatMemoryCutoff: (chatId: string, uid?: string) => number
   cleaningFor: (chatId: string) => any
 }
 
 export function createChatLog(deps: ChatLogDeps) {
-  const { getConfig, log, hooks, saidElsewhere, proactiveLogAt, isBeforeMemoryReset, chatDir, chatMemoryCutoff, cleaningFor } = deps
+  const { getConfig, log, hooks, saidElsewhere, proactiveLogAt, isBeforeMemoryReset, openLog, chatDir, chatMemoryCutoff, cleaningFor } = deps
   let revision = 0
 
   function logChat(chatId: string, who: string, text: string, uid = '', { via, at, interaction, originId, proactive, images, mid }: LogChatOptions = {}) {
@@ -68,7 +69,7 @@ export function createChatLog(deps: ChatLogDeps) {
       const forgotten = String(chatId).startsWith('private:') && getConfig().memory?.enabled && getConfig().memory?.instantCommands !== false && parseMemoryCommand(text)?.action === 'forget'
       const pics = chatImageRefs(images)
       const row = { t: timestamp, chatId, who, ...(uid ? { uid: String(uid) } : {}), text: redact(String(text).slice(0, 500)), ...(mid ? { mid: String(mid) } : {}), ...(pics.length ? { images: pics } : {}), ...(via ? { via } : {}), ...(proactive ? { proactive } : {}), ...(interaction?.length ? { interaction: [...new Set(interaction.map(String))] } : {}), ...(forgotten ? { forgottenAt: Date.now() } : {}) }
-      messageLogOf(dir).append(day, row)
+      openLog(dir).append(day, row)
       revision++
       try { hooks?.journal?.({ ...row, ...(originId ? { originId } : {}) }) } catch (error) { log.warn('流水通知失败：', error.message) }
       return true
@@ -106,16 +107,16 @@ export function createChatLog(deps: ChatLogDeps) {
   }
 
   function chatLogDays(pid?: string) {
-    try { return messageLogOf(chatDir(pid)).days() } catch (error) { return [] }
+    try { return openLog(chatDir(pid)).days() } catch (error) { return [] }
   }
 
   function deleteChatLog(day: string, pid?: string) {
-    try { messageLogOf(chatDir(pid)).remove(day); revision++ } catch (error) {}
+    try { openLog(chatDir(pid)).remove(day); revision++ } catch (error) {}
   }
 
   function chatLogOf(day: string, pid?: string) {
     try {
-      return messageLogOf(chatDir(pid)).read(day).map((row) => {
+      return openLog(chatDir(pid)).read(day).map((row) => {
         const rowCutoff = chatMemoryCutoff(String(row.chatId || ''), row.uid)
         if (rowCutoff && (Number(row.t) || 0) <= rowCutoff) return { ...row, text: '', forgottenAt: row.forgottenAt || rowCutoff }
         return row
