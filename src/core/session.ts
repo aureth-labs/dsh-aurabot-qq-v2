@@ -32,6 +32,14 @@ export class Session implements SessionLike {
   readonly target: Target
   readonly pipeline?: PipelineRunner
 
+  /**
+   * 这条会话往外发过几次（含失败的尝试）。
+   *
+   * 管线用它判断「中间件是不是已经认领了这条消息」：发过东西才炸的中间件，
+   * 不该让消息继续落到模型，否则用户会收到两条。
+   */
+  sentCount = 0
+
   constructor(init: SessionInit) {
     this.bot = init.bot
     this.type = init.type
@@ -57,17 +65,20 @@ export class Session implements SessionLike {
 
   /** 发回当前会话（群发群、私聊发私聊）。可以多次调用，每次都是一条独立消息。 */
   async send(content: unknown, options?: SendOptions): Promise<unknown> {
+    this.sentCount += 1
     if (this.type === 'private') return this.bot.sendPrivateMessage(this.userId, content, options)
     return this.bot.sendMessage(this.channelId, content, options)
   }
 
   /** 主动私聊指定用户，和当前会话在哪儿无关。 */
   async sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown> {
+    this.sentCount += 1
     return this.bot.sendPrivateMessage(userId, content, options)
   }
 
   /** 主动发到指定频道。 */
   async sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown> {
+    this.sentCount += 1
     return this.bot.sendMessage(channelId, content, options)
   }
 

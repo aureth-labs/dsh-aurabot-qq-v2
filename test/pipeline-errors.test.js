@@ -40,3 +40,39 @@ test('onError 自己抛错也不影响管线', async () => {
   const result = await pipeline.dispatch(sessionOf('喂'))
   assert.equal(result.by, 'middleware')
 })
+
+test('中间件发过消息才炸：按已消费收口，不再交给模型', async () => {
+  const seen = []
+  const pipeline = new Pipeline({ onError: (info) => seen.push(info) })
+  const session = sessionOf('喂')
+
+  session.sentCount = 0
+  session.send = async function (text) {
+    this.sentCount = (this.sentCount || 0) + 1
+    this.sent.push(text)
+    throw new Error('网关没连')
+  }
+
+  pipeline.use(async (sess) => { await sess.send('先回一句') }, { name: 'boom' })
+  pipeline.use(async (sess, next) => { await sess.send('第二个中间件不该跑到'); return next() })
+  pipeline.onLlm(async () => '模型不该被调用')
+
+  const result = await pipeline.dispatch(session)
+
+  assert.equal(result.handled, true)
+  assert.equal(result.by, 'middleware')
+  assert.match(result.error, /网关没连/)
+  assert.deepEqual(session.sent, ['先回一句'], '只发出认领的那一条，后面的中间件和模型都不动')
+  assert.equal(seen[0].stage, 'boom')
+})
+
+test('中间件没发消息就炸：仍然跳过它继续往后（失败隔离不变）', async () => {
+  const pipeline = new Pipeline()
+  pipeline.use(async () => { throw new Error('还没发就炸了') }, { name: 'boom' })
+  pipeline.use(async (sess) => { await sess.send('后面这个接手') })
+
+  const result = await pipeline.dispatch(sessionOf('喂'))
+
+  assert.equal(result.by, 'middleware')
+  assert.equal(result.error, undefined)
+})

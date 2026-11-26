@@ -37,6 +37,8 @@ export interface PipelineSession {
   bot?: { platform?: string }
   type?: string
   guildId?: string
+  /** 这条会话往外发过几次；中间件抛错时用它判断「是不是已经认领了这条消息」。 */
+  sentCount?: number
   /** 过渡期：OneBot 原始事件的挂载位（S8 适配器收口后由适配器自己消化）。 */
   __ev?: unknown
 }

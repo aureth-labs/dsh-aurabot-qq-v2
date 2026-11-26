@@ -203,6 +203,9 @@ export class Pipeline {
       // 失败隔离：默认跳过这一段，继续往后走
       this.report(entry.name, error)
       if (entry.options.onError === 'throw') throw error
+      // 炸之前已经往会话里发过东西，说明这条它已经认领了。
+      // 这时候再交给模型，用户就会收到两条——所以按「处理完了」收口。
+      if (hasSent(session)) return { handled: true, by: 'middleware', error: messageOf(error) }
       return this.run(index + 1, session)
     }
   }
@@ -234,6 +237,11 @@ export class Pipeline {
 
 function messageOf(error: unknown): string {
   return String((error as { message?: string })?.message ?? error).slice(0, 300)
+}
+
+/** 这条消息有没有被发出去过（Session 会累加，测试桩没有就当没发）。 */
+function hasSent(session: PipelineSession): boolean {
+  return Number((session as { sentCount?: number }).sentCount) > 0
 }
 
 /** 拆出第一个词当指令名，剩下的原样当参数（内部空格保留，两端去掉）。 */
