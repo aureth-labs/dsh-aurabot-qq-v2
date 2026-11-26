@@ -11,6 +11,7 @@ export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '..
 
 export interface StartAdapterOptions {
   active?: () => boolean
+  statusChanged?: () => void
   /**
    * 已经解析好的平台名。
    *
@@ -44,8 +45,19 @@ export async function startAdapter(
   ).trim()
   if (!platform) throw new Error('适配器要声明 platform')
 
-  const connected = await spec.connect(config, { ...runtime, platform })
-  let bot: BotLike
+  let bot: BotLike | undefined
+  let online = false
+  let closed = false
+  const statusChanged = (reason?: string) => {
+    if (closed || !bot || runtime.signal?.aborted || registry.get(bot.id, platform) !== bot) return
+    const next = bot.status === 'online'
+    if (online === next) return
+    online = next
+    if (online) registry.emit('online', bot)
+    else registry.emit('offline', bot, reason || 'disconnected')
+    options.statusChanged?.()
+  }
+  const connected = await spec.connect(config, { ...runtime, platform, statusChanged })
   try {
     if (options.active && !options.active()) throw new Error(`适配器 ${platform} 已停止`)
     if (!connected || typeof connected.id !== 'string' || !connected.id) {
@@ -59,15 +71,14 @@ export async function startAdapter(
   }
 
   registry.add(bot)
-  registry.emit('online', bot)
-
-  let closed = false
+  statusChanged()
+  const registered = bot
   return {
     bot,
     async dispose() {
       if (closed) return
       closed = true
-      if (registry.remove(bot)) registry.emit('offline', bot, 'disconnected')
+      if (registry.remove(registered) && online) registry.emit('offline', registered, 'disconnected')
       try {
         // 用适配器自己的实例断开：包装层只是发送闸门，不是它认识的 bot
         await spec.disconnect?.(connected, config)

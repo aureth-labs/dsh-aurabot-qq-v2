@@ -34,6 +34,7 @@ export interface QQGatewayOptions {
   intents: number
   log?: (message: string) => void
   /** 收到 DISPATCH 时调用；`READY` 也会走这里，方便拿 selfId。 */
+  onDown?: (reason: string) => void
   onDispatch: (type: string, data: Record<string, any>) => void
   socketFactory?: GatewaySocketFactory
   /** 断线自动重连次数，默认 3；0 表示不重连。 */
@@ -64,7 +65,8 @@ export class QQGateway {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null
   private retries = 0
   private closed = false
-  private ready = false
+  private handshakeTimer?: ReturnType<typeof setTimeout>
+  private reconnectTimer?: ReturnType<typeof setTimeout>
   private readyResolve: (() => void) | null = null
   private readyReject: ((error: Error) => void) | null = null
 
@@ -76,19 +78,18 @@ export class QQGateway {
     return new Promise<void>((resolve, reject) => {
       this.readyResolve = resolve
       this.readyReject = reject
-      this.open()
       const timeoutMs = this.options.readyTimeoutMs ?? 20_000
-      const timer = setTimeout(() => {
-        if (this.ready) return
+      this.handshakeTimer = setTimeout(() => {
         this.rejectReady(new Error(`QQ 网关 ${timeoutMs}ms 内没有收到 READY`))
       }, timeoutMs)
-      // 不让超时计时器拖住宿主进程
-      timer.unref?.()
+      this.handshakeTimer.unref?.()
+      this.open()
     })
   }
 
   close(): void {
     this.closed = true
+    clearTimeout(this.reconnectTimer)
     this.stopHeartbeat()
     try {
       this.socket?.close()
@@ -111,8 +112,12 @@ export class QQGateway {
     }
     this.socket = socket
 
-    socket.addEventListener('message', (event) => this.onMessage(event))
-    socket.addEventListener('close', () => this.onClose())
+    socket.addEventListener('message', event => {
+      if (this.socket === socket && !this.closed) this.onMessage(event)
+    })
+    socket.addEventListener('close', () => {
+      if (this.socket === socket) this.scheduleReconnect('连接断开')
+    })
     socket.addEventListener('error', (event) => {
       this.options.log?.(`QQ 网关出错：${describeError(event)}`)
     })
@@ -160,7 +165,9 @@ export class QQGateway {
     const data = (payload.d ?? {}) as Record<string, any>
     if (type === 'READY') {
       this.sessionId = String(data.session_id ?? '')
-      this.ready = true
+    }
+    if (type === 'READY' || type === 'RESUMED') {
+      clearTimeout(this.handshakeTimer)
       this.retries = 0
       this.readyResolve?.()
       this.readyResolve = null
@@ -179,6 +186,7 @@ export class QQGateway {
       this.rejectReady(asError(error))
       return
     }
+    if (socket !== this.socket || this.closed) return
     if (this.sessionId && this.seq !== null) {
       socket.send(
         JSON.stringify({
@@ -223,22 +231,18 @@ export class QQGateway {
     }
   }
 
-  private onClose(): void {
-    this.stopHeartbeat()
-    if (this.closed) return
-    this.scheduleReconnect('连接断开')
-  }
-
   private scheduleReconnect(reason: string): void {
     if (this.closed) return
+    this.options.onDown?.(reason)
     const max = this.options.maxRetries ?? 3
+    const socket = this.socket
+    this.socket = null
     this.stopHeartbeat()
     try {
-      this.socket?.close()
+      socket?.close()
     } catch {
-      // 忽略
+      // 连接已经关闭。
     }
-    this.socket = null
     if (this.retries >= max) {
       this.rejectReady(new Error(`QQ 网关重连 ${max} 次仍失败：${reason}`))
       return
@@ -246,14 +250,14 @@ export class QQGateway {
     this.retries += 1
     const delay = Math.min(30_000, 1_000 * 2 ** (this.retries - 1))
     this.options.log?.(`QQ 网关${reason}，${delay}ms 后第 ${this.retries} 次重连`)
-    const timer = setTimeout(() => {
+    this.reconnectTimer = setTimeout(() => {
       if (!this.closed) this.open()
     }, delay)
-    timer.unref?.()
+    this.reconnectTimer.unref?.()
   }
 
   private rejectReady(error: Error): void {
-    if (this.ready) return
+    clearTimeout(this.handshakeTimer)
     this.readyReject?.(error)
     this.readyReject = null
     this.readyResolve = null

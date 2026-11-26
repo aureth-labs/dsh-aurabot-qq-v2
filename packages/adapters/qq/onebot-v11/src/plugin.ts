@@ -40,8 +40,11 @@ export function apply(ctx: PluginContext, config: Config) {
         expectedAccount: () => config.selfId || undefined,
         enabled: () => true,
         log: ctx.logger,
-        onOnline: ready.resolve,
-        onOffline: (_, reason) => runtime.log(reason),
+        onOnline(bot) {
+          runtime.statusChanged?.()
+          ready.resolve(bot)
+        },
+        onOffline: (_, reason) => runtime.statusChanged?.(reason),
         onReady: async () => ctx.emit('onebot/ready', ctx.instanceId),
         onState(state, detail) {
           ctx.emit('onebot/connection', ctx.instanceId, state, detail)

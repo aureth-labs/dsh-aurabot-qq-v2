@@ -68,12 +68,27 @@ export function createQQOfficialBotSpec(defaults: QQOfficialBotSpecOptions = {})
         token: () => token.get(),
         socketFactory: config.socketFactory,
         log: runtime.log,
+        onDown(reason) {
+          bot.markOffline(reason)
+          runtime.statusChanged?.(reason)
+        },
         onDispatch: (type, data) => {
           if (type === 'READY') {
             const selfId = String((data.user as { id?: string } | undefined)?.id ?? '')
-            if (selfId) bot.setSelfId(selfId)
+            if (!selfId || (bot.selfId && selfId !== bot.selfId)) {
+              bot.markOffline('网关登录账号不匹配')
+              runtime.statusChanged?.('网关登录账号不匹配')
+              gateway.close()
+              return
+            }
+            bot.setSelfId(selfId)
+          }
+          if (type === 'READY' || (type === 'RESUMED' && bot.selfId)) {
+            bot.markOnline()
+            runtime.statusChanged?.()
             return
           }
+          if (bot.status !== 'online') return
           const message = inboundOf(type, data)
           if (message) {
             runtime.emitMessage(message)
@@ -94,11 +109,10 @@ export function createQQOfficialBotSpec(defaults: QQOfficialBotSpecOptions = {})
       } finally {
         runtime.signal?.removeEventListener('abort', cancel)
       }
-      if (!bot.selfId) {
+      if (!bot.selfId || bot.status !== 'online') {
         gateway.close()
         throw new Error('QQ 官方机器人网关 READY 里没有 user.id')
       }
-      bot.markOnline()
       runtime.log(`QQ 官方机器人适配器上线：qq/${bot.selfId}`)
       disconnectOf.set(bot, () => {
         gateway.close()

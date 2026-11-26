@@ -266,12 +266,14 @@ export function satoriAdapter(): AdapterSpec {
           const matches = logins.filter(login => login.user?.id && (!platform || login.platform === platform) && (!selfId || login.user.id === selfId))
           if (matches.length !== 1) {
             bot.markOffline('登录账号缺失或有多个匹配，请检查平台和账号 ID')
+            runtime.statusChanged?.(bot.lastError)
             return
           }
           selected = matches[0]
           client.bindLogin(selected)
           bot.setLogin(selected)
           bot.markOnline()
+          runtime.statusChanged?.()
         },
         onEvent: (event) => {
           if (bot?.status !== 'online') return
@@ -288,7 +290,10 @@ export function satoriAdapter(): AdapterSpec {
             })
           } else runtime.emitEvent?.(event.type, event)
         },
-        onDown: (reason) => bot?.markOffline(reason),
+        onDown(reason) {
+          bot?.markOffline(reason)
+          runtime.statusChanged?.(reason)
+        },
       })
 
       bot = new SatoriBot(platform, client, runtime.log)

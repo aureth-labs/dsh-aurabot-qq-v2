@@ -75,6 +75,7 @@ export class AdapterRegistry {
     const connection = await startAdapter(this.deps.bots, spec, config, runtime, {
       platform, wrapBot: this.deps.wrapBot,
       active: () => !signal.aborted,
+      statusChanged: () => { if (entry) this.changed() },
     }).catch(error => {
       if (instance && !signal.aborted) {
         const failure = { instance, platform, id: '', selfId: '', status: 'error' }

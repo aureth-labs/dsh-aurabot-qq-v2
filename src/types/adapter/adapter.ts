@@ -41,6 +41,7 @@ export interface AdapterRuntime {
    * 连接握手中最多暂存 100 条消息与事件，注册后按到达顺序投递。
    */
   emitMessage(message: InboundMessage): void
+  statusChanged?(reason?: string): void
   /** 非消息事件（加群、撤回、上线/下线……）原样转给模块。 */
   emitEvent?(event: string, payload: unknown): void
   /** 把 `<voice>` 里的文字合成音频；宿主没接 TTS 时返回空串。 */

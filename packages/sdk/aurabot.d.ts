@@ -280,6 +280,7 @@ export interface AdapterRuntime {
   platform: string
   log(message: string): void
   emitMessage(message: InboundMessage): void
+  statusChanged?(reason?: string): void
   emitEvent?(event: string, payload: unknown): void
   speak?(text: string): Promise<string>
   supports?(capability: Capability): boolean
