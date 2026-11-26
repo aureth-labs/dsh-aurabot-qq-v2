@@ -20,7 +20,7 @@ function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry)
     if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.(js|mjs|ts)$/.test(entry) && !SKIP.has(entry)) out.push(full)
+    else if (/\.(js|mjs|ts)$/.test(entry) && !entry.endsWith('.d.ts') && !SKIP.has(entry)) out.push(full)
   }
   return out
 }

@@ -1,613 +1,197 @@
-# Aurabot 扩展接口说明（插件 v{{VERSION}} · 扩展接口 v{{API}}）
+# Aurabot 插件接口（v2）
 
-> 这个文件由插件维护，每次启动都会更新成当前版本，**别改它**（改了也会被覆盖）。
-> 你自己写的模块放在和它同一个文件夹（`modules/`）里，插件升级不会动。
+插件只写一种形态：`apply(ctx, config)`。能力全部从 `ctx` 取，注册的东西随插件卸载自动回收。
+这份文件在插件每次启动时同步到数据目录 `modules/`，**别改它**。
 
-大肥鱼的每项本事都是一个**模块**：表情包、语音、心情、记忆、空间日记、B 站、翻唱、生图……
-你可以：
+## 两种插件
 
-- **加新模块**：给她新本事（查天气、接智能家居、关键词回复、对接自己的服务……）
-- **关掉内置模块**：面板「已安装」页一个开关
-- **替换内置模块**：写一个**同名**的模块，内置的就不加载了，用你的
-- **复制内置模块来改**：面板「已安装」页点「复制一份来改」，内置模块的源码会复制到 `modules/<id>/`，改完保存就生效
-
-## 两种形态，挑一种就行
-
-| 形态 | 放哪 | 适合什么 |
+| 形态 | 放哪 | 适合 |
 | --- | --- | --- |
-| 多文件模块 | `modules/<id>/`（有 `index.mjs` 或 `package.json`） | 要分文件、要装 npm 依赖、要带面板页 |
-| 多文件模块（TS 源码） | `modules/<id>/index.ts` | 本地开发直接写 TS；加载时转成 JS 再跑，保存就热重载 |
-| 单文件插件 | `modules/<id>.mjs` | 关键词回复、链接解析这种几十行就写完的小功能 |
+| 单文件 | `modules/<id>.mjs` | 关键词回复、链接解析，几十行就写完 |
+| 文件夹 | `modules/<id>/index.ts` 或 `index.mjs` | 要分文件、要装 npm 依赖、要带面板页 |
 
-单文件插件就是一个 ESM 文件。**只认 `.mjs`**：`modules/` 下没有 `package.json` 兜底，
-`.js` 会被 Node 当成 CommonJS，加载直接失败。
+单文件只认 `.mjs`：`modules/` 下没有 `package.json` 兜底，`.js` 会被 Node 当成 CommonJS。
+TS 入口直接用 Node 的类型剥离跑，不需要先编译；保存就热重载。
 
-TS 源码形态要本机有 `typescript`（源码仓库里 `npm install` 就有；插件市场装的包不带它），
-写 `import './helper.js'` 或 `import './helper.ts'` 都行，加载时会统一成 `.js`。
+## 最小例子
 
-```js
-export const name = '关键词回复'
+```ts
+import type { Ctx } from './aurabot'
 
-export default function apply(ctx) {
-  ctx.middleware(async (session, next) => {
-    if (session.content === 'ping') {
-      await session.send('pong')
-      return
-    }
-    return next()
-  }, { name: 'ping' })
-}
-```
-
-改完保存就热重载，发行版里也一样，不用重启。
-
-## 目录
-
-1. [最小的模块](#最小的模块)
-2. [模块定义](#模块定义)
-3. [api：模块能用的东西](#api模块能用的东西)
-4. [事件](#事件)
-5. [工具](#工具)
-6. [面板](#面板)
-7. [内置模块和它们导出的东西](#内置模块和它们导出的东西)
-8. [替换内置模块](#替换内置模块)
-9. [测试](#测试)
-10. [内部源码](#内部源码)
-11. [升级会不会坏](#升级会不会坏)
-12. [排查问题](#排查问题)
-13. [v2 写法：apply(ctx) 与清单](#v2-写法applyctx-与清单)
-
-## 最小的模块
-
-`modules/hello/index.mjs`：
-
-```js
-/** @type {import('../aurabot').AurabotModule} */   // 有这一行，编辑器就有补全（类型在 modules/aurabot.d.ts）
 export default {
-  id: 'hello',          // 和文件夹名一样
   name: '打招呼',
-  api: 1,
-  setup(api) {
-    api.on('message', async (msg) => {
-      if (msg.text !== '你好') return false
-      await api.send(msg.chatId, '你好呀～')
-      return true        // 这条我处理了，她不再回
-    })
+  defaults: { registerCommands: false },
+  apply(ctx: Ctx, config: Record<string, any>) {
+    ctx.middleware(async (session, next) => {
+      if (session.content.trim() !== '你好') return next()
+      await session.send('你好呀～')
+    }, { name: 'hello' })
   },
 }
 ```
 
-保存后几秒内自动加载，不用重启。面板「已安装」页能看到它在不在跑、有没有报错。
-
-- 入口文件叫 `index.mjs`（或 `index.js`，但要是 ES 模块写法）
-- 文件夹名以 `_` 或 `.` 开头的不加载（可以拿来放草稿）
-- **可以拆成多个文件**：`import { x } from './util.mjs'`、子文件夹都行。模块文件夹里**任何文件**改了、加了、删了，几秒内整个模块重新加载
-  （插件每次把文件夹拍一份快照到 `modules/<id>/.aurabot-cache/` 再加载；这个文件夹别动，也别往里写东西）
-- 读模块自带的数据文件用 `join(api.dir, 'data.json')`（`api.dir` 是模块文件夹；`import.meta.url` 指向的是快照）。要写的数据放 `api.dataDir()`
-
-### 用 npm 包
-
-在模块文件夹里装，和普通 Node 项目一样：
-
-```powershell
-cd "$env:USERPROFILE\.dsh\plugins-data\aurabot\modules\weather"
-npm init -y
-npm install cheerio
-```
-
-然后 `import * as cheerio from 'cheerio'` 就能用（`node_modules` 不会被拍进快照，但快照在模块文件夹里面，Node 往上找得到）。
-Node 自带的 `fetch`、`node:fs` 这些直接用，不用装。
+文件夹名就是插件 id（小写字母开头，只能小写字母、数字、`-`，2~40 字）。以 `_` 或 `.` 开头的文件夹不加载。
 
 ## 模块定义
 
-```js
+```ts
 export default {
-  id: 'weather',              // 必填：小写字母开头，小写字母 / 数字 / -，2~40 个字；和文件夹名一样
-  name: '查天气',             // 面板上显示的名字
-  version: '0.1.0',           // 你自己的版本号，随便写
-  api: 1,                     // 按哪一版扩展接口写的（现在是 {{API}}）
+  name: '查天气',
+  version: '0.1.0',
   description: '一句话说明',
-  defaults: { city: '北京' }, // 设置的默认值
-  settings: [                 // 面板自动生成设置表单（见「面板」）
-    { key: 'city', label: '城市', type: 'text' },
+  kind: 'plugin',          // 适配器写 'adapter'
+  reusable: false,         // 适配器可以开多个实例时写 true
+  reloadOnConfig: false,   // true = 改配置后整个插件重载；默认只换 config 对象
+  defaults: { city: '北京' },
+  settings: [
+    { key: 'city', label: '城市', type: 'string' },
   ],
-  panel: 'panel.js',          // 可选：自己画面板（见「面板」）
-  tab: 'song',                // 可选：设置和面板放进哪个内置标签页（不写就单独一页，见「面板」）
-  setup(api) {                // 必填：启动时调用一次，可以是 async
-    // 在这里注册事件、工具、命令、定时任务……
-    return { /* 导出给别的模块用的东西 */ }
+  apply(ctx, config) { /* … */ },
+}
+```
+
+`api` 字段不用写（现在只有 v2）。`setup(api)` 已删除，不再兼容。
+
+## ctx 能力
+
+| 写法 | 说明 |
+| --- | --- |
+| `ctx.config` | 本插件配置（活值，面板保存后立刻更新） |
+| `ctx.root.config` | 全局配置（多主人、指令前缀、黑白名单……） |
+| `ctx.updateConfig(patch)` | 存本插件配置 |
+| `ctx.logger` | `info / warn / error / debug`；`debug` 只在面板打开调试模式时输出 |
+| `ctx.setInterval(ms, fn, label?)` | 定时器，卸载自动清 |
+| `ctx.setTimeout(ms, fn)` | 同上 |
+| `ctx.effect(fn)` | 注册一个清理函数，卸载时执行 |
+| `ctx.middleware(fn, { name, before, after })` | 入站中间件 |
+| `ctx.command('名字 <参数>').action(fn)` | 注册指令（不经过 AI） |
+| `ctx.tool(spec)` | 注册给 AI 调用的工具；用户不能直接触发，要靠模型决定调用并传参 |
+| `ctx.server.get/post/...` | 面板 HTTP 接口，默认走面板鉴权 |
+| `ctx.page({ path, name, icon, order, url })` | 侧栏注册页面 |
+| `ctx.on / ctx.emit` | 自定义事件；任何插件都能定义自己的事件名给别的插件监听 |
+| `ctx.get(id)` / `ctx.lazy(id)` | 取另一个插件的导出 |
+| `ctx.provide(name, impl)` / `ctx.require(name)` | 服务：谁提供都行，没人提供就明确报错 |
+| `ctx.voice` / `ctx.sing` / `ctx.database` / `ctx.ffmpeg` | 常用服务的快捷入口 |
+| `ctx.bots` | 机器人列表：`ctx.bots[0]`、`ctx.bots('号')`、`ctx.bots.list()` |
+| `ctx.bot(id?)` | 同上，按 id 取默认 / 指定实例 |
+| `ctx.broadcast(targets, content)` | 按 Target 广播 |
+| `ctx.sendTo / sendImage / sendFile / sendVoiceFile / reply` | 主动发送 |
+| `ctx.ask(options)` | 问一次模型，不进聊天会话 |
+| `ctx.isOwner(userId)` | 是不是主人（支持多个主人 ID） |
+| `ctx.dataDir(...parts)` | 本插件的数据目录 |
+
+`ctx.command` 对官方插件受配置项 `registerCommands` 控制（默认关）；社区插件不声明这个字段时照常注册。
+
+## 消息与 h
+
+消息内部是一棵元素树，平台差异留给适配器。宿主注入全局 `h`，不用 import：
+
+```ts
+await session.send(h('text', { content: '你好' }))
+await session.send(h.image('https://example.com/a.png'))
+await session.send([h.text('看这个：'), h.file('file:///D:/a.zip')])
+
+const tree = h.parse('<at id="123"/> 你好')
+h.select(tree, 'image')
+h.stringify(tree)
+```
+
+发送接受字符串、元素、元素数组。适配器按自己的能力表渲染；发不出去的元素降级成文字占位符，不会整条吞掉。
+
+模型吐出的未知标签（`<acp>`、`<thinking>` 之类）整块丢弃；孤立的闭标签只丢标签，正文照发。
+
+`<voice>要念的话</voice>` 会在出站时交给 TTS 换成音频；`<file>file:///路径</file>` 同理。
+
+## 管线三段
+
+```text
+入站消息
+  └─ command    指令命中 → action
+       └─ middleware  插件中间件（默认段）
+            └─ llm        AI 消费 → 模型 → ctx.tool → 发送
+```
+
+- 指令先匹配；没被消费才进中间件
+- 中间件 `return`（不调 `next()`）= 这条处理完了；`return next()` = 交给下一段
+- 同一段可以多次 `await session.send()`，每次都真的发
+- `session.execute('tell …')` 等价于当前会话又发了这句话：过完整管线，该发就发；递归深度限 1
+
+全局配置 `middlewareAfterCommand`（默认关）可以让指令消费完也继续走中间件。
+
+## 配置与面板
+
+`defaults` + `settings` 就能生成面板表单，不需要写前端：
+
+```ts
+export default {
+  defaults: { city: '北京', onlyOwner: false },
+  settings: [
+    { key: 'city', label: '城市', type: 'string' },
+    { key: 'onlyOwner', label: '只回主人', type: 'boolean' },
+  ],
+  apply(ctx, config) { /* config.city */ },
+}
+```
+
+语义：缺省即开；`null` 缺省 = 关，显式 `true` 才开。
+
+要自己画面板时用 `ctx.page` 注册页面，前端放 `panel.js`（可选）。
+
+## 服务
+
+内核和插件都不直接 import 别人的实现，只认服务：
+
+```ts
+// 提供
+ctx.provide('weather', { query: async (city) => ({ city, text: '晴' }) })
+
+// 使用
+const weather = ctx.require('weather')   // 没人提供就抛错
+const maybe = ctx.services.get('weather') // 没有返回 null
+```
+
+内置服务：`voice`（TTS）、`tts`、`asr`、`sing`、`database`、`ffmpeg`。
+
+## 适配器插件
+
+适配器也是插件，只是 `kind: 'adapter'`，`apply` 里注册机器人：
+
+```ts
+export default {
+  name: 'Discord',
+  kind: 'adapter',
+  reusable: true,
+  defaults: { token: '' },
+  settings: [{ key: 'token', label: 'Bot Token', type: 'password' }],
+  async apply(ctx, config) {
+    const bot = await ctx.adapter({ platform: 'discord' }, config)
+    return { bot }
   },
 }
 ```
 
-`setup` 返回的对象就是这个模块的**导出**。别的模块 `api.use('weather')` 拿到它。
-导出里有 `dispose()` 的话，模块停下时会调用。
+连上、登录、上线之后才发 `online` 事件；下线时正常下线，再调用它的 API 会抛错。
+平台不支持的资源方法（`getGuild` / `getMessageList` 之类）由基类抛 `UnsupportedApiError`，不静默返回空。
 
-## api：模块能用的东西
+## 开发体验
 
-另外 `api.id`（模块 id）、`api.source`（`builtin` / `user`）、`api.version`（插件版本）、`api.apiVersion`（扩展接口版本）可以直接读。
+**类型提示**：入口写 `.ts`，同目录的 `aurabot.d.ts` 就是类型源；VS Code 直接有 `ctx` / `session` / `h` 的补全。
+`.mjs` 文件在 `export default` 上一行写 `/** @type {import('./aurabot').AurabotModule} */` 也有补全。
 
-**配置**
+**热重载**：保存即生效。插件会监听整个插件文件夹（递归），改文件、加文件、删文件都会重新加载，
+发行版里也一样，不用重启宿主。
 
-| | |
-|---|---|
-| `api.config()` | 插件的整份配置（只读，看 `~/.dsh/plugins-data/aurabot/config.json`） |
-| `api.setConfig(patch)` | 改配置：传对象就深合并，传函数 `(cfg) => 新cfg` 就整个换 |
-| `api.settings()` | 这个模块的设置（`defaults` + 面板里填的） |
-| `api.saveSettings(patch)` | 改这个模块的设置 |
-| `api.dir` | 模块自己的文件夹（读自带的数据文件用） |
-| `api.dataDir(...路径)` | 这个模块专用的数据文件夹（`plugins-data/aurabot/modules-data/<id>/`），自动建好 |
-| `api.log.info / warn / error / debug(...)` | 写日志（面板「日志」页能看，自动脱敏） |
+**日志**：`ctx.logger.info` 少用；`debug` 只在面板打开调试模式时出现。日志文件在
+`<数据目录>/data/logs/`，面板「日志」页能按文件查看。
 
-**发消息**（总开关、试运行照常管着：关着 / 试运行时只写日志）
+**排查**：面板「已安装」页会显示插件在不在跑、报错原因。常见原因：
 
-| | |
-|---|---|
-| `api.send(chatId, text)` | 用她平时的方式发：会拆条，能带 `<voice>…</voice>`、`<sticker:名字>`、`<poke>`，会经过 `reply` 事件 |
-| `api.sendText(chatId, text)` | 原样发一条文字 |
-| `api.reply(msg, text)` | **回某一条消息**：群里以「引用回复」发出（大家能看出在回谁），私聊直接发 |
-| `api.sendImage(chatId, 图片路径或网址)` | 发图 |
-| `api.sendFile(chatId, 文件路径或网址, 文件名?)` | 把文件（文档、压缩包、音频、视频……）当文件发过去。要先在面板「聊天」页打开「发文件」；本机文件给**绝对路径**，而且只能在 QQ 工作区或主人在面板里加的目录里；单个文件有大小上限（默认 50 MB）。网关在别的机器 / 容器里看不到本机路径时，小文件会自动改用 base64 再试一次 |
-| `api.sendVoiceFile(chatId, 音频文件, 日志备注?)` | 把本机一个音频文件当语音条发出去（不走「念文字」） |
-| `api.sendSegments(chatId, [OneBot 消息段], 日志备注)` | 发任意 OneBot 消息段 |
-| `api.onebot(action, params)` | 直接调 OneBot v11 协议端的任意 API，比如 `api.onebot('get_group_member_list', { group_id: 123 })` |
+- 文件夹名和 `id` 不一致
+- 入口不是 ESM（单文件必须是 `.mjs`）
+- 依赖没装（在插件文件夹里 `npm install`）
+- 忘了 `await` 发送方法
 
-`chatId` 的格式：`private:QQ号`、`group:群号`（她后台自己想事情用的会话是 `system:名字`，工具生成函数里可能见到，发不了消息）。
+## 内置插件
 
-判断是不是主人：`api.isOwner(msg.userId)`。
-
-**用模型**
-
-| | |
-|---|---|
-| `api.ask({ system, text, maxTokens })` 或 `api.ask('一句话')` | 直接问一次模型（不带人格、不进会话），返回文字 |
-| `api.think(prompt, { title, timeoutMs })` | 让**她**（带人格、记忆）想一想，返回她的回答（不会自动发出去；默认最多等 3 分钟） |
-
-**联网**：直接用 Node 自带的 `fetch`（会走系统代理），记得加超时：`fetch(url, { signal: AbortSignal.timeout(8000) })`。插件不另外提供代理设置。
-
-**往插件里加东西**（模块停下时自动撤掉，都返回一个「撤掉」函数）
-
-| | |
-|---|---|
-| `api.on(事件, fn)` | 听事件（见下一节） |
-| `api.emit(事件, ...参数)` | 发事件给别的模块 |
-| `api.tool(fn 或 工具)` | 给她加工具（见「工具」） |
-| `api.defineTool({ name, description, properties, required, execute })` | 做一个工具 |
-| `api.context(({ chat, sessionId }) => '文字')` | 每轮聊天前塞进她上下文的话（比如「现在北京 20 度」）；返回空串就不塞 |
-| `api.rule((kind, cfg) => '一条规则')` | 补一条她的规则（会放进系统提示词；kind 是 `private` 主人私聊 / `social` 群聊和别人）。告诉她「你会查天气，用 xxx 工具」就写在这里。可以直接给字符串、也可以返回多条（数组）；函数**每一轮都会重新调用**，所以里面可以拼当前设置 |
-| `api.command({ name, aliases, desc, delegatable, run(arg, msg) })` | 主人可在 QQ 私聊或白名单群里发送命令。默认仅主人可用。只有显式设置 `delegatable: true` 的命令，主人才能授权给私聊白名单中的 QQ 用户。此时 `run` 会收到实际发送者的消息，模块应自行限制命令的操作范围。返回的文字回到发命令的聊天。名字可以是中文，中文命令后面可以不加空格；`arg` 已去掉首尾空格。和内置命令同名时模块命令优先 |
-| `api.every(毫秒, fn, 名字?)` | 定时任务（名字用在出错日志里） |
-| `api.later(毫秒, fn)` | 过一会儿做一次 |
-| `api.route('/路径', async (req, res) => 返回值, options?)` | 加一个网页接口：地址是 `/aurabot/api/ext/<id>/路径`；返回对象就当 JSON 回；要自己回（比如图片）就用 `api.core.http.send(res, 200, buf, 'image/png')`。1.3.0 起管理接口可传 `{ access: 'panel' }`，复用宿主回环/可信代理、Host 与 CSRF 闸；不传时保持现有行为，由模块验证客户端凭据 |
-| `api.onDispose(fn)` | 模块停下时要做的收尾 |
-
-进入 `onDispose` 或导出的 `dispose` 时，`api.setConfig` 和 `api.saveSettings` 已停止写入。模块在停用时若要恢复它临时改过的配置，可以在同步收尾里调用 `api.core.setConfig({ ...要恢复的字段 })`。先用 `api.config()` 核对当时的值，免得盖掉用户后来的修改。异步收尾可写自己的 `api.dataDir()`。
-
-QQ 主人命令的参数或回执涉及隐私时，可用 `api.command({ name: 'private-query', sensitive: true, run })`。宿主的命令日志只记命令名，回执发送失败时结束本次发送。敏感命令仅主人可用，即使同时声明 `delegatable: true`。
-宿主在执行敏感命令和发送回执前复核主人及授权代次。模块可以按需限制为主人私聊，并单独处理模拟命令。
-
-**别的模块和插件内部**（全开放）
-
-| | |
-|---|---|
-| `api.use('memory')` | 拿到某个模块**现在**的导出；模块没在跑返回 `null`。不要在 setup 里拿了存着，用的时候再拿（对方可能被关掉、被替换） |
-| `api.lazy('memory')` | 一个代理，每次访问都去找当时在跑的那个模块：`const memory = api.lazy('memory'); memory.add?.({...})`（模块没在跑时属性是 undefined，所以用 `?.`） |
-| `api.has('memory')` | 某个模块在不在跑 |
-| `api.core` | 插件核心，见下 |
-| `api.dsh` | DSH 给插件的 `ctx`：`api.dsh.get('服务名')` 能拿到 DSH 的任何服务（`llm`、`speechToText`、`tools`……） |
-| `api.lib('features/memory.js')` | 插件里任何一个源码文件导出的全部东西（见「内部源码」） |
-
-`api.core` 里有：
-
-| | |
-|---|---|
-| `hub` | 聊天中枢：`deliver(chatId, text)` `sendText` `sendVoice(chatId, 文字)` `sendVoiceFile(chatId, 音频文件)` `sendImage` `sendSticker(chatId, 名字)` `sendSegments` `runSystemTurn(名字, 标题, 提示词)` `pushToSession(...)` `resetChat(chatId)` `groupName(群号)` `turnHasOwner(sessionId)`（只表示本轮有人是主人，别拿它做权限门，用下面的 `turnSendersAllOwner`） `turnSendersAllOwner(sessionId)` `referenceImage(chat, 'last'、'quote' 或 'msg:消息号:图片序号')`（返回 Buffer；msg 只匹配当前聊天已缓存的具体图片，编号从 1 起，缓存失效时报错且不回退；last / quote 语义不变） `chatOfSession(sessionId)` `stats()` `sessions()` `chatLogOf(日期)` `recentMessagesOf(chatId, limit)`（原话档案开启后，当前人物同一聊天的近期消息，默认 32、最多 256 条） `lastChatAt` `lastOwnerChatAt` …… |
-| `media` | 通用媒体读取与转换辅助：`mimeOf(bytes)`、`avatar()`、`sticker(md5)`、`ffmpegPath()`、`parseWav(bytes)`、`toMono16k(bytes)`，详见下文（1.3.0 起） |
-| `onebot` | QQ 网关：`call(action, params, { timeoutMs })`、`state` |
-| `local` | 本地接口（「本地接口」页那四项）：`active(slot)` `call(slot, 参数)` |
-| `groupRoles` | 她在各群的身份：`get(群号)` `canManage(role)` `label(role)` |
-| `mutes` | 闭嘴状态：`muted(chatId)` `set(chatId, 分钟)` `clear(chatId)` |
-| `ask(opts)` | 同 `api.ask` |
-| `listModels()` / `defaultModel()` | DSH 里的模型 |
-| `http` | 写接口用的小工具：`body(req)` 读 JSON、`raw(req, 最大字节)` 读原始内容、`query(req)` 读网址参数、`send(res, 状态码, 内容, 类型)` |
-| `personas` | 人格：`list()` `read(id)` `current()`（正文）；`look(sessionId?)` 返回会话所属人格（未传时取当前异步上下文人格）的 `{ image: Buffer \| null, appearance: string, references: { id, note, image: Buffer }[] }`，`references` 仅含已开启的参考图及备注，`image` 为其中第一张（兼容旧调用）；全部关闭时返回空数组和 null，与提示词使用相同的缺失人格回退规则。人设图仅供识图和生图，不直接加入聊天上下文 |
-| `modules` | 模块内核本身（`status()` `reload(id)` ……） |
-| `getConfig()` / `setConfig(patch)` | 读取当前配置 / 深合并对象补丁。兼容同步收尾的配置恢复，收尾结束后拒绝写入 |
-| `logger` | 插件的日志器（`logger.child('名字')` 拿一个分类） |
-| `root` | 插件自己的安装目录 |
-
-### 人设记忆桥接预览（仅 `persona-memory`）
-
-`api.core.personaMemoryBridge` 的 `state` 为 `preview`，能力为 `native-memory-view` 和 `confirmed-delivery`。原生记忆仍处理互动。市场模块的正式启用另需记忆交接、角色会话归属与 DSH 请求前投影等接口。
-
-- `readNativeMemory(chatId, { limit?, offset? })` 只预览当前已确认数据归属的人格与主人的私聊，`chatId` 必须为 `private:<主人QQ>`。只从运行中的原生记忆读取已保存、有效的同一聊天条目。返回只读 `{ items: [{ id, text, at }], nextOffset }`，每页最多 100 条。原生库未载入时返回 `null`。原话流水、无归属条目、其他聊天的内容及文件路径不在此接口的范围内。
-- `onDelivery(chatId, fn)` 为同一私聊订阅 OneBot 确认送达的回执 `{ originId, chatId, platform, messageId, status: 'confirmed', at }`，返回取消订阅函数。每个模块实例只开一个有效订阅。模块停止时自动撤销，安全模式隐藏桥接。回执通过订阅直接交付，不进入模块事件总线。
-- 网关以有效的 `message_id` 确认实际发送后才发回执，排队、模拟、调试、敏感命令和失败均不发。补发成功沿用入队时的订阅与身份，旧实例撤销后的队列项按原规则补发。订阅内的近期重复回执按稳定的 `originId` 合并。
-
-### 已有聊天的外部主人入口（1.3.0 起）
-
-`api.core.hub.sessions()` 返回现有聊天映射（含 `sessionId/title`）；`chatLogDays()` 返回已有流水日期，按 `YYYY-MM-DD` 升序排列；`chatLogOf(day)` 返回当天流水。这些查询复用原数据，不创建平台专用的会话或历史副本。流水可能含系统、已忘记的条目；模块展示时必须过滤 `forgottenAt`、系统与记忆提示，不把管理视角给未验证身份的人。
-
-`await api.core.hub.receiveOwnerMessage(chatId, { text?, image?, wav?, via?, originId?, assertAuthorized? })` 用于**模块已经验证为主人**的输入。它不是公开匿名接口；模块必须保护自己的网络边界和设备凭据。只接受 `sessions()` 已存在的 private/group 会话，遵守总开关、聊天白名单和暂停状态；不会新建其他聊天。`image` 为图片 Buffer，`wav` 为 PCM WAV Buffer，沿用本体缩图、模型视觉降级及本地/云端/DSH 转写。来源 `via` 默认 `external`，最多 40 字，用于提示与原流水来源；`originId` 是不透明的来源端标记，仅进入实时事件，不落盘。转写文本仍进入原有即时记忆、流水、原话档案及原会话；群会话保留 social 权限，回复仍经原 QQ 出口。
-
-`assertAuthorized` 是同步函数，凭据被撤销时抛错。在入口、媒体准备完成和模型投递前均会再次检查，同时重新检查主人身份及聊天是否仍然开放。模块停止后应让此函数拒绝仍在途的请求。`pushToSession` 也接受此检查作为可选参数；未提供时保持原行为。输入被其他模块的 `prompt` 拦截时沿用其原语义，不保证模型会回复。
-
-`api.core.media.avatar()` 返回当前自定义头像，缺省用插件默认头像；`sticker(md5)` 从**当前运行**的 `stickers` 模块读取精确匹配素材。返回 `{ bytes: Buffer, type: string }`，缺失或非图片返回 `null`，不暴露数据目录或素材路径。`api.use('stickers')?.library()` 继续提供素材列表与名称。`mimeOf(bytes)` 按文件头识别类型；`ffmpegPath()` 复用现有 ffmpeg 配置和本机探测；`parseWav(bytes)` 返回 `{ rate, channels, data }`，`toMono16k(bytes)` 转为单声道 16 kHz WAV。解码进程、时长与上传限制由调用模块负责。
-
-## 事件
-
-`api.on(名字, fn)`：
-
-| 事件 | 参数 | 说明 |
-|---|---|---|
-| `message` | `msg` | 收到一条**她会处理的**消息（白名单内、不是主人命令、总开关开着、没闭嘴）。**群里每一条都会来，在「回不回」的决定之前**——所以没人 @ 她的消息你也能接管。**返回 true = 你接管了**，她不再处理；返回 false 或不返回 = 不管；多个模块按加载顺序问，第一个返回 true 的接管 |
-| `poke` | 原始戳一戳事件 | 有人戳她。返回 true = 你接管了 |
-| `reply` | `text, { chatId, userText }` | 她要发一段话之前。**返回新文字 = 改写**；返回 `null` = 这次不发；不返回 = 不改 |
-
-**改她怎么想、怎么说**（下面这些都是「改写」：返回新值就换掉，返回 `null` 就拦下，不返回就不改；多个模块按顺序一个接一个改）：
-
-| 事件 | 参数 | 改的是什么 |
-|---|---|---|
-| `group/decide` | `decision, { msg, policy, recentTexts, memScore }` | 群里这条消息（没被 `message` 接管的）她**回不回、怎么回**。返回 `null` 在这里无效（等于不改）。`decision` 是 `{ reply, mode, reason }`，mode 是 `must`（被叫到）/ `engaged`（正在参与话题）/ `interject`（插话）。返回 `{ reply: true, mode: 'must' }` 就让她必回，`{ reply: false }` 就让她不理。想整套换掉插话策略就在这里写 |
-| `prompt` | `content, { chat, senderId, queryText, sessionId, prevText, recentMessages }` | **交给她的内容**：`[{ type: 'text', text }, { type: 'image', … }]`。可以加背景信息、改格式、去掉图片；返回 `null` 这次不交给她 |
-| `reply/items` | `items, { chatId, text, userText }` | 她的回复**拆好之后**（哪条发语音、配不配表情都已经决定了）：每条 `{ kind: 'text' \| 'voice' \| 'sticker' \| 'poke' \| 'image', value, replyTo }`。可以改顺序、全部变语音、去掉表情、加图片 |
-| `send` | `message, { chatId, note, force }` | **最终发给 QQ 的消息段**（OneBot 格式）。所有发出去的消息都经过这里：她的回复、命令回复、模块发的。加签名、过滤词、抄送到别处都在这里 |
-| `model` | `selection, chat` | **这个聊天用哪个模型**（同步，不能 async）：返回 `{ provider, model, reasoningEffort }`。比如群里用便宜的、私聊用好的。`selection` 是面板选的（没选时是 DSH 默认，拿不到时是 `null`），主人在面板里「按聊天选模型」设过的话，已经按那个聊天算好了；模块在它之后还可以再改。换了之后从这个聊天的下一条消息起生效 |
-| `persona` | `text` | **她的人格**全文（同步）：返回新文字就换掉 |
-| `rules` | `text, kind` | **她的规则**全文（同步，kind 是 `private` / `social`） |
-
-例子：群里只在被 @ 时说话，私聊用另一个模型，所有回复末尾加个尾巴：
-
-```js
-api.on('group/decide', (d, { msg }) => (msg.mentioned ? { reply: true, mode: 'must' } : { reply: false, reason: '只在被 @ 时说话' }))
-api.on('model', (sel, chat) => (chat.kind === 'private' ? { provider: 'deepseek', model: 'deepseek-chat' } : undefined))
-api.on('reply/items', (items) => [...items, { kind: 'text', value: '—— 大肥鱼' }])
-```
-
-**只看不改的**：
-
-| 事件 | 参数 | 说明 |
-|---|---|---|
-| `chat/log` | `{ t, chatId, who, text, uid?, via?, interaction?, forgottenAt?, originId? }` | 1.3.0 起，每条流水成功落盘后的只读快照，包括经 `deliver` 记账的回复 / 模块发送及已确认身份的外部输入。文字沿用原流水的脱敏和 500 字上限；`originId` 只在通知中存在。调试模式不写流水，也不产生通知。监听失败不影响消息与落盘，不是发送前的拦截器 |
-| `activity` | `{ kind: 'in' \| 'out', chatId, userId, nickname, text, reply, direct, owner }` | 收到的消息 / 她发出去的话（只看不拦） |
-| `onebot` | 原始 OneBot 事件 | **所有**事件：消息、加群、退群、撤回、好友申请、戳一戳……（只看不拦；不管白名单） |
-| `onebot/state` | `'connected'` 等 | QQ 网关连上 / 断开 |
-| `config` | `新配置, 旧配置` | 配置改了 |
-| `module/start` / `module/stop` | 模块 id | 有模块启动 / 停下 |
-| `song/sung` | `{ title, chatId }` | 翻唱模块唱完一首 |
-| 你自己 `api.emit` 的 | 随你 | 模块之间互相通知 |
-
-`chat/log` 跟随原流水的记账边界：正常模型回复和 `api.send()` 由 `hub.deliver()` 统一记账；底层 `sendText()` / `sendSegments()` 仅负责发送，不自动新增流水或此事件。分条、语音等出口不另行重复记账。验证回复通知时，应走 `deliver()` 并核对实际发送与落盘记录。
-
-带有效 QQ 消息 ID 的入站流水会在通知中提供稳定的 `originId`。请把入站通知与桥接回执的 `originId` 当作不透明标识符。
-唯一的显式例外：`sendText()` / `sendImage()` 传 `opts.proactive = true`（可带 `proactiveCause` 标明来路）时，**真发出去之后**补一条带 `proactive` 标记的流水，用于「别处说过」桥接和重启后回捞。这是调用方主动要求记流水，不是底层自动记账；不发、试运行、补发队列里都不记。
-
-`msg` 长这样（`text` 是纯文字：@ 她的那段去掉了，@ 别人的写成「@昵称」，图片 / 表情 / 文件写成「[图片]」这类占位；引用的那条消息的文字**不在**里面，要的话用 `replyId` 去 `api.onebot('get_msg', { message_id })` 拿）：
-
-```js
-{
-  kind: 'private' | 'group',
-  chatId: 'private:123' | 'group:456',
-  userId: '123', groupId: '456', nickname: '昵称（群名片优先）', role: 'owner' | 'admin' | 'member' | '' /* 在群里的身份 */
-  text: '纯文字内容', messageId: '…', mentioned: true /* @了她 */, replyId: '…' /* 引用的消息 */,
-  images: [...], stickers: [...], records: [...] /* 语音 */, forwards: [...] /* 合并转发 */,
-  raw: { /* 原始 OneBot 事件 */ },
-}
-```
-
-## 工具
-
-工具是**她自己决定什么时候用**的能力，命令由获得授权的用户手动发送。
-
-```js
-api.tool(({ chat, level, sessionId }) => {
-  // chat：当前聊天 { chatId, kind: 'private' | 'group' | 'system', userId, groupId }
-  // level：'full' 主人私聊（完整权限）/ 'social' 群聊和别人 / 'chat'（没有工具）
-  if (chat.kind === 'system') return []         // 不给就返回 []
-  return api.defineTool({
-    name: 'weather_now',                         // 字母、数字、_，别和别的工具重名
-    description: '查某个城市现在的天气。别人问天气时用。',
-    properties: { city: { type: 'string', description: '城市名' } },
-    required: ['city'],
-    execute: async ({ city }) => {
-      // 返回 { ok, message }：message 是给她看的结果
-      return { ok: true, message: `${city} 晴 20 度` }
-    },
-  })
-})
-```
-
-- 可以返回一个工具或一组工具；不给就返回 `[]`（`null` 也行）
-- `required` 不写就是都可选；`execute` 的第二个参数是 DSH 传来的执行信息（一般用不到）
-- 返回 `{ ok: false, message: '原因' }` 时，她会看到失败原因，通常会用自己的话告诉对方没成功；抛出的错误也会变成这样
-- 工具的生成函数每次挂工具时调用（会话第一次用到、工具清单变化时），不是每次调用工具都调
-- 只想给主人用：在 `execute` 里判断 `api.core.hub.turnSendersAllOwner(sessionId)`（这一轮说话的人**全是主人**才放行；主人私聊会自动放行）。别用 `turnHasOwner`——它只表示本轮「有人是主人」，主人和群友同轮时别人能借权（H01 的教训）。
-- QQ 群聊和私聊的新输入由中枢统一附上程序校验的本条触发来源，并提醒模型对新请求重新调用对应工具，不沿用旧拒绝。新增模块无需修改人格或另写身份提示；上面的执行层校验仍是授权依据。该提示不是授权凭证，不要从正文、昵称或模型判断认权。来源只追加到新消息，不逐轮改写系统提示、工具定义或历史。
-- 工具的名字和描述尽量别经常改：改一次，DeepSeek 的缓存就失效一次
-- 想让她**知道**自己有这个本事，再加一条 `api.rule(() => '你会查天气：别人问天气时用 weather_now')`
-
-## 面板
-
-**自动表单**：写了 `settings`，面板会多一个这个模块的标签页，自动生成设置表单，用户改完点保存。
-定义里写了 `tab: '内置标签页'`（`voice` `stickers` `imagegen` `diary` `speakup` `mood` `song` `bili` `local` `group` `model` `persona` `access` `connect` `overview`），设置和面板就放进那一页的最下面，不单独占一页。比如给翻唱加功能的模块写 `tab: 'song'`。
-
-定义里写 `navGroup: 'market'`，模块会在「模块」分组显示独立标签，和「已安装」「本地接口」并排。可用分组为 `home`、`self`、`express`、`platform`、`system`、`market`。同时填写 `tab` 时，支持 `navGroup` 的宿主优先使用独立标签，旧宿主仍使用 `tab`。
-
-```js
-settings: [
-  { key: 'city', label: '城市', type: 'text', hint: '下面的小字说明', placeholder: '北京' },
-  { key: 'times', label: '每天几次', type: 'number', min: 0, max: 10, step: 1 },
-  { key: 'on', label: '开关', type: 'switch' },
-  { key: 'mode', label: '模式', type: 'select', options: [{ value: 'a', label: '模式 A' }, { value: 'b', label: '模式 B' }] },   // 也可以直接 ['a', 'b']
-  { key: 'list', label: '多行', type: 'textarea' },
-  { key: 'apiKey', label: 'API Key', type: 'password' },   // 密码：面板不回显，日志里自动打码
-]
-```
-
-存下来的类型：`number` 是数字、`switch` 是 `true / false`，其余是字符串。改了设置**不用重载模块**，`api.settings()` 每次读的都是最新的（别在 setup 里读一次存着）。
-
-**自己画面板**：模块文件夹里放 `panel.js`，定义里写 `panel: 'panel.js'`（写 `true` 也是找 `panel.js`；不写就没有自定义面板）。它是一段函数体，面板会这样执行：
-
-```js
-// panel.js —— 拿到 React、h（React.createElement）、ui（面板自带的组件）、call（调你的接口）
-// 最后 return 一个 React 组件
-const { useState } = React
-return function Panel({ settings, save, toast }) {
-  const [n, setN] = useState(0)
-  return h(ui.Card, { title: '我的面板' },
-    h('p', null, '城市：' + settings.city),
-    h(ui.Btn, { onClick: async () => { const r = await call('/hi'); toast(r.message || 'ok') } }, '调一下接口'))
-}
-```
-
-- `call(路径, 请求体?)`：调你用 `api.route` 加的接口（不带请求体就是 GET）
-- `settings` 是当前设置，`save(patch)` 保存设置，`toast(文字)` 弹提示
-  - `draftSettings` 是页面尚未保存的设置；`setSettings(patch)` 只更新当前模块的页面草稿，不立即写入。使用这两个属性可与原生表单共用底部“保存设置”、撤销和离开提醒。`settings` 与 `save` 仍保留原行为，兼容已有面板。
-- `ui` 里有：`Card` `Btn` `Switch` `Row` `Empty` `Select`；样式类名可以用面板的 `ab-input` `ab-note` `ab-muted` `ab-small` 等
-- 改了 panel.js 回到面板切一下标签页就是新的
-
-## 内置模块和它们导出的东西
-
-| id | 名字 | 导出（`api.use(id)` 拿到的） |
-|---|---|---|
-| `stickers` | 表情包 | `library()` `match(名字)` `pickForReply(文字)` `collect(消息段, chatId)` `addFromBuffer(buf, { name, tags })` `rename(md5, 名字, 标签)` `remove(md5)` `segmentFor(item)` |
-| `voice` | 语音 | `speak(文字) → { file, engine }` |
-| `mood` | 心情 | `state()` `label()` `nudge(变化量, 原因, chatId?)` `effects()` `contextLine(chat?)` |
-| `memory` | 记忆 | `add({ text, about, aboutName, importance, tags, source })` `addEvent({ text, about, tags, importance, kind, meta })` `recall(查询, { about, limit })` `vectorHits(查询)` `vectorStatus()` `vectorTest(文字)` `vectorReset()` `vectorSync()` `rerankStatus()` `rerankTest(文字)` `list(查询)` `remove(id)` `update(id, 改动)` `contextFor(chat, sessionId)` `noteVia({ via, qq, who, text, at })` `contextVia({ qq, query })` `topicScore(文字)` `profiles()` `consolidate()` …… |
-| `qq-tools` | 基础 QQ 工具 | （只有工具：`qq_chat_history`、`qq_send_message`、`qq_send_file`） |
-| `imagegen` | 生图 | `enabled()` `generate(描述) → Buffer` |
-| `diary` | 空间日记 | `writeDiary()` `post(正文, { images, visibility })` `remove(tid)` `history()` `nextTime()` |
-| `qzone-social` | 空间互动 | `run({ force })` `state()` |
-| `speakup` | 主动搭话 | `fire(原因)` `state()` |
-| `bili` | B 站 | `watch(链接)` `comment(链接, 文字)` `run()` `checkReplies()` `account()` `state()` |
-| `song` | 翻唱 | `request({ song, pitch, chatId })` `search(关键词)` `status()` `install()` |
-| `commands` | 主人命令 | **默认关闭**：框架出厂不认任何内置指令（`/off`、`/model`、`/sing`……），消息全按普通聊天进管线；面板打开后才启用，插件 `api.command()` 注册的命令始终不受影响 |
-| `sandbox` | 聊天沙盒 | `server`（本地 Satori 服务端）`ready`（启动 Promise） |
-
-人物记忆统一使用 `features/memory-store.js` 的 `load/save`，不另建名单或记忆文件。`memory.deletePerson(qq, { keepNoMemory?: boolean })` 删除画像、关于该人的事实及跟进、相关事实引用、涉及他的关系、个人梗概、相处经验、说话习惯、短期摘要和标签，并用 `hub.forgetChatLog(qq)` 把旧流水标为已忘；只提到他名字的别人的事实保留。主人不能删除。`forgetChatLog(qq, query?)` 省略 query 表示整个人，传关键词仍是原来的局部遗忘。
-
-`memory.setNoMemory(qq, enabled, { deleteExisting?: false })` 设置画像上的 `profiles[qq].noMemory`；开启时可调用人物删除并保留该标记，撤销后恢复后续记忆。主人不能设置。各写入和注入路径统一调用 `memory.remembers(qq)`，不要在模块里重复判断标记。停止记忆仍然允许 `noteVia` 和 QQ 流水记录当前对话，但不会提炼个人事实、画像、关系、相处经验、说话习惯、短期摘要或跟进；已有的个人记忆也不参与上下文和召回。`讨厌` 标签仅影响是否愿意回复，与停止记忆分别设置。
-
-`memory.isAcquainted(qq)` 统一识别私聊过、在群里 @ 她或回复她、被她回复过的人，以及 QQ 好友、私聊/主动搭话白名单和主人。证据来自现有流水的 `interaction: string[]`（这条消息直接互动的 QQ；旧私聊流水不需要该字段），好友列表由 hub 在内存里缓存。`memory.profileOnlyAcquainted` 默认开，自动提炼个人事实（主人在本人私聊确认的事实仍可保存，但不作为第三人的交集或画像依据）、聊天的 `remember` 工具、`saveImpressions`、`buildProfile`、个人相处经验/说话习惯与关系均受它控制；群公共事实沿用原规则，旧画像保留。面板可以手动编辑已有画像；新建画像同样检查有无交集，所有编辑都不能绕过不再记住。模块若自动形成聊天中的个人事实，使用 `add({ ..., acquaintedOnly: true })` 复用同一检查；面板手动添加和导入不受自动提炼范围限制，但始终遵守 `remembers`。人物墙按主人、互动次数与最近互动加权排序，`lastActive` 仍用于原有的活跃筛选，不作为亲疏依据。
-
-面板接口：`POST /persona/person/delete { qq }`；`POST /persona/person/no-memory { qq, enabled, deleteExisting? }`。前端删除有两次确认，开启不再记住时询问是否同时删除旧记忆。所有遗忘操作沿用 `forgetVersion`，在途提炼、摘要、画像、压缩和异步召回不能把旧结果写回或重新注入。
-
-平台是工具，同一个人只有一套记忆。模块确认平台账号对应的 QQ 后，可以用 `noteVia` 把双方对话写进同一份私聊流水（`who` 为 `user` 或 `bot`，`at` 是可选的毫秒时间戳），用 `contextVia` 取得这位 QQ 用户的私聊记忆上下文。模块用 `noteVia` 写入流水后，开启的短期状态会自动生效。核对不了身份的账号不要写入，也不要读取记忆。
-
-接 B 站、抖音、帖子、网页等外部内容平台时，看见或分享的内容用 `memory.addEvent({ kind: 'seen', text, meta: { title, author, url, platform, id } })`。它表示「她看过的内容」，不是作者对她说的话，不参与人物事实、画像、相处经验或长期印象的提炼。仍存于同一记忆库的 `items`（`features/memory-store.js` 统一 `load/save`），`source` 仍为 `event`。不要再把内容里的 `remember` 结果另存成普通事实或经历。
-
-`addEvent` 的 `kind` 可省略（原有「做过的事」），或传 `'seen'`。`meta` 可省略，只保留 title / author / url / platform / id 五个可选字符串，分别最多 160 / 80 / 500 / 40 / 100 字符，其他字段丢弃；`id` 也接受数字并转成字符串。`seen` 不挂到某个人名下；`text` 可记感受，省略时用标题。时间轴平台选项从 `meta.platform` 和聊天梗概保留的 `via` 自动汇总，不要求固定平台名。写入真实聊天平台的双方对话则用上面的 `noteVia`，不要用 `seen` 代替聊天流水。
-
-事实档位由 `features/memory-rules.js` 统一定义，`add({ ..., tier })` / `update(id, { tier })` 接受以下编号。为保证升级不缩短旧记忆的期限，旧编号不重排；面板按保留期排列，模块不要用编号大小比较重要性。
-
-| 编号 | 名称 | 默认天数 | 旧数据兼容 |
-|---|---|---|---|
-| 4 | 短暂 | 1 | 新增 |
-| 1 | 琐碎 | 7 | 原编号、配置与时间不变 |
-| 5 | 小事 | 15 | 新增 |
-| 2 | 一般 | 30 | 原编号、配置与时间不变 |
-| 3 | 重要 | 90 | 原编号、配置与时间不变 |
-| 0 | 永久 | 不过期 | 原编号不变 |
-
-有限档天数继续使用 `memory.tierDays[编号]`，面板可调；0 天表示下次整理即可尝试压缩，只有 `tier: 0` 表示永久。旧自定义天数保留，没有 `tier` 的老记录继续沿用遗忘曲线；`tier: 'core'` 仍是已有的长期印象。到期事实先压成梗概，模型失败、预算不足或关闭梗概压缩时保留原事实。自动去重/修订按配置的实际保留期提升档位，永久和长期印象不会被自动降级；面板明确改档可自行选择期限。面板的 `factTiers`（`stats()` 和人物详情返回）、`tierLabel`、`tierDays` 均为派生显示值，不再存一份。
-
-`memory.recallMinRelevance` 为 0～1 的召回最低相关度，默认 0；0 表示关闭新增门槛，保留升级前的召回能力，原来的 BM25 最低分和向量 0.55 下限继续生效。关键词取原始 BM25 的 `s / (1 + s)` 与「命中查询词数 / 查询词数」中的较高值，向量用余弦相似度，任一路达到门槛即可；命中比例托底，避免常见话题随库增大、BM25 下降后被误杀。这是检索启发分，不是概率，不能和重排模型的分数混用。先按来源/人物过滤，再检查相关度，之后才计算人物匹配、重要性和新近程度加分；重排只看过线候选。上一句和 `related` 补充的相关度按 0.6 折算后也要过线，未整理原话同样复用该门槛。面板检索和只读推荐不受聊天召回门槛限制。
-
-面板只读接口：
-
-- `GET /persona/graph` → `{ ok, nodes, links }`。`memory.personaGraph()` 从现有人物墙与 `relations` 派生；节点含 `qq/name/closeness/interactions/isOwner`，边含 `id/source/target/label/text/chatId`。亲疏沿用人物墙的互动证据，不用发言数代替互动。旧关系无 QQ 时只在名字唯一匹配时连线，未识别的人不凭空建画像，不再记住的人不显示。前端 SVG 每页最多 48 人，只展示本页节点之间的边，支持搜索与键盘打开详情。
-- `GET /memory/related?id=...&kind=...` → `{ ok, list }`。`kind` 可省略，或为 `gist/seen`；人物事实、梗概和看过的内容均可作为入口。`memory.recommendations({ id, kind?, chat? })` 优先已有 `related`，再用同话题检索、同人物补充，最多六条，排除自身、已删除、已过时、未来才生效和停记内容。没有 `chat` 时仅供管理面板；其他模块必须传真实聊天 `chat`，复用召回的来源/主人隐私规则，不能给聊天工具直接暴露管理视角。梗概始终只来自锚点所在聊天（传 `chat` 时是当前聊天）。推荐返回 `reason/displayText/validityText`，不写命中数、召回日志或关联引用。
-- `GET /memory/platforms` → `{ ok, list }`。`memory.platformStats()` 按平台返回 `platform/episodes/gists/seen`：原话含现存双方聊天流水，梗概含两级梗概/印象，看过内容只计当前有效 `seen`。忽略已忘、系统流水和停记人物。优先读 `meta.platform` / `via`，兼容单字符串和数组；无标签的 QQ 私聊/群聊算 `qq`，无法辨认的算 `unknown`。标签去重，多来源梗概在每个来源各计一次，不能把各平台计数相加当作总条数。时间轴筛选与统计复用 `memoryPlatforms()`，QQ 与其他平台混聊压缩后仍保留各自来源标签；记忆归属、会话与权限不按平台拆分。
-
-这些接口的视图、计数和推荐均即时计算，不新增存储文件或关系索引表。普通事实的写前相似去重也只在同一 `chatId` 中进行，避免相同说法跨聊天合并后丢失出处。注入出处会标明私聊 QQ、实际存在的 `via` 标签，转述还会保留原说话人的 QQ。
-
-事实 `add` / `update` 支持可选 `validFrom`、`validUntil`（毫秒时间戳或明确年月日），开始时间默认取 `saidAt`。老记录只有 `invalidAt` 时，按它作为结束时间读取；新事实使旧事实过时时，保留 `supersededBy`，结束时间取新事实的 `saidAt`。`related` 是最多 6 个事实 id 的双向引用，由记忆库维护。面板返回的 `validityText`、`displayText`、`relatedItems` 是显示用的派生值，不重复存储。`timeline({ kind?, platform?, chatId?, level?, about? })` 汇总聊天梗概和 `seen`，其中 `kind` 为 `gist` 或 `seen`，平台来自每条返回值的 `platforms`。
-
-悬而未决的重要事直接使用事实上的可选字段 `followUp = { at, tries, question }`：`at` 为下次该问的毫秒时间戳，`tries` 从 0 开始，`question` 为一句自然的问题。没有独立跟进表或文件；存储仍由 `features/memory-store.js` 的 `load/save` 负责。`memory.followUp` 默认开，只跟进主人和 `speakUp.allow` 中朋友在本人私聊里亲口说的、`status: 'fact'`、`tier: 2 / 3` 的个人事实，群聊与外部内容不跟进；已核对 QQ 的跨平台私聊仍使用同一份事实。
-
-提炼输出用 `follow_up: { at: 'YYYY-MM-DD HH:mm', question }`，本地明确日期保留原时间，只有日期则安排晚上 20 点；日期拿不准按原话后 3 天。`update` / `outdated` 用旧事实 id，有结果写 `follow_up: null`，尚无结果省略字段以保留次数和排程。沿用事实去重，重复提炼不重置次数；过时、忘掉、删除时连带清理，未完成的跟进暂不参与细节压缩。面板取消沿用 `memory.update(id, { followUp: null })`，该接口不接受创建跟进。
-
-主动模块共用 `memory.dueFollowUp(qq, now?)`（只返回最早到期的一件，检查记忆开关、本人来源、白名单、有效期和喜恶）与 `memory.markFollowUpAsked(id, now?)`（只在实际发出后调用；问后延期 3 天、7 天，第三次清掉）。主动搭话用 `hub.pushToSession` 的可选 `onDelivered` 回执，在实际发出文字或语音后记数；沉默、试运行、拦截、失败不记数。目的引擎只在模块开启时收集同一件到期素材，权重由 `purpose/engine.js` 的 `FOLLOW_UP_WEIGHT` 定义，不复制进目的目标或待续清单。两条路径都沿用各自的清醒时段、次数与间隔闸门，禁言和讨厌的人跳过。
-
-聊天中枢需要的时候会去找 `stickers`（发表情、偷表情）、`voice`（发语音）、`mood`（心情影响表情 / 语音频率）、`memory`（群聊插话判断）。
-这几个被关掉，对应的事就不做（想发语音时改发文字）；被替换，就用你的——所以替换时**导出的函数名要和上表一样**。
-
-## 社区模块
-
-插件能从社区库 `dsh-aurabot-qq-mods` 安装模块，装好后就是 `modules/<id>/` 里的一个普通模块，多一个记录来源的 `.aurabot-source.json`。想发布自己的模块，看那个仓库的贡献指南。桌宠、抖音、小黑盒、群管也在社区库里。
-
-## 替换内置模块
-
-1. 面板「已安装」页，在要替换的内置模块那一行点「复制一份来改」
-2. `modules/<id>/` 里出现 `index.mjs` 和它用到的实现文件（比如 `qzone.js`），开头注释写着从哪个版本复制的
-3. 改，保存。几秒内面板显示「用的是你的版本」
-4. 想临时用回内置的：那一行的「用内置的」开关；想彻底不要了：删掉文件夹
-
-复制出来的文件里，原来指向插件其他文件的 `import`，改成了 `const { … } = __lib('core/store.js')` 的写法（`globalThis.aurabot.lib`），所以放在 `modules/` 里也能找到插件的源码。
-
-**你的版本加载失败时，会先自动用回内置的**（面板上能看到报错），所以写坏了不会让她突然少一项本事。
-
-## 测试
-
-不用上 QQ 也能试：面板「已安装」页的「模拟测试」——
-
-- **模拟一条消息**：选你是主人还是别人、私聊还是群聊，写一句话，看它会被哪个模块接管、命令回了什么；再写一句「她的回复」，看经过各个模块改写后最后会发出去什么
-- 你的模块加的 `/命令` 在模拟里**会执行**（看 `run` 回了什么）
-- **调用工具**：选一个工具、填参数（JSON），直接调用，看返回值
-- 这期间**发出去的消息只截下来显示，不会真发到 QQ**。但模块直接调 `api.onebot(...)` 的操作（禁言、发空间……）不在此列，是真的会执行的
-- 内置命令（`/off` 这些会改设置的）模拟里不执行
-
-## 内部源码
-
-`api.lib('路径')` 能拿到下面任何一个文件导出的全部东西（路径相对插件的 `src/`）：
-
-{{LIB}}
-
-这些是插件内部的实现，**全开放，但不保证**：升级时函数名、参数可能变。
-写模块尽量用 `api.*` 和内置模块的导出（上面的表），那些会尽量保持不变。
-
-## 升级会不会坏
-
-- **你的文件**：`modules/` 里的东西插件升级不碰
-- **`api.*` 和内置模块导出表**：同一个扩展接口版本（现在是 v{{API}}）里**只加不改**。哪天不得不改，接口版本升到 2，更新说明里写清楚怎么迁移；插件会拒绝加载版本对不上的模块，并在面板上告诉你原因，不会默默出错
-- **`api.core`、`api.lib`、`api.dsh`**：插件内部和 DSH 的东西，全开放但可能随版本变。用了它们的模块，升级后留意面板「已安装」页的报错
-- **复制出来改的内置模块**：是你的分叉。内置的版本更新了，面板会提示「内置版本更新了」，你可以对照着把新改动合进去，或者删掉文件夹用回内置的
-
-## 排查问题
-
-- 面板「已安装」页：每个模块在不在跑、用的是内置的还是你的、启动报错、运行中最近的报错
-- 面板「日志」页：模块的日志按模块 id 分类
-- **安全模式**：「已安装」页打开后，你写的模块一个都不加载，内置的全部恢复。用来判断「是我的模块的问题还是插件的问题」
-- 不会写？在「已安装」页点「复制给 DSH 的话」，粘给 DSH，写上你想要什么，它会读这份说明帮你写
-
-原话档案通过 `conversationContext.enabled` 显式开启，默认关闭。`prompt` 的 `recentMessages` 是当前输入之前的同一人物/聊天记录；关闭时为空。具体保留范围、微信历史资料接入和模块权限边界见 [对话上下文说明](../../docs/MEMORY-CONTEXT.md)。
-
-## v2 写法：apply(ctx) 与清单
-
-上面讲的 `setup(api)` 是 v1，**永远有效**。v2 只是多了一种写法：入口导出 `apply(ctx, config)`，
-字段都挂在 `ctx` 上（`api` 的别名 + 少量新增），老模块一行不改照样跑。
-
-```js
-// modules/weather/package.json —— v2 清单，缺省回退 module.json
-{
-  "name": "weather",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "lib/index.js",
-  "aurabot": {
-    "displayName": "天气",
-    "category": "tool",
-    "api": 2,
-    "capabilities": ["network"],
-    "panel": "./dist/panel.js"
-  }
-}
-```
-
-```js
-// modules/<id>/index.mjs（或清单 main 指向的文件）
-export default function apply(ctx, config) {
-  ctx.setInterval(60_000, () => { /* 卸载时自动清掉 */ })
-  ctx.command('weather', async (session, args) => {  // 用户发的「/weather 杭州」；args 是后面那一整段
-    await session.send(`正在查 ${args}`)
-  })
-  ctx.middleware(async (session, next) => {                 // 拦在 AI 前面
-    if (session.content === 'ping') return 'pong'           // 不调 next() = 这条处理完了
-    return next()
-  }, { name: 'ping', before: 'llm' })
-}
-```
-
-| 能力 | 说明 |
-| --- | --- |
-| `ctx.command(name, fn)` | 注册指令（不经过 AI）。前缀由全局配置 `commandPrefixes` 决定，默认无前缀和 `/` |
-| `ctx.middleware(fn, opts)` | 管线中间件，顺序 `command → middleware → llm`；`return` 不调 `next()` 就是消费掉这条 |
-| `ctx.tool(builder)` | 注册给 AI 调用的工具。用户不能直接触发，得模型自己决定调用并传参数 |
-| `ctx.on(event, fn)` | 事件。插件可以自定义事件名，别的插件用同一个名字 `ctx.on` 监听 |
-| `ctx.setInterval` / `ctx.setTimeout` | 定时器，随模块卸载自动回收（不要用裸 `setInterval`） |
-| `ctx.bots[0]` / `ctx.bots('1787850032')` / `ctx.bots.list()` | 已上线的机器人；按 id 取用 `ctx.bots(id)` |
-| `ctx.adapter(spec, config)` | 注册一个平台适配器：`connect` 成功才上线，模块卸载自动断开 |
-| `ctx.h` | 元素构造与解析：`h('text', { content })`、`h.image(url)`、`h.parse(xml)`、`h.select(tree, 'image')` |
-| `ctx.llm` | 模型能力：`polish` 润色、`rewrite` 改写、`summarize` 摘要。后台调用，不进聊天上下文；失败退回原文 |
-| `ctx.tts` | 文字转语音：`await ctx.tts.speak('你好')` 返回音频地址，可以直接塞进 `<voice url="…"/>` |
-
-中间件或指令先 `await session.send(…)`、再 `return next()` 时，这句已经发出去的话会在进模型前
-回写进当前聊天——模型这一轮看得到自己说过什么，不会同一句再说一遍。回写只带最近 5 条、每条 300 字。
-
-### 一份代码多份配置（reusable）
-
-清单里写 `"reusable": true`（适配器默认就是 true），同一个模块就能跑多份配置。
-典型场景是一个平台接两个账号：
-
-```json
-{
-  "ext": {
-    "weather": {
-      "city": "杭州",
-      "instances": [
-        { "id": "second", "config": { "city": "北京" } }
-      ]
-    }
-  }
-}
-```
-
-- 不写 `instances` 就只有主实例（注册表键就是模块 id，老路径全不变）
-- `id` 是实例名（字母或数字开头，可用 `-` / `_`）；每个实例各调一次 `apply(ctx, config)`
-- `config` 只写和主配置不同的值：宿主按「主配置 + 实例覆盖」合并后传进去
-- 每个实例有自己的 `ctx.settings()`、`ctx.dataDir()`、路由前缀 `/ext/<id>/i/<实例名>`
-- 面板「扩展」页给 `reusable` 的模块自动出实例卡片
-
-写适配器时不用为多实例加特例：`connect(config)` 用传进来的 `config` 就行。
-
-消息里可以直接写元素标签，能不能发出去由适配器决定（不支持就降级成文字或占位符）：
-
-```js
-await session.send('<text>文件给你递过来啦</text><file url="file:///D:/demo/LICENSE"/>')
-await session.send('<voice>这句话会先合成为语音再发</voice>')   // 合成失败自动改发文字
-```
-
-发送一律异步，返回值要 `await`：
-
-```js
-await session.send('群里发群、私聊发私聊')
-await session.sendPrivateMessage(userId, '主动私聊某个人')
-await session.sendMessage(channelId, '主动发到某个频道')
-await session.execute('tell 主人的插件坏了')   // 以当前会话身份把这条再跑一遍管线（会真的发出去）
-```
-
-配置用 `Schema` 声明（可选），面板会按它生成表单，坏数据回落默认值：
-
-```js
-export const config = ctx.Schema.object({
-  greeting: ctx.Schema.string().default('你好'),
-})
-```
-
-**`apply(ctx, config)` 的 `config` 是启动那一刻的快照。** 面板保存设置后宿主只发 `config` 事件、
-不会重载插件，所以别把快照塞进闭包用一辈子。要实时生效，用下面任意一种：
-
-```js
-export default function apply(ctx, config) {
-  let greeting = config.greeting
-
-  // ① 监听事件：配置一变就重建缓存，不重载插件、不断线
-  ctx.on('config', (next) => {
-    greeting = next.ext?.['weather']?.greeting ?? greeting
-  })
-
-  // ② 每次要用时现问（面板默认值 + 保存过的值）
-  ctx.command('weather', async (session) => {
-    const current = ctx.settings()?.greeting ?? greeting
-    await session.send(current)
-  })
-}
-```
-
-`ctx.settings()` 每次调用都是最新的，别在 `apply` 里读一次就存着；
-`ctx.on('config', ...)` 的参数是 `(新配置, 旧配置)`，只改自己那段就够，不用整份对比。
-
-**不想改写法**：清单里写 `"aurabot": { "reloadOnConfig": true }`，面板一保存设置宿主就重载这个模块，
-`apply(ctx, config)` 里的 `config` 自然是最新的。代价是模块内存态（缓存、连接、定时器之外的变量）会被重置，
-所以只适合「apply 里读一遍配置就够」的简单插件。默认是 `false`。
-
+内置插件同样住在 `packages/<id>/`，和社区插件走同一套接口。它们可以被单独关掉；
+想改就复制一份到 `modules/<id>/` 覆盖，或者直接给仓库提 issue。

@@ -13,6 +13,9 @@ import { randomUUID } from 'node:crypto'
 import { createPluginContext } from '../context/plugin-context.ts'
 import { isSchema, Schema } from '../../config/shape/schema.ts'
 import { h } from '../../message/element/element.ts'
+
+// 和 Koishi 一样把 h 挂到全局：插件里直接写 `h('text', { content })`，不用 import。
+;(globalThis as { h?: typeof h }).h ??= h
 import { readManifest, entryOf as entryOfManifest } from '../manifest.ts'
 import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -182,6 +185,18 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       // 模板仓库自带的精简 Schema（plugin-api.js）：只读地翻成面板字段，不改它自己的校验逻辑
       const derived = settingsFromMeta(def.config)
       if (derived.length) def = { ...def, settings: derived }
+    }
+    // 官方插件默认不注册指令：面板里显式打开 registerCommands 才让 ctx.command 生效。
+    // 社区插件没有这个字段（undefined），不受影响。
+    if (source === 'builtin') {
+      const settings = Array.isArray(def.settings) ? def.settings : []
+      def = {
+        ...def,
+        defaults: { registerCommands: false, ...(def.defaults || {}) },
+        settings: settings.some((f) => f?.key === 'registerCommands')
+          ? settings
+          : [...settings, { key: 'registerCommands', type: 'boolean', label: '注册指令（默认关，打开后本插件的 ctx.command 才生效）' }],
+      }
     }
     const rec: ModuleRecord = {
       key,

@@ -1,343 +1,353 @@
-// Aurabot 扩展模块的类型提示（插件每次启动会更新这个文件，别改它）。
-// 用法：在模块入口文件 export default 的上一行写
-//   /** @type {import('../aurabot').AurabotModule} */
-// VS Code 等编辑器就会给 api.* 补全和参数说明。完整说明见同目录的 API.md。
+// Aurabot 插件类型（v2）。插件每次启动会把这份文件同步到 modules/ 下，别改它。
+//
+// 写法只有一种：
+//   export default { name: '…', apply(ctx, config) { … } }
+//
+// VS Code 里把入口写成 .ts，或在 .mjs 顶上写
+//   /** @type {import('./aurabot').AurabotModule} */
+// 就能拿到 ctx / session / h 的完整补全。
 
-export type ChatId = `private:${string}` | `group:${string}` | `system:${string}`
-
-export interface Chat {
-  chatId: ChatId
-  kind: 'private' | 'group' | 'system'
-  userId?: string
-  groupId?: string
-  title?: string
+export interface Element {
+  type: string
+  attrs: Record<string, any>
+  children?: Element[]
 }
 
-/** 收到的一条消息（已解析）。 */
-export interface Message {
-  kind: 'private' | 'group'
-  chatId: ChatId
-  userId: string
-  groupId: string
-  nickname: string
-  /** 在群里的身份：owner / admin / member，私聊是空串 */
-  role: string
-  messageId: string
-  text: string
-  /** @ 了她 */
-  mentioned: boolean
-  /** 引用的那条消息 id */
-  replyId: string
-  images: any[]
-  stickers: any[]
-  records: any[]
-  forwards: any[]
-  /** 原始 OneBot 事件 */
-  raw: any
+export type ElementSource = string | Element | Element[] | null | undefined
+export type Selector = string | ((element: Element) => boolean)
+
+/** 全局 `h`（宿主注入，不用 import）。 */
+export interface ElementFactory {
+  (type: string, attrs?: Record<string, any>, children?: Element[]): Element
+  text(content: string): Element
+  at(id: string | number, name?: string): Element
+  image(url: string, extra?: Record<string, any>): Element
+  voice(url: string, extra?: Record<string, any>): Element
+  video(url: string, extra?: Record<string, any>): Element
+  file(url: string, name?: string): Element
+  face(id: string | number): Element
+  quote(id: string | number): Element
+  forward(idOrChildren: string | number | Element[]): Element
+  parse(source: string): Element[]
+  stringify(source: ElementSource): string
+  select(source: ElementSource, selector: Selector): Element[]
+  normalize(source: ElementSource): Element[]
+  degrade(source: ElementSource, supports: (capability: Capability) => boolean): Element[]
+  isElement(value: unknown): value is Element
 }
 
-/** 拆好的一条回复。 */
-export interface ReplyItem {
-  kind: 'text' | 'voice' | 'sticker' | 'poke' | 'image'
-  value: any
-  /** 群里引用回复的编号 */
+export type Capability =
+  | 'text' | 'at' | 'face' | 'image' | 'voice' | 'video' | 'file'
+  | 'forward' | 'markdown' | 'html' | 'satori' | 'quote' | 'reaction'
+
+export type BotStatus = 'registered' | 'connecting' | 'online' | 'offline' | 'error'
+
+export interface SendOptions {
   replyTo?: string
+  timeoutMs?: number
 }
 
-/** OneBot v11 消息段，比如 { type: 'text', data: { text: '你好' } } */
-export interface Segment { type: string; data: Record<string, any> }
-
-export interface GroupDecision {
-  reply: boolean
-  /** must 被叫到必须回 / engaged 正在参与话题 / interject 插话 */
-  mode?: 'must' | 'engaged' | 'interject'
-  reason?: string
+export interface User {
+  id: string
+  name?: string
+  nick?: string
+  avatar?: string
+  isBot?: boolean
+  raw?: unknown
 }
 
-export interface ModelSelection { provider: string; model: string; reasoningEffort?: string }
-
-/** 工具生成函数拿到的「在哪儿」。 */
-export interface Where {
-  chat: Chat
-  /** full 主人私聊 / social 群聊和别人 */
-  level: 'full' | 'social' | 'chat'
-  sessionId: string
+export interface Guild {
+  id: string
+  name?: string
+  avatar?: string
+  raw?: unknown
 }
 
-export interface Tool {
-  name: string
-  description: string
-  parameters: any
-  output: any
-  execute(args: any, exec?: any): Promise<any>
+export type ChannelType = 'text' | 'voice' | 'category' | 'direct'
+
+export interface Channel {
+  id: string
+  type: ChannelType
+  name?: string
+  guildId?: string
+  parentId?: string
+  raw?: unknown
+}
+
+export interface GuildMember {
+  user: User
+  nick?: string
+  roles?: string[]
+  joinedAt?: number
+  raw?: unknown
+}
+
+export interface Message {
+  id: string
+  channelId: string
+  userId: string
+  content: string
+  elements?: Element[]
+  createdAt?: number
+  raw?: unknown
+}
+
+/** 一个已上线的机器人。资源方法对齐 Satori；平台不支持的会抛 UnsupportedApiError。 */
+export interface Bot {
+  readonly id: string
+  readonly platform: string
+  readonly selfId: string
+  readonly status: BotStatus
+  supports(capability: Capability): boolean
+
+  sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown>
+  sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown>
+
+  getSelfId(): string
+  getSelf(): Promise<User>
+  getUser(userId: string): Promise<User>
+  getFriendList(): Promise<User[]>
+  getGuild(guildId: string): Promise<Guild>
+  getGuildList(): Promise<Guild[]>
+  getUserList(guildId: string): Promise<GuildMember[]>
+  getChannel(channelId: string): Promise<Channel>
+  getChannelList(guildId: string): Promise<Channel[]>
+  getMessage(channelId: string, messageId: string): Promise<Message>
+  getMessageList(channelId: string, query?: { limit?: number; next?: string; order?: 'asc' | 'desc' }): Promise<Message[]>
+  deleteMessage(channelId: string, messageId: string): Promise<void>
+  updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message>
+  createReaction(channelId: string, messageId: string, emoji: string): Promise<void>
+  deleteReaction(channelId: string, messageId: string, emoji: string): Promise<void>
+}
+
+/** 三种取法：ctx.bots[0] / ctx.bots('号') / ctx.bots.list()。 */
+export type BotsAccessor = Bot[] & {
+  (id: string): Bot | undefined
+  get(id: string): Bot | undefined
+  list(): Bot[]
+}
+
+export interface Target {
+  platform: string
+  botId: string
+  type: 'private' | 'group' | 'channel'
+  id: string
+}
+
+/** 一条入站消息。所有发送方法都是异步的，调用方一律 await。 */
+export interface Session {
+  readonly bot: Bot
+  readonly type: Target['type']
+  readonly channelId: string
+  readonly userId: string
+  readonly userName: string
+  readonly content: string
+  readonly messageId?: string
+  readonly guildId?: string
+  readonly elements: Element[]
+  readonly timestamp: number
+  readonly target: Target
+  readonly platform: string
+  readonly isPrivate: boolean
+  /** 发回当前会话；可以多次调用，每次一条独立消息。 */
+  send(content: unknown, options?: SendOptions): Promise<unknown>
+  sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown>
+  sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown>
+  /**
+   * 以当前会话身份再发一遍：过指令 / 中间件 / 模型三段，该发出去的真发。
+   * 等价于「用户又发了这句话」，不是本地空跑。递归深度限 1。
+   */
+  execute(text: string): Promise<PipelineResult>
+}
+
+export interface PipelineResult {
+  handled: boolean
+  by: 'command' | 'middleware' | 'llm' | null
+  value?: unknown
+  error?: string
+}
+
+export type Next = () => Promise<PipelineResult>
+
+export type Middleware = (session: Session, next: Next) => unknown | Promise<unknown>
+
+export interface MiddlewareOptions {
+  /** 名字：插件内唯一，before / after 用它定位。 */
+  name?: string
+  /** 插到某个中间件之前；或段名 command / middleware / llm。 */
+  before?: string
+  /** 插到某个中间件之后。 */
+  after?: string
+}
+
+export interface CommandActionContext {
+  session: Session
+  command: string
+  args: string
+  options: Record<string, any>
+}
+
+export interface CommandBuilder {
+  description(text: string): this
+  usage(text: string): this
+  alias(...names: string[]): this
+  /** 注册并返回卸载函数。返回值是 action 的返回值。 */
+  action(fn: (context: CommandActionContext, ...values: any[]) => unknown): () => void
+  dispose(): void
 }
 
 export interface ToolSpec {
   name: string
   description: string
-  /** 参数（JSON Schema 的 properties） */
+  /** JSON Schema 的 properties。 */
   properties?: Record<string, any>
   required?: string[]
-  /** 返回 { ok, message }：message 是给她看的结果 */
-  execute(args: any, exec?: any): any | Promise<any>
-}
-
-export interface Command {
-  name: string
-  aliases?: string[]
-  desc?: string
-  /** 日志只记录命令名，发送失败时结束本次回执。 */
-  sensitive?: boolean
-  /** 返回的文字直接回给主人 */
-  run(arg: string, msg: Message): string | void | Promise<string | void>
+  execute(args: any, exec?: any): Promise<any>
 }
 
 export interface Logger {
-  debug(...a: any[]): void
-  info(...a: any[]): void
-  warn(...a: any[]): void
-  error(...a: any[]): void
+  info(...args: any[]): void
+  warn(...args: any[]): void
+  error(...args: any[]): void
+  /** 只在面板打开「调试模式」时输出。 */
+  debug(...args: any[]): void
 }
 
-export type Off = () => void
-
-/** 同一人物、同一聊天的原话；assistant 不是用户事实。 */
-export interface ConversationMessage {
-  id: string
-  role: 'user' | 'assistant'
-  text: string
-  speakerId: string
-  /** Unix milliseconds */
-  at: number
-  /** 原文进入本轮的时间；忘记请求也过滤仍在生成的旧上下文回复。 */
-  contextAt?: number
+export interface PageOptions {
+  /** 侧栏路由，例如 /weather。 */
+  path: string
+  name: string
+  icon?: string
+  order?: number
+  /** 绝对地址（http://…）时直接内嵌它，否则按插件路由前缀拼。 */
+  url?: string
 }
 
-/** 已落盘的聊天流水；与现有每日 JSONL 使用同一结构。 */
-export interface ChatLogRow {
-  t: number
-  chatId: string
-  who: string
-  text: string
-  uid?: string
-  via?: string
-  interaction?: string[]
-  forgottenAt?: number
-  /** 仅实时通知携带，不写入流水，用于来源端去重。 */
-  originId?: string
-  [key: string]: any
+export interface LlmFacade {
+  polish(text: string, options?: { instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
+  rewrite(text: string, options?: { instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
+  summarize(text: string, options?: { maxLength?: number; instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
 }
 
-export interface OwnerMessageOptions {
-  text?: string
-  image?: Buffer
-  /** PCM WAV；按现有 ASR 配置识别。 */
-  wav?: Buffer
-  /** 外部来源标签，最多 40 字；不改变聊天与记忆归属。 */
-  via?: string
-  /** 来源端的不透明标记，只进入实时通知。 */
-  originId?: string
-  /** 同步鉴权检查；入口、媒体准备完成、模型投递前都会调用，撤销时应抛错。 */
-  assertAuthorized?: () => unknown
+export interface TtsFacade {
+  speak(text: string): Promise<string>
 }
 
-export interface ChatHub {
-  [key: string]: any
-  sessions(): Record<string, { sessionId: string; title?: string; [key: string]: any }>
-  chatLogDays(): string[]
-  chatLogOf(day: string): ChatLogRow[]
-  /** 仅供已经验证主人身份的模块使用；仅接收已有且开放的 private/group 会话。 */
-  receiveOwnerMessage(chatId: string, options?: OwnerMessageOptions): Promise<{ ok: true }>
+export interface ServerFacade {
+  get(path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' | null }): () => void
+  post(path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' | null }): () => void
+  put(path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' | null }): () => void
+  patch(path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' | null }): () => void
+  delete(path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' | null }): () => void
 }
 
-export interface MediaAccess {
-  mimeOf(bytes: Buffer): string
-  /** 当前自定义头像，缺省使用插件默认头像；不返回文件路径。 */
-  avatar(): { bytes: Buffer; type: string } | null
-  /** 按当前运行的表情库精确匹配 md5；不存在或不是图片时返回 null。 */
-  sticker(md5: string): { bytes: Buffer; type: string } | null
-  /** 使用现有 ffmpeg 配置和本机探测；无可用程序时为空。 */
-  ffmpegPath(): string
-  parseWav(bytes: Buffer): { rate: number; channels: number; data: Buffer }
-  toMono16k(bytes: Buffer): Buffer
+export interface Services {
+  get<T = any>(name: string): T | null
+  has(name: string): boolean
+  require<T = any>(name: string): T
+  names(): string[]
 }
 
-/** 事件 → 监听函数的样子。返回值的意义见 API.md「事件」。 */
-export interface Events {
-  /** 返回 true = 接管这条消息，她不再处理 */
-  message: (msg: Message) => boolean | void | Promise<boolean | void>
-  /** 她要说的整段话：返回新文字改写，null 不发 */
-  reply: (text: string, info: { chatId: ChatId; userText: string }) => string | null | void | Promise<string | null | void>
-  /** 拆好的每一条（已经决定了哪条发语音、配不配表情）：返回新数组改写，null 不发 */
-  'reply/items': (items: ReplyItem[], info: { chatId: ChatId; text: string; userText: string }) => ReplyItem[] | null | void | Promise<ReplyItem[] | null | void>
-  /** 最终发给 QQ 的消息段（所有发送都经过这里，包括命令回复、模块发的）：返回新数组改写，null 不发 */
-  send: (message: Segment[], info: { chatId: ChatId; note: string; force: boolean }) => Segment[] | null | void | Promise<Segment[] | null | void>
-  /** 群里这条消息她回不回：返回对象覆盖决定，比如 { reply: true, mode: 'must' }（返回 null 无效，等于不改） */
-  'group/decide': (decision: GroupDecision, info: { msg: Message; policy: any; recentTexts: string[]; memScore: number }) => Partial<GroupDecision> | void | Promise<Partial<GroupDecision> | void>
-  /** 交给她的内容（[{ type: 'text', text }, { type: 'image', ... }]）：返回新数组改写，null 这次不交给她 */
-  prompt: (content: any[], info: { chat: Chat; senderId: string; queryText?: string; sessionId: string; prevText: string; recentMessages: ConversationMessage[] }) => any[] | null | void | Promise<any[] | null | void>
-  /** 这个聊天用哪个模型（同步）：返回 { provider, model, reasoningEffort } */
-  model: (selection: ModelSelection | null, chat: Chat) => ModelSelection | void
-  /** 她的人格全文（同步）：返回新文字改写 */
-  persona: (text: string) => string | void
-  /** 她的规则全文（同步）：返回新文字改写 */
-  rules: (text: string, kind: 'private' | 'social') => string | void
-  /** 有人戳她：返回 true = 接管 */
-  poke: (event: any) => boolean | void | Promise<boolean | void>
-  /** 收到的消息 / 她发出去的话（只看） */
-  activity: (a: { kind: 'in' | 'out'; chatId: ChatId; userId?: string; nickname?: string; text?: string; reply?: string; direct?: boolean; owner?: boolean }) => void
-  /** 每条成功落盘后的流水快照；只看不改，调试模式不产生此事件。 */
-  'chat/log': (row: ChatLogRow) => void
-  /** 所有原始 OneBot 事件（只看，不管白名单） */
-  onebot: (event: any) => void
-  'onebot/state': (state: string) => void
-  config: (cfg: any, before: any) => void
-  'module/start': (id: string) => void
-  'module/stop': (id: string) => void
-  'song/sung': (info: { title: string; chatId: ChatId }) => void
-  [custom: string]: (...args: any[]) => any
-}
+/**
+ * 插件上下文。注册的东西随模块卸载自动回收：
+ * 定时器、中间件、指令、工具、路由、页面、服务、机器人，一个都不用自己清。
+ */
+export interface Ctx {
+  readonly id: string
+  readonly version: string
+  readonly apiVersion: number
+  readonly baseDir: string
+  /** 本插件配置（活值；面板保存后立刻读到新值）。 */
+  readonly config: Record<string, any>
+  /** 全局配置：ctx.root.config 直接读，ctx.root.read() 每次拿最新。 */
+  readonly root: { readonly config: Record<string, any>; read(): Record<string, any>; update(patch: any): unknown }
+  updateConfig(patch: Record<string, any> | ((current: Record<string, any>) => Record<string, any>)): Record<string, any>
 
-/** 平台是工具；确认平台账号对应的 QQ 后，才能写入和读取同一份私聊记忆。 */
-export interface MemoryModule {
-  [key: string]: any
-  /** 不再记住由 profiles[qq].noMemory 控制；主人始终返回 true。 */
-  remembers(qq: string | number): boolean
-  /** 从直接互动流水、QQ 好友和个人白名单识别是否有交集。 */
-  isAcquainted(qq: string | number): boolean
-  deletePerson(qq: string | number, options?: { keepNoMemory?: boolean }): { ok: boolean; message: string; marked?: number }
-  setNoMemory(qq: string | number, enabled: boolean, options?: { deleteExisting?: boolean }): { ok: boolean; message: string }
-  /** 外部视频、帖子、网页用 seen；省略 kind 仍是原有做过的事。source 固定 event，仍存 items。
-   * seen 不作为事实、画像或相处经验来源，也不挂到 about 人物名下。 */
-  addEvent(args: {
-    text?: string; about?: string; aboutName?: string; tags?: string[]; importance?: number
-    saidAt?: number; chatId?: string; kind?: 'seen'
-    /** 仅保留这些字段，长度上限依次为 160 / 80 / 500 / 40 / 100 字符。 */
-    meta?: { title?: string; author?: string; url?: string; platform?: string; id?: string | number }
-  }): { ok: boolean; message?: string; id?: string; updated?: string }
-  /** 事实时间段可选；开始默认 saidAt；旧 invalidAt 读取时作为 validUntil。 */
-  add(args: { text: string; about?: string; aboutName?: string; chatId?: string; source?: string; importance?: number; tags?: string[]; saidAt?: number; validFrom?: number | string; validUntil?: number | string; [key: string]: any }): { ok: boolean; id?: string; updated?: string; message?: string }
-  update(id: string, patch: { text?: string; validFrom?: number | string | null; validUntil?: number | string | null; [key: string]: any }): { ok: boolean; item?: any; message?: string }
-  timeline(filters?: { kind?: 'gist' | 'seen'; platform?: string; chatId?: string; level?: number | string; about?: string }): Array<{ id: string; kind: 'gist' | 'seen'; platforms: string[]; displayText: string; [key: string]: any }>
-  /** 接聊天平台时用 noteVia；确认身份后写入同一个 QQ 的私聊流水，短期状态自动生效。 */
-  noteVia(args: { via: string; qq: string | number; who: 'user' | 'bot'; text: string; at?: number }): { ok: boolean }
-  contextVia(args: { qq: string | number; query?: string }): string
-}
+  readonly logger: Logger
+  /** 定时器随插件卸载自动清。 */
+  setInterval(ms: number, fn: () => unknown, label?: string): () => void
+  setTimeout(ms: number, fn: () => unknown): () => void
+  effect(fn: () => unknown): () => void
 
-export interface Api {
-  id: string
-  source: 'builtin' | 'user'
-  /** 模块自己的文件夹（读自带的数据文件用；import.meta.url 指向加载快照） */
-  dir: string
-  apiVersion: number
-  /** 插件版本 */
-  version: string
-  log: Logger
+  /** 入站中间件，默认挂在 middleware 段。 */
+  middleware(fn: Middleware, options?: MiddlewareOptions): () => void
+  /** 注册不经过 AI 的指令。官方插件需在配置里打开 registerCommands。 */
+  command(signature: string): CommandBuilder
+  command(signature: string, handler: (session: Session, args: string) => unknown): () => void
+  /** 注册给 AI 调用的工具：用户不能直接触发，要模型自己决定调用并传参。 */
+  tool(builder: ToolSpec | ((where: any) => ToolSpec)): () => void
+  defineTool(spec: ToolSpec): any
 
-  // ---- 配置 ----
-  config(): any
-  setConfig(patch: any | ((cfg: any) => any)): any
-  settings(): Record<string, any>
-  saveSettings(patch: Record<string, any>): Record<string, any>
-  dataDir(...parts: string[]): string
+  server: ServerFacade
+  page(options: PageOptions): () => void
 
-  // ---- 发消息 ----
-  send(chatId: ChatId | string, text: string): Promise<any>
-  sendText(chatId: ChatId | string, text: string): Promise<any>
-  /** 回某一条消息：群里以「引用回复」发出（对方能看到在回他），私聊直接发 */
-  reply(msg: Message, text: string): Promise<any>
-  /** 这个 QQ 号是不是主人 */
-  isOwner(userId: string | number): boolean
-  sendImage(chatId: ChatId | string, src: string): Promise<any>
-  /** 发文件：本机绝对路径，或网关能取到的网址 / base64://（网关看不到本机路径时，小文件会自动改用 base64） */
-  sendFile(chatId: ChatId | string, file: string, name?: string): Promise<any>
-  /** 把本机音频文件当语音条发出去 */
-  sendVoiceFile(chatId: ChatId | string, file: string, note?: string): Promise<any>
-  sendSegments(chatId: ChatId | string, segments: Segment[], note?: string): Promise<any>
-  onebot(action: string, params?: any, opts?: { timeoutMs?: number }): Promise<any>
-
-  // ---- 模型 ----
-  ask(opts: string | { system?: string; text: string; maxTokens?: number }): Promise<string>
-  think(prompt: string, opts?: { title?: string; timeoutMs?: number }): Promise<string>
-
-  // ---- 往插件里加东西（都返回撤掉函数）----
-  on<K extends keyof Events>(event: K, fn: Events[K]): Off
+  /** 自定义事件；别的插件 ctx.on(名字) 能收到。 */
   emit(event: string, ...args: any[]): void
-  tool(builder: Tool | Tool[] | ((where: Where) => Tool | Tool[] | null | undefined)): Off
-  defineTool(spec: ToolSpec): Tool
-  context(fn: (args: { chat: Chat; sessionId: string }) => string | void): Off
-  rule(fn: string | ((kind: 'private' | 'social', cfg: any) => string | string[] | void)): Off
-  command(c: Command): Off
-  every(ms: number, fn: () => any, label?: string): Off
-  later(ms: number, fn: () => any): Off
-  /** access: panel 使模块管理路由复用宿主回环/可信代理、Host 与 CSRF 闸。 */
-  route(path: string, handler: (req: any, res: any) => any, options?: { access?: 'panel' }): Off
-  onDispose(fn: () => void): Off
+  on(event: string, fn: (...args: any[]) => unknown): () => void
 
-  // ---- 别的模块和插件内部 ----
-  use(id: 'memory'): MemoryModule | null
-  use<T = any>(id: string): T | null
-  lazy<T = any>(id: string): Partial<T>
-  has(id: string): boolean
-  core: {
-    hub: ChatHub
-    media: MediaAccess
-    onebot: { call(action: string, params?: any, opts?: any): Promise<any>; state: string }
-    local: any
-    groupRoles: any
-    mutes: { muted(chatId: string): boolean; set(chatId: string, minutes: number): void; clear(chatId: string): void }
-    logger: any
-    ask(opts: any): Promise<string>
-    listModels(): Promise<{ provider: string; model: string; name: string }[]>
-    defaultModel(): ModelSelection | null
-    http: { body(req: any): Promise<any>; raw(req: any, max: number): Promise<Buffer>; query(req: any): Record<string, string>; send(res: any, code: number, body: any, type?: string): void }
-    personas: {
-      list(): { id: string; name: string; tags: string[]; chars: number }[]
-      read(id: string): { id: string; name: string; tags: string[]; body: string; raw: string } | null
-      current(): string
-      /** references 仅含已开启图片；image 为其中首张，保留单图兼容。 */
-      look(sessionId?: string): { image: Buffer | null; appearance: string; references: { id: string; note: string; image: Buffer }[] }
-    }
-    modules: any
-    root: string
-    getConfig(): any
-    setConfig(patch: Record<string, unknown>): any
+  get<T = unknown>(id: string): T | null
+  provide(name: string, impl: any): () => void
+  require<T = unknown>(name: string): T
+  readonly services: Services
+  readonly voice: any
+  readonly sing: any
+  readonly database: any
+  readonly ffmpeg: any
+
+  /** 宿主注入的消息元素工厂，和 Koishi 一样不用 import。 */
+  readonly h: ElementFactory
+  readonly llm: LlmFacade
+  readonly tts: TtsFacade
+  readonly bot: {
+    (id?: string): Bot | undefined
+    list(): Bot[]
   }
-  /** DSH 给插件的 ctx：dsh.get('服务名') 拿 DSH 的任何服务 */
-  dsh: any
-  /** 插件内部任何一个源码文件导出的东西：lib('features/memory.js') */
-  lib(path: string): any
+  readonly bots: BotsAccessor
+  broadcast(targets: Target[], content: unknown, options?: { timeoutMs?: number }): Promise<Array<{ target: Target; ok: boolean; error?: string }>>
+  adapter(spec: any, config?: unknown): Promise<{ dispose(): Promise<void>; [key: string]: any }>
+
+  sendTo(chatId: string, content: unknown, options?: any): Promise<any>
+  sendImage(chatId: string, src: unknown): Promise<any>
+  sendFile(chatId: string, file: unknown, name?: string): Promise<any>
+  sendVoiceFile(chatId: string, file: unknown, note?: string): Promise<any>
+  reply(msg: any, content: unknown): Promise<any>
+  ask(options: any): Promise<any>
+  isOwner(userId: string | number): boolean
+  /** 本插件的数据目录（已建好）。 */
+  dataDir(...parts: string[]): string
 }
 
-export interface Setting {
+export interface SettingField {
   key: string
   label?: string
-  type?: 'text' | 'number' | 'switch' | 'select' | 'textarea' | 'password'
+  type?: 'string' | 'text' | 'textarea' | 'number' | 'boolean' | 'password' | 'select' | 'switch'
+  options?: Array<{ label: string; value: any }>
   hint?: string
-  placeholder?: string
-  min?: number
-  max?: number
-  step?: number
-  options?: (string | { value: any; label: string })[]
+  [key: string]: any
 }
 
 export interface AurabotModule {
-  /** 小写字母开头，小写字母 / 数字 / -；和文件夹名一样。和内置模块同名 = 替换它 */
-  id: string
+  id?: string
   name?: string
   version?: string
-  /** 按哪一版扩展接口写的 */
-  api?: number
   description?: string
+  /** adapter = 适配器插件；普通插件不写。 */
+  kind?: 'plugin' | 'adapter'
+  /** 适配器可以开多个实例。 */
+  reusable?: boolean
+  /** 配置改动后是否整体重载（默认只换 config 对象）。 */
+  reloadOnConfig?: boolean
+  api?: 2
   defaults?: Record<string, any>
-  settings?: Setting[]
-  /** 自己画面板：模块文件夹里的文件名（默认 panel.js） */
-  panel?: string | boolean
-  /** 设置和面板放进哪个内置标签页（比如 'song'），不写就单独一页 */
-  tab?: string
-  /** 独立面板所在的导航分组，例如 'market' 对应「模块」。 */
-  navGroup?: string
-  /** 标签页状态点看哪个设置（相对这个模块的设置，比如 'loggedIn'）。不写时有 enabled 设置就看它，否则不显示点 */
-  flag?: string
-  setup(api: Api): any
+  settings?: SettingField[]
+  /** 声明需要的本机能力（子智能体委派这类要额外授权）。 */
+  capabilities?: string[]
+  apply(ctx: Ctx, config: Record<string, any>): unknown
+}
+
+export default AurabotModule
+
+declare global {
+  /** 宿主注入的消息元素工厂，和 Koishi 一样不用 import。 */
+  const h: ElementFactory
 }

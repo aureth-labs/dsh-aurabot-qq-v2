@@ -76,10 +76,11 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   // 本插件自己的配置：live 视图，面板存完立刻读到新值
   getter('config', () => api.settings())
   // 全局配置：ctx.root.config 直接读，ctx.root.read() 是函数形态（给回调用）
+  const readRoot = () => (extras.rootConfig ? extras.rootConfig() : api.config())
   const root = {}
-  Object.defineProperty(root, 'config', { enumerable: true, get: () => api.config() })
+  Object.defineProperty(root, 'config', { enumerable: true, get: readRoot })
   value('root', root)
-  Object.defineProperty(root, 'read', { enumerable: false, value: () => api.config() })
+  Object.defineProperty(root, 'read', { enumerable: false, value: readRoot })
   Object.defineProperty(root, 'update', { enumerable: false, value: (patch: any) => api.setConfig(patch) })
 
   value('updateConfig', (patch: any) => api.saveSettings(typeof patch === 'function' ? patch(api.settings()) : patch))
@@ -179,6 +180,8 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   })
   const registerCommand = (signature: string, handler: (...args: any[]) => unknown, filter?: SessionFilter) => {
     if (!pipeline) return () => {}
+    // 官方插件必须显式打开 registerCommands（默认 false）；社区插件不声明就照常注册。
+    if (api.settings().registerCommands === false) return () => {}
     const parsed = parseSignature(signature)
     const off = pipeline.command(parsed.name, handler as any, filter ? { filter } : undefined)
     api.onDispose(off)
@@ -204,6 +207,9 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
     return builder
   }
   value('command', ((signature: unknown, handler?: (...args: any[]) => unknown, filter?: SessionFilter) => {
+    if (typeof signature !== 'string') {
+      throw new TypeError('ctx.command 只接受字符串签名，例如 ctx.command("weather <city:string>")；v1 的对象写法已删除')
+    }
     const text = String(signature ?? '').trim()
     if (!text) return () => {}
     if (typeof handler === 'function') return registerCommand(text, handler, filter)

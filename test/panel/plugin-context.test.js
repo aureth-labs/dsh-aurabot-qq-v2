@@ -1,4 +1,4 @@
-// S1 契约：v1 的 api 一行不改照样用；v2 的 ctx 只是别名视图。
+// v2 契约：插件只拿 ctx（apply(ctx, config)），没有 v1 的 api 视图。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createPluginContext } from '../../src/core/module/context/plugin-context.ts'
@@ -10,6 +10,7 @@ function fakeApi() {
   const calls = []
   const api = {
     id: 'demo',
+    log: { info() {}, warn() {}, error() {}, debug() {} },
     every: (ms, fn, label) => {
       calls.push({ kind: 'every', ms, label })
       return () => calls.push({ kind: 'off-every' })
@@ -32,12 +33,14 @@ function fakeApi() {
   return { api, calls }
 }
 
-test('ctx 保留 v1 的全部字段', () => {
+test('ctx 暴露 v2 字段', () => {
   const { api } = fakeApi()
   const ctx = createPluginContext(api)
   assert.equal(ctx.id, 'demo')
-  assert.equal(typeof ctx.send, 'function')
-  ctx.send('group:1', 'hi')
+  assert.equal(typeof ctx.logger, 'object')
+  assert.equal(typeof ctx.command, 'function')
+  assert.equal(typeof ctx.middleware, 'function')
+  assert.equal(typeof ctx.setInterval, 'function')
 })
 
 test('setInterval / setTimeout 走 v1 的 every / later', () => {
@@ -71,12 +74,12 @@ test("on('dispose') 归到卸载队列，其它事件照旧", () => {
   assert.deepEqual(calls[1], { kind: 'on', event: 'module/start' })
 })
 
-test('入口校验：v1 setup / v2 apply / 裸函数三种都认', () => {
-  assert.equal(checkDef({ id: 'demo', setup() {} }, 'demo'), '')
+test('入口校验：只认 apply(ctx, config)，裸函数按文件夹 id', () => {
   assert.equal(checkDef({ id: 'demo', apply() {} }, 'demo'), '')
   assert.equal(checkDef(function apply() {}, 'demo'), '')
-  assert.match(checkDef({ id: 'demo' }, 'demo'), /setup\(api\) 或 apply/)
-  assert.match(checkDef({ setup() {} }, ''), /模块 id/)
+  assert.match(checkDef({ id: 'demo' }, 'demo'), /apply\(ctx, config\)/)
+  assert.match(checkDef({ id: 'demo', setup() {} }, 'demo'), /apply\(ctx, config\)/)
+  assert.match(checkDef(function apply() {}, 'Bad_ID'), /模块 id/)
   assert.equal(checkDef(null, 'demo'), '入口文件要 export default 一个对象或 apply 函数（看 API.md）')
 })
 
@@ -123,18 +126,21 @@ test('session.execute 保留 Session 原型，send 还能用', async () => {
   assert.deepEqual(sent, [['group', '123', '你好']])
 })
 
-test('ctx.command 双签名：字符串走管线，对象形态还给 v1 的 api.command', async () => {
-  const calls = []
-  const api = {
-    command: (definition) => { calls.push(['v1-command', definition.name]); return () => {} },
-    onDispose: () => () => {},
-    settings: () => ({}),
-  }
+test('registerCommands=false 时指令不注册（官方插件默认关）', async () => {
+  const api = { log: { info() {}, warn() {}, error() {}, debug() {} }, onDispose: () => () => {}, settings: () => ({ registerCommands: false }) }
   const pipeline = new Pipeline()
   const ctx = createPluginContext(api, { pipeline })
-  ctx.command({ name: 'ai-tool', run: async () => 'ok' })
+  ctx.command('hidden', async () => 'hit')
+  assert.deepEqual(pipeline.order(), ['command', 'llm'])
+  assert.equal((await pipeline.dispatch({ content: '/hidden' })).handled, false)
+})
+
+test('ctx.command 只认字符串签名：v1 对象写法明确报错', async () => {
+  const api = { onDispose: () => () => {}, settings: () => ({}) }
+  const pipeline = new Pipeline()
+  const ctx = createPluginContext(api, { pipeline })
+  assert.throws(() => ctx.command({ name: 'ai-tool', run: async () => 'ok' }), /字符串签名/)
   ctx.command('local', async () => 'hit')
-  assert.deepEqual(calls, [['v1-command', 'ai-tool']])
   assert.deepEqual(pipeline.order(), ['command', 'llm'])
   assert.equal((await pipeline.dispatch({ content: '/local' })).by, 'command')
 })

@@ -1,57 +1,64 @@
-// 扩展模块「__NAME__」—— 放在 Aurabot 数据目录 modules/__ID__/ 里，插件升级不会动它。
-// 保存就生效（几秒内自动重新加载），出错了去面板「已安装」页看原因。
-// 能用的接口全在同目录上一层的 API.md 里；不会写就在面板点「复制给 DSH 的话」，让 DSH 帮你改。
+// 插件「__NAME__」—— 放在数据目录 modules/__ID__/ 里，插件升级不会动它。
+// 保存就生效：改这个文件夹里的任何文件，几秒内整个插件重新加载。
 //
-// 下面是一个能直接跑的例子：关键词自动回复 + 一个命令 + 一个给她用的工具 + 一个定时任务。
-// 不要的部分删掉就行。
+// 类型提示：同目录有 aurabot.d.ts，下一行就是补全入口。
+// 用不到的部分删掉即可。
 
-/** @type {import('../aurabot').AurabotModule} */ // 编辑器的自动补全靠这一行
+/** @type {import('./aurabot').AurabotModule} */
 export default {
-  id: '__ID__', // 要和文件夹名一样；和内置模块同名（比如 diary）就是替换掉内置的
   name: '__NAME__',
   version: '0.1.0',
-  api: 1, // 按哪一版扩展接口写的，别改
-  description: '一个例子：关键词自动回复',
+  description: '一个例子：关键词自动回复 + 指令 + AI 工具 + 定时任务',
 
-  // 面板里自动生成设置表单；值用 api.settings() 读
-  defaults: { replies: '早安=早呀～今天也要元气满满\n晚安=晚安，做个好梦', onlyOwner: false },
+  // 面板按 settings 自动生成表单；默认值也进这里（缺省即开，显式 false 才关）。
+  defaults: {
+    replies: '早安=早呀～今天也要元气满满\n晚安=晚安，做个好梦',
+    onlyOwner: false,
+    registerCommands: false,
+  },
   settings: [
-    { key: 'replies', label: '关键词=回复', type: 'textarea', hint: '一行一条，收到的消息正好是这个关键词就直接回，不经过模型' },
-    { key: 'onlyOwner', label: '只回主人', type: 'switch' },
+    { key: 'replies', label: '关键词=回复', type: 'textarea', hint: '一行一条；完全匹配才回，不经过模型' },
+    { key: 'onlyOwner', label: '只回主人', type: 'boolean' },
+    { key: 'registerCommands', label: '注册指令（默认关）', type: 'boolean' },
   ],
 
-  setup(api) {
-    const table = () => Object.fromEntries(String(api.settings().replies || '').split('\n').map((l) => l.split('=')).filter((p) => p.length >= 2).map(([k, ...v]) => [k.trim(), v.join('=').trim()]))
+  /**
+   * @param {import('./aurabot').Ctx} ctx
+   * @param {Record<string, any>} config
+   */
+  apply(ctx, config) {
+    const table = () => Object.fromEntries(
+      String(config.replies || '')
+        .split('\n')
+        .map((line) => line.split('='))
+        .filter((pair) => pair.length >= 2)
+        .map(([key, ...rest]) => [key.trim(), rest.join('=').trim()]),
+    )
 
-    // 1. 收到消息时先问模块：返回 true 就是「这条我处理了」，她不会再回
-    api.on('message', async (msg) => {
-      if (api.settings().onlyOwner && msg.userId !== api.config().ownerQQ) return false
-      const reply = table()[msg.text.trim()]
-      if (!reply) return false
-      await api.send(msg.chatId, reply)
-      return true
-    })
+    // 1. 中间件：命中就回一句，不调 next() = 这条到此为止
+    ctx.middleware(async (session, next) => {
+      if (config.onlyOwner && !ctx.isOwner(session.userId)) return next()
+      const reply = table()[session.content.trim()]
+      if (!reply) return next()
+      await session.send(reply)
+    }, { name: '__ID__-replies' })
 
-    // 2. 主人在 QQ 里发 /__ID__ 时
-    api.command({
-      name: '__ID__',
-      desc: '看看「__NAME__」配了哪些关键词',
-      run: () => Object.keys(table()).join('、') || '还没配关键词',
-    })
+    // 2. 指令（不经过 AI）：官方默认关，这里跟配置走
+    if (config.registerCommands) {
+      ctx.command('__ID__')
+        .description('看看配了哪些关键词')
+        .action(() => Object.keys(table()).join('、') || '还没配关键词')
+    }
 
-    // 3. 给她用的工具（她自己决定什么时候调用）。where.level：full = 主人私聊，social = 群聊和别人
-    //    返回 [] 就是这个会话里不给；where.chat 是当前聊天，where.sessionId 是会话 id
-    api.tool((where) => api.defineTool({
+    // 3. 给 AI 调用的工具：用户不能直接触发，模型自己决定传参
+    ctx.tool({
       name: '__TOOL___keywords',
       description: '看看自动回复配了哪些关键词',
-      properties: {}, // 参数，JSON Schema 写法，比如 { city: { type: 'string', description: '城市' } }
+      properties: {},
       execute: async () => ({ ok: true, message: Object.keys(table()).join('、') || '没有' }),
-    }))
+    })
 
-    // 4. 定时任务（毫秒）。模块关掉 / 重新加载时自动停
-    api.every(60 * 60_000, () => api.log.info('「__NAME__」还活着'))
-
-    // 返回的东西别的模块能用 api.use('__ID__') 拿到
-    return { table }
+    // 4. 定时任务：插件卸载 / 重载时自动停，不会泄漏
+    ctx.setInterval(60 * 60_000, () => ctx.logger.debug('「__NAME__」还活着'), '__ID__-tick')
   },
 }
