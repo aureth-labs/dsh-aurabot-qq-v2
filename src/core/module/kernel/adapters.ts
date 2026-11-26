@@ -3,6 +3,8 @@ import { scanUser, type ModuleDef, type ModuleRecord } from '../loader.ts'
 import type { createImporter } from '../importer.ts'
 import { isSchema } from '../../config/shape/schema.ts'
 import { loadDefinition } from './definition.ts'
+import { normalizePluginEdit } from './settings.ts'
+import type { RawConfig } from '../../config/state/shared.ts'
 
 function describe(def: ModuleDef, needsLoad: boolean) {
   const schema = isSchema(def.config) ? def.config : undefined
@@ -14,6 +16,7 @@ function describe(def: ModuleDef, needsLoad: boolean) {
     needsLoad,
     fields: schema?.toSettings() ?? [],
     validate: (settings: Record<string, unknown>) => schema?.validate(settings),
+    normalize: (old: RawConfig, next: RawConfig) => normalizePluginEdit({ ...def, settings: schema?.toSettings() }, old, next),
   }
 }
 

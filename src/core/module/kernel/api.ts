@@ -1,4 +1,4 @@
-import { instanceSettings } from '../../config/plugin-settings.ts'
+import { pluginSettings } from './settings.ts'
 // 内核给插件包的内部句柄：归属、停止、权限都在这里收口；插件看到的是 v2 的 ctx 视图。
 
 import { mkdirSync } from 'node:fs'
@@ -91,8 +91,8 @@ export function createApi(deps: ApiDeps) {
       ? `/ext/${id}/i/${rec.instance}`
       : (routesAtRoot(id) ? '' : `/ext/${id}`)
     const def = rec.def
-    /** 这个实例自己的配置：插件基础配置（ext.<id>）+ 实例覆盖（ext.<id>.instances[n].config）。 */
-    const instanceConfig = () => instanceSettings(getConfig().ext?.[id], def.settings || [], rec.instance)
+    const config = pluginSettings(def, rec.instance, () => getConfig().ext?.[id] ?? {}, message =>
+      mlog.warn(`模块「${rec.key}」配置无效，沿用上次有效配置或默认值：${message}`))
     const setModuleConfig = writable('setConfig', (patch) => setConfig(typeof patch === 'function' ? patch(getConfig()) : deepMerge(getConfig(), patch)))
     // 兼容在同步收尾里恢复设置的模块；迟到的回调和旧实例不能再写。
     const setCoreConfig = writable('core.setConfig', (patch) => {
@@ -126,20 +126,12 @@ export function createApi(deps: ApiDeps) {
       // ---- 配置 ----
       config: () => getConfig(),
       setConfig: setModuleConfig,
-      settings: () => ({ ...(def.defaults || {}), ...instanceConfig() }),
-      saveSettings: writable('saveSettings', (patch) => {
+      settings: config.settings,
+      saveSettings: writable('saveSettings', patch => {
         const cfg = getConfig()
-        if (!rec.instance) {
-          setConfig({ ...cfg, ext: { ...cfg.ext, [id]: { ...(cfg.ext?.[id] || {}), ...patch } } })
-          return api.settings()
-        }
-        // 额外实例只写自己那一份，别改到别的实例的配置
-        const list = Array.isArray(cfg.ext?.[id]?.instances) ? cfg.ext[id].instances : []
-        const next = list.map((item) => (String(item?.id ?? '') === rec.instance
-          ? { ...item, config: { ...(item?.config || {}), ...patch } }
-          : item))
-        setConfig({ ...cfg, ext: { ...cfg.ext, [id]: { ...(cfg.ext?.[id] || {}), instances: next } } })
-        return api.settings()
+        const next = config.update(patch)
+        setConfig({ ...cfg, ext: { ...cfg.ext, [id]: next } })
+        return config.settings()
       }),
       dataDir: (...parts) => {
         const d = rec.instance

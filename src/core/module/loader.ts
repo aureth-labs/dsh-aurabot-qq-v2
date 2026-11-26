@@ -1,5 +1,6 @@
 // 插件发现、清单及入口契约。
 
+import type { SettingsField } from '../config/shape/schema.ts'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,7 +27,7 @@ export interface ModuleDef {
   panel?: string
   capabilities?: string[]
   defaults?: Record<string, unknown>
-  settings?: Array<{ key?: string; type?: string; label?: string; [key: string]: unknown }>
+  settings?: Array<Omit<Partial<SettingsField>, 'type'> & { type?: string }>
   config?: unknown
   apply?: (...args: never[]) => unknown
   [key: string]: unknown

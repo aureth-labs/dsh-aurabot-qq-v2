@@ -36,7 +36,7 @@ export function registerConnectionRoutes({ http, mods, adapterRegistry, getConfi
     return {
       ok: true,
       owners: cfg.owners,
-      adapters: installed.map(({ validate, ...d }) => ({
+      adapters: installed.map(({ validate, normalize, ...d }) => ({
         ...d,
         enabled: cfg.modules[d.id]?.enabled !== false,
         settings: forms[d.id] ?? {},
@@ -48,7 +48,7 @@ export function registerConnectionRoutes({ http, mods, adapterRegistry, getConfi
     const { adapterId } = record(await http.readBody(req))
     const adapter = await mods.adapterCatalog.resolve(adapterId)
     if (!adapter) return fail('请选择已安装的平台适配器')
-    const { validate, ...form } = adapter
+    const { validate, normalize, ...form } = adapter
     const settings = publicPluginSettings(getConfig().ext, new Map([[adapter.id, adapter.fields]]))
     return { ok: true, adapter: { ...form, settings: settings[adapter.id] ?? {} } }
   })
@@ -93,6 +93,11 @@ export function registerConnectionRoutes({ http, mods, adapterRegistry, getConfi
     const next = mergeFromPanel(cfg, patch, new Map(mods.fields).set(id, adapter.fields))
     const result = adapter.validate(instanceSettings(next.ext[id], adapter.fields, instance))
     if (result && !result.ok) return fail(result.error || '适配器配置无效')
+    try {
+      next.ext[id] = adapter.normalize(old, next.ext[id])
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : '适配器配置无效')
+    }
     const key = instance ? instanceKey(id, instance) : id
     if (!isDeepStrictEqual(cfg, next)) setConfig(next)
     else if (connections().some((row) => row.instance === key && row.status === 'error')) void mods.reload(id).catch(onReloadError)

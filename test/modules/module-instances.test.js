@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { Schema } from '../../src/core/config/shape/schema.ts'
 import { createModules } from '../../src/core/module/index.ts'
 
 const silent = { info() {}, debug() {}, warn() {}, error() {} }
@@ -203,4 +204,47 @@ test('实例名写坏了（重复 / 非法）：忽略脏数据，主实例照�
 
   assert.deepEqual(s.get().runs.map((run) => run.tag), ['base', 'ok'])
   assert.deepEqual(f.modules.instances('multi'), ['ok'])
+})
+
+test('Schema 统一启动、热读、面板与实例更新，保留继承关系', async t => {
+  const sessions = new Map()
+  const plugin = {
+    id: 'sample', reusable: true,
+    config: Schema.object({
+      options: Schema.object({ limit: Schema.natural().min(1), delay: Schema.natural() }),
+      token: Schema.string().role('secret'),
+    }),
+    apply(ctx, config) { sessions.set(ctx.instanceId, { ctx, config }) },
+  }
+  const f = fixture(t, { sample: {
+    options: { limit: '2', delay: '5' }, token: 'main', instances: [{ id: 'two', config: {} }],
+  } }, [plugin])
+  await f.modules.boot()
+  const { ctx: main, config } = sessions.get('sample')
+  const { ctx: two } = sessions.get('sample@two')
+  assert.deepEqual(config, main.config)
+  assert.equal(config.options.limit, 2)
+  assert.equal(two.config.token, '')
+  config.options.limit = 100
+  assert.equal(main.config.options.limit, 2)
+  two.updateConfig(current => ({ options: { delay: String(current.options.delay + 1) } }))
+  assert.deepEqual(f.config().ext.sample.instances[0].config, { options: { delay: 6 } })
+  main.updateConfig({ options: { limit: '8' } })
+  assert.deepEqual(two.config.options, { limit: 8, delay: 6 })
+  const before = structuredClone(f.config().ext)
+  assert.throws(() => two.updateConfig({ token: 'other', options: { limit: 0 } }), /limit/)
+  assert.deepEqual(f.config().ext, before)
+  const invalid = structuredClone(before)
+  invalid.sample.instances[0].config.options.delay = 'bad'
+  assert.throws(() => f.modules.normalizeSettings(before, invalid, { sample: {} }), /delay/)
+  const valid = structuredClone(before)
+  valid.sample.instances[0].config.options.delay = '7'
+  f.modules.normalizeSettings(before, valid, { sample: {} })
+  assert.deepEqual(valid.sample.instances[0].config, { options: { delay: 7 } })
+  f.setExt(invalid)
+  assert.deepEqual(two.config.options, { limit: 8, delay: 6 })
+  assert.deepEqual(two.config.options, { limit: 8, delay: 6 })
+  assert.equal(f.warnings.filter(w => w.includes('delay')).length, 1)
+  f.setExt(valid)
+  assert.equal(two.config.options.delay, 7)
 })

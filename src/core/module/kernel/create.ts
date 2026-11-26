@@ -34,6 +34,8 @@ import type { ModuleDef, ModuleRecord, ModuleError } from '../loader.ts'
 
 export * from './util.ts'
 import { createApi } from './api.ts'
+import { normalizePluginEdit } from './settings.ts'
+import { isObj, type RawConfig } from '../../config/state/shared.ts'
 import { createDocs } from './docs.ts'
 import { createModuleEvents } from './events.ts'
 import { createContributions } from './contributions.ts'
@@ -47,6 +49,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const importer = createImporter(userDir())
   const builtinDefs = new Map<string, ModuleDef>((builtins as ModuleDef[]).map((d) => [d.id, d]))
   const fields = new Map<string, SettingsField[]>()
+  const definitions = new Map<string, ModuleDef>()
   const live = new Map<string, ModuleRecord>() // id → 运行中的模块（见 start）
   const errors = new Map<string, ModuleError>() // id → { message, at }  启动失败 / 加载失败
   const routes = new Map() // 完整路径 → { id, handler }
@@ -165,9 +168,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function prepareDef(def, source) {
     if (isSchema(def.config)) {
       def = { ...def, settings: def.config.toSettings(), defaults: def.config.defaults() }
-    } else if (def.config && !(Array.isArray(def.settings) && def.settings.length)) {
-      const derived = settingsFromMeta(def.config)
-      if (derived.length) def = { ...def, settings: derived, defaults: { ...(schemaDefaults(def.config) || {}), ...(def.defaults || {}) } }
+    } else if (def.config) {
+      def = { ...def, settings: def.settings?.length ? def.settings : settingsFromMeta(def.config), defaults: { ...schemaDefaults(def.config), ...def.defaults } }
     }
     if (source !== 'builtin' || def.settings?.some((f) => f?.key === 'registerCommands')) return def
     return {
@@ -203,6 +205,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       ...extra,
       instance: instance || undefined,
     }
+    definitions.set(id, def)
     fields.set(id, def.settings || [])
     // 设置的默认值补进配置（面板表单直接有值可改；已经填过的不动）。
     // 只有主实例落盘：额外实例的默认值由 api.settings() 在读取时合并，不往共享配置里写。
@@ -233,22 +236,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           : undefined,
       })
       if (typeof def.apply !== 'function') throw new Error('模块没有 apply(ctx, config)')
-      // 传进去的是校验过的配置：面板存了脏数据就落到默认值，并把原因记进日志
-      let passed = api.settings()
-      if (isSchema(def.config)) {
-        const checked = def.config.validate(passed)
-        if (!checked.ok) {
-          log.warn(`模块「${def.name || id}」配置不合法：${checked.error}，已按默认值启动`)
-          passed = def.config.defaults()
-        } else {
-          passed = checked.value
-        }
-      } else if (def.config) {
-        // 别人家的 Schema（模板仓库自带的那份）：只取默认值，面板存过的值优先
-        const defaults = schemaDefaults(def.config)
-        if (defaults && typeof defaults === 'object') passed = { ...defaults, ...passed }
-      }
-      const r = def.apply(ctx, passed)
+      const r = def.apply(ctx, api.settings())
       const exports = (r && typeof r.then === 'function' ? await r : r) ?? {}
       if (disposed || rec.stopped || live.get(key) !== rec) {
         cleanup(() => exports?.dispose?.())
@@ -657,6 +645,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
 
   return {
     failedAdapters: () => [...errors].filter(([key, error]) => error.adapter && isEnabled(key.split('@')[0])).map(([key]) => key),
+    normalizeSettings(previous: Record<string, RawConfig>, next: Record<string, RawConfig>, patch: unknown) {
+      if (!isObj(patch)) return
+      for (const id of Object.keys(patch)) {
+        const def = definitions.get(id) ?? builtinDefs.get(id)
+        if (def && isObj(next[id])) next[id] = normalizePluginEdit(def, previous[id] ?? {}, next[id])
+      }
+    },
     adapterCatalog, fields, boot, sync, reload, dispose, status, create: createPlugin, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
     // 对外按模块 id 停 —— 一起停掉它的额外实例
     stop: (id, options) => stopModule(id, options),

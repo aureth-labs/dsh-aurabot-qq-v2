@@ -86,7 +86,13 @@ export function registerConfigRoutes({ bootId, http, getConfig, setConfig, mods,
     // ---- 保存回执（方案 §2.2）：按提交前后（归一化后）的实际结果逐字段确认。 ----
     // 提交字段路径先收集，分类在下面 setConfig 之后做（提交前 cfg===before，分类会全落 unchanged）。
     const submittedPaths = pointerPaths(body)
-    setConfig(mergeFromPanel(getConfig(), body, mods?.fields))
+    const next = mergeFromPanel(before, body, mods?.fields)
+    try {
+      mods.normalizeSettings?.(before.ext, next.ext, body?.ext)
+    } catch (error) {
+      return saveEnvelope({ ok: false, code: 'invalid_plugin_settings', message: String(error.message || error) })
+    }
+    setConfig(next)
     // committed/unchanged 分类必须在提交之后：commitConfig 返回新的归一化对象（变化时），
     // 逐字段对比 before（提交前）与 cfg（提交后）——真写了的进 committedPaths，
     // 显式提交但值相同（含 mergeFromPanel 归一化后等值）的进 unchangedPaths（草稿别一直标脏）。
