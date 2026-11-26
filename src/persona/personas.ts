@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { dataDir } from '../core/store/index.ts'
 import { deleteLook } from './persona-look.ts'
-import { ROOT } from '../core/support/root.ts'
+import { ROOT } from '../core/support/util/root.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RulesTextOptions = Partial<Record<'off' | 'extra', any>>

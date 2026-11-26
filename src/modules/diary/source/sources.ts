@@ -6,7 +6,7 @@ import { basename, extname, isAbsolute, join, relative, resolve } from 'node:pat
 import { stickerPath } from '../../../features/stickers/index.ts'
 import { loadShots, shotPath } from '../../../bili/media/shots.ts'
 import { dataDir } from '../../../core/store/index.ts'
-import { clipText } from '../../../core/support/text.ts'
+import { clipText } from '../../../core/support/util/text.ts'
 
 export const clip = (value, max = 160) => clipText(String(value || '').replace(/[\r\n\t]+/g, ' ').trim(), max)
 export const sourceId = (value) => createHash('sha256').update(String(value)).digest('hex').slice(0, 28)

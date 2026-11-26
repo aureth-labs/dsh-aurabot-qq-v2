@@ -3,9 +3,9 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { entryOf as entryOfManifest } from '../config/manifest.ts'
+import { entryOf as entryOfManifest } from './manifest.ts'
 import { dataDir } from '../store/index.ts'
-import { ROOT } from '../support/root.ts'
+import { ROOT } from '../support/util/root.ts'
 import { createRequire } from 'node:module'
 
 /** 扩展接口版本：只加不改。哪天不得不改已有的东西才升到 2，并在更新说明里写清楚怎么迁移。 */

@@ -6,7 +6,7 @@
 // 为什么放在 tools/pre-execute 这一层：DSH 在工具真正执行前会走这个 waterfall，
 // 这里返回 deny 就不会执行，能拿到「命令原文」，比只靠提示词可靠。
 
-import { isOwner } from '../chat/policy/access.ts'
+import { isOwner } from '../chat/policy/rules/access.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateDangerGuardOptions = Partial<Record<'getConfig' | 'deliver' | 'chatOfSession' | 'isOwnedSession' | 'ownerQQ' | 'timeoutMs' | 'log', any>>

@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../../../src/chat/inbound/forward.ts'
+import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../../../src/chat/inbound/hooks/forward.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 import { readClientSource } from '../../helpers/client-source.js'
 

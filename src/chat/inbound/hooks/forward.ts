@@ -1,6 +1,6 @@
 // 合并转发：把聊天记录展开成文字，顺带收集里面的图片。转发里可以再套转发，所以按层往下拉。
 
-import { parseMessageEvent } from './index.ts'
+import { parseMessageEvent } from '../index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ReadForwardOptions = Partial<Record<'selfId' | 'faceName' | 'log' | 'depth' | 'state' | 'timeoutMs', any>>

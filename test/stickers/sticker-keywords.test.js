@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { hasReplyStickerKeywords, preserveReplyStickers } from '../../src/chat/policy/sticker.ts'
+import { hasReplyStickerKeywords, preserveReplyStickers } from '../../src/chat/policy/rules/sticker.ts'
 import { parseReply } from '../../src/chat/reply/index.ts'
 import { normalize, mergeFromPanel } from '../../src/core/config/index.ts'
 

@@ -11,9 +11,9 @@
 import { existsSync, readdirSync, statSync, lstatSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, renameSync, rmSync, watch } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createPluginContext } from '../context/plugin-context.ts'
-import { isSchema, Schema } from '../../config/schema.ts'
+import { isSchema, Schema } from '../../config/shape/schema.ts'
 import { h } from '../../message/element/element.ts'
-import { readManifest, entryOf as entryOfManifest } from '../../config/manifest.ts'
+import { readManifest, entryOf as entryOfManifest } from '../manifest.ts'
 import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
@@ -21,7 +21,7 @@ import { dataDir } from '../../store/index.ts'
 import { registerSecretField } from '../../config/index.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { selfName, personaScope, personaNow } from '../../../persona/personas.ts'
-import { PERSONA_MEMORY_MODULE } from '../../support/persona-memory-bridge.ts'
+import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RouteOptions = Partial<Record<'access', any>>

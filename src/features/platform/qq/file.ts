@@ -4,7 +4,7 @@ import { extname } from 'node:path'
 import { mimeOf } from '../../../chat/inbound/index.ts'
 import { findSharp, imageToolBlock } from '../../../core/message/media/img.ts'
 import { fetchImage } from '../../../core/net/index.ts'
-import { cleanText, clipText } from '../../../core/support/text.ts'
+import { cleanText, clipText } from '../../../core/support/util/text.ts'
 
 const MAX_BYTES = 2 * 1024 * 1024
 const MAX_CHARS = 20000

@@ -5,7 +5,7 @@
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { defineTool, str } from '../../tools/index.ts'
-import { isOwner, profileToolVisible, profilePermits } from '../../chat/policy/access.ts'
+import { isOwner, profileToolVisible, profilePermits } from '../../chat/policy/rules/access.ts'
 import { createQqProfile } from '../../features/platform/qq/profile.ts'
 import { resolvePainting } from '../../features/media/generate/paintings.ts'
 import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../core/message/media/img.ts'

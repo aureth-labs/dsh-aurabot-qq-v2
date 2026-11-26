@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { dataDir, readJson, writeJson } from '../store/index.ts'
+import { dataDir, readJson, writeJson } from '../../store/index.ts'
 import { normalize } from './normalize.ts'
-import type { AurabotConfig } from './defaults.ts'
+import type { AurabotConfig } from '../shape/defaults.ts'
 
 const FILE = () => dataDir('config.json')
 

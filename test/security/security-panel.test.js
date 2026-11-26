@@ -7,7 +7,7 @@ import { readClientSource } from '../helpers/client-source.js'
 
 const client = readClientSource()
 const host = readFileSync(new URL('../../src/plugin/index.ts', import.meta.url), 'utf8')
-const config = ['index.ts', 'defaults.ts'].map((f) => readFileSync(new URL('../../src/core/config/' + f, import.meta.url), 'utf8')).join('\n')
+const config = ['index.ts', 'shape/defaults.ts', 'state/normalize.ts'].map((f) => readFileSync(new URL('../../src/core/config/' + f, import.meta.url), 'utf8')).join('\n')
 
 test('安全防护页接上了页签、组件、搜索和 SSRF 模式配置', () => {
   assert.ok(client.includes("{ id: 'security', label: '安全防护' }"), '缺安全防护页签')

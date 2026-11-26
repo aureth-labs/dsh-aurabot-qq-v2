@@ -2,8 +2,8 @@
 // 发送原语在 outbound.ts；这里只决定「发什么、怎么拆、哪些真发出去了」。
 
 import { cleanOutboundText, cleanOutboundSegments, parseReply, itemsToLine, tidyPunctuation, hasSuspectTagShape, bubbleDelay } from '../../reply/index.ts'
-import { preserveReplyStickers } from '../../policy/sticker.ts'
-import { guardOutgoing } from '../../inbound/guard.ts'
+import { preserveReplyStickers } from '../../policy/rules/sticker.ts'
+import { guardOutgoing } from '../../inbound/hooks/guard.ts'
 import { failStore } from '../context/context.ts'
 
 /** 一条回复的调用参数：字段名固定，值由调用方传。 */

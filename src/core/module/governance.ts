@@ -1,6 +1,6 @@
 // 模块调用的出站治理：谁在替哪个模块说话、能不能发、发出去算不算数。
 
-import { PERSONA_MEMORY_MODULE } from '../support/persona-memory-bridge.ts'
+import { PERSONA_MEMORY_MODULE } from '../support/bridge/persona-memory-bridge.ts'
 
 // 日志兜底：出站治理的日志是「锦上添花」，绝不能因为它把发送链路炸了。
 // 全等级 NOOP + safeLog：log 缺失 / 某个等级不是函数 / 日志器自己抛错，都只当没记上。

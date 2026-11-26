@@ -14,7 +14,7 @@ import { dataDir } from '../../core/store/index.ts'
 import { fetchGuarded } from '../../core/net/index.ts'
 import { findFfmpeg } from '../../core/message/media/img.ts'
 import { askModel, canSeeImages } from '../../core/llm/index.ts'
-import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
+import { privateCapabilityAllowed } from '../../chat/policy/rules/access.ts'
 import { defineTool, str } from '../../tools/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

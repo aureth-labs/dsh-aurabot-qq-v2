@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto'
 import { createSongStudio } from '../../song/studio/studio.ts'
 import { checkRoot, listDrives } from '../../song/studio/env/install.ts'
-import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
+import { privateCapabilityAllowed } from '../../chat/policy/rules/access.ts'
 import { defineTool, str, int, bool } from '../../tools/index.ts'
 
 /** 翻唱完成后的心情变化：原因记到这次唱歌所在的聊天，别成为全局原因。 */

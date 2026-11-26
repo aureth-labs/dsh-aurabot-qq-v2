@@ -3,7 +3,7 @@
 
 import { defineTool, str } from '../../tools/index.ts'
 import { QQ_API, paramsOf } from './actions.ts'
-import { clipText } from '../../core/support/text.ts'
+import { clipText } from '../../core/support/util/text.ts'
 import { cleanOutboundText } from '../../chat/reply/index.ts'
 
 const RESULT_CHARS = 3000

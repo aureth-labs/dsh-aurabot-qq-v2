@@ -254,7 +254,7 @@ test('configRevision：api.setConfig 写入推进版本；值相同不递增（�
 test('重启语义：新实例（新 bootId）版本从 0 重算', async () => {
   // configRevision 计数器是模块级状态：真重启 = 新进程 = 新模块实例。这里用 cache-busting
   // import 拿一个全新实例来验证「实例内从 0 起算 + 实例内单调」。
-  const fresh = await import('../../src/core/config/persist.ts?fresh-instance=1')
+  const fresh = await import('../../src/core/config/state/persist.ts?fresh-instance=1')
   assert.equal(fresh.configRevision(), 0, '全新实例版本从 0 起算')
   const c1 = fresh.commitConfig({ ownerName: '新实例甲' }, {})
   assert.equal(fresh.configRevision(), 1, '首次提交 → 1')
@@ -263,7 +263,7 @@ test('重启语义：新实例（新 bootId）版本从 0 重算', async () => {
   fresh.commitConfig({ ownerName: '新实例乙' }, c1)
   assert.equal(fresh.configRevision(), 2, '变化继续递增')
   // 宿主实例自己的版本不受新实例影响（各自独立计数）
-  const host = await import('../../src/core/config/persist.ts')
+  const host = await import('../../src/core/config/state/persist.ts')
   const rev = host.configRevision()
   assert.ok(rev >= 0)
   assert.equal((await jsonOf('/panel/pulse')).configRevision, rev)

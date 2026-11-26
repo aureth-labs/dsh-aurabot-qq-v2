@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { clockLabel } from '../../reply/index.ts'
-import { engagedHint, pickAutoReply, pickDirectRequester, sameNameNote } from '../../policy/group.ts'
+import { engagedHint, pickAutoReply, pickDirectRequester, sameNameNote } from '../../policy/rules/group.ts'
 import { identityNote } from '../../inbound/parse/identity.ts'
 import { emptyGroupPrompt } from './context.ts'
 import type { GroupPromptResult } from './context.ts'

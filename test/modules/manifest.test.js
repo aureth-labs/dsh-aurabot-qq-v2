@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { readManifest, entryOf, assertEsm } from '../../src/core/config/manifest.ts'
+import { readManifest, entryOf, assertEsm } from '../../src/core/module/manifest.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 function tempModule(files) {

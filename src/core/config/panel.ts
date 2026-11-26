@@ -1,10 +1,10 @@
 import { maskPools, restorePoolKeys } from '../../voice/tts/key-pool.ts'
 import type { RawPools } from '../../voice/tts/key-pool.ts'
-import { normalize } from './normalize.ts'
-import { allSecrets, getAt, HINTED, parentOf } from './secrets.ts'
-import { deepMerge, isObj } from './shared.ts'
-import type { AurabotConfig, ImageFallback } from './defaults.ts'
-import type { RawConfig } from './shared.ts'
+import { normalize } from './state/normalize.ts'
+import { allSecrets, getAt, HINTED, parentOf } from './state/secrets.ts'
+import { deepMerge, isObj } from './state/shared.ts'
+import type { AurabotConfig, ImageFallback } from './shape/defaults.ts'
+import type { RawConfig } from './state/shared.ts'
 
 /** 给面板看的版本：密码 / token 不回传原文，只告诉有没有填。 */
 export function publicConfig(cfg) {

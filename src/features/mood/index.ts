@@ -3,7 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { askModel } from '../../core/llm/index.ts'
-import { cleanText, clipText } from '../../core/support/text.ts'
+import { cleanText, clipText } from '../../core/support/util/text.ts'
 import { shouldDeferBackground } from '../../core/llm/usage/offpeak.ts'
 import { inHourWindow } from '../../core/support/time/time-window.ts'
 import { followUpHint } from '../memory/index.ts'

@@ -1,7 +1,7 @@
 // 直接问一次宿主模型（不进会话）：给表情起备注、心情判断、记忆提炼等后台小任务用。
 
 import { randomUUID } from 'node:crypto'
-import { cleanText } from '../support/text.ts'
+import { cleanText } from '../support/util/text.ts'
 import { recordUsage, moduleLabel } from './usage/usage.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

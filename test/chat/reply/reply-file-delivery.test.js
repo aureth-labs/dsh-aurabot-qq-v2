@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createDeliver } from '../../../src/chat/hub/delivery/deliver.ts'
 import { parseReply, itemsToLine, tidyPunctuation, cleanOutboundText, cleanOutboundSegments, bubbleDelay } from '../../../src/chat/reply/index.ts'
-import { guardOutgoing } from '../../../src/chat/inbound/guard.ts'
+import { guardOutgoing } from '../../../src/chat/inbound/hooks/guard.ts'
 import { hasSuspectTagShape } from '../../../src/chat/reply/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 

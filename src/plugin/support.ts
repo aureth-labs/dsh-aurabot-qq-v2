@@ -5,7 +5,7 @@ import { existsSync, readFileSync, watch } from 'node:fs'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import net from 'node:net'
-import { ROOT } from '../core/support/root.ts'
+import { ROOT } from '../core/support/util/root.ts'
 import { dataDir, ensureDir } from '../core/store/index.ts'
 
 /** 是不是跑在 `node --test` 里（Node 会给子进程设 NODE_TEST_CONTEXT）。 */

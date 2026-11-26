@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanContent, cleanText, clipText } from '../../src/core/support/text.ts'
+import { cleanContent, cleanText, clipText } from '../../src/core/support/util/text.ts'
 
 const thinking = '🤔'
 const half = thinking[0]

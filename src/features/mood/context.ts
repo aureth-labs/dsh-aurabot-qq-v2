@@ -1,4 +1,4 @@
-import { cleanText } from '../../core/support/text.ts'
+import { cleanText } from '../../core/support/util/text.ts'
 
 const REASON_TTL_MS = 3 * 3600_000
 
