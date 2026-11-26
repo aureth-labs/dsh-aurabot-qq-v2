@@ -1,3 +1,5 @@
+import { dataDir, ensureDir } from '../../../src/core/store/index.ts'
+import { createQuoteHistory, type MessageDeletion } from '../../../src/core/pipeline/quotes.ts'
 import { AdapterRegistry } from '../../../src/core/bot/adapter/registry.ts'
 import { wrapAdapterBot } from '../../../src/core/bot/instance/bot.ts'
 import { BotRegistry } from '../../../src/core/bot/instance/registry.ts'
@@ -29,6 +31,8 @@ export function createTransport({
   beforeEvent,
   respond,
 }: TransportOptions) {
+  let closed = false
+  const quotes = createQuoteHistory(() => { ensureDir(dataDir()); return dataDir('quotes.db') })
   const config = getConfig()
   const pipeline = new Pipeline({
     commandPrefixes: config.commandPrefixes ?? [null, '/'],
@@ -40,7 +44,13 @@ export function createTransport({
   async function dispatchInbound(bot: BotLike, message: InboundMessage) {
     try {
       emit('adapter/message', { ...message, platform: bot.platform, botId: bot.id })
-      const session = inboundSession(bot, message, pipeline)
+      let quote
+      if (getConfig().enabled || bot.platform === 'sandbox') {
+        try { quote = await quotes.receive(bot, message) }
+        catch (error) { log.warn('引用记录不可用', String(error)) }
+      }
+      if (closed) return
+      const session = inboundSession(bot, message, pipeline, quote)
       if (!session.content.trim() && !session.elements.length) return
       const result = await personaScope.run(personaNow(getConfig()), () => pipeline.dispatch(session))
       if (result.error) log.error('处理消息出错', result.by, result.error)
@@ -61,6 +71,7 @@ export function createTransport({
     },
     onEvent(platform, event, payload, bot) {
       try {
+        if (event === 'message-deleted') quotes.recall(bot, payload as MessageDeletion)
         beforeEvent(event, payload, bot)
         emit('adapter/' + event, { platform, botId: bot.id, payload })
       } catch (error) {
@@ -74,5 +85,5 @@ export function createTransport({
         speak,
       }),
   })
-  return { botRegistry, adapterRegistry, pipeline, dispatchInbound }
+  return { botRegistry, adapterRegistry, pipeline, dispatchInbound, closeQuoteHistory() { closed = true; quotes.close() } }
 }

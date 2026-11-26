@@ -10,7 +10,17 @@ import type { Element } from './element.ts'
 import type { Target, TargetType } from './target.ts'
 import type { PipelineResult, PipelineRunner } from '../plugin/pipeline.ts'
 
+export interface MessageQuote {
+  id: string
+  channelId: string
+  userId?: string
+  content?: string
+  createdAt?: number
+  deletedAt?: number
+}
+
 export interface SessionInit {
+  quote?: MessageQuote
   bot: BotLike
   type: TargetType
   channelId: string
@@ -34,6 +44,7 @@ export interface SessionInit {
  * 插件只依赖这份契约，不依赖具体实现。
  */
 export interface SessionLike {
+  readonly quote?: MessageQuote
   readonly bot: BotLike
   readonly type: TargetType
   readonly channelId: string

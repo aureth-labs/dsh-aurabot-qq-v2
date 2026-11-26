@@ -16,7 +16,7 @@ function onebot() {
       if (action === 'get_group_member_list') {
         return [{ user_id: '20001', card: '小学', nickname: 'shangxue', role: 'owner', join_time: 1700000000 }]
       }
-      if (action === 'get_msg') return { message_id: '9', user_id: '20001', message: [{ type: 'text', data: { text: '在吗' } }], time: 1700000001 }
+      if (action === 'get_msg') return { message_id: '9', group_id: '7788', user_id: '20001', message: [{ type: 'text', data: { text: '在吗' } }], time: 1700000001 }
       return {}
     },
   })

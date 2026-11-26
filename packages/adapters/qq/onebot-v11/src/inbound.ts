@@ -49,3 +49,13 @@ export function eventForHub(session: Session): unknown {
     message: toOneBot(session.elements),
   }
 }
+
+export function recalledMessage(event: unknown) {
+  if (!event || typeof event !== 'object') return
+  const e = event as Record<string, unknown>
+  if (e.post_type !== 'notice' || e.message_id == null) return
+  const type = e.notice_type === 'group_recall' ? 'group' : e.notice_type === 'friend_recall' ? 'private' : undefined
+  if (!type) return
+  const channel = type === 'group' ? e.group_id : e.user_id
+  if (channel != null) return { type, channelId: String(channel), messageId: String(e.message_id) }
+}

@@ -281,7 +281,12 @@ export function satoriAdapter(): AdapterSpec {
             runtime.emitMessage(message)
             return
           }
-          runtime.emitEvent?.(event.type, event)
+          if (event.type === 'message-deleted' && event.channel?.id && event.message?.id) {
+            runtime.emitEvent?.(event.type, {
+              type: event.channel.type === CHANNEL_DIRECT ? 'private' : 'group',
+              channelId: String(event.channel.id), messageId: String(event.message.id), raw: event,
+            })
+          } else runtime.emitEvent?.(event.type, event)
         },
         onDown: (reason) => bot?.markOffline(reason),
       })

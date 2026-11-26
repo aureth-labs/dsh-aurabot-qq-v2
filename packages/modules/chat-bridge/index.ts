@@ -58,7 +58,7 @@ export function apply(ctx: PluginContext) {
     const memory = () => ctx.get<RoomMemory>('room-memory')
     const facts = memory()?.recall?.(identity, input, ctx.root.config.memory?.recallCount ?? 6) ?? []
     const transcript = [...history, current]
-    const prompt = { system, text: JSON.stringify(facts.length ? { facts, transcript } : transcript), sessionId, maxTokens: 800 }
+    const prompt = { system, text: JSON.stringify(session.quote ? { facts, transcript, quote: session.quote } : facts.length ? { facts, transcript } : transcript), sessionId, maxTokens: 800 }
     const dialogue = ctx.get<Dialogue>('dialogue')
     let claimed = false
     const claim = () => active && (claimed || (claimed = db.claim(room, session.messageId)))

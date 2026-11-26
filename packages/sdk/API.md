@@ -124,3 +124,7 @@ export async function apply(ctx, config) {
 - 入口写 `.ts`，同目录 `aurabot.d.ts` 提供 `ctx` / `session` / `h` 补全
 - 保存即热重载（监听整个插件文件夹）
 - `debug` 日志只在面板打开调试模式时输出；日志在 `<数据目录>/data/logs/`
+
+### 引用消息
+
+原消息包含引用时，命令和中间件可读取 `session.quote`。引用始终包含原消息 ID 与频道 ID。本机已有记录或适配器能按会话确认来源时，还会提供正文和发送者。已撤回的记录提供 `deletedAt`。

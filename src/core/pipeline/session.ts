@@ -5,7 +5,7 @@
 import type { BotLike, SendOptions } from '../../types/adapter/bot.ts'
 import type { Element } from '../../types/core/element.ts'
 import type { PipelineResult, PipelineRunner } from '../../types/plugin/pipeline.ts'
-import type { SessionInit, SessionLike } from '../../types/core/session.ts'
+import type { MessageQuote, SessionInit, SessionLike } from '../../types/core/session.ts'
 import type { Target, TargetType } from '../../types/core/target.ts'
 import { targetOfBot } from '../bot/index.ts'
 import type { InboundMessage } from '../../types/adapter/adapter.ts'
@@ -47,6 +47,7 @@ export class Session implements SessionLike {
   readonly elements: Element[]
   readonly timestamp: number
   readonly raw?: unknown
+  readonly quote?: MessageQuote
   readonly parent?: Session
   readonly target: Target
   readonly pipeline?: PipelineRunner
@@ -68,6 +69,7 @@ export class Session implements SessionLike {
   readonly sentLog: Array<{ text: string; at: number }> = []
 
   constructor(init: SessionInit, parent?: Session) {
+    this.quote = init.quote
     this.raw = init.raw
     this.parent = parent
     this.bot = init.bot
@@ -155,10 +157,10 @@ export class Session implements SessionLike {
   }
 }
 
-export function inboundSession(bot: BotLike, message: InboundMessage, pipeline: PipelineRunner): Session {
+export function inboundSession(bot: BotLike, message: InboundMessage, pipeline: PipelineRunner, quote?: MessageQuote): Session {
   const elements = message.elements?.length ? normalize(message.elements) : undefined
   const content = message.content ?? (elements ? toText(elements) : '')
-  return new Session({ ...message, bot, pipeline, elements, content, userName: message.userName ?? message.userId })
+  return new Session({ ...message, bot, pipeline, elements, content, quote, userName: message.userName ?? message.userId })
 }
 
 /** 定时任务等没有真实入站消息的场景，用这个造一个 Session。 */

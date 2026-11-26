@@ -1,7 +1,7 @@
 import type { PluginContext } from '../../../../../src/types/plugin/ctx.ts'
 import type { AdapterSpec } from '../../../../../src/types/adapter/adapter.ts'
 import { createOneBotConnection } from './connection.ts'
-import { inboundOf, isMessageEvent } from './inbound.ts'
+import { inboundOf, isMessageEvent, recalledMessage } from './inbound.ts'
 import type { OneBotBot } from './bot.ts'
 
 import { Schema } from '../../../../../src/core/config/shape/schema.ts'
@@ -49,7 +49,11 @@ export function apply(ctx: PluginContext, config: Config) {
         },
         onEvent(event) {
           if (isMessageEvent(event)) runtime.emitMessage(inboundOf(event))
-          else runtime.emitEvent?.('onebot', event)
+          else {
+            const recalled = recalledMessage(event)
+            if (recalled) runtime.emitEvent?.('message-deleted', recalled)
+            runtime.emitEvent?.('onebot', event)
+          }
         },
       })
       ctx.provide('onebot/' + ctx.instanceId, connection)

@@ -189,7 +189,7 @@ export function apply(ctx) {
     claimReply: (chat, userId, text) => dangerGuard?.handleReply(chat, userId, text) || approvalRelay?.handleReply(chat, userId, text),
   })
   const { outbox, connectionChanged, flushOutbox, warmSince, warmPhase } = gateway
-  const { botRegistry, adapterRegistry, pipeline, dispatchInbound } = createTransport({
+  const { botRegistry, adapterRegistry, pipeline, dispatchInbound, closeQuoteHistory } = createTransport({
     getConfig, log: logger.child('adapter'),
     speak: async text => { const voice = await tts.speak(text); return typeof voice === 'string' ? voice : String(voice?.file ?? '') },
     emit: (event, payload) => mods?.emit(event, payload),
@@ -452,6 +452,7 @@ export function apply(ctx) {
     noticeRelay.dispose()
     dangerGuard?.dispose()
     approvalRelay?.dispose()
+    closeQuoteHistory()
     hub.dispose()
     closeUsage()
     bridge.dispose()

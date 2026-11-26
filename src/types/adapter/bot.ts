@@ -66,6 +66,7 @@ export interface GuildMember {
 }
 
 export interface Message {
+  channelType?: 'private' | 'group' | 'channel'
   id: string
   channelId: string
   userId: string

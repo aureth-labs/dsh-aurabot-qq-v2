@@ -83,6 +83,7 @@ export interface GuildMember {
 }
 
 export interface Message {
+  channelType?: 'private' | 'group' | 'channel'
   id: string
   channelId: string
   userId: string
@@ -137,7 +138,17 @@ export interface Target {
 }
 
 /** 一条入站消息。所有发送方法都是异步的，调用方一律 await。 */
+export interface MessageQuote {
+  id: string
+  channelId: string
+  userId?: string
+  content?: string
+  createdAt?: number
+  deletedAt?: number
+}
+
 export interface Session {
+  readonly quote?: MessageQuote
   readonly bot: Bot
   readonly type: Target['type']
   readonly channelId: string

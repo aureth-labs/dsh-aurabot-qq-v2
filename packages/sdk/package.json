@@ -1,6 +1,6 @@
 {
   "name": "@aurabot/plugin-api",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "description": "AuraBot TypeScript 插件与适配器开发接口",
   "type": "module",
   "license": "MIT",

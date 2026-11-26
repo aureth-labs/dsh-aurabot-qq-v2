@@ -130,6 +130,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
   const log = options.log || (() => {})
 
   const messages: SandboxMessage[] = []
+  let sequence = 0
   const channels = new Map<string, { id: string; name: string; type: number }>([
     ['sandbox-1', { id: 'sandbox-1', name: '沙盒群', type: 0 }],
   ])
@@ -189,7 +190,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         const channel = channels.get(channelId) || { id: channelId, name: channelId, type: 0 }
         channels.set(channelId, channel)
         const message: SandboxMessage = {
-          id: `out-${messages.length + 1}`,
+          id: `out-${++sequence}`,
           at: Date.now(),
           channelId,
           channelName: channel.name,
@@ -218,7 +219,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
       case 'channel.list':
         return [...channels.values()]
       case 'message.get': {
-        const hit = messages.find((m) => m.id === String(body.message_id || ''))
+        const hit = messages.find((m) => m.id === String(body.message_id || '') && m.channelId === String(body.channel_id || ''))
         return hit ? { id: hit.id, content: hit.content, channel: { id: hit.channelId } } : {}
       }
       case 'message.list':
@@ -277,8 +278,10 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
       if (!channels.has(channelId)) {
         channels.set(channelId, { id: channelId, name: kind === 'private' ? `与 ${user.name} 的私聊` : channelId, type: kind === 'private' ? 1 : 0 })
       }
+      const quoted = body.quoteId && messages.find(m => m.id === body.quoteId && m.channelId === channelId)
+      if (body.quoteId && !quoted) return json(res, 400, { ok: false, message: '引用消息不在当前会话中' })
       const message: SandboxMessage = {
-        id: `in-${messages.length + 1}`,
+        id: `in-${++sequence}`,
         at: Date.now(),
         channelId,
         channelName: channels.get(channelId)!.name,
@@ -290,7 +293,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
       remember(message)
       push({
         type: 'message-created',
-        message: { id: message.id, content: `<text>${escapeXml(text)}</text>` },
+        message: { id: message.id, content: (quoted ? '<quote id="' + quoted.id + '"/>' : '') + '<text>' + escapeXml(text) + '</text>' },
         channel: { id: channelId, type: kind === 'private' ? 1 : 0, name: message.channelName },
         guild: kind === 'private' ? undefined : guild,
         user: { id: user.id, name: user.name },
