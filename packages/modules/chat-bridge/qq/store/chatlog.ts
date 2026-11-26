@@ -73,7 +73,10 @@ export function createChatLog(deps: ChatLogDeps) {
       revision++
       try { hooks?.journal?.({ ...row, ...(originId ? { originId } : {}) }) } catch (error) { log.warn('流水通知失败：', error.message) }
       return true
-    } catch (error) { return false }
+    } catch (error) {
+      log.warn('写入聊天流水失败：', error.message)
+      return false
+    }
   }
 
   /** 她在 QQ 之外说的话（桌宠气泡）：记进这个聊天，对方在 QQ 回她时她知道在接哪句（#133）。 */
@@ -122,6 +125,7 @@ export function createChatLog(deps: ChatLogDeps) {
         return row
       })
     } catch (error) {
+      log.warn('读取聊天流水失败：', error.message)
       return []
     }
   }

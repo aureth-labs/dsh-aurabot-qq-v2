@@ -8,9 +8,10 @@ import { Script } from 'node:vm'
 import { normalize } from '../../src/core/config/index.ts'
 import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 import { readMemoryState } from '../helpers/memory-state.js'
+import { startMockOneBot } from '../helpers/mock-onebot.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { createConversationArchive } from '../../packages/modules/chat-bridge/qq/context/conversation-context.ts'
-import memoryModule from '../../packages/modules/memory/index.ts'
+import { createConversationArchive } from '../../packages/modules/chat-bridge/recall.ts'
+import { apply as applyMemory } from '../../packages/modules/memory/index.ts'
 import { clientBundleText, injectExports } from '../helpers/client-bundle.js'
 import { cleanupDir } from '../helpers/cleanup.js'
 
@@ -171,12 +172,16 @@ test('梗概按发生时间排序，可按聊天、层级和人物筛选；删�
 test('人物和记忆面板路由接到同一份 store', async (t) => {
   const s = setup(t)
   const routes = new Map()
-  const api = {
-    config: () => s.cfg,
-    core: { hub: s.hub, http: { query: (req) => req.query || {}, body: async (req) => req.body || {} } },
-    log, context() {}, on() {}, every() {}, tool() {}, route: (path, handler) => routes.set(path, handler),
-  }
-  memoryModule.setup(api)
+  const route = (path, handler) => routes.set(path, handler)
+  const effects = []
+  applyMemory({
+    root: { config: s.cfg, read: () => s.cfg },
+    host: { hub: s.hub, http: { query: req => req.query || {}, body: async req => req.body || {} } },
+    dataDir: file => join(process.env.AURABOT_DATA_DIR, file),
+    server: { get: route, post: route }, logger: log, provide() {}, prompt() {}, on() {}, setInterval() {}, tool() {},
+    effect: fn => effects.push(fn),
+  }, {})
+  t.after(() => effects.reverse().forEach(fn => fn()))
   const call = (path, data = {}) => {
     assert.ok(routes.has(path), `缺少路由 ${path}`)
     return routes.get(path)(data)
@@ -397,20 +402,25 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
   const s = setup(t)
   const dir = process.env.AURABOT_DATA_DIR
   const chatId = `private:${ALICE}`
+  const gateway = await startMockOneBot({ selfId: '20000002' })
+  t.after(() => gateway.close())
+  const onebot = { wsUrl: gateway.wsUrl, wsToken: gateway.token, httpUrl: gateway.httpUrl, httpToken: gateway.token }
   const oldSession = 'old-alice-session'
   const debugSession = 'old-alice-debug-session'
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify({ chats: { [chatId]: { sessionId: oldSession, sessions: { live: oldSession, debug: debugSession } } } }))
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: true, dryRun: true, setupDone: true,
     ownerQQ: OWNER, botQQ: '20000002', allow: { private: [ALICE, BOB] }, workspaceDir: join(dir, 'workspace'),
-    onebot: {  }, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
+    onebot, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
   const fake = createFakeDsh({ brain: async () => '' })
   try {
     const { apply } = await import('../../packages/app/index.ts')
     const api = apply(fake.ctx)
     await api.ready
+    await api.modules.use('adapter-qq-onebot-v11').ready
     const memory = api.modules.use('memory')
     const archive = createConversationArchive({ directory: join(dir, 'conversation-context'), namespace: api.getConfig().persona.current })
     archive.append(chatId, { role: 'user', speakerId: ALICE, text: '清理前归档的原话', at: s.now - 1000 })
+    archive.close()
     assert.equal(api.hub.recentMessagesOf(chatId).at(-1).text, '清理前归档的原话')
     memory.setInsights(`qq:${ALICE}`, ['旧的相处经验'])
     memory.setStyle(`qq:${ALICE}`, ['旧的说话方式'])
@@ -446,23 +456,22 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
     assert.equal(rows().at(-1).text, '清理后新消息')
     assert.equal(api.hub.logChat(chatId, '用户', '旧消息迟到', ALICE, { at: cutoff - 1 }), false)
     assert.deepEqual(api.hub.filterHistory('group:777', [
-      { user_id: ALICE, time: cutoff - 1, message: '旧群消息' },
-      { user_id: BOB, time: cutoff - 1, message: '其他人的群消息' },
-    ]).map((message) => message.message), ['其他人的群消息'])
+      { userId: ALICE, createdAt: cutoff - 1, content: '旧群消息' },
+      { userId: BOB, createdAt: cutoff - 1, content: '其他人的群消息' },
+    ]).map((message) => message.content), ['其他人的群消息'])
     api.setConfig({ ...api.getConfig(), dryRun: false })
-    api.onebot.call = async (action) => {
-      assert.equal(action, 'get_friend_msg_history')
-      return { messages: [
-        { time: Math.floor((cutoff - 10000) / 1000), message: 'QQ 历史里的旧消息' },
-        { message: 'QQ 历史里没有时间的消息' },
-        { time: Math.ceil((cutoff + 1000) / 1000), message: 'QQ 历史里的新消息' },
-      ] }
-    }
+    const bot = api.onebot.bot
+    gateway.state.history = [
+      { message_id: 1, time: Math.floor((cutoff - 1000) / 1000), message: 'QQ 历史里的旧消息' },
+      { message_id: 2, message: 'QQ 历史里没有时间的消息' },
+      { message_id: 3, time: Math.ceil((cutoff + 1000) / 1000), message: 'QQ 历史里的新消息' },
+    ].map(row => ({ ...row, user_id: ALICE }))
     await api.hub.pushToSession({ chatId, kind: 'private', userId: ALICE }, [{ type: 'text', text: '你好' }], ALICE)
     assert.notEqual(fake.turns.at(-1).sessionId, oldSession)
     assert.match(fake.turns.at(-1).userText, /QQ 历史里的新消息/)
     assert.doesNotMatch(fake.turns.at(-1).userText, /旧消息|没有时间/)
-    const tools = api.modules.buildTools({ chat: { chatId, kind: 'private', userId: ALICE }, level: 'social', sessionId: fake.turns.at(-1).sessionId })
+    const target = { platform: 'qq', botId: bot.id, type: 'private', id: ALICE }
+    const tools = api.modules.buildTools({ target, primaryChat: true, chat: { chatId, kind: 'private', userId: ALICE }, level: 'social', sessionId: fake.turns.at(-1).sessionId })
     const result = await tools.find((tool) => tool.name === 'qq_chat_history').execute({})
     assert.match(result.message, /QQ 历史里的新消息/)
     assert.doesNotMatch(result.message, /旧消息|没有时间/)

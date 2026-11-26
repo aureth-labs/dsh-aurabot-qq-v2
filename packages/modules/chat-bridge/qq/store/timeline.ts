@@ -2,15 +2,18 @@ import { join } from 'node:path'
 import { dataDir, writeJson } from '../../../../../src/core/store/index.ts'
 import { existsSync, readFileSync } from 'node:fs'
 import { matchesMemoryKeyword } from '../../../memory/engine/index.ts'
-import { createConversationArchive } from '../context/conversation-context.ts'
+import { createConversationArchive } from '../../recall.ts'
 import { createChatLog } from './chatlog.ts'
+import { openEvidenceStore } from '../../../../../src/core/store/evidence.ts'
 import { createMessageLogScope } from '../../../../../src/core/store/messages.ts'
 
 export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, proactiveLogAt, cleaningFor }) {
   const { isBeforeMemoryReset, memoryCutoffs, chatDir, chatMemoryCutoff } = store
 
   const logs = createMessageLogScope()
-  const archives = new Map()
+  const archives = new Map<string, ReturnType<typeof createConversationArchive>>()
+  let evidence: ReturnType<typeof openEvidenceStore>
+  let closed = false
 
   let forgottenRules = null
 
@@ -42,12 +45,14 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
     )
 
   const conversationArchive = (namespace = String(getConfig().persona?.current || 'default')) => {
+    if (closed) throw Error('Conversation timeline closed')
     if (!archives.has(namespace))
       archives.set(
         namespace,
         createConversationArchive({
           directory: dataDir('conversation-context'),
           namespace,
+          store: evidence ??= openEvidenceStore(dataDir('conversation-context')),
           visible: conversationVisible,
           visibleKey: () => conversationRules().length + '|' + JSON.stringify(memoryCutoffs(namespace)),
         }),
@@ -145,5 +150,13 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
     }
   }
   restoreProactiveFromChatLog()
-  return { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity, closeLogs: logs.close }
+  function closeLogs() {
+    if (closed) return
+    closed = true
+    for (const archive of archives.values()) archive.close()
+    archives.clear()
+    evidence?.close()
+    logs.close()
+  }
+  return { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity, closeLogs }
 }

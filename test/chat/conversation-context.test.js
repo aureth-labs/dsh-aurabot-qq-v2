@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createConversationArchive, queriesFor, retrieve, packEvidence, recentWithin } from '../../packages/modules/chat-bridge/qq/context/conversation-context.ts'
+import { createConversationArchive, queriesFor, retrieve, packEvidence, recentWithin } from '../../packages/modules/chat-bridge/recall.ts'
 
 test('省略说法可以借助多轮用户线索，明确转题不会带入旧主题', () => {
   const recent = [{ role: 'user', text: 'Coffee温控怎么调' }, { role: 'assistant', text: '试试低一点的水温' }, { role: 'user', text: '嗯' }]

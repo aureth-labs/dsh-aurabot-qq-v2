@@ -1,10 +1,12 @@
 // 聊天流水存储：写入后立即可读，忘记/删除立即生效，不同天互不串数据。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { DatabaseSync } from 'node:sqlite'
+import { createMessageLogScope } from '../../src/core/store/messages.ts'
 import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
@@ -77,4 +79,33 @@ test('不同天的流水互不串数据', (t) => {
   assert.deepEqual(a.map((r) => r.text), ['昨天的话'])
   assert.deepEqual(b.map((r) => r.text), ['今天的话'])
   assert.deepEqual(hub.chatLogOf(yesterday).map((r) => r.text), ['昨天的话'])
+})
+
+test('按日迁移独立回滚并保留原件，另一连接提交后读取最新流水', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'aurabot-daily-migration-'))
+  const today = '2026-11-27', previous = '2026-11-26'
+  const file = join(dir, previous + '.jsonl')
+  const line = JSON.stringify({ t: 1, text: '历史' })
+  writeFileSync(file, line + '\n{')
+  const scope = createMessageLogScope()
+  const store = scope.open(dir)
+  t.after(() => { scope.close(); cleanupDir(dir) })
+  store.append(today, { t: 9, text: '新消息' })
+  assert.throws(() => store.read(previous), /第 2 行/)
+  assert.equal(existsSync(file), true)
+  writeFileSync(file, line)
+  assert.deepEqual(store.read(previous).map(row => row.text), ['历史'])
+  assert.ok(existsSync(file + '.migrated'))
+  const peer = new DatabaseSync(join(dir, 'messages.db'))
+  try {
+    peer.prepare('INSERT INTO messages(day,t,payload) VALUES(?,?,?)').run(previous, 0, JSON.stringify({ t: 0, text: '补录' }))
+    assert.deepEqual(store.read(previous).map(row => row.text), ['补录', '历史'])
+    assert.throws(() => store.mutate(previous, row => {
+      if (row.t === 1) throw Error('撤销本次修改')
+      return { ...row, text: '改动' }
+    }), /撤销/)
+    assert.deepEqual(store.read(previous).map(row => row.text), ['补录', '历史'])
+    store.remove(previous)
+    assert.deepEqual(store.days(), [today])
+  } finally { peer.close() }
 })

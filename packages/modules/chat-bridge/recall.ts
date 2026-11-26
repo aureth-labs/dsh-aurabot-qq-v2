@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
-// Source-grounded conversation recall. Generated replies remain labelled replies,
-// never promoted to facts about a person. This module makes no model/network calls.
-import { randomUUID, createHash } from 'node:crypto'
-import { existsSync, readFileSync, mkdirSync, appendFileSync, writeFileSync, renameSync } from 'node:fs'
-import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { openEvidenceStore, type Evidence } from '../../../src/core/store/evidence.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RetrieveOptions = Partial<Record<'limit' | 'textOf' | 'eligible', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CreateConversationArchiveOptions = Partial<Record<'directory' | 'namespace' | 'now' | 'visible' | 'visibleKey', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
+interface ArchiveOptions {
+  directory: string
+  namespace?: string
+  now?: () => number
+  store?: ReturnType<typeof openEvidenceStore>
+  visible?: (room: string, message: Evidence) => boolean
+  visibleKey?: (room: string) => unknown
+}
 type EpisodesOptions = Partial<Record<'maxCharacters', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RecallOptions = Partial<Record<'maxCharacters' | 'recentMessages' | 'excludeIds', any>>
 
 const POINTER = /然后|后来|那个|这个|那件|这件|当时|刚才|继续|上次|之前|还记得|接着|\b(it|that|then|continue|previous|earlier)\b/i
@@ -117,55 +117,40 @@ export function recentWithin(messages, maxCharacters = 6000) {
   return result
 }
 
-/** Durable, persona- and chat-isolated archive; append-only journal is the source. */
-export function createConversationArchive({ directory, namespace = 'default', now = Date.now, visible = (_chatId?: string, _message?: unknown) => true, visibleKey = null } : CreateConversationArchiveOptions = {}) {
-  if (!directory) throw new Error('Conversation archive directory required')
-  const cache = new Map()
-  const keyFor = chatId => createHash('sha256').update(namespace + '\0' + String(chatId)).digest('hex')
-  function state(chatId) {
-    if (!/^(private|group):[^\s:]+$/.test(String(chatId))) throw new Error('Invalid conversation identity')
-    const key = keyFor(chatId)
-    if (cache.has(key)) return cache.get(key)
-    const journal = join(directory, key + '.jsonl'), checkpoint = join(directory, key + '.json')
-    const value = { journal, checkpoint, messages: [], revision: 0 }
-    // Recover from the journal, including a turn appended before a checkpoint
-    // write was interrupted. Reject malformed committed lines rather than reset.
-    if (existsSync(journal)) {
-      const raw = readFileSync(journal, 'utf8'), lines = raw.split('\n')
-      for (let i = 0; i < lines.length; i++) {
-        if (!lines[i].trim()) continue
-        try { value.messages.push(JSON.parse(lines[i])) }
-        catch (error) {
-          if (i !== lines.length - 1) throw new Error('Conversation journal is corrupt; preserving source')
-          throw new Error('Conversation journal has an incomplete tail; preserving source for recovery')
-        }
-      }
-    }
-    cache.set(key, value); return value
+export function createConversationArchive({ directory, namespace = 'default', now = Date.now, store, visible = () => true, visibleKey }: ArchiveOptions) {
+  let db = store
+  let closed = false
+  function room(chatId: string) {
+    if (closed) throw Error('Conversation archive closed')
+    if (!chatId) throw Error('Conversation identity required')
+    db ??= openEvidenceStore(directory)
+    db.migrate(namespace, chatId)
+    return db
   }
-  function append(chatId, { role, text, id = randomUUID(), speakerId = '', at = now(), contextAt = at }) {
-    if (!['user', 'assistant'].includes(role)) throw new Error('Invalid conversation role')
-    const value = state(chatId), body = String(text || '').trim()
-    if (!body || value.messages.some(m => m.id === id)) return false
-    const message = { id, role, text: body, speakerId: String(speakerId), at: Number(at) || now(), contextAt: Number(contextAt) || Number(at) || now() }
-    mkdirSync(directory, { recursive: true })
-    appendFileSync(value.journal, JSON.stringify(message) + '\n', { encoding: 'utf8', mode: 0o600 })
-    value.messages.push(message); value.revision++
-    // Checkpoint is inspectable metadata, not a second source of truth.
-    const temp = value.checkpoint + '.' + process.pid + '.tmp'
-    writeFileSync(temp, JSON.stringify({ version: 1, namespace, chatId, messages: value.messages.length, lastId: id }), { encoding: 'utf8', mode: 0o600 })
-    renameSync(temp, value.checkpoint)
-    return true
+
+  function append(chatId: string, { role, text, id = randomUUID(), speakerId = '', at = now(), contextAt = at }: Pick<Evidence, 'role' | 'text'> & Partial<Evidence>) {
+    if (role !== 'user' && role !== 'assistant') throw Error('Invalid conversation role')
+    const body = String(text || '').trim()
+    if (!body) return false
+    const timestamp = Number(at) || now()
+    return room(chatId).append(namespace, chatId, { id, role, text: body, speakerId: String(speakerId), at: timestamp, contextAt: Number(contextAt) || timestamp })
   }
-  const available = chatId => state(chatId).messages.filter(m => visible(chatId, m))
-  function recent(chatId, limit = 32) {
+
+  function recent(chatId: string, limit = 32) {
     const count = Math.max(0, Math.min(256, Math.trunc(Number(limit) || 0)))
-    return count ? available(chatId).slice(-count).map(m => ({ ...m })) : []
+    if (!count) return []
+    const store = room(chatId)
+    let end = store.length(namespace, chatId)
+    const result: Evidence[] = []
+    while (end > 0 && result.length < count) {
+      const start = Math.max(0, end - Math.max(64, count))
+      const rows = store.range(namespace, chatId, start, end).filter(row => visible(chatId, row))
+      result.unshift(...rows.slice(result.length - count))
+      end = start
+    }
+    return result.map(row => ({ ...row }))
   }
-  // 群聊每轮都会重算「相关较早片段」，语密的群历史能到几万条：整份重切要逐条 JSON.stringify，
-  // 卡在回合开头（#520 之后群里一开口就慢）。这里按聊天缓存切块结果，只补追加的尾部；
-  // 可见性规则或清理记忆截止时间一变就整份重建（visibleKey 由宿主给）。
-  // 窗口设上限：超过后只保留最近 EPISODE_SCAN_MAX 条参与召回，避免历史越长每轮越慢。
+
   const episodeCache = new Map() // `${chatId}|${maxCharacters}` → { vis, start, consumed, list, block, serializedSize }
   const EPISODE_CACHE_MAX = 16
   const EPISODE_SCAN_MAX = 20_000
@@ -181,26 +166,26 @@ export function createConversationArchive({ directory, namespace = 'default', no
       text: block.map(m => `${m.role}: ${m.text}`).join('\n') }
   }
   function episodes(chatId, { maxCharacters = 2000 } : EpisodesOptions = {}) {
-    const value = state(chatId)
+    const store = room(chatId)
+    const length = store.length(namespace, chatId)
     // Reserve the episode wrapper and evidence IDs. Split at source-message
     // boundaries, so a large paste cannot hide its small neighboring facts.
     const recordBudget = Math.max(1, maxCharacters - 256)
     const vis = viewStamp(chatId)
     const key = chatId + '|' + maxCharacters
-    const overflow = value.messages.length - EPISODE_SCAN_MAX
+    const overflow = length - EPISODE_SCAN_MAX
     const start = overflow <= 0 ? 0 : Math.floor(overflow / EPISODE_WINDOW_STEP) * EPISODE_WINDOW_STEP
     let entry = episodeCache.get(key)
     episodeCache.delete(key) // 命中与否都重插到队尾，当 LRU 用
-    if (!entry || entry.vis !== vis || entry.start !== start || entry.consumed > value.messages.length) {
+    if (!entry || entry.vis !== vis || entry.start !== start || entry.consumed > length) {
       entry = { vis, start, consumed: start, list: [], block: [], serializedSize: 0 }
     }
     const emit = () => {
       if (!entry.block.length) return
       entry.list.push(episodeOf(entry.block)); entry.block = []; entry.serializedSize = 0
     }
-    for (let i = entry.consumed; i < value.messages.length; i++) {
-      const m = value.messages[i]
-      entry.consumed = i + 1
+    for (const m of store.range(namespace, chatId, entry.consumed, length)) {
+      entry.consumed++
       if (!visible(chatId, m)) continue
       const size = JSON.stringify(m).length + JSON.stringify(m.id).length + 2
       const block = entry.block
@@ -240,5 +225,11 @@ export function createConversationArchive({ directory, namespace = 'default', no
     const hits = retrieve(queriesFor(query, recentMessages), docs, { limit: 6 })
     return packEvidence(hits, render, maxCharacters)
   }
-  return { append, recent, recall, episodes }
+  function close() {
+    if (closed) return
+    closed = true
+    episodeCache.clear()
+    if (!store) db?.close()
+  }
+  return { append, recent, recall, episodes, close }
 }

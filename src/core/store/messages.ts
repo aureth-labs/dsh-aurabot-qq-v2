@@ -1,12 +1,5 @@
-/**
- * 聊天流水存储：node:sqlite（每个会话目录一个库）。
- *
- * 旧版本按天写 `<day>.jsonl`。首次打开空库时自动导入同目录的 JSONL，
- * 导入后把原文件改名为 `<day>.jsonl.migrated`，不重复导入、也不丢原始数据。
- */
-
 import { DatabaseSync } from 'node:sqlite'
-import { readdirSync, readFileSync, renameSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, renameSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { ensureDir } from './index.ts'
 
@@ -78,11 +71,10 @@ export function closeMessageLogsUnder(dir: string): void {
 function createMessageLog(dir: string, release: () => void): MessageLog {
   ensureDir(dir)
   const db = new DatabaseSync(join(dir, 'messages.db'))
-  try {
-    db.exec('PRAGMA journal_mode = WAL')
-    db.exec('PRAGMA busy_timeout = 3000')
-  } catch {}
   db.exec(`
+    PRAGMA busy_timeout = 3000;
+    PRAGMA journal_mode = WAL;
+    CREATE TABLE IF NOT EXISTS imported_days (day TEXT PRIMARY KEY) WITHOUT ROWID;
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       day TEXT NOT NULL,
@@ -96,12 +88,20 @@ function createMessageLog(dir: string, release: () => void): MessageLog {
   const selectDay = db.prepare('SELECT id, payload FROM messages WHERE day = ? ORDER BY t ASC, id ASC')
   const deleteDay = db.prepare('DELETE FROM messages WHERE day = ?')
   const updateRow = db.prepare('UPDATE messages SET t = ?, payload = ? WHERE id = ?')
-  const countAll = db.prepare('SELECT COUNT(*) AS n FROM messages')
+  const imported = db.prepare('SELECT 1 FROM imported_days WHERE day=?')
+  const mark = db.prepare('INSERT OR IGNORE INTO imported_days VALUES (?)')
+  const populated = db.prepare('SELECT 1 FROM messages WHERE day=? LIMIT 1')
+  const dataVersion = db.prepare('PRAGMA data_version')
+  let version = Number(dataVersion.get().data_version)
+  const pending = new Set(readdirSync(dir).filter(file => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(file)).map(file => file.slice(0, 10)))
   const listDays = db.prepare('SELECT DISTINCT day FROM messages ORDER BY day ASC')
 
   const cache = new Map<string, CachedRow[]>()
 
   const load = (day: string): CachedRow[] => {
+    importDay(day)
+    const next = Number(dataVersion.get().data_version)
+    if (version !== next) { cache.clear(); version = next }
     const cached = cache.get(day)
     if (cached) return cached
     const rows = (selectDay.all(day) as Array<{ id: number; payload: string }>).map((item) => {
@@ -113,71 +113,93 @@ function createMessageLog(dir: string, release: () => void): MessageLog {
       }
       return { id: Number(item.id), data }
     })
+    if (cache.size >= 8) cache.delete(cache.keys().next().value)
     cache.set(day, rows)
     return rows
   }
 
-  const migrate = (): void => {
+  function importDay(day: string) {
+    if (!pending.has(day)) return
+    const source = join(dir, day + '.jsonl')
+    let committed = false
+    db.exec('BEGIN IMMEDIATE')
     try {
-      const total = Number((countAll.get() as { n?: number } | undefined)?.n ?? 0)
-      if (total > 0) return
-      const files = readdirSync(dir).filter((name) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(name))
-      if (!files.length) return
-      db.exec('BEGIN')
-      try {
-        for (const name of files) {
-          const day = name.slice(0, 10)
-          const text = readFileSync(join(dir, name), 'utf8')
-          for (const line of text.split('\n')) {
+      if (!imported.get(day) && existsSync(source)) {
+        // An existing daily ledger can contain later edits and forgotten messages.
+        if (!populated.get(day)) {
+          for (const [i, line] of readFileSync(source, 'utf8').split('\n').entries()) {
             if (!line.trim()) continue
             try {
               const row = JSON.parse(line)
-              insert.run(day, Number(row?.t) || 0, JSON.stringify(row))
-            } catch {}
+              if (!row || Array.isArray(row) || typeof row !== 'object') throw Error('Expected a message')
+              insert.run(day, Number(row.t) || 0, JSON.stringify(row))
+            } catch (cause) {
+              throw Error(`聊天记录 ${day} 第 ${i + 1} 行损坏，已保留源文件`, { cause })
+            }
           }
+          committed = true
         }
-        db.exec('COMMIT')
-      } catch (error) {
-        db.exec('ROLLBACK')
-        throw error
+        mark.run(day)
       }
-      for (const name of files) {
-        try {
-          renameSync(join(dir, name), join(dir, `${name}.migrated`))
-        } catch {}
-      }
-    } catch {}
+      db.exec('COMMIT')
+    } catch (error) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+    pending.delete(day)
+    if (committed && !existsSync(source + '.migrated')) {
+      try { renameSync(source, source + '.migrated') } catch { /* The import marker also covers an unrenamed source. */ }
+    }
   }
 
-  migrate()
   let closed = false
 
   return {
     append(day, row) {
       const payload = JSON.stringify(row ?? {})
-      const list = load(day)
-      const result = insert.run(day, Number(row?.t) || 0, payload)
-      list.push({ id: Number(result.lastInsertRowid), data: row })
+      importDay(day)
+      insert.run(day, Number(row?.t) || 0, payload)
+      cache.delete(day)
     },
     read(day) {
       return load(day).map((item) => item.data)
     },
     mutate(day, fn) {
-      let changed = 0
-      for (const item of load(day)) {
-        const next = fn(item.data) as Record<string, any> | null | undefined
-        if (next == null || next === item.data) continue
-        item.data = next
-        updateRow.run(Number(next.t) || 0, JSON.stringify(next), item.id)
-        changed++
+      importDay(day)
+      db.exec('BEGIN IMMEDIATE')
+      try {
+        let changed = 0
+        for (const item of load(day)) {
+          const next = fn(item.data)
+          if (!next || next === item.data) continue
+          updateRow.run(Number(next.t) || 0, JSON.stringify(next), item.id)
+          changed++
+        }
+        db.exec('COMMIT')
+        return changed
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      } finally {
+        cache.delete(day)
       }
-      return changed
     },
     days() {
-      return (listDays.all() as Array<{ day: string }>).map((item) => String(item.day))
+      const days = (listDays.all() as Array<{ day: string }>).map(row => row.day)
+      for (const day of pending) if (!imported.get(day)) days.push(day)
+      return [...new Set(days)].sort()
     },
     remove(day) {
-      deleteDay.run(day)
+      db.exec('BEGIN IMMEDIATE')
+      try {
+        mark.run(day)
+        deleteDay.run(day)
+        db.exec('COMMIT')
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
+      pending.delete(day)
       cache.delete(day)
     },
     close() {

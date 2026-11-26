@@ -1,12 +1,13 @@
 import test from 'node:test'
+import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../../helpers/fake-dsh.js'
 import { normalize } from '../../../src/core/config/index.ts'
 import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
-import { createConversationArchive, queriesFor, retrieve } from '../../../packages/modules/chat-bridge/qq/context/conversation-context.ts'
+import { createConversationArchive, queriesFor, retrieve } from '../../../packages/modules/chat-bridge/recall.ts'
 import { memoryPromptRanges, promptFingerprint } from '../../../src/security/leak-guard.ts'
 
 const OWNER = '10000001', OTHER = '10000002', BOT = '20000002'
@@ -43,13 +44,14 @@ test('原话保存默认关闭，关闭时扩展也拿不到旧档案', async t 
   s.cfg.conversationContext.enabled = true
   await s.send('Coffee八十八度')
   assert.equal(s.hub.recentMessagesOf(ownerChat.chatId).length, 2)
-  const files = readdirSync(join(s.root, 'conversation-context')).filter(x => x.endsWith('.jsonl'))
-  const before = files.map(x => readFileSync(join(s.root, 'conversation-context', x), 'utf8'))
+  const before = s.hub.recentMessagesOf(ownerChat.chatId)
+  assert.ok(existsSync(join(s.root, 'conversation-context', 'evidence.db')))
   s.cfg.conversationContext.enabled = false
   await s.send('这句不应持久化')
   assert.deepEqual(infos.at(-1).recentMessages, [])
   assert.deepEqual(s.hub.recentMessagesOf(ownerChat.chatId), [])
-  assert.deepEqual(files.map(x => readFileSync(join(s.root, 'conversation-context', x), 'utf8')), before)
+  s.cfg.conversationContext.enabled = true
+  assert.deepEqual(s.hub.recentMessagesOf(ownerChat.chatId), before)
 })
 
 test('真实 prompt 挂钩获得前几轮原话，指代延续且明确转题优先', async t => {
@@ -175,12 +177,24 @@ test('新增档案注入块纳入出口清洗，原话本身不作为系统规�
 test('损坏的持久档案不会被静默清空，读取失败保留原始文件', () => {
   const directory = mkdtempSync(join(tmpdir(), 'aurabot-corrupt-context-'))
   const archive = createConversationArchive({ directory })
-  archive.append(ownerChat.chatId, { role: 'user', text: 'Coffee', id: 'fixture' })
-  const file = join(directory, readdirSync(directory).find(x => x.endsWith('.jsonl')))
-  writeFileSync(file, readFileSync(file, 'utf8') + '{"incomplete":')
-  const before = readFileSync(file, 'utf8')
-  assert.throws(() => createConversationArchive({ directory }).recent(ownerChat.chatId), /incomplete tail/)
-  assert.equal(readFileSync(file, 'utf8'), before)
+  const hash = createHash('sha256').update('default\0' + ownerChat.chatId).digest('hex')
+  const file = join(directory, hash + '.jsonl')
+  const record = JSON.stringify({ role: 'user', text: 'Coffee', at: 123, id: 'fixture' })
+  const broken = record + '\n{"incomplete":'
+  try {
+    writeFileSync(file, broken)
+    assert.throws(() => archive.recent(ownerChat.chatId), /incomplete tail/)
+    assert.equal(readFileSync(file, 'utf8'), broken)
+    writeFileSync(file, record)
+    assert.deepEqual(archive.recent(ownerChat.chatId).map(m => [m.id, m.contextAt]), [['fixture', 123]])
+    const second = createConversationArchive({ directory })
+    try {
+      assert.equal(second.append(ownerChat.chatId, { id: 'fixture', text: 'again', role: 'user' }), false)
+      second.append(ownerChat.chatId, { id: 'new', text: 'Tea', role: 'assistant' })
+      assert.deepEqual(archive.episodes(ownerChat.chatId).flatMap(e => e.evidence_ids), ['fixture', 'new'])
+    } finally { second.close() }
+    assert.equal(readFileSync(file, 'utf8'), record)
+  } finally { archive.close() }
 })
 
 test('忘记请求跨重启与关闭再开启仍生效，其他人的原话不受影响', async t => {
