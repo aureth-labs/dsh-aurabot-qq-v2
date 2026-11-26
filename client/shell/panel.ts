@@ -20,7 +20,6 @@ import { PetPanel } from '../tabs/agent/pet.ts'
 import { Stickers } from '../tabs/content/stickers.ts'
 import { Backup, Browser, LocalApi, Logs, Security, Song } from '../tabs/system/system.ts'
 import { VoiceTab } from '../tabs/chat/voice.ts'
-import { Wizard } from './wizard.ts'
 
 // ---------------- 面板主体 ----------------
 function AurabotPage() {
@@ -99,7 +98,6 @@ function AurabotPage() {
   // 内容平台子视图：bili / douyin / heybox（旧三个独立页签迁入这里）
   const [contentView, setContentView] = useState(() => { try { return localStorage.getItem('aurabot.content-view') || '' } catch (e) { return '' } })
   const pickContentView = (v) => { setContentView(v); try { localStorage.setItem('aurabot.content-view', v) } catch (e) {} }
-  const [wizardOpen, setWizardOpen] = useState(false)
   const [boot, setBoot] = useState(null)         // /panel/bootstrap 成功摘要
   const [bootErr, setBootErr] = useState(null)   // { code, message }：TIMEOUT / BOOTSTRAPPING / CONNECT / AUTH / STATE / CONFIG
   const [ready, setReady] = useState(false)      // bootstrap + /state 水合 + /panel/config 草稿全部就绪
@@ -240,7 +238,6 @@ function AurabotPage() {
           return { ...prev, connections: r.connections, ...(onebot ? { onebot } : {}) }
         })
       }
-      if (r.setupDone != null && bootRef.current) bootRef.current = { ...bootRef.current, setupDone: Boolean(r.setupDone) }
       // 配置版本变化：草稿没在编辑时按草稿规则刷新（来源仍是 /panel/config）；在编辑的延后到保存/离开时对账
       if (r.configRevision != null && configRevRef.current != null && r.configRevision !== configRevRef.current && !dirtyRef.current) loadConfigDraft()
       else if (r.configRevision != null && configRevRef.current == null) configRevRef.current = r.configRevision
@@ -406,7 +403,7 @@ function AurabotPage() {
   }, [])
 
   // 外壳先渲染：挂载即显示标题、基础导航、加载/失败提示与重试入口；bootstrap 返回前内容区只画中性骨架。
-  // 向导与上次页面（aurabot.navlast）都只在收到有效 setupDone 并完成水合后才挂载/恢复。
+  // 上次页面（aurabot.navlast）在 bootstrap 水合完成后才恢复。
   if (!ready || !st || !draft) {
     const hintMap = {
       TIMEOUT: '读取超时：插件 ' + Math.round(PANEL_READ_TIMEOUT / 1000) + ' 秒内没有应答。',
@@ -439,8 +436,7 @@ function AurabotPage() {
             ? h(Fragment, null, h('b', null, hint), h('div', { className: 'ab-spacer' }),
                 canRetry ? h(Btn, { small: true, kind: 'primary', onClick: () => retryRef.current && retryRef.current() }, '重试') : null,
                 h('span', { className: 'ab-muted ab-small' }, bootErr.code === 'AUTH' ? '请联系宿主管理员确认权限。' : '会自动重试，也可以点「重试」马上再试一次。'))
-            : h(Fragment, null, h('span', null, '大肥鱼正在游过来…'), h('i', { className: 'ab-spin' }),
-                h('span', { className: 'ab-muted ab-small' }, boot && boot.setupDone === false ? '首次使用：读完就进设置向导。' : ''))),
+            : h(Fragment, null, h('span', null, '大肥鱼正在游过来…'), h('i', { className: 'ab-spin' }))),
         h('div', { className: 'ab-card', style: { marginTop: 14, padding: '18px 20px', display: 'grid', gap: 10 } },
           h('div', { className: 'ab-skel', style: { height: 18, width: '38%' } }),
           h('div', { className: 'ab-skel', style: { height: 96 } }),
@@ -450,10 +446,9 @@ function AurabotPage() {
   }
   const cfg = st.config
   const conn = st.onebot.state === 'connected'
-  const status = !cfg.enabled ? { cls: '', text: '休息中（总开关关着）' } : !conn ? { cls: 'err', text: 'QQ 没连上' } : cfg.debug ? { cls: 'warn', text: '在线 · 调试' } : cfg.dryRun ? { cls: 'warn', text: '在线 · 试运行' } : { cls: 'ok', text: '在线' }
+  const status = !cfg.enabled ? { cls: '', text: '休息中（总开关关着）' } : !conn ? { cls: 'err', text: 'QQ 没连上' } : cfg.debug ? { cls: 'warn', text: '在线 · 调试' } : { cls: 'ok', text: '在线' }
   const persona = st.personas.find((p) => p.id === cfg.persona.current)
-  const props = { st, boot, draft, setDraft: setD, toast, reload, go, openWizard: () => setWizardOpen(true), voiceView, setVoiceView: pickVoiceView, memoryView, setMemoryView: pickMemoryView, contentView, setContentView: pickContentView }
-  const showWizard = !cfg.setupDone || wizardOpen
+  const props = { st, boot, draft, setDraft: setD, toast, reload, go, voiceView, setVoiceView: pickVoiceView, memoryView, setMemoryView: pickMemoryView, contentView, setContentView: pickContentView }
   // 标签页：内置的按模块在不在跑决定显示；自己写的模块有设置或面板的各占一页
   const mods = st.modules || []
   const running = (id) => { const m = mods.find((x) => x.id === id); return Boolean(m && m.running) }
@@ -518,10 +513,8 @@ function AurabotPage() {
             lastSyncAt ? h('span', { className: 'ab-pill', title: '面板状态上次成功刷新的时间' }, '状态 ' + timeAgo(lastSyncAt)) : null)),
         h('div', { className: 'ab-hero-side' },
           h('div', { className: 'ab-switch-row' }, h('span', null, '总开关'), h(Switch, { on: cfg.enabled, onChange: (v) => quickToggle('enabled', v) })),
-          h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '试运行'), h(Switch, { on: cfg.dryRun, onChange: (v) => toggleRun('dryRun', v), title: '开着时只写日志，不真的发到 QQ（记忆照写）' })),
-          h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试'), h(Switch, { on: cfg.debug, onChange: (v) => toggleRun('debug', v), title: '调试：不真发，也不写任何记忆和聊天流水，只在日志里看。开它会自动关掉试运行' })))),
-      showWizard ? h(Wizard, { st, draft, setDraft: setD, save, toast, reload, onClose: () => setWizardOpen(false) }) : null,
-      showWizard ? null : h(NavBar, {
+          h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试日志'), h(Switch, { on: cfg.debug, onChange: (v) => toggleRun('debug', v), title: '开：日志页显示 debug 级别的输出；关：只显示 info / warn / error' })))),
+      h(NavBar, {
         tabs, cur: curTab, go, dirtyOf: tabDirty, subRef: tabsRef,
         mark: (t) => {
           if (tabDirty(t.id)) return h('i', { className: 'dirty', title: '有没保存的改动' })
@@ -531,10 +524,10 @@ function AurabotPage() {
         },
       }),
       saveConflict ? h('div', { className: 'ab-note err', role: 'alert' }, saveConflict, h(Btn, { small: true, onClick: discardDraft }, '读取最新设置')) : null,
-      showWizard ? null : h(TabBoundary, { key: curTab.id, onHome: () => go('overview') }, h(body, { ...props, mod: curTab.ext, extensions: voiceExtensions })),
+      h(TabBoundary, { key: curTab.id, onHome: () => go('overview') }, h(body, { ...props, mod: curTab.ext, extensions: voiceExtensions })),
       // dsh-image 已经嵌进「生图」页的「接口格式」里了，这里再渲染一次就是同一张卡出现两遍。
-      showWizard || curTab.ext || curTab.id === 'voice' ? null : mods.filter((m) => hasUi(m) && tabOf(m) === curTab.id && !(curTab.id === 'imagegen' && m.id === 'dsh-image')).map((m) => h('div', { key: 'embed-' + m.id, style: { marginTop: 14 } }, h(ExtPage, { ...props, mod: m.id, embedded: true }))),
-      dirty && !showWizard ? h('div', { className: 'ab-savebar' }, h('span', { className: 'msg' }, '有改动还没保存'),
+      curTab.ext || curTab.id === 'voice' ? null : mods.filter((m) => hasUi(m) && tabOf(m) === curTab.id && !(curTab.id === 'imagegen' && m.id === 'dsh-image')).map((m) => h('div', { key: 'embed-' + m.id, style: { marginTop: 14 } }, h(ExtPage, { ...props, mod: m.id, embedded: true }))),
+      dirty ? h('div', { className: 'ab-savebar' }, h('span', { className: 'msg' }, '有改动还没保存'),
         h('span', { className: 'ab-muted ab-small' }, h('span', { className: 'ab-kbd' }, 'Ctrl'), ' + ', h('span', { className: 'ab-kbd' }, 'S')),
         h(Btn, { kind: 'ghost', onClick: discardDraft }, '撤销'),
         h(Btn, { kind: 'primary', onClick: () => save() }, '保存设置')) : null,

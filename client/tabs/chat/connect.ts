@@ -12,7 +12,7 @@ function OneBotFields({ draft, f }) {
     h(Row, { label: 'HTTP 令牌' }, f.text('onebot.httpToken', { type: 'password', placeholder: '没有就留空' })))
 }
 
-function Connect({ st, draft, setDraft, toast, reload, openWizard }) {
+function Connect({ st, draft, setDraft, toast, reload }) {
   const f = useField(draft, setDraft)
   const [moveTo, setMoveTo] = useState('')
   // 远端桌宠直连：对外地址的本地编辑态（null = 跟着服务端当前值显示）
@@ -23,7 +23,8 @@ function Connect({ st, draft, setDraft, toast, reload, openWizard }) {
     h(Btn, { small: true, onClick: async () => { const r = await get('/onebot/test'); toast(r.message) } }, '测试连接'),
     h(Btn, { small: true, onClick: async () => { const r = await post('/onebot/reconnect'); toast(r.message, r.ok ? 'ok' : 'err'); reload() } }, '重新连接'))
   return h('div', { className: 'ab-grid' },
-    h(Card, { title: '接上 QQ（OneBot v11）', desc: '让你的 OneBot 服务（NapCat / LLOneBot / Lagrange / Docker 里的实现等）登录机器人号 ' + (draft.botQQ || '') + '，把它的正向 WebSocket 地址填在这里，保存后插件就会去连。插件只连接，不会启动或注入任何东西；连上后会先核对登录的是不是机器人号，不是就断开。', right: openWizard ? h(Btn, { small: true, kind: 'ghost', onClick: openWizard }, '重新走一遍设置向导') : null },
+    h(Card, { title: '接上 QQ（OneBot v11）', desc: '让你的 OneBot 服务（NapCat / LLOneBot / Lagrange / Docker 里的实现等）登录机器人号 ' + (draft.botQQ || '') + '，把它的正向 WebSocket 地址填在这里，保存后插件就会去连。插件只连接，不会启动或注入任何东西；连上后会先核对登录的是不是机器人号，不是就断开。',
+      right: h('a', { className: 'ab-small', href: 'https://github.com/aureth-labs/dsh-aurabot-qq-v2', target: '_blank', rel: 'noreferrer' }, '接入文档 ↗') },
       h(OneBotFields, { draft, f }),
       h(Row, { label: '机器人 QQ 号' }, f.text('botQQ')),
       testBtns),

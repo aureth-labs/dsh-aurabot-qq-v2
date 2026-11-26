@@ -804,7 +804,6 @@ export function apply(ctx) {
       bootId,
       configRevision: configRevision(),
       version: VERSION,
-      setupDone: Boolean(cfg.setupDone),
       controls: controlsView(),
       connections: connectionsView(),
       modulesReady: modsReady,
@@ -819,7 +818,6 @@ export function apply(ctx) {
       bootId,
       configRevision: configRevision(),
       navigationRevision: navRevision(),
-      setupDone: Boolean(cfg.setupDone),
       controls: controlsView(),
       connections: connectionsView(),
     }
@@ -2041,14 +2039,6 @@ export function apply(ctx) {
       log.info(r.message)
     }
     return r
-  })
-  route('/setup/done', async (req) => {
-    const body = await readBody(req)
-    if (!cfg.botQQ || !cfg.ownerQQ || cfg.botQQ === cfg.ownerQQ) return { ok: false, message: '先填好不同的机器人 QQ 和你的 QQ' }
-    if (body.existingConnection && !(cfg.enabled && onebotState === 'connected' && loginOk)) return { ok: false, message: 'QQ 网关还没通过机器人号核对，请先连接并核对后再进入面板' }
-    setConfig({ ...cfg, setupDone: true })
-    log.info('首次使用向导完成')
-    return { ...(await overview()), message: '设置完成，大肥鱼可以上线啦' }
   })
   /** 一键诊断：把「连不上 OneBot」卡在哪一步逐项列出来，用户发截图就能定位。 */
   route('/diagnose', async () => {

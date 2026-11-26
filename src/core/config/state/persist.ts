@@ -10,10 +10,8 @@ export const OPT_IN_ON_UPDATE = ['qzoneSocial', 'bili', 'douyin']
 
 export function loadConfig() {
   const raw = readJson(FILE(), {})
-  // 老配置（向导上线前就填好了两个号）直接算向导已完成
-  if (raw && raw.setupDone === undefined && raw.botQQ && raw.ownerQQ) raw.setupDone = true
   // 更新插件后新增的、会公开发东西的功能：老用户先关着，等他们自己在面板里打开（新安装照常默认开）
-  if (raw && raw.setupDone) for (const k of OPT_IN_ON_UPDATE) if (raw[k] === undefined) raw[k] = { enabled: false }
+  if (raw && raw.ownerQQ) for (const k of OPT_IN_ON_UPDATE) if (raw[k] === undefined) raw[k] = { enabled: false }
   return normalize(raw)
 }
 

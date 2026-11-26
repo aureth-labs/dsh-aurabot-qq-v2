@@ -93,16 +93,15 @@ const hostSource = () => readFileSync(new URL('../../src/plugin/index.ts', impor
 
 test('bootstrap：字段齐全，bootId 是 UUID，三条 GET 同一 bootId', async () => {
   const b = await jsonOf('/panel/bootstrap')
-  for (const k of ['ok', 'bootId', 'configRevision', 'version', 'setupDone', 'controls', 'connections', 'modulesReady', 'navigationRevision', 'modules']) {
+  for (const k of ['ok', 'bootId', 'configRevision', 'version', 'controls', 'connections', 'modulesReady', 'navigationRevision', 'modules']) {
     assert.ok(Object.hasOwn(b, k), `bootstrap 缺字段 ${k}`)
   }
   assert.equal(b.ok, true)
   assert.match(b.bootId, UUID_RE, 'bootId 应是 UUID')
-  assert.equal(b.setupDone, true)
   assert.equal(b.modulesReady, true, 'boot 完成后 modulesReady 应为 true')
 
   const p = await jsonOf('/panel/pulse')
-  for (const k of ['ok', 'bootId', 'configRevision', 'navigationRevision', 'setupDone', 'controls', 'connections']) {
+  for (const k of ['ok', 'bootId', 'configRevision', 'navigationRevision', 'controls', 'connections']) {
     assert.ok(Object.hasOwn(p, k), `pulse 缺字段 ${k}`)
   }
   const c = await jsonOf('/panel/config')

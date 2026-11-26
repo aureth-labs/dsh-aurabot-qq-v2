@@ -145,23 +145,23 @@ test('AurabotPage 首帧（!ready 骨架）：不抛异常、返回元素树、�
   assert.match(text(tree), /正在读取面板/, '骨架帧要有加载占位文案')
 })
 
-// 槽位哨兵：st=0/err=1/draft=2/tab=3/…/boot=9/bootErr=10/ready=11。
+// 槽位哨兵：st=0/err=1/draft=2/tab=3/…/boot=8/bootErr=9/ready=10。
 // 结构变了这里会先炸，别硬灌错槽位（那会把「白屏级」bug 变成「断言位置」噪音）。
 function assertHookLayout(p) {
   const s = p.state
-  assert.equal(s.length >= 13, true, `hook 槽位数量变了（现在 ${s.length} 个），测试的灌状态索引要跟着改`)
+  assert.equal(s.length >= 12, true, `hook 槽位数量变了（现在 ${s.length} 个），测试的灌状态索引要跟着改`)
   assert.equal(typeof s[3], 'string', 'state[3] 应是 tab（字符串）；hook 顺序变了要更新本文件的槽位索引')
-  assert.equal(s[9], null, 'state[9] 应是 boot（初始 null）')
-  assert.equal(s[10], null, 'state[10] 应是 bootErr（初始 null）')
-  assert.equal(s[11], false, 'state[11] 应是 ready（初始 false）')
+  assert.equal(s[8], null, 'state[8] 应是 boot（初始 null）')
+  assert.equal(s[9], null, 'state[9] 应是 bootErr（初始 null）')
+  assert.equal(s[10], false, 'state[10] 应是 ready（初始 false）')
 }
 
 function driveReady(p) {
   assertHookLayout(p)
   p.state[0] = minimalSt   // st
   p.state[2] = minimalDraft // draft
-  p.state[9] = minimalBoot  // boot
-  p.state[11] = true        // ready
+  p.state[8] = minimalBoot  // boot
+  p.state[10] = true        // ready
 }
 
 test('AurabotPage ready 帧：整树渲染无 ReferenceError/TypeError（抓 draftBaseRef 类根组件回归）', () => {

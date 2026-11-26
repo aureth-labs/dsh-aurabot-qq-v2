@@ -41,7 +41,6 @@ export const DEFAULTS = {
   // 入站管线（开发中配置项）：指令前缀 null = 无前缀；中间件默认排在指令之后、模型之前
   commandPrefixes: [null, '/'],
   middlewareAfterCommand: false, // 指令消费后要不要继续走中间件（默认 false，和 Koishi 一致）
-  setupDone: false, // 首次使用向导走完了没有
   communityMigrated: {} as Record<string, string>, // 搬到社区库的模块处理过没有（id → installed / skipped / kept），只处理一次
   botQQ: '', // 机器人 QQ 号（向导里填）
   ownerQQ: '', // 主人 QQ 号（向导里填）

@@ -115,7 +115,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   if (c.workspaceDir && !/^([a-zA-Z]:[\\/]|\/)/.test(c.workspaceDir)) c.workspaceDir = ''
   // 视觉能力：auto = 问 DSH 的模型元数据；on / off = 主人手动声明（覆盖元数据）
   c.model.vision = c.model.vision === 'on' || c.model.vision === 'off' ? c.model.vision : 'auto'
-  c.setupDone = bool(c.setupDone, false)
   c.ownerLevel = LEVELS.includes(c.ownerLevel) ? c.ownerLevel : 'full'
   c.longTasks = bool(c.longTasks, true)
   c.subagentBackground = bool(c.subagentBackground, false)
