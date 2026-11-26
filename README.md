@@ -182,18 +182,19 @@ npm test        # 单元测试 + 假 DSH 宿主/模拟 OneBot 的端到端测试
 ```
 
 ```text
-index.mjs              插件入口：只 re-export lib/src/host.js（DSH 只认根目录这一份）
-dev.mjs                开发入口：re-export src/plugin/index.ts，Node 直接剥类型跑 TS
-src/plugin/index.ts            插件入口（宿主半边）：核心 + 面板接口 /aurabot/api/*
-src/core/              内核：模块加载、ctx / session / bot、元素模型、管线、适配器契约
-src/adapters/          平台适配器：现在有 qq/onebot-v11（QQ 官方机器人、QQ 频道留了位，未实现）
-src/modules/           内置模块 + 扩展接口 API.md + 类型 + 新模块模板
-src/chat/              消息中枢、群聊策略、回复解析、白名单与权限
-src/song/  src/voice/  翻唱流水线、文字转语音
-client/**/*.ts         网页半边：侧栏入口 + 面板（打包成 dist/client.js）
-personas/dafeiyu.md    默认人格
-cordis.patch.yml       插件与 preset 的挂载声明
-test/                  单元测试 + 端到端测试
+index.mjs                插件入口：只 re-export lib/src/plugin/index.js（DSH 只认根目录这一份）
+dev.mjs                  开发入口：re-export src/plugin/index.ts，Node 直接剥类型跑 TS
+src/plugin/              装配层（宿主半边）：核心接线 + 面板接口 /aurabot/api/*
+src/core/                内核：配置、模块加载、ctx / session / bot、元素模型、管线、存储
+src/chat/                消息中枢、群聊策略、回复解析、白名单与权限
+src/features/            功能域：记忆、心情、空间、贴纸、生图、主动搭话
+src/autotelic 等域       自驱引擎、B 站、翻唱、语音
+src/modules/             内置模块；扩展接口文档与类型在 sdk/
+packages/adapters/       平台适配器：qq/{onebot-v11,qq-guild,qq-official}、satori
+client/**/*.ts           网页半边：侧栏入口 + 面板（打包成 dist/client.js）
+personas/dafeiyu.md      默认人格
+cordis.patch.yml         插件与 preset 的挂载声明
+test/                    单元测试 + 端到端测试
 ```
 
 需要 Node.js ≥ 22.18.0（原生剥离 TypeScript 类型）。

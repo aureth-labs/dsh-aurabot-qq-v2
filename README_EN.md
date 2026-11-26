@@ -180,11 +180,11 @@ npm test        # unit tests + end-to-end tests with a fake DSH host and a mock 
 ```
 
 ```
-src/host.js            plugin entry (host half): core + panel API /aurabot/api/*
-src/core/modules.js    module kernel: load, toggle, replace, hot reload, error isolation
-src/modules/           built-in modules + API.md + types + module template
+src/plugin/            plugin assembly (host half): core wiring + panel API /aurabot/api/*
+src/core/              kernel: config, module load/toggle/replace/hot reload, ctx/session/bot, pipeline, store
 src/chat/              message hub, group policy, reply parsing, allow-list & permissions
-src/adapters/          platform adapters; qq/onebot-v11 is the only one implemented
+src/modules/           built-in modules; module API docs and types live in sdk/
+packages/adapters/     platform adapters: qq/{onebot-v11,qq-guild,qq-official}, satori
 src/snowluma/          SnowLuma management (detect, start/stop, inject only the bot account)
 src/features/          stickers, Qzone, mood, memory, proactive chat, image gen
 src/song/              cover pipeline (NetEase → separation → RVC → mixdown)
