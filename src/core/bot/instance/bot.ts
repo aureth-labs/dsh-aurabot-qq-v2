@@ -1,7 +1,7 @@
 // 适配器 bot 的统一包装。
 //
 // 三件事对所有平台都一样，不能指望每个适配器各写一遍：
-//   1. 调试模式 / 总开关关着时不许真发（写漏一处就等于那个平台能绕过闸门）
+//   1. 总开关关着时不许真发（写漏一处就等于那个平台能绕过闸门）
 //   2. `<voice>要念的话</voice>` 出站前先合成音频
 //   3. 平台渲染不了的元素按能力表降级成文字
 //
@@ -13,7 +13,7 @@ import { degrade, isElement, normalize } from '../../message/element/element.ts'
 import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../message/element/voice-element.ts'
 
 export interface WrapAdapterBotOptions {
-  /** 现在允许真发吗（总开关开着且不在调试模式）。 */
+  /** 现在允许真发吗（总开关开着；沙盒这类本地平台由宿主另行放行）。 */
   allowed: () => boolean
   /** 调试模式被拦下时的记录口。 */
   log: (message: string) => void
@@ -53,7 +53,7 @@ export function wrapAdapterBot(bot: BotLike, options: WrapAdapterBotOptions): Bo
     sendOptions?: SendOptions,
   ): Promise<unknown> => {
     if (!options.allowed()) {
-      options.log(`调试模式（${bot.platform} 适配器没真发）→ ${method} ${targetId}`)
+      options.log(`总开关关着（${bot.platform} 适配器没真发）→ ${method} ${targetId}`)
       return { ok: false, simulated: true }
     }
     const prepared = await prepare(content)

@@ -387,7 +387,8 @@ export function apply(ctx) {
     wrapBot: (bot) => wrapAdapterBot(bot, {
       allowed: () => {
         const live = getConfig()
-        return Boolean(live.enabled)
+        // 沙盒是本地联调平台，不受「总开关」限制；真实平台仍然要主人显式打开。
+        return Boolean(live.enabled) || bot.platform === 'sandbox'
       },
       log: (message) => logger.child('adapter').info(message),
       speak: async (text) => String((await tts.speak(text))?.file ?? ''),
