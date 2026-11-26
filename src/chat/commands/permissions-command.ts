@@ -1,5 +1,5 @@
-import { isOwner, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, permOf } from '../policy/access/access.ts'
-import { changePermissions, privatePermissionCatalog } from '../policy/access/permission-policy.ts'
+import { isOwner, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, permOf } from '../policy/access.ts'
+import { changePermissions, privatePermissionCatalog } from '../policy/permission.ts'
 
 const HELP = [
   '权限管理（仅主人私聊）',

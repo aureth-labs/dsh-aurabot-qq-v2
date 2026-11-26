@@ -1,6 +1,6 @@
-import { PANEL_ID } from './core/api/constants.ts'
-import { WhaleIcon } from './core/ui/icons.ts'
-import { AurabotPage } from './panel.ts'
+import { PANEL_ID } from '../core/api/constants.ts'
+import { WhaleIcon } from '../core/ui/icons.ts'
+import { AurabotPage } from '../shell/panel.ts'
 
 function apply(ctx) {
   const slots = ctx.get('slots')

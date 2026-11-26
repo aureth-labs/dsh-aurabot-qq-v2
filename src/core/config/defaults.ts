@@ -2,7 +2,7 @@
 // 这里只放数据与类型，不放读写与归一化（那些在 ./index.ts）。
 
 import type { KeyPools } from '../../voice/tts/key-pool.ts'
-import { DEFAULT_GROUP_POLICY } from '../../chat/policy/group/group-policy.ts'
+import { DEFAULT_GROUP_POLICY } from '../../chat/policy/group.ts'
 import { DEFAULT_TIER_DAYS } from '../../features/memory/query/rules.ts'
 import { defaultEmotions } from '../../features/mood/emotions.ts'
 import { DELEGATED_COMMANDS } from '../../chat/commands/delegated-commands.ts'

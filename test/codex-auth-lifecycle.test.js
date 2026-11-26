@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createCodexAuth } from '../src/features/codex/auth.ts'
-import { createImageGen } from '../src/features/media/imagegen.ts'
+import { createImageGen } from '../src/features/media/generate/imagegen.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 import { normalize } from '../src/core/config/index.ts'
 

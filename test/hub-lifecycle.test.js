@@ -618,7 +618,7 @@ test('敏感命令执行前发现授权代次已变化', async (t) => {
 
 test('用量接入：真实会话事件记一次，失败重试分别记，非 Aurabot 会话不记', async (t) => {
   const s = setup(t)
-  const usage = await import('../src/core/llm/usage.ts')
+  const usage = await import('../src/core/llm/usage/usage.ts')
   usage.initUsage()
   t.after(() => usage.closeUsage())
   await s.hub.onMessage(event('建立用量测试会话'))

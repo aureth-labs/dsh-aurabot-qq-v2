@@ -1,7 +1,7 @@
 // S0 地基的行为契约：Bot 状态机、注册表取法、Session 的发送路由。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BotRegistry, createBotsAccessor } from '../src/core/bot/bot-registry.ts'
+import { BotRegistry, createBotsAccessor } from '../src/core/bot/bot/registry.ts'
 import { Session } from '../src/core/pipeline/session.ts'
 import { BotStateError, assertOnline } from '../src/core/bot/index.ts'
 import { OneBotBot } from '../packages/adapters/qq/onebot-v11/src/bot.ts'

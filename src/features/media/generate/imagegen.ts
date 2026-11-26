@@ -4,15 +4,15 @@
 // 地址和密钥由主人在面板里填；生成结果统一成 Buffer 交给 QQ 发出。
 
 import { lstatSync, readFileSync } from 'node:fs'
-import { fetchImage } from '../../core/net/index.ts'
+import { fetchImage } from '../../../core/net/index.ts'
 import { paintingPath } from './paintings.ts'
-import { createCodexAuth } from '../codex/auth.ts'
-import { createCodexImage } from '../codex/image.ts'
-import { mimeOf } from '../../chat/inbound/index.ts'
-import { drawFormat, gifError, gifSizeFor, gifFrameCount, GIF_FIELDS } from './format.ts'
-import { imageToolBlock } from '../../core/message/media/img.ts'
-import { canSeeImages } from '../../core/llm/index.ts'
-import { imageSizeFor, normalizeRequestedSize } from './shape.ts'
+import { createCodexAuth } from '../../codex/auth.ts'
+import { createCodexImage } from '../../codex/image.ts'
+import { mimeOf } from '../../../chat/inbound/index.ts'
+import { drawFormat, gifError, gifSizeFor, gifFrameCount, GIF_FIELDS } from '../image/format.ts'
+import { imageToolBlock } from '../../../core/message/media/img.ts'
+import { canSeeImages } from '../../../core/llm/index.ts'
+import { imageSizeFor, normalizeRequestedSize } from '../image/shape.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type MinimaxImageBodyOptions = Partial<Record<'prompt' | 'image' | 'images' | 'size' | 'count' | 'cfg', any>>
@@ -344,7 +344,7 @@ export function createImageGen({ getConfig, log, local, dsh, fetchImpl, codexAut
     }
     // 本地接口接管：用用户自己电脑上的画图服务
     if (local?.active('image')) {
-      const { toImageBuffer } = await import('../../local/index.ts')
+      const { toImageBuffer } = await import('../../../local/index.ts')
       const t = Date.now()
       const buf = await toImageBuffer(await local.call('image', { prompt: [c.stylePrompt, prompt].filter(Boolean).join('，'), size: c.size, ...(refs.length > 1 ? { images: refs.map((buf) => buf.toString('base64')) } : image ? { image: image.toString('base64') } : {}) }))
       log.info(`本地画好了一张图（${Math.round(buf.length / 1024)}KB，${Math.round((Date.now() - t) / 1000)}s）：${prompt.slice(0, 40)}`)

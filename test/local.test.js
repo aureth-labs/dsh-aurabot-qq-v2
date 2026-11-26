@@ -77,7 +77,7 @@ test('生图：脚本返回 Buffer / base64 / 文件都认；接管后不需要�
   const local = L.createLocal({ getConfig: () => cfg, log })
   local.template('image')
   writeFileSync(local.pathOf('image'), `export default async ({ prompt, size }) => ({ base64: Buffer.from(prompt + '|' + size).toString('base64') })`)
-  const { createImageGen } = await import('../src/features/media/imagegen.ts')
+  const { createImageGen } = await import('../src/features/media/generate/imagegen.ts')
   const gen = createImageGen({ getConfig: () => cfg, log, local })
   assert.equal(gen.enabled(), false)
   cfg.local.image = true

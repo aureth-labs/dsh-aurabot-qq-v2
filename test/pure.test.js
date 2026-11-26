@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseReply, stripMarkdown, bubbleDelay } from '../src/chat/reply/index.ts'
-import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../src/chat/policy/group/group-policy.ts'
+import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../src/chat/policy/group.ts'
 import { parseMessageEvent, isStickerSegment, stickerSizeOk, imageSize } from '../src/chat/inbound/index.ts'
-import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../src/chat/policy/access/access.ts'
+import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../src/chat/policy/access.ts'
 import { avatarSource } from '../src/modules/profile/index.ts'
 import { redact, registerSecret } from '../src/core/support/log/redact.ts'
 
@@ -150,7 +150,7 @@ test('群聊：刚说完被追问「人呢」也算叫她，但要防 A/B 聊天
 })
 
 test('topicRelevance', async () => {
-  const { topicRelevance } = await import('../src/chat/policy/group/group-policy.ts')
+  const { topicRelevance } = await import('../src/chat/policy/group.ts')
   assert.equal(topicRelevance(['今天天气不错', '中午吃啥'], ['白米饭', '天气']), 0.3)
   assert.equal(topicRelevance(['量子力学'], ['白米饭']), 0)
   assert.equal(topicRelevance(['量子力学'], ['白米饭'], 1), 0.5)

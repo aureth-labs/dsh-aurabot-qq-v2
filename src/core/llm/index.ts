@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { cleanText } from '../support/text.ts'
-import { recordUsage, moduleLabel } from './usage.ts'
+import { recordUsage, moduleLabel } from './usage/usage.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ModelReasoningOptions = Partial<Record<'refresh', any>>

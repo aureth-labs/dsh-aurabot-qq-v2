@@ -3,7 +3,7 @@
 
 import { chatRecordRanges, contextInjectionRanges, currentPromptSources, imageHandleRanges, memoryTranscriptRanges, promptFingerprint, promptTextRanges } from '../../../security/leak-guard.ts'
 import { stripMarkers } from '../context/reply-marker.ts'
-import { stripHtmlFragments, fenceRanges } from '../../media/html-fragments.ts'
+import { stripHtmlFragments, fenceRanges } from './html-fragments.ts'
 /** 迁移期选项对象：属性名固定，值由调用方传。 */
 export type ToolTextRangesOptions = Partial<Record<'ownerPrivate', any>>
 /** 迁移期选项对象：属性名固定，值由调用方传。 */

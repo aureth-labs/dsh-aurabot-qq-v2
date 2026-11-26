@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { stripHtmlFragments, stripLineTags, fenceRanges } from '../src/chat/media/html-fragments.ts'
+import { stripHtmlFragments, stripLineTags, fenceRanges } from '../src/chat/reply/format/html-fragments.ts'
 import { cleanOutboundText, parseReply } from '../src/chat/reply/index.ts'
 
 const clean = (text) => stripHtmlFragments(text).value

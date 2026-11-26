@@ -1,8 +1,8 @@
 // S8：适配器插件化——连接成功才进注册表，断开就下线
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BotRegistry } from '../src/core/bot/bot-registry.ts'
-import { startAdapter } from '../src/core/bot/adapter.ts'
+import { BotRegistry } from '../src/core/bot/bot/registry.ts'
+import { startAdapter } from '../src/core/bot/adapter/contract.ts'
 import { createPluginContext } from '../src/core/module/plugin-context.ts'
 
 function fakeBot(id, platform) {

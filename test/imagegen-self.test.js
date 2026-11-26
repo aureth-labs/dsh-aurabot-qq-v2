@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config/index.ts'
-import { createImageGen, customRequest, isUnsupportedReference } from '../src/features/media/imagegen.ts'
+import { createImageGen, customRequest, isUnsupportedReference } from '../src/features/media/generate/imagegen.ts'
 import { createLocal } from '../src/local/index.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 

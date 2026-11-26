@@ -3,7 +3,7 @@
 
 import { createQzone } from '../../features/qzone/index.ts'
 import { resolveAudience } from '../../features/qzone/audience.ts'
-import { pickDiaryImage } from '../../features/media/diary-image.ts'
+import { pickDiaryImage } from '../../features/media/generate/diary.ts'
 import { defineTool, str } from '../../tools/index.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
 import { createDiaryMedia } from './source/media.ts'

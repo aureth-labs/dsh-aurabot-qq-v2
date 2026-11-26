@@ -3,11 +3,11 @@
 // 适配器不是宿主的内置特例，而是普通插件里调 ctx.adapter(spec, config)：
 // 宿主负责把它挂进 bots、发上线/下线事件、模块卸载时断开。
 
-import type { AdapterHandle, AdapterRuntime, AdapterSpec } from '../../types/adapter/adapter.ts'
-import type { BotLike } from '../../types/adapter/bot.ts'
-import type { BotRegistry } from './bot-registry.ts'
+import type { AdapterHandle, AdapterRuntime, AdapterSpec } from '../../../types/adapter/adapter.ts'
+import type { BotLike } from '../../../types/adapter/bot.ts'
+import type { BotRegistry } from '../bot/registry.ts'
 
-export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '../../types/adapter/adapter.ts'
+export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '../../../types/adapter/adapter.ts'
 
 export interface StartAdapterOptions {
   /**

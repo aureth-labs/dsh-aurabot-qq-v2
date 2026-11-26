@@ -1,8 +1,8 @@
 // 主人私聊里的窄范围群设置入口：与面板、/quiet 共用配置，不编辑任意字段。
 import { isDeepStrictEqual } from 'node:util'
 import { defineTool, str, bool, int } from '../../tools/index.ts'
-import { isOwner, profileToolVisible, groupResponseMode, GROUP_RESPONSE_LABELS } from '../../chat/policy/access/access.ts'
-import { DEFAULT_GROUP_POLICY, policyFor, inQuietHours } from '../../chat/policy/group/group-policy.ts'
+import { isOwner, profileToolVisible, groupResponseMode, GROUP_RESPONSE_LABELS } from '../../chat/policy/access.ts'
+import { DEFAULT_GROUP_POLICY, policyFor, inQuietHours } from '../../chat/policy/group.ts'
 
 const switches = ['proactive', 'engaged', 'passive_memory']
 const keys = new Set(['action', 'group_id', ...switches, 'mode'])

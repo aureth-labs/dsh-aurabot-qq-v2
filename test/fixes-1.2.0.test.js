@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import qqTools from '../src/modules/qq-tools/index.ts'
 import { createMemoryStore } from '../src/features/memory/index.ts'
 import { matchSticker, pickForReply } from '../src/features/stickers/index.ts'
-import { createImageGen } from '../src/features/media/imagegen.ts'
+import { createImageGen } from '../src/features/media/generate/imagegen.ts'
 import { askModel } from '../src/core/llm/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
@@ -291,7 +291,7 @@ test('聊天流水保留和新开关的配置规范化（#140 #141 #142 #143）'
 })
 
 test('@ 了别人时不算叫她，但只在开关打开时生效（#143）', async () => {
-  const { decideGroupReply } = await import('../src/chat/policy/group/group-policy.ts')
+  const { decideGroupReply } = await import('../src/chat/policy/group.ts')
   const { parseMessageEvent } = await import('../src/chat/inbound/index.ts')
   const m = parseMessageEvent({ message_type: 'group', group_id: 1, user_id: 2, message: [{ type: 'at', data: { qq: '3' } }, { type: 'text', data: { text: ' 问问大肥鱼' } }] }, '9')
   assert.equal(m.atOthers, true)

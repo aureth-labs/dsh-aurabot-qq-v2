@@ -11,7 +11,7 @@ process.env.AURABOT_DATA_DIR = dataDir
 const paintDir = join(dataDir, 'imagegen')
 mkdirSync(paintDir, { recursive: true })
 
-const { listPaintings, paintingPath, removePainting, safeName, metaOf, openPaintFolder, savePainting } = await import('../src/features/media/paintings.ts')
+const { listPaintings, paintingPath, removePainting, safeName, metaOf, openPaintFolder, savePainting } = await import('../src/features/media/generate/paintings.ts')
 
 // 最小 PNG 头（只要扩展名/媒体类型判断用得上）
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)])
@@ -95,7 +95,7 @@ test('目录不存在时返回空列表而不是报错，也不顺手建目录',
 })
 
 test('画作引用：记住后能按编号 / 别名 / 文件名解析；不认识的编号不行', async () => {
-  const { rememberPainting, resolvePainting, recentPaintings } = await import('../src/features/media/paintings.ts')
+  const { rememberPainting, resolvePainting, recentPaintings } = await import('../src/features/media/generate/paintings.ts')
   const { basename } = await import('node:path')
   const root = mkdtempSync(join(tmpdir(), 'aurabot-paint-ref-'))
   process.env.AURABOT_DATA_DIR = root

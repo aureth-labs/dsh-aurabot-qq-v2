@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { OneBotBot } from '../packages/adapters/qq/onebot-v11/src/bot.ts'
-import { wrapAdapterBot } from '../src/core/bot/adapter-bot.ts'
+import { wrapAdapterBot } from '../src/core/bot/bot/instance.ts'
 import { Bot } from '../src/core/bot/index.ts'
 
 function onebot() {

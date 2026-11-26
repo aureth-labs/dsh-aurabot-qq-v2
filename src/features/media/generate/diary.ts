@@ -2,7 +2,7 @@
 // 只从本机数据目录里挑，不接受外部输入；找不到就返回空串（日记照常只发文字）。
 
 import { listPaintings, paintingPath } from './paintings.ts'
-import { loadLibrary, stickerPath } from '../stickers/index.ts'
+import { loadLibrary, stickerPath } from '../../stickers/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type PickDiaryImageOptions = Partial<Record<'now', any>>

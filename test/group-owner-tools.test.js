@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { groupOwnerTools, levelFor, presetFor } from '../src/chat/policy/access/access.ts'
+import { groupOwnerTools, levelFor, presetFor } from '../src/chat/policy/access.ts'
 import { normalize, DEFAULTS } from '../src/core/config/index.ts'
 import { rulesText } from '../src/persona/personas.ts'
 import { readClientSource } from './helpers/client-source.js'

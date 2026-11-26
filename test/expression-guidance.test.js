@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { rulesText } from '../src/persona/personas.ts'
 import { normalize } from '../src/core/config/index.ts'
-import { COMMON_FACES, textToSegments } from '../src/chat/media/faces.ts'
+import { COMMON_FACES, textToSegments } from '../src/chat/media/face/index.ts'
 import { parseReply } from '../src/chat/reply/index.ts'
 
 for (const kind of ['social', 'private', 'group-owner']) {

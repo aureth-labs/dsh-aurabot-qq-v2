@@ -1,5 +1,5 @@
 import { parseMessageEvent } from '../index.ts'
-import { isOwner } from '../../policy/access/access.ts'
+import { isOwner } from '../../policy/access.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type FlatHistoryOptions = Partial<Record<'clockLabel', any>>

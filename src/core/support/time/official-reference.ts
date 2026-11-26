@@ -1,5 +1,5 @@
 // Standard public API prices, USD per million tokens. Offline reference, not a reseller invoice.
-import { beijingDayKey, isPeak } from '../../llm/offpeak.ts'
+import { beijingDayKey, isPeak } from '../../llm/usage/offpeak.ts'
 export const REFERENCE_DATE = '2026-11-21'
 // Order: uncached input, output, cache read, explicit cache write (only if published).
 // https://platform.minimax.io/docs/guides/pricing-paygo and https://docs.z.ai/guides/overview/pricing

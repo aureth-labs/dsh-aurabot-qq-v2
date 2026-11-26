@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { drawResultBlocks, imageToolBlock, drawToolMessage, createImageGen } = await import('../src/features/media/imagegen.ts')
+const { drawResultBlocks, imageToolBlock, drawToolMessage, createImageGen } = await import('../src/features/media/generate/imagegen.ts')
 const { shrinkImage, shrinkWithSharp, findSharp } = await import('../src/core/message/media/img.ts')
 const { defineTool } = await import('../src/tools/index.ts')
 

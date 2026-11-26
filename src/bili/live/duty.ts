@@ -2,7 +2,7 @@
 // 定时看别人回她的评论并接着回；你在 QQ 里发链接，她也能点进去看完再聊。看过的、评过的都记成她的经历。
 
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
-import { isPeak } from '../../core/llm/offpeak.ts'
+import { isPeak } from '../../core/llm/usage/offpeak.ts'
 import { createBiliApi, findVideoId, parseCookie } from '../api.ts'
 import { loginSessionKey, recoverLoginPause } from '../login/login-pause.ts'
 import { isSessionBackoff } from '../../chat/hub/turn/session-backoff.ts'

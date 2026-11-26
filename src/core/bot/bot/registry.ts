@@ -1,9 +1,9 @@
 // Bot 注册表：宿主持有，插件只读。
 // bots 同时支持三种取法：ctx.bots[0]、ctx.bots('id')、ctx.bots.list()。
 
-import type { BotsAccessor, BotEvents, BotLike } from '../../types/adapter/bot.ts'
+import type { BotsAccessor, BotEvents, BotLike } from '../../../types/adapter/bot.ts'
 
-export type { BotsAccessor } from '../../types/adapter/bot.ts'
+export type { BotsAccessor } from '../../../types/adapter/bot.ts'
 
 type Listener<K extends keyof BotEvents> = BotEvents[K]
 

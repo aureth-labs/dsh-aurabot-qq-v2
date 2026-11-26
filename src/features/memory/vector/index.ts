@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { STATUS_CODES } from 'node:http'
-import { recordRetrievalUsage } from '../../../core/llm/usage.ts'
+import { recordRetrievalUsage } from '../../../core/llm/usage/usage.ts'
 import { dataDir, readJson, writeJson } from '../../../core/store/index.ts'
 import { createLocalVectorIndex } from './vector-local.ts'
 import type { VectorIndex } from '../../../types/memory.ts'

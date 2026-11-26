@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createPluginContext } from '../src/core/module/plugin-context.ts'
-import { createBotsAccessor, BotRegistry } from '../src/core/bot/bot-registry.ts'
+import { createBotsAccessor, BotRegistry } from '../src/core/bot/bot/registry.ts'
 import { Pipeline } from '../src/core/pipeline/index.ts'
 
 function fakeBot(id, platform = 'qq') {

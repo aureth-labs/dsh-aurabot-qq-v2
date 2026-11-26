@@ -2,7 +2,7 @@
 
 import { parseSingRequest } from '../../song/audio/segment.ts'
 import { runEffortCommand } from './effort-command.ts'
-import { policyFor } from '../policy/group/group-policy.ts'
+import { policyFor } from '../policy/group.ts'
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { runGroupSettingsCommand } from './group-settings-command.ts'
 import { runPermissionsCommand } from './permissions-command.ts'

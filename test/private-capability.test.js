@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { privateCapabilityAllowed } from '../src/chat/policy/access/access.ts'
+import { privateCapabilityAllowed } from '../src/chat/policy/access.ts'
 import { normalize } from '../src/core/config/index.ts'
 
 test('功能授权要求私聊白名单和对应功能名单同时匹配', () => {

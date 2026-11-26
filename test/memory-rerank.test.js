@@ -84,7 +84,7 @@ test('重排接口失败后退避：下一条消息不再等满超时，直接�
 
 test('检索排序、手动测试各记一次服务上报的数值', async () => {
   const {mkdtempSync,rmSync}=await import('node:fs'),{tmpdir}=await import('node:os'),{join}=await import('node:path')
-  const u=await import('../src/core/llm/usage.ts'); const dir=mkdtempSync(join(tmpdir(),'rerank-usage-'))
+  const u=await import('../src/core/llm/usage/usage.ts'); const dir=mkdtempSync(join(tmpdir(),'rerank-usage-'))
   const old=process.env.AURABOT_DATA_DIR; process.env.AURABOT_DATA_DIR=dir; u.initUsage()
   try {
     const cfg=normalize({memory:{rerank:{enabled:true,baseUrl:'https://example.test/v1',model:'rank'}}})

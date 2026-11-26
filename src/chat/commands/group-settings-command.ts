@@ -1,9 +1,9 @@
 // 确定性主人私聊入口；配置和自然语言工具共用规划器，不通过 LLM 执行。
 import { randomInt } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
-import { isOwner, GROUP_RESPONSE_LABELS } from '../policy/access/access.ts'
-import { DEFAULT_GROUP_POLICY } from '../policy/group/group-policy.ts'
-import { changePermissions } from '../policy/access/permission-policy.ts'
+import { isOwner, GROUP_RESPONSE_LABELS } from '../policy/access.ts'
+import { DEFAULT_GROUP_POLICY } from '../policy/group.ts'
+import { changePermissions } from '../policy/permission.ts'
 import { planGroupSettings, readSettings } from '../../modules/contacts/group-settings.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

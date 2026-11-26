@@ -1,8 +1,8 @@
-import { useState } from './core/ui/react.ts'
-import { get, post } from './core/api/api.ts'
-import { Btn, Choices, Row, cx, h, useField } from './core/ui/ui.ts'
-import { OneBotFields } from './tabs/chat/connect.ts'
-import { Backup } from './tabs/system/system.ts'
+import { useState } from '../core/ui/react.ts'
+import { get, post } from '../core/api/api.ts'
+import { Btn, Choices, Row, cx, h, useField } from '../core/ui/ui.ts'
+import { OneBotFields } from '../tabs/chat/connect.ts'
+import { Backup } from '../tabs/system/system.ts'
 
 // ---------------- 首次使用向导 ----------------
 const WIZ_STEPS = ['你们的 QQ 号', '接上机器人', '完成']

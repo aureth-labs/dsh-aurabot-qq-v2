@@ -45,7 +45,7 @@ test('B站头像：last / 最近图片 / 网址、主人权限和开关在模块
   const prevData = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
   mkdirSync(join(dir, 'imagegen'), { recursive: true })
-  const { savePainting, rememberPainting } = await import('../src/features/media/paintings.ts')
+  const { savePainting, rememberPainting } = await import('../src/features/media/generate/paintings.ts')
   const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)])
   rememberPainting(chat.chatId, savePainting(png, 'B站头像测试'))
   const byPainting = await avatar.execute({ image: '#1' })

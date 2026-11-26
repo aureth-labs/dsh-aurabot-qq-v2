@@ -6,10 +6,10 @@
 //
 // 内置 QQ 不是插件拉起来的，用 `adopt()` 挂进来；插件走 `start()`。
 
-import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMessage } from '../../types/adapter/adapter.ts'
-import type { BotLike } from '../../types/adapter/bot.ts'
-import { startAdapter } from './adapter.ts'
-import type { BotRegistry } from './bot-registry.ts'
+import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMessage } from '../../../types/adapter/adapter.ts'
+import type { BotLike } from '../../../types/adapter/bot.ts'
+import { startAdapter } from './contract.ts'
+import type { BotRegistry } from '../bot/registry.ts'
 
 export interface AdapterRegistryDeps {
   bots: BotRegistry

@@ -2,7 +2,7 @@
 // 发送原语在 outbound.ts；这里只决定「发什么、怎么拆、哪些真发出去了」。
 
 import { cleanOutboundText, cleanOutboundSegments, parseReply, itemsToLine, tidyPunctuation, hasSuspectTagShape, bubbleDelay } from '../../reply/index.ts'
-import { preserveReplyStickers } from '../../policy/outbound/sticker-policy.ts'
+import { preserveReplyStickers } from '../../policy/sticker.ts'
 import { guardOutgoing } from '../../inbound/guard.ts'
 import { failStore } from '../context/context.ts'
 

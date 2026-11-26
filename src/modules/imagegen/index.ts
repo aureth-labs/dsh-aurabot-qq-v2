@@ -1,14 +1,14 @@
 // 内置模块：生图。她能画图发到聊天里（OpenAI 兼容的生图服务，或「本地接口」里接的 SD WebUI / ComfyUI）。
 
 import { readFileSync } from 'node:fs'
-import { privateCapabilityAllowed } from '../../chat/policy/access/access.ts'
-import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from '../../features/media/imagegen.ts'
-import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removePainting, savePainting } from '../../features/media/paintings.ts'
+import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
+import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from '../../features/media/generate/imagegen.ts'
+import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removePainting, savePainting } from '../../features/media/generate/paintings.ts'
 import { defineTool, str, int } from '../../tools/index.ts'
-import { SIZE_OPTIONS } from '../../features/media/shape.ts'
+import { SIZE_OPTIONS } from '../../features/media/image/shape.ts'
 import { dataDir } from '../../core/store/index.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
-import { drawFormat, gifFrameCount } from '../../features/media/format.ts'
+import { drawFormat, gifFrameCount } from '../../features/media/image/format.ts'
 import { mergeFromPanel } from '../../core/config/index.ts'
 import { redact } from '../../core/support/log/redact.ts'
 

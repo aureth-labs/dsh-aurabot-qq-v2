@@ -18,7 +18,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { cleanOutboundText, cleanOutboundSegments, parseReply, stripAcpLeak, hasAcpResidue, hasSuspectTagShape } from '../src/chat/reply/index.ts'
-import { stripHtmlFragments } from '../src/chat/media/html-fragments.ts'
+import { stripHtmlFragments } from '../src/chat/reply/format/html-fragments.ts'
 import { guardOutgoing } from '../src/chat/inbound/guard.ts'
 import { normalize } from '../src/core/config/index.ts'
 import { createHub } from '../src/chat/hub/index.ts'
