@@ -159,6 +159,7 @@ export * from './context/context.ts'
 
 import { createSessionStore } from './store/sessions.ts'
 import { createTranscriber } from './media/transcribe.ts'
+import { createImageReader } from './media/images.ts'
 import { createChatLog } from './store/chatlog.ts'
 import { createOutbound } from './delivery/outbound.ts'
 import { createDeliver } from './delivery/deliver.ts'
@@ -288,6 +289,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   const privateSources = new Map() // 私聊 QQ 号 → 最近一次临时会话的来源群
   const recentMedia = createRecentMedia({ log }) // 最近发来的图片和表情，短期落盘恢复
   const recentMediaOf = (chatId, userId?) => recentMedia.get(chatId, userId).filter((item) => !isBeforeMemoryReset(chatId, item.userId, item.at))
+  const { imagesOf, fitForModel, animatedNote } = createImageReader({ onebot, getConfig, log, recentMediaOf })
   const recentFiles = new Map() // chatId → 最近发来的文件
   const stickerStash = createStickerStash()
 
@@ -1347,39 +1349,6 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   }
 
   const { transcribe, localTranscribe } = createTranscriber({ dsh, onebot, getConfig, log, localApi })
-
-  // 动图交给模型时通常只看到一帧，这里如实告诉她，免得她把动图说成静态图。
-  const animatedNote = (imgs) => {
-    const n = imgs.filter((img) => img.frames > 1).length
-    return n ? `（其中 ${n} 张是动图，你看到的可能只是其中一帧，别说它是静态的，也别编没看到的动作）` : ''
-  }
-
-  /** 超大的图交给模型可能让整轮请求失败：先缩小，缩不了就跳过这张，别的照常。 */
-  async function fitForModel(buf) {
-    if (buf.length <= MODEL_IMAGE_BYTES) return buf
-    const ffmpeg = findFfmpeg(getConfig().bili?.ffmpegPath || '')
-    const small = (ffmpeg ? await shrinkImage(buf, 2048, ffmpeg) : null) || await shrinkWithSharp(await findSharp(), buf, 2048)
-    if (!small || small.length > MODEL_IMAGE_BYTES) throw new Error(`图片 ${Math.round(buf.length / 1048576)}MB 缩不下来`)
-    return small
-  }
-
-  async function imagesOf(msg) {
-    const out = []
-    for (const seg of [...msg.stickers, ...msg.images].slice(0, MAX_MESSAGE_IMAGES)) {
-      try {
-        const raw = await segmentBytes(seg, onebot, { maxBytes: MAX_IMAGE_BYTES })
-        const frames = gifFrames(raw)
-        const buf = await fitForModel(raw)
-        const mime = mimeOf(buf)
-        if (!mime.startsWith('image/')) continue
-        const source = msg.chatId && recentMediaOf(msg.chatId).find((x) => x.seg === seg && /^-?[1-9]\d*$/.test(x.messageId || ''))
-        out.push({ data: buf.toString('base64'), mediaType: mime, frames, ...(source ? { name: `qqref-${source.messageId}-${source.imageIndex}` } : {}) })
-      } catch (error) {
-        log.debug('图片下载失败：', error.message)
-      }
-    }
-    return out
-  }
 
   // 收消息时的当前人格贯穿这一条消息：合并等待、建会话、写流水都按它
   function onMessage(event) {

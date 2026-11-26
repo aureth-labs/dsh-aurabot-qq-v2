@@ -24,7 +24,7 @@ interface GuardedOptions extends FetchOptions { fetchImpl?: typeof fetch }
 interface ImageSegment { data?: { url?: string; file?: string; path?: string } | null }
 
 /** 需要网关换真实地址时用的最小接口。 */
-interface OneBotGateway {
+export interface OneBotGateway {
   call(action: string, params: Record<string, unknown>, opts?: { timeoutMs?: number }): Promise<{ file?: string; url?: string } | null | undefined>
 }
 
