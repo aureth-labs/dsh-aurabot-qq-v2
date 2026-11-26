@@ -161,6 +161,8 @@ import { createChatLog } from './log/chatlog.ts'
 import { createOutbound } from './delivery/outbound.ts'
 import { createDeliver } from './delivery/deliver.ts'
 import { createTurnState } from './turn/turn-state.ts'
+import { createStats } from './stats.ts'
+import { createStickerStash } from './sticker/index.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -316,62 +318,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   const recentMedia = createRecentMedia({ log }) // 最近发来的图片和表情，短期落盘恢复
   const recentMediaOf = (chatId, userId?) => recentMedia.get(chatId, userId).filter((item) => !isBeforeMemoryReset(chatId, item.userId, item.at))
   const recentFiles = new Map() // chatId → 最近发来的文件
-  // 「她挑 / 只听主人的」：这一轮收到的表情先按会话记着，她想收时凭编号来取。
-  // 落盘存一份 —— 只在内存里的话，DSH 一重启就什么都没有了，她只好绕路（拷附件 + qq_add_sticker）。
-  const stickerStash = new Map<string, { at: number; segs: OutSegment[] }>() // chatId → { at, segs: [seg] }
-  const STICKER_TTL = 30 * 60_000 // 和「最近图片」一个尺度
-  const stashFile = () => dataDir('sticker-stash.json')
-  let stashLoaded = false
-
-  function loadStash () {
-    if (stashLoaded) return
-    stashLoaded = true
-    try {
-      const raw: Record<string, any> = readJson(stashFile(), () => ({}))
-      const now = Date.now()
-      for (const [chatId, v] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
-        if (v && Array.isArray(v.segs) && v.segs.length && now - Number(v.at || 0) < STICKER_TTL) {
-          stickerStash.set(chatId, { at: Number(v.at) || now, segs: v.segs })
-        }
-      }
-    } catch (error) {}
-  }
-
-  function saveStash () {
-    const now = Date.now()
-    const out: Record<string, any> = {}
-    for (const [chatId, v] of stickerStash) if (v && now - v.at < STICKER_TTL) out[chatId] = v
-    try { writeJson(stashFile(), out) } catch (error) {}
-  }
-
-  /** 记下这一轮收到的表情，返回张数。 */
-  function rememberStickers (chatId, segs) {
-    loadStash()
-    const list = (segs || []).slice(0, 4)
-    if (!list.length) return 0
-    stickerStash.set(chatId, { at: Date.now(), segs: list })
-    saveStash()
-    return list.length
-  }
-
-  /** 取第 index 张（从 1 开始）。过期或没有就返回 null。 */
-  function stickerOf (chatId, index) {
-    loadStash()
-    const s = stickerStash.get(chatId)
-    if (!s || Date.now() - s.at > STICKER_TTL) return null
-    const i = Number(index) - 1
-    return Number.isInteger(i) && i >= 0 && i < s.segs.length ? s.segs[i] : null
-  }
-
-  /**
-   * 「她挑」模式那句轻提示。
-   * 措辞要像她自己的念头，不能像发图的人在提醒她 —— 否则每来一张表情她就回报一次
-   * “我收了 / 我已经有了”，完全不像偷偷攒表情。收不收、说不说都随她。
-   */
-  function stickerHint (n) {
-    const range = n > 1 ? `1~${n}` : '1'
-    return `（这轮里夹着 ${n} 张表情，是你自己看到的。有中意的就用 qq_collect_sticker ${range} 收进自己库；收表情是你自己的小爱好，不用每张都跟对方说，偶尔提一句也行。）`
-  }
+  const stickerStash = createStickerStash()
 
   const slowNoticeSent = new Set() // sessionKey → 这一轮已经发过「正在做」提示（慢工具，issue #74）
   const slowTimers = new Map<NodeJS.Timeout, string>() // timer → sessionKey，轮次结束、替换挂载、卸载时一并撤销
@@ -558,50 +505,12 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     }
   }
   const sentIds = new Set()
-  // #254：概览「今日统计」重启后归零。计数按日期落盘，同一天重启继续累计，跨天自动重置。
-  // 只在脏了的时候节流写盘（默认 5 秒），不占收发主链路。
-  const statsFile = dataDir('stats.json')
-  const emptyStats = (day) => ({ received: 0, sent: 0, voice: 0, stickers: 0, errors: 0, day })
-  const stats = (() => {
-    const today = new Date().toDateString()
-    try {
-      const saved = readJson(statsFile, null)
-      if (saved && typeof saved === 'object' && saved.day === today) {
-        const next = emptyStats(today)
-        for (const k of ['received', 'sent', 'voice', 'stickers', 'errors']) {
-          const n = Number(saved[k])
-          if (Number.isFinite(n) && n >= 0) next[k] = Math.floor(n)
-        }
-        return next
-      }
-    } catch (error) { log.debug('今日统计读不出来，从零开始：', error.message) }
-    return emptyStats(today)
-  })()
-  let statsDirty = false
-  let statsTimer = null
-  function saveStats(force = false) {
-    if (!statsDirty && !force) return
-    statsDirty = false
-    try { writeJson(statsFile, stats) } catch (error) { log.debug('今日统计写盘失败：', error.message) }
-  }
-  function scheduleStatsSave() {
-    if (statsTimer) return
-    statsTimer = setTimeout(() => { statsTimer = null; saveStats() }, 5000)
-    statsTimer.unref?.()
-  }
+  const stats = createStats({ file: dataDir('stats.json'), log })
   let selfId = ''
   let lastChatAt = 0
   let lastOwnerChatAt = 0
   const lastPrivateAt = new Map() // QQ 号 → 最后一次和这个人私聊的时间（主动搭话白名单用）
   let lastBotToOwner = { at: 0, text: '' } // 她在主人私聊里最后说的话
-
-  function bump(k) {
-    const d = new Date().toDateString()
-    if (stats.day !== d) Object.assign(stats, emptyStats(d))
-    stats[k]++
-    statsDirty = true
-    scheduleStatsSave()
-  }
 
   // ---------- 聊天流水（给空间日记、主动搭话、面板用） ----------
   const chatLog = createChatLog({ getConfig, log, hooks, saidElsewhere, proactiveLogAt, isBeforeMemoryReset, chatDir, chatMemoryCutoff, cleaningFor })
@@ -1163,7 +1072,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   }
 
   const outbound = createOutbound({
-    getConfig, log, onebot, outbox, stickers, tts, hooks, isDisposed: () => disposed, bump, pnow, privateSources, sentIds,
+    getConfig, log, onebot, outbox, stickers, tts, hooks, isDisposed: () => disposed, bump: stats.bump, pnow, privateSources, sentIds,
     outputScope, outputSources, currentPromptSources, groupEngaged, groupEngagedRun, groupInterjects,
     groupChatAllowed, cleaningFor, membersOf, faces, wantsOutbound, passOutbound, settleOutbound,
     noteProactive, pause, lastPoker, lastSpeaker,
@@ -1739,7 +1648,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     // 按群头衔过滤：这条当没看见（不进群聊上下文、不触发回复，@ 她、主人命令也一样）
     if (msg.kind === 'group' && await titleFilter.shouldIgnore(event)) return
     if (disposed || wasCleared()) return
-    bump('received')
+    stats.bump('received')
 
     // 群里的每条消息都记进缓冲（给上下文和「群里在不在聊」用）
     let groupEntry = null
@@ -1771,7 +1680,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
         if (collectMode === 'auto') {
           for (const s of msg.stickers) stickers.collect(s, msg.chatId).then((r) => { if (!r.ok) log.debug('没收这张表情：', r.reason) }).catch(() => {})
         } else {
-          stickerPick = rememberStickers(msg.chatId, msg.stickers)
+          stickerPick = stickerStash.remember(msg.chatId, msg.stickers)
           // 只听主人的：别人发的先悄悄记着（主人之后说「收下那张」还能用），但不提示她
           if (collectMode === 'owner' && !isOwner(cfg, msg.userId)) stickerPick = 0
         }
@@ -2272,7 +2181,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     clearTimeout(p.timer)
     if (!groupChatAllowed(chatId)) { pending.delete(chatId); return }
     // 「她挑」的提示统一在这里补：私聊、群聊、插话三条路都要带上
-    const hint = p.stickerPick ? '\n\n' + stickerHint(p.stickerPick) : ''
+    const hint = p.stickerPick ? '\n\n' + stickerStash.hint(p.stickerPick) : ''
     // 私聊：她这一轮还在跑（想 / 调工具），新消息直接 steer 进当前这一轮，像在 DSH 界面里插话一样（#7）
     if (isBusy(chatId) && p.chat.kind === 'private' && running.has(chatId)) {
       pending.delete(chatId)
@@ -2284,7 +2193,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
         await pushToSession(p.chat, content, first, { wantVoice: p.wantVoice, extraSenders: rest, queryText: query, steer: true, turnToken: busyTurns.get(chatId) })
       } catch (error) {
         if (isSessionBackoff(error)) { retainSessionMessages(chatId, p, content); return }
-        bump('errors')
+        stats.bump('errors')
         log.error(`插话进 DSH 失败（${chatId}）：`, error.message)
       }
       return
@@ -2347,7 +2256,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
         return
       }
       release(chatId, turnToken)
-      bump('errors')
+      stats.bump('errors')
       log.error(`转进 DSH 失败（${chatId}）：`, error.message)
     }
   }
@@ -3266,8 +3175,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     if (disposed) return
     disposed = true
     // 卸载前把没落盘的今日统计补一次，别让最后几秒的计数白丢（#254）。
-    if (statsTimer) { clearTimeout(statsTimer); statsTimer = null }
-    saveStats(true)
+    stats.save(true)
     // 三审 #177：常驻的子智能体父级 agent 一并置空——插件重装/重启后下次 spawn 重新建，
     // 别攥着旧句柄不放（旧的父会话交给 DSH 自己的会话回收去清）。
     subagentParentAgent = null
@@ -3316,7 +3224,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     recentMedia: recentMediaOf,
     referenceImage,
     recentFiles: (chatId) => recentFiles.get(chatId) || [],
-    stickerOf,
+    stickerOf: (chatId, index) => stickerStash.of(chatId, index),
     capture,
     simulateTurn,
     onMessage,
@@ -3386,7 +3294,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     deleteChatLog,
     sessions: () => map().chats,
     groupName,
-    stats: () => ({ ...stats }),
+    stats: () => ({ ...stats.value }),
     get lastChatAt() { return lastChatAt },
     get lastOwnerChatAt() { return lastOwnerChatAt },
     lastPrivateAt: (qq) => lastPrivateAt.get(String(qq)) || 0,
