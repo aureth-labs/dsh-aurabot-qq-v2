@@ -19,6 +19,7 @@ export type AskText = (options: {
 }) => Promise<string>
 
 export interface LlmFacadeDeps {
+  config: LlmFacade['config']
   ask: AskText
   log?: { warn: (...args: any[]) => void }
 }
@@ -73,6 +74,7 @@ export function createLlmFacade(deps: LlmFacadeDeps): LlmFacade {
   }
 
   return {
+    config: deps.config,
     generate: ask,
     async polish(text, options = {}) {
       const source = String(text ?? '')

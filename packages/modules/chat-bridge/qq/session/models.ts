@@ -1,6 +1,6 @@
 import { defaultModel, pickReasoningEffort } from '../../../../../src/core/llm/index.ts'
 import { resolveChatModel } from '../../../../../src/core/config/chat-model.ts'
-import { chatEffortFor } from '../../../../../src/chat/commands/effort-command.ts'
+import { chatEffortFor } from '../../../../../src/core/config/chat-effort.ts'
 
 export function createSessionModels({ dsh, getConfig, availableModels, hooks, controller, log }) {
   function targetModel(chat) {

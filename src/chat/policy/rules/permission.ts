@@ -1,4 +1,4 @@
-import { delegatedCommandCatalog, isDelegatedCommandKey } from '../../commands/delegated-commands.ts'
+import { delegatedCommandCatalog, isDelegatedCommandKey } from './delegation.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ChangePermissionsOptions = Partial<Record<'id' | 'kind' | 'changes', any>>

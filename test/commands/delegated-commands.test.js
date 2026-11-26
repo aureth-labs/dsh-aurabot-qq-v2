@@ -4,8 +4,10 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMockOneBot } from '../helpers/mock-onebot.js'
+import { modelPreferences } from '../../packages/modules/llm/selection.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../../src/chat/commands/delegated-commands.ts'
+import { canUseDelegatedCommand, delegatedCommandKey } from '../../src/chat/policy/rules/delegation.ts'
 import { normalize } from '../../src/core/config/index.ts'
 
 const owner = '10000001'
@@ -27,34 +29,24 @@ test('授权按私聊、命令和 QQ 号分别检查，扩展命令验证模块�
   assert.equal(delegatedCommandKey({ name: '画图', ext: { module: '../other', delegatable: true } }), '')
 })
 
-test('私聊模型只更改该用户，并在授权撤销后拒绝', async () => {
-  let cfg = normalize({ ownerQQ: owner, model: { provider: 'fake', model: 'base', reasoningEffort: 'low' },
-    allow: { private: [guest, guest2] }, commandAllow: { model: [guest] },
-    chatModels: { privates: { [guest2]: { provider: 'fake', model: 'other', reasoningEffort: 'low' } } } })
-  const list = [{ provider: 'fake', model: 'base', name: 'Base' }, { provider: 'fake', model: 'new', name: 'New' }, { provider: 'fake', model: 'other', name: 'Other' }]
-  const deps = { getConfig: () => cfg, setConfig: (next) => { cfg = normalize(next) }, listModels: async () => list, defaultModel: () => cfg.model }
-  const msg = { kind: 'private', userId: guest }
-  assert.match(await runPersonalModelCommand({ name: 'model', arg: '2' }, msg, deps), /New/)
-  assert.deepEqual(cfg.chatModels.privates[guest], { provider: 'fake', model: 'new', reasoningEffort: '' })
-  assert.equal(cfg.model.model, 'base')
-  assert.equal(cfg.chatModels.privates[guest2].model, 'other')
-  cfg.commandAllow.model = []
-  assert.match(await runPersonalModelCommand({ name: 'model', arg: '1' }, msg, deps), /撤销/)
-  assert.equal(cfg.chatModels.privates[guest].model, 'new')
-  cfg.commandAllow.model = [guest]
-  await runPersonalModelCommand({ name: 'model', arg: '默认' }, msg, deps)
-  assert.equal(cfg.chatModels.privates[guest], undefined)
-})
-
 test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和群内命令', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-delegated-'))
   process.env.AURABOT_DATA_DIR = dir
-  const config = { enabled: true, dryRun: true, setupDone: true, ownerQQ: owner, botQQ: '20000002',
+  const mock = await startMockOneBot({ selfId: '20000002' })
+  t.after(() => mock.close())
+  const config = { enabled: true, ownerQQ: owner, botQQ: '20000002',
     allow: { private: [guest], groups: ['30000003'] }, commandAllow: { reset: [guest], model: [guest], 'ext:probe:hello': [guest] },
-    onebot: {  }, merge: { enabled: false }, modules: { commands: { enabled: true } } }
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token }, merge: { enabled: false }, modules: { commands: { enabled: true } } }
   writeFileSync(join(dir, 'config.json'), JSON.stringify(config))
   mkdirSync(join(dir, 'modules', 'probe'), { recursive: true })
-  writeFileSync(join(dir, 'modules', 'probe', 'index.mjs'), `export default { id: 'probe', api: 1, setup(api) { api.command({ name: 'hello', delegatable: true, run: () => { globalThis.__delegatedProbe = (globalThis.__delegatedProbe || 0) + 1; return 'ok' } }) } }`)
+  writeFileSync(join(dir, 'modules', 'probe', 'index.mjs'), `export const name = 'probe'
+export function apply(ctx) {
+  ctx.private().command('hello').action(({ session }) => {
+    if (ctx.root.config.commandAllow['ext:probe:hello']?.includes(session.userId)) {
+      globalThis.__delegatedProbe = (globalThis.__delegatedProbe || 0) + 1
+    }
+  })
+}`)
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify({ chats: { [`private:${guest}`]: { sessionId: 'old-session' } } }))
   const fake = createFakeDsh({ brain: async () => '' })
   const { apply } = await import('../../packages/app/index.ts')
@@ -89,16 +81,37 @@ test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和�
   await api.hub.onMessage(message('/off'))
   assert.equal((await fake.call('/state')).json().config.enabled, true)
   assert.equal((await fake.call('/state')).json().config.commandAllow.reset.includes(guest), true)
-  await api.hub.onMessage(message('/model 2'))
-  const selected = (await fake.call('/state')).json().config.chatModels.privates[guest]
-  assert.equal(selected.model, 'm-pdef')
-  await api.hub.onMessage(message('/hello'))
+  await api.modules.use('adapter-qq-onebot-v11').ready
+  mock.push({ ...message('/hello'), message_id: 124 })
+  for (let i = 0; i < 50 && !globalThis.__delegatedProbe; i++) await new Promise(resolve => setTimeout(resolve, 20))
   assert.equal(globalThis.__delegatedProbe, 1)
   const sessions = JSON.parse(readFileSync(join(dir, 'sessions.json'), 'utf8'))
   sessions.chats['group:30000003'] = { sessionId: 'group-session' }
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify(sessions))
   await api.hub.onMessage(message('/reset', true))
-  await api.hub.onMessage(message('/hello', true))
+  mock.push({ ...message('/hello', true), message_id: 125 })
+  await new Promise(resolve => setTimeout(resolve, 60))
   assert.equal(globalThis.__delegatedProbe, 1)
   assert.equal(JSON.parse(readFileSync(join(dir, 'sessions.json'), 'utf8')).chats['group:30000003'].sessionId, 'group-session')
+})
+
+test('模型选择按登录身份与房间保存，重启后可单独清除', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'aurabot-models-'))
+  t.after(() => cleanupDir(dir))
+  const file = join(dir, 'models.json')
+  const first = { platform: 'telegram', botId: 'a', type: 'private', id: '42' }
+  const other = { ...first, botId: 'b' }
+  const choice = { provider: 'vendor', model: 'scheduled' }
+  const load = () => modelPreferences(file, async () => [])
+  load().set(first, 'login', choice)
+  const models = load()
+  assert.deepEqual(models.get(first, 'login'), choice)
+  for (const target of [other, { ...first, platform: 'qq' }, { ...first, type: 'group' }]) {
+    assert.equal(models.get(target, 'login'), null)
+  }
+  assert.equal(models.get(first, 'replacement'), null)
+  models.set(other, 'login', choice)
+  models.set(first, 'login', null)
+  assert.equal(load().get(first, 'login'), null)
+  assert.deepEqual(load().get(other, 'login'), choice)
 })

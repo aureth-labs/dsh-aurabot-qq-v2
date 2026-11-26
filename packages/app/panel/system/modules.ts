@@ -7,7 +7,7 @@ import { parseCommand } from '../../../modules/commands/dispatch.ts'
 import {
   canUseDelegatedCommand,
   delegatedCommandKey,
-} from '../../../../src/chat/commands/delegated-commands.ts'
+} from '../../../../src/chat/policy/rules/delegation.ts'
 
 export function registerModuleRoutes({
   http,

@@ -299,8 +299,20 @@ export interface PageOptions {
   url?: string
 }
 
+export interface ChatModelChoice {
+  provider: string
+  model: string
+}
+
+export interface ChatModelConfig {
+  list(): Promise<Array<ChatModelChoice & { name: string }>>
+  get(target: Target, selfId: string): ChatModelChoice | null
+  set(target: Target, selfId: string, choice: ChatModelChoice | null): void
+}
+
 export interface LlmFacade {
-  generate(options: { text: string; system?: string; sessionId?: string; maxTokens?: number; temperature?: number }): Promise<string>
+  readonly config: { readonly model: ChatModelConfig }
+  generate(options: { text: string; system?: string; sessionId?: string; maxTokens?: number; temperature?: number; model?: ChatModelChoice }): Promise<string>
   polish(text: string, options?: { instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
   rewrite(text: string, options?: { instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
   summarize(text: string, options?: { maxLength?: number; instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>

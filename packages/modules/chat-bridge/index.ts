@@ -124,7 +124,8 @@ export function apply(ctx: PluginContext) {
     const transcript = [...history, current]
     const images = await modelImages(session.elements, ctx.root.config.media, reason => ctx.logger.debug(reason))
     if (!active) return
-    const prompt = { system, images, text: JSON.stringify({ messageId: session.messageId, transcript, quote: session.quote, facts: facts.length ? facts : undefined }), sessionId, maxTokens: 800 }
+    const model = session.bot.selfId && ctx.llm.config?.model.get(session.target, session.bot.selfId)
+    const prompt = { ...(model && { model }), system, images, text: JSON.stringify({ messageId: session.messageId, transcript, quote: session.quote, facts: facts.length ? facts : undefined }), sessionId, maxTokens: 800 }
     const dialogue = ctx.get<Dialogue>('dialogue')
     let claimed = false
     const claim = () => active && (claimed || (claimed = db.claim(room, session.messageId)))

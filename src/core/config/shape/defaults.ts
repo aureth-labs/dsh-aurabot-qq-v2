@@ -6,7 +6,7 @@ import type { KeyPools } from '../state/key-pool.ts'
 import { DEFAULT_GROUP_POLICY } from '../../../chat/policy/rules/group.ts'
 import { DEFAULT_TIER_DAYS } from '../../../persona/memory-tiers.ts'
 import { defaultEmotions } from '../../../persona/emotions.ts'
-import { DELEGATED_COMMANDS } from '../../../chat/commands/delegated-commands.ts'
+import { DELEGATED_COMMANDS } from '../../../chat/policy/rules/delegation.ts'
 import type { MemberFilterRule } from '../../../chat/inbound/filter/member-filter.ts'
 import { GLOBAL_CONFIG_DEFAULTS } from '../global.ts'
 

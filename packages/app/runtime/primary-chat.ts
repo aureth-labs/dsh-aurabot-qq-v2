@@ -3,8 +3,7 @@ import { commandList, parseCommand, runCommand } from '../../modules/commands/di
 import {
   canUseDelegatedCommand,
   delegatedCommandKey,
-  runPersonalModelCommand,
-} from '../../../src/chat/commands/delegated-commands.ts'
+} from '../../../src/chat/policy/rules/delegation.ts'
 import { defaultModel, modelReasoning } from '../../../src/core/llm/index.ts'
 import { defaultOneBotId } from '../onebot.ts'
 
@@ -79,13 +78,6 @@ export function createPrimaryChat({
               .join('\n')
           )
         }
-        if (key === 'model')
-          return runPersonalModelCommand(cmd, msg, {
-            getConfig,
-            setConfig,
-            listModels,
-            defaultModel: () => defaultModel(ctx, getConfig()),
-          })
       }
       if (cmd.ext) {
         if (cmd.ext.sensitive === true && !markSensitive(cmd.name)) return ''
@@ -122,7 +114,12 @@ export function createPrimaryChat({
       prompt: (content, info) => modules().filter('prompt', content, primaryContext(info)),
       items: (items, info) => modules().filter('reply/items', items, info),
       send: (message, info) => modules().filter('onebot/before-send', message, info),
-      model: (sel, chat) => modules().filterSync('model', sel, chat),
+      model: (sel, chat) => {
+        const { target } = primaryContext({ chat })
+        const self = onebot.bot?.selfId
+        const choice = target && self && modules().services.get('llm')?.config?.model.get(target, self)
+        return modules().filterSync('model', choice || sel, chat)
+      },
       poke: (ev) => modules().claim('poke', ev),
       journal: (row) => modules()?.emit('chat/log', row),
       deliveryScope: (chatId, personaId, botQQ) =>

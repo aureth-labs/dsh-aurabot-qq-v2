@@ -44,7 +44,8 @@ import { checkAllowed } from '../../src/chat/policy/rules/access.ts'
 import { createLocal } from '../../src/local/index.ts'
 
 import { createSendEvents } from '../../src/core/bot/send-events.ts'
-import { defaultModel, type AskModelOptions, modelReasoning, modelVision } from '../../src/core/llm/index.ts'
+import { listHostModels } from '../../src/core/llm/catalog.ts'
+import { defaultModel, type AskModelOptions } from '../../src/core/llm/index.ts'
 import { isOwnerOf } from '../../src/core/config/owners.ts'
 import { createDialogue } from '../../src/core/llm/session-turn.ts'
 import { createMediaAccess } from '../../src/core/message/media/media.ts'
@@ -223,17 +224,8 @@ export function apply(ctx) {
    * 面板据此把「思考强度」置灰，免得选了之后整轮报错）。
    */
   async function listModels() {
-    const llm = ctx.llm || ctx.get('llm')
-    const out = []
-    for (const p of llm.listProviders() || []) {
-      const provider = typeof p === 'string' ? p : p.provider || p.id || p.name
-      try {
-        for (const m of (await llm.listModels(provider)) || []) {
-          const model = m.id || m.model
-          out.push({ provider, model, name: m.name || model, reasoning: await modelReasoning(ctx, provider, model), vision: await modelVision(ctx, provider, model) })
-        }
-      } catch (error) {}
-    }
+    const catalog = mods?.services.get('llm')?.config?.model
+    const out = catalog ? await catalog.list() : await listHostModels(ctx)
     if (out.length) modelCache = out
     return out
   }

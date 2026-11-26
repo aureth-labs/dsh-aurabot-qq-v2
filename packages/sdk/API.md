@@ -57,6 +57,7 @@ Schema 的 `title('字段名')` 与 `description('填写说明')` 分别用于�
 | `ctx.prompt(fn)` / `ctx.rule(text)` | 每轮上下文 / 系统提示规则 |
 | `ctx.think(prompt, { title, key, timeoutMs })` | 以她的人格跑一轮后台会话，返回正文 |
 | `ctx.thinkCooldown(key?)` | 后台会话在退避期就给出 `retryAt` |
+| `ctx.llm.config.model` | `list()` 获取模型目录，`get(target, selfId)` 读取会话选择，`set(target, selfId, choice)` 保存或传 `null` 清除 |
 | `ctx.ask(options)` | 裸问一次模型（无人格、无会话） |
 | `ctx.llm.generate({ text, system?, sessionId?, maxTokens? })` | 使用配置的模型生成回复，调用失败会抛错 |
 | `ctx.llm.polish / rewrite / summarize` | 文本小任务 |
