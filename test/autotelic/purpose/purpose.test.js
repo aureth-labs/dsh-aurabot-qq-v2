@@ -24,7 +24,7 @@ let dataRoot = ''
 before(async () => {
   dataRoot = mkdtempSync(join(tmpdir(), 'aurabot-purpose-'))
   process.env.AURABOT_DATA_DIR = dataRoot
-  ;({ createPurpose, purposeConfig, cleanReply } = await import('../../../src/purpose/module.ts'))
+  ;({ createPurpose, purposeConfig, cleanReply } = await import('../../../src/purpose/module/index.ts'))
   engine = await import('../../../src/purpose/engine/index.ts')
 })
 

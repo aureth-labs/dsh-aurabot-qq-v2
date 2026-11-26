@@ -8,7 +8,7 @@ import { normalize } from '../../src/core/config/index.ts'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { createPurpose } from '../../src/purpose/module.ts'
+import { createPurpose } from '../../src/purpose/module/index.ts'
 import { existsSync } from 'node:fs'
 
 const owner = '10000001', a = '10000002', b = '10000003', bot = '20000001'

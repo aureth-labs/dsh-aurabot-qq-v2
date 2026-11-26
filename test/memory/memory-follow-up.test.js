@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createMemoryStore, parseFollowUpAt, compressionClusters, shouldForget } from '../../src/features/memory/index.ts'
-import { createPurpose } from '../../src/purpose/module.ts'
+import { createPurpose } from '../../src/purpose/module/index.ts'
 import { collectMaterials, minePurposeSeeds, selectPurpose, FOLLOW_UP_WEIGHT } from '../../src/purpose/engine/index.ts'
 import { readMemoryState, writeMemoryState } from '../helpers/memory-state.js'
 

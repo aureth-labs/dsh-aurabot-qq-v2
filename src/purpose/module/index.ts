@@ -9,14 +9,14 @@
 // （ext.purpose.enabled 缺省=开、显式 false 尊重）；旧的「主动搭话」模块（speakup）在迁移期
 // （P1~P3）仍在，companion 会见目的引擎开着而自动让位，迁移说明见 docs/PURPOSE_MODULE_API.md。
 
-import { dataDir, readJson, writeJson } from '../core/store/index.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { randomUUID } from 'node:crypto'
-import { quietWindowOf } from '../core/support/time/time-window.ts'
-import { cleanOutboundText } from '../chat/reply/index.ts'
-import { isSessionBackoff } from '../chat/hub/turn/session-backoff.ts'
-import { followUpHint } from '../features/memory/index.ts'
-import { selfName, selfNames, personaDataDir, personaNow } from '../persona/personas.ts'
-import { normalizeSelection } from '../chat/hub/chat-model.ts'
+import { quietWindowOf } from '../../core/support/time/time-window.ts'
+import { cleanOutboundText } from '../../chat/reply/index.ts'
+import { isSessionBackoff } from '../../chat/hub/turn/session-backoff.ts'
+import { followUpHint } from '../../features/memory/index.ts'
+import { selfName, selfNames, personaDataDir, personaNow } from '../../persona/personas.ts'
+import { normalizeSelection } from '../../chat/hub/chat-model.ts'
 import {
   DEFAULT_PURPOSE_CONFIG, PURPOSE_NEEDS, NEED_LABELS,
   normalizePurposeConfig, createPurposeState, normalizePurposeState,
@@ -26,9 +26,9 @@ import {
   inQuietHours,
   minePurposeSeeds, selectPurpose, buildPurposePrompt, parsePurposeMemo, emotionProfile,
   summarizePurposeState, recordOwnerReplyHours, formatMaterialLine,
-} from './engine/index.ts'
+} from '../engine/index.ts'
 // 心情项的唯一真相在心情模块：这里只读配置、不自己存一份情绪表。
-import { normalizeEmotions, resolveEmotion } from '../features/mood/emotions.ts'
+import { normalizeEmotions, resolveEmotion } from '../../features/mood/emotions.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type PurposeConfigOptions = Partial<Record<'speakUp' | 'ext' | 'enabled' | 'ownerQQ' | 'ownerName', any>>

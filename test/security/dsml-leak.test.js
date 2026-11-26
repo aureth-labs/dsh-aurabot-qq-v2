@@ -10,7 +10,7 @@ import { normalize } from '../../src/core/config/index.ts'
 import { createBiliApi } from '../../src/bili/api.ts'
 import { createQzone } from '../../src/features/qzone/index.ts'
 import { cleanComment } from '../../src/features/qzone/social.ts'
-import { cleanReply } from '../../src/purpose/module.ts'
+import { cleanReply } from '../../src/purpose/module/index.ts'
 
 const screenshot = ['@苏眠眠 </ | | DSML | | invoke>', '</ | | DSML | | calls>']
 const closing = '</ | | DSML | | invoke>'

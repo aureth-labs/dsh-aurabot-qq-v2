@@ -19,7 +19,7 @@ const OWNER = '10000001'
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-carrier-'))
-  ;({ createPurpose } = await import('../../src/purpose/module.ts'))
+  ;({ createPurpose } = await import('../../src/purpose/module/index.ts'))
 })
 
 beforeEach(() => {

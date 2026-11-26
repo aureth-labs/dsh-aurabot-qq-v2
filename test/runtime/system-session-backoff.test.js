@@ -8,7 +8,7 @@ import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { isSessionBackoff } from '../../src/chat/hub/turn/session-backoff.ts'
 import { createBili } from '../../src/bili/live/duty.ts'
-import { createPurpose } from '../../src/purpose/module.ts'
+import { createPurpose } from '../../src/purpose/module/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { cleanupDir } from '../helpers/cleanup.js'
 
