@@ -8,7 +8,29 @@
 import type { BotsAccessor, BotLike } from './bot.ts'
 import type { AdapterHandle, AdapterSpec } from './adapter.ts'
 import type { ElementFactory } from './element.ts'
-import type { Middleware, MiddlewareOptions } from './pipeline.ts'
+import type { CommandOptions, Middleware, MiddlewareOptions, SessionFilter } from './pipeline.ts'
+import type { Target } from './target.ts'
+
+/**
+ * `ctx.bot`：按 id 取机器人，不传 id 就取默认那个。
+ *
+ * ```ts
+ * ctx.bot()                  // 默认机器人（第一个上线的）
+ * ctx.bot('1787850032')      // 指定实例
+ * ctx.bot.list()             // 全部
+ * ```
+ */
+export interface BotAccessor {
+  (id?: string): BotLike | undefined
+  list(): BotLike[]
+}
+
+/** 一条广播的结果：谁发成了、谁没发成、为什么。 */
+export interface BroadcastResult {
+  target: Target
+  ok: boolean
+  error?: string
+}
 
 /** 文本改写类调用的通用参数。 */
 export interface LlmTextOptions {
@@ -99,7 +121,22 @@ export interface TtsFacade {
 /** 管线本体（`ctx.middleware` 要挂到它上面）。 */
 export interface PipelineLike {
   use(fn: Middleware, options?: MiddlewareOptions): () => void
-  command(name: string, handler: (...args: any[]) => unknown): () => void
+  command(name: string, handler: (...args: any[]) => unknown, options?: CommandOptions): () => void
+}
+
+/**
+ * 按平台 / 会话类型收窄的上下文。
+ *
+ * 写法和 Koishi 一致：`ctx.platform('qq').middleware(...)`、`ctx.guild().on(...)`。
+ * 返回的是**同一份 ctx 的视图**，注册的东西仍然挂在当前模块上，模块卸载时一起撤。
+ */
+export interface ScopeFactory {
+  /** 只处理这个平台的消息。 */
+  platform(name: string): this
+  /** 只处理频道 / 群消息；给了 id 就再收窄到这一个。 */
+  guild(id?: string): this
+  /** 只处理私聊。 */
+  private(): this
 }
 
 /** v1 的 api 对象：老插件靠它，这里只声明本框架用到的部分。 */
@@ -116,6 +153,8 @@ export interface ApiLike {
 export interface PluginContextExtras {
   bots?: BotsAccessor
   bot?: BotLike
+  /** 读当前全局配置（每次读都拿最新的，不是加载时的快照）。 */
+  rootConfig?: () => Record<string, any>
   Schema?: unknown
   h?: ElementFactory
   pipeline?: PipelineLike
@@ -124,7 +163,7 @@ export interface PluginContextExtras {
   startAdapter?: (spec: AdapterSpec, config: unknown) => Promise<AdapterHandle>
 }
 
-export interface PluginContext extends ApiLike {
+export interface PluginContext extends ApiLike, ScopeFactory {
   /** 随模块卸载自动清掉的定时器（Cordis 的 effect 语义），别用裸 setInterval。 */
   setInterval: (ms: number, fn: () => unknown, label?: string) => () => void
   setTimeout: (ms: number, fn: () => unknown) => () => void
@@ -156,8 +195,17 @@ export interface PluginContext extends ApiLike {
   adapter: (spec: AdapterSpec, config?: unknown) => Promise<AdapterHandle>
   /** 已上线的机器人：`ctx.bots[0]` / `ctx.bots('号')` / `ctx.bots.list()`。 */
   bots?: BotsAccessor
-  /** 当前默认机器人（QQ 场景=那个 OneBot 号）。 */
-  bot?: BotLike
+  /** 按 id 取机器人：`ctx.bot()` 默认、`ctx.bot('号')` 指定。 */
+  bot?: BotAccessor
+  /**
+   * 给一批目标各发一条。目标里写了 `botId` 就用那个实例，
+   * 没写就在同平台里挑一个在线的。单条失败不影响其它条。
+   */
+  broadcast: (targets: Target[], content: unknown, options?: { timeoutMs?: number }) => Promise<BroadcastResult[]>
+  /** 往模块总线发一个自定义事件（别的模块 `ctx.on(名字)` 能收到）。 */
+  emit: (event: string, ...args: any[]) => void
+  /** 根上下文：读宿主的全局配置用。 */
+  root: { config: Record<string, any> }
   Schema?: unknown
   h?: ElementFactory
   llm?: LlmFacade

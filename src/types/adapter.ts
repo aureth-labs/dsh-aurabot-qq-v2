@@ -5,11 +5,48 @@
  * 宿主负责把它挂进 `ctx.bots`、发上线/下线事件、模块卸载时断开。
  */
 
-import type { BotLike } from './bot.ts'
+import type { BotLike, Capability } from './bot.ts'
+import type { Element } from './element.ts'
+import type { TargetType } from './target.ts'
+
+/**
+ * 适配器收到一条平台消息后投给宿主的东西。
+ *
+ * 适配器只负责「翻译成这层」，不碰指令、中间件、模型——那些是宿主管线的事。
+ * `content` 不写时由 `elements` 推纯文本；`elements` 不写时把 `content` 当一条 text。
+ */
+export interface InboundMessage {
+  type: TargetType
+  /** 群号 / 私聊用户号 / 频道号。 */
+  channelId: string
+  /** 发消息的人。 */
+  userId: string
+  userName?: string
+  content?: string
+  elements?: Element[]
+  messageId?: string
+  guildId?: string
+  timestamp?: number
+  /** 平台原始事件：核心不解析，原样转给模块。 */
+  raw?: unknown
+}
 
 export interface AdapterRuntime {
   platform: string
   log: (message: string) => void
+  /**
+   * 收到消息就投进来。宿主负责建 Session、跑 `command → middleware → llm`。
+   *
+   * `connect()` 返回之前投递的消息会被丢掉（还没有 bot 实例可挂），
+   * 所以适配器要先把自己的 bot 准备好，再开始把消息往外送。
+   */
+  emitMessage(message: InboundMessage): void
+  /** 非消息事件（加群、撤回、上线/下线……）原样转给模块。 */
+  emitEvent?(event: string, payload: unknown): void
+  /** 把 `<voice>` 里的文字合成音频；宿主没接 TTS 时返回空串。 */
+  speak?(text: string): Promise<string>
+  /** 宿主给这个平台的能力表：适配器可以用它回答 `bot.supports()`。 */
+  supports?(capability: Capability): boolean
 }
 
 /** 面板「机器人列表」里一行的只读快照。 */
@@ -25,8 +62,19 @@ export interface AdapterInfo {
 export interface AdapterSpec {
   /** 平台名，进 `Target.platform`：qq / discord / telegram …… */
   platform: string
+  /**
+   * 平台名要等读到配置才知道时用这个（比如 Satori 是协议层，真正的平台在配置里）。
+   * 返回值优先于 `platform`。
+   */
+  resolvePlatform?(config: unknown): string | undefined
   /** 面板里展示的名字。 */
   name?: string
+  /**
+   * 这个适配器能渲染哪些元素。
+   *
+   * 宿主按它决定 `<voice>` / `<file>` 要不要降级成文字；不写就按 `bot.supports()` 逐条问。
+   */
+  capabilities?: Capability[]
   /**
    * 连接并返回**已经上线**的 bot。失败就抛错，宿主不会把它注册进 bots。
    * 顺序固定：连接成功 → 进注册表 → 发 online；连接失败什么都不留下。

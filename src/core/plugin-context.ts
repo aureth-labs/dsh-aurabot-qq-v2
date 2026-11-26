@@ -3,8 +3,20 @@
 
 import type { AdapterHandle, AdapterSpec } from '../types/adapter.ts'
 import type { BotsAccessor, BotLike } from '../types/bot.ts'
-import type { ApiLike, CommandArg, CommandBuilder, LlmFacade, PipelineLike, PluginContext, PluginContextExtras, TtsFacade } from '../types/ctx.ts'
-import type { Middleware, MiddlewareOptions } from '../types/pipeline.ts'
+import type {
+  ApiLike,
+  BotAccessor,
+  BroadcastResult,
+  CommandArg,
+  CommandBuilder,
+  LlmFacade,
+  PipelineLike,
+  PluginContext,
+  PluginContextExtras,
+  TtsFacade,
+} from '../types/ctx.ts'
+import type { Middleware, MiddlewareOptions, SessionFilter } from '../types/pipeline.ts'
+import type { Target } from '../types/target.ts'
 
 export type {
   ApiLike,
@@ -35,7 +47,15 @@ export function createPluginContext(api: ApiLike, extras: PluginContextExtras = 
   ctx.on = (event, fn) => (event === 'dispose' ? ctx.effect(fn) : (api.on?.(event, fn) ?? (() => {})))
 
   if (extras.bots) ctx.bots = extras.bots
-  if (extras.bot) ctx.bot = extras.bot
+  ctx.bot = makeBotAccessor(extras.bots, extras.bot)
+  ctx.broadcast = (targets, content, options) => broadcast(ctx, targets, content, options)
+  ctx.emit = (event, ...args) => { api.emit?.(event, ...args) }
+  // 全局配置是活的：模块卸载/重装、面板改设置之后读到的必须是最新值
+  Object.defineProperty(ctx, 'root', {
+    enumerable: true,
+    configurable: true,
+    get: () => ({ config: extras.rootConfig?.() ?? {} }),
+  })
   if (extras.Schema) ctx.Schema = extras.Schema
   if (extras.h) ctx.h = extras.h
   if (extras.llm) ctx.llm = extras.llm
@@ -58,16 +78,16 @@ export function createPluginContext(api: ApiLike, extras: PluginContextExtras = 
     return () => { off(); dispose?.() }
   }
   /** 注册一条指令，返回卸载函数；模块卸载时宿主也会一起撤。 */
-  const registerCommand = (signature: string, handler: (...args: any[]) => unknown) => {
+  const registerCommand = (signature: string, handler: (...args: any[]) => unknown, filter?: SessionFilter) => {
     if (!pipeline) return () => {}
     const parsed = parseSignature(signature)
-    const off = pipeline.command(parsed.name, handler as any)
+    const off = pipeline.command(parsed.name, handler as any, filter ? { filter } : undefined)
     const dispose = api.onDispose?.(off)
     return () => { off(); dispose?.() }
   }
 
   /** `ctx.command('名字 <参数>')` 的链式写法：最后 .action() 才真正注册。 */
-  const commandBuilder = (signature: string): CommandBuilder => {
+  const commandBuilder = (signature: string, filter?: SessionFilter): CommandBuilder => {
     const parsed = parseSignature(signature)
     const meta = { description: '', usage: '', alias: [] as string[] }
     let dispose: (() => void) | null = null
@@ -79,7 +99,7 @@ export function createPluginContext(api: ApiLike, extras: PluginContextExtras = 
         dispose = registerCommand(signature, (session: any, raw: string, command: string) => {
           const values = parseValues(parsed.args, String(raw ?? ''))
           return (fn as any)({ session, command, args: String(raw ?? ''), options: {} }, ...values)
-        })
+        }, filter)
         return dispose
       },
       dispose() { dispose?.(); dispose = null },
@@ -87,14 +107,14 @@ export function createPluginContext(api: ApiLike, extras: PluginContextExtras = 
     return builder
   }
 
-  ctx.command = ((signature: unknown, handler?: (...args: any[]) => unknown) => {
+  ctx.command = ((signature: unknown, handler?: (...args: any[]) => unknown, filter?: SessionFilter) => {
     // v1 兼容：api.command({ name, run }) 注册的是「给 AI 调用的命令」，不是本地指令
     if (signature && typeof signature === 'object') return (api.command as any)?.(signature) ?? (() => {})
     const text = String(signature ?? '').trim()
     if (!text) return () => {}
     // 老写法：整段参数原样交给回调
-    if (typeof handler === 'function') return registerCommand(text, handler)
-    return commandBuilder(text)
+    if (typeof handler === 'function') return registerCommand(text, handler, filter)
+    return commandBuilder(text, filter)
   }) as PluginContext['command']
 
   /**
@@ -151,7 +171,176 @@ export function createPluginContext(api: ApiLike, extras: PluginContextExtras = 
   // 管线末段（llm）由宿主独占：插件要抢在模型前处理，用
   // ctx.middleware(fn, { before: 'llm' })，不要替换模型入口。
 
-  return ctx
+  // 作用域视图（ctx.platform / guild / private）挂在这一层：
+  // 注册仍然落到当前模块的卸载队列，只是多了一层「这条会话归不归我管」的判断。
+  return installScopes(ctx)
+}
+
+/** 会话形状的判断只认这几个字段：平台、类型、群/频道号。 */
+interface SessionFace {
+  platform: string
+  type: string
+  channelId: string
+  guildId?: string
+}
+
+function sessionOfEvent(value: unknown): SessionFace | null {
+  if (!value || typeof value !== 'object') return null
+  const candidate = value as Record<string, any>
+  const session = candidate.session && typeof candidate.session === 'object' ? candidate.session : candidate
+  if (typeof session.platform === 'string' && typeof session.type === 'string') return session as SessionFace
+  if (typeof session.type === 'string') return faceOf(session)
+  return null
+}
+
+/**
+ * 把「会话」压成过滤器要看的几个字段。
+ *
+ * 真实 `Session` 有 `platform` getter，但管线里的轻量会话只有 `bot.platform`，
+ * 两边都要认——不然作用域过滤器在测试桩和定时任务上会静默失效。
+ */
+function faceOf(value: any): SessionFace {
+  return {
+    platform: String(value?.platform ?? value?.bot?.platform ?? ''),
+    type: String(value?.type ?? ''),
+    channelId: String(value?.channelId ?? ''),
+    guildId: value?.guildId,
+  }
+}
+
+/** `ctx.bot()`：不传 id 取第一个上线的；传 id 精确取。 */
+function makeBotAccessor(bots?: BotsAccessor, fallback?: BotLike): BotAccessor {
+  const list = (): BotLike[] => (bots ? bots.list() : fallback ? [fallback] : [])
+  const accessor = ((id?: string) => {
+    const all = list()
+    if (id === undefined || id === null || id === '') {
+      return all.find((bot) => bot.status === 'online') ?? all[0]
+    }
+    return all.find((bot) => bot.id === String(id))
+  }) as BotAccessor
+  Object.defineProperty(accessor, 'list', { value: list })
+  return accessor
+}
+
+/** 只保留满足条件的机器人；取法（下标 / 调用 / list）保持一致。 */
+function filterBots(source: BotsAccessor, keep: (bot: BotLike) => boolean): BotsAccessor {
+  const list = (): BotLike[] => source.list().filter(keep)
+  const accessor = ((id: string) => list().find((bot) => bot.id === String(id))) as BotsAccessor
+  Object.defineProperties(accessor, {
+    get: { value: (id: string) => list().find((bot) => bot.id === String(id)) },
+    list: { value: list },
+  })
+  return new Proxy(accessor, {
+    get(target, prop, receiver) {
+      if (prop === 'length') return list().length
+      if (typeof prop === 'string' && /^\d+$/.test(prop)) return list()[Number(prop)]
+      if (prop === Symbol.iterator) return list()[Symbol.iterator].bind(list())
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as BotsAccessor
+}
+
+async function broadcast(
+  ctx: PluginContext,
+  targets: Target[],
+  content: unknown,
+  options: { timeoutMs?: number } = {},
+): Promise<BroadcastResult[]> {
+  const all = ctx.bots ? ctx.bots.list() : []
+  const results: BroadcastResult[] = []
+  for (const target of Array.isArray(targets) ? targets : []) {
+    const bot =
+      all.find((item) => item.id === target.botId) ??
+      all.find((item) => item.platform === target.platform && item.status === 'online') ??
+      all.find((item) => item.platform === target.platform)
+    if (!bot) {
+      results.push({ target, ok: false, error: `没有可用的「${target.platform}」机器人` })
+      continue
+    }
+    try {
+      const sendOptions = options.timeoutMs ? { timeoutMs: options.timeoutMs } : undefined
+      if (target.type === 'private') await bot.sendPrivateMessage(target.id, content, sendOptions)
+      else await bot.sendMessage(target.id, content, sendOptions)
+      results.push({ target, ok: true })
+    } catch (error) {
+      results.push({ target, ok: false, error: messageOf(error) })
+    }
+  }
+  return results
+}
+
+function messageOf(error: unknown): string {
+  return String((error as { message?: string })?.message ?? error).slice(0, 300)
+}
+
+interface ScopeRules {
+  session: (session: SessionFace) => boolean
+  platform: (name: string) => boolean
+}
+
+const ROOT_RULES: ScopeRules = { session: () => true, platform: () => true }
+
+/** 给 ctx 装上 `platform() / guild() / private()`：每次调用返回一层更窄的视图。 */
+function installScopes(ctx: PluginContext): PluginContext {
+  const scoped = (rules: ScopeRules): PluginContext => {
+    // 用属性描述符复制，不走 spread：`root` 是取值器，spread 会把它固化成快照
+    const view = Object.create(
+      Object.getPrototypeOf(ctx),
+      Object.getOwnPropertyDescriptors(ctx),
+    ) as PluginContext
+
+    view.middleware = (fn, options) =>
+      ctx.middleware((session, next) => (rules.session(faceOf(session)) ? fn(session, next) : next()), options)
+
+    // 指令：过滤交给管线。不匹配时这条消息不算指令，会继续往下走到中间件与模型。
+    view.command = ((signature: unknown, handler?: (...args: any[]) => unknown) => {
+      const filter = (session: unknown) => rules.session(faceOf(session))
+      const base = ctx.command as (...args: any[]) => any
+      if (typeof handler === 'function') return base(signature, handler, filter)
+      const builder = base(signature, undefined, filter)
+      return builder
+    }) as PluginContext['command']
+
+    view.on = (event, fn) => {
+      if (event === 'dispose') return ctx.on(event, fn)
+      return ctx.on(event, (...args: any[]) => {
+        const session = sessionOfEvent(args[0])
+        if (session && !rules.session(session)) return undefined
+        return (fn as (...a: any[]) => unknown)(...args)
+      })
+    }
+
+    if (ctx.bots) view.bots = filterBots(ctx.bots, (bot) => rules.platform(bot.platform))
+    if (ctx.bot) {
+      const source = ctx.bot
+      const narrowed = ((id?: string) => {
+        const bot = source(id)
+        return bot && rules.platform(bot.platform) ? bot : undefined
+      }) as BotAccessor
+      Object.defineProperty(narrowed, 'list', { value: () => source.list().filter((bot) => rules.platform(bot.platform)) })
+      view.bot = narrowed
+    }
+
+    view.platform = (name: string) => scoped({
+      session: (session) => rules.session(session) && session.platform === String(name),
+      platform: (value) => rules.platform(value) && value === String(name),
+    })
+    view.guild = (id?: string) => scoped({
+      session: (session) =>
+        rules.session(session) &&
+        (session.type === 'group' || session.type === 'channel') &&
+        (!id || session.guildId === String(id) || session.channelId === String(id)),
+      platform: rules.platform,
+    })
+    view.private = () => scoped({
+      session: (session) => rules.session(session) && session.type === 'private',
+      platform: rules.platform,
+    })
+
+    return view
+  }
+
+  return scoped(ROOT_RULES)
 }
 
 /**

@@ -65,6 +65,18 @@ export type Middleware = (session: PipelineSession, next: Next) => unknown
 export type CommandHandler = (session: PipelineSession, args: string, command: string) => unknown
 export type LlmHandler = (session: PipelineSession) => unknown
 
+/**
+ * 作用域过滤器：`ctx.platform('qq')` / `ctx.guild()` / `ctx.private()` 靠它收窄。
+ *
+ * 返回 false 的会话对这条注册就是「不存在」：指令不匹配、中间件直接放行。
+ */
+export type SessionFilter = (session: PipelineSession) => boolean
+
+export interface CommandOptions {
+  /** 只对满足条件的会话生效；不匹配时当作这条不是指令，继续走中间件与模型。 */
+  filter?: SessionFilter
+}
+
 /** 某一段出错时抛给宿主的信息（插件写错了要有地方看见，不能静默吞掉）。 */
 export interface PipelineErrorInfo {
   stage: string

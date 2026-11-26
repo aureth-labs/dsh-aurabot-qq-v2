@@ -37,6 +37,9 @@
       ]
     }
   },
+  "aurabot": {
+    "api": 2
+  },
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",

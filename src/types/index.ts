@@ -13,11 +13,13 @@ export type {
   StageName,
   PipelineConfig,
   PipelineRunner,
+  CommandOptions,
   Middleware,
   MiddlewareOptions,
   Next,
   PipelineResult,
   PipelineSession,
+  SessionFilter,
   CommandHandler,
   LlmHandler,
 } from './pipeline.ts'
@@ -28,12 +30,15 @@ export type {
   AdapterSpec,
   DiscordCreateMessageParams,
   DiscordEmbed,
+  InboundMessage,
   OneBotSendMessageParams,
   TelegramMessageEntity,
   TelegramSendMessageParams,
 } from './adapter.ts'
 export type {
   ApiLike,
+  BotAccessor,
+  BroadcastResult,
   CommandActionContext,
   CommandArg,
   CommandBuilder,
@@ -44,6 +49,7 @@ export type {
   PluginContext,
   PluginContextExtras,
   RouteHandler,
+  ScopeFactory,
   ServerFacade,
   TtsFacade,
 } from './ctx.ts'

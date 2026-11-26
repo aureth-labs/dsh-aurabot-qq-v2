@@ -10,3 +10,6 @@
 
 export { OneBotBot, createOneBotV11Spec } from './qq/onebot-v11/index.ts'
 export type { OneBotBotInit, OneBotCall, OneBotV11SpecOptions } from './qq/onebot-v11/index.ts'
+
+export { satoriAdapter, inboundOf as satoriInboundOf } from './satori/index.ts'
+export type { SatoriAdapterConfig } from './satori/index.ts'

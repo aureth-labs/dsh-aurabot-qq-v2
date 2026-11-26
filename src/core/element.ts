@@ -322,11 +322,12 @@ export function degrade(source: ElementSource, supports: (capability: Capability
       out.push(text(placeholder ? placeholder(element) : '[' + element.type + ']'))
       continue
     }
-    if (element.type === 'at') {
+    // `@` 与表情是「平台原生有就发原生的」：能发 @ 就别降成纯文本，否则 @ 会变成一句没人看得懂的字
+    if (element.type === 'at' && !supports('at')) {
       out.push(text('@' + String(element.attrs.name || element.attrs.id || '')))
       continue
     }
-    if (element.type === 'face') {
+    if (element.type === 'face' && !supports('face')) {
       out.push(text('[表情]'))
       continue
     }

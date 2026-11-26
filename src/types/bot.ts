@@ -10,6 +10,8 @@ export type BotStatus = 'registered' | 'connecting' | 'online' | 'offline' | 'er
 /** 适配器要如实声明自己能渲染哪些元素，核心据此决定是否降级。 */
 export type Capability =
   | 'text'
+  | 'at'
+  | 'face'
   | 'image'
   | 'voice'
   | 'video'

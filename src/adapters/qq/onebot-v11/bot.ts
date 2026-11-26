@@ -20,7 +20,7 @@ export interface OneBotBotInit {
   log?: { warn: (...args: any[]) => void }
 }
 
-const CAPABILITIES: Capability[] = ['text', 'image', 'voice', 'video', 'file', 'forward', 'quote', 'reaction']
+const CAPABILITIES: Capability[] = ['text', 'at', 'face', 'image', 'voice', 'video', 'file', 'forward', 'quote', 'reaction']
 
 export class OneBotBot implements BotLike {
   readonly platform = 'qq'

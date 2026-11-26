@@ -940,6 +940,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const ctx = createPluginContext(api, {
         bots: core.bots,
         bot: core.bot,
+        rootConfig: () => getConfig(),
         Schema,
         h,
         pipeline: core.pipeline,

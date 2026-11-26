@@ -43,6 +43,9 @@ import { createUsageFx } from './core/usage-fx.ts'
 import { initUsage, usageReport, closeUsage } from './core/usage.ts'
 import { BotRegistry, createBotsAccessor } from './core/bot-registry.ts'
 import { AdapterRegistry } from './core/adapter-registry.ts'
+import { wrapAdapterBot } from './core/adapter-bot.ts'
+import type { BotLike } from './types/bot.ts'
+import type { InboundMessage } from './types/adapter.ts'
 import { OneBotBot } from './adapters/qq/onebot-v11/index.ts'
 import { Pipeline } from './core/pipeline.ts'
 import { Session } from './core/session.ts'
@@ -61,7 +64,7 @@ import { captureSystemPrompt } from './security/leak-guard.ts'
 import { applyPendingRestore, cancelRestore, createBackup, listBackups, pendingModules, pendingRestore, setPendingModules, stageReceivedBackup, stageRestore } from './core/backup.ts'
 import { pushBackup, listWebdavBackups, downloadWebdavBackup } from './core/backup-push.ts'
 import { cleanText } from './core/text.ts'
-import { fromOneBot, toText } from './core/element.ts'
+import { fromOneBot, normalize, toText } from './core/element.ts'
 import { createBridge } from './core/bridge.ts'
 import { createDangerGuard, safeOwnedSession } from './security/danger.ts'
 import { createAuditor } from './autotelic/audit.ts'
@@ -505,6 +508,25 @@ export function apply(ctx) {
   const adapterRegistry = new AdapterRegistry({
     bots: botRegistry,
     log: (message) => logger.child('adapter').info(message),
+    // 适配器投进来的消息走和 OneBot 同一条管线：建 Session → command → middleware → llm
+    onMessage: (bot, message) => dispatchInbound(bot, message),
+    onEvent: (platform, event, payload) => {
+      try {
+        mods?.emit(`adapter/${event}`, { platform, payload })
+      } catch (error) {
+        logger.child('adapter').warn(`适配器事件「${event}」处理出错：`, String((error as Error)?.message ?? error))
+      }
+    },
+    // 所有平台的发送都过同一道闸：试运行不真发、<voice> 先合成、发不了的元素降级
+    wrapBot: (bot) => wrapAdapterBot(bot, {
+      allowed: () => {
+        const live = getConfig()
+        return Boolean(live.enabled) && !live.dryRun
+      },
+      log: (message) => logger.child('adapter').info(message),
+      speak: async (text) => String((await tts.speak(text))?.file ?? ''),
+    }),
+    speak: async (text) => String((await tts.speak(text))?.file ?? ''),
   })
   adapterRegistry.adopt(onebotBot)
   ctx.effect(() => () => { adapterRegistry.stopAll().catch(() => {}) }, 'aurabot: 适配器下线')
@@ -519,7 +541,14 @@ export function apply(ctx) {
     onError: ({ stage, error }) => log.warn(`管线「${stage}」出错：${String((error as Error)?.message ?? error)}`),
   })
   // 管线末段就是聊天中枢：非指令、非中间件消费的消息照旧进 AI。
-  pipeline.onLlm((session) => (session.__ev && hub ? hub.onMessage(session.__ev) : undefined))
+  // 适配器来的消息没有 OneBot 事件，交给模块总线（`ctx.on('llm', session => …)`），
+  // 谁能接谁接；QQ 这条链路行为完全不变。
+  pipeline.onLlm((session) => {
+    const fromOneBot = Boolean(session.__ev) && session.bot?.platform === 'qq'
+    if (fromOneBot && hub) return hub.onMessage(session.__ev)
+    mods?.emit('llm', session)
+    return undefined
+  })
 
   /** OneBot 事件 → Session。没有文本内容的事件（纯图片等）仍交给中枢，不走管线。 */
   function sessionOf(ev) {
@@ -543,6 +572,45 @@ export function apply(ctx) {
     session.__ev = ev
     return session
   }
+
+  /**
+   * 适配器投递的入站消息：和 OneBot 走同一条管线。
+   *
+   * 纯媒体消息（没文本）不进管线——那是适配器 / 业务插件自己的事，
+   * 核心不会拿空字符串去喂模型。
+   */
+  function dispatchInbound(bot: BotLike, message: InboundMessage) {
+    try {
+      mods?.emit('adapter/message', { platform: bot.platform, ...message })
+    } catch (error) {
+      log.warn('适配器消息广播出错：', String((error as Error)?.message ?? error))
+    }
+    const elements = message.elements?.length ? normalize(message.elements) : []
+    const content = String(message.content ?? (elements.length ? toText(elements) : ''))
+    if (!content.trim()) return
+    const session = new Session({
+      bot,
+      type: message.type,
+      channelId: String(message.channelId),
+      userId: String(message.userId),
+      userName: String(message.userName ?? message.userId),
+      content,
+      messageId: message.messageId != null ? String(message.messageId) : undefined,
+      guildId: message.guildId != null ? String(message.guildId) : undefined,
+      elements,
+      timestamp: Number(message.timestamp) || Date.now(),
+      pipeline,
+    })
+    session.__ev = message.raw
+    return pipeline.dispatch(session).then((result) => {
+      if (result.error) log.error(`处理消息出错（${result.by}）：`, result.error)
+      return result
+    }).catch((error) => {
+      log.error('处理消息出错：', error.message)
+      return { handled: false, by: null, error: String(error?.message ?? error) }
+    })
+  }
+
   async function flushOutbox () {
     if (flushingOutbox || onebotState !== 'connected' || !loginOk) return
     flushingOutbox = true
@@ -1726,6 +1794,51 @@ export function apply(ctx) {
       value = String(result.value)
     }
     return { ok: true, order: pipeline.order(), result: { handled: result.handled, by: result.by, error: result.error ?? null, value } }
+  })
+
+  // S7/S8 调试：把一条消息当作「某个适配器投进来的」跑一遍，验证非 QQ 平台的插件复用。
+  // 没指定已注册的 bot 时用一个只记发送的桩，回执里能看到插件到底发出去了什么。
+  route('/debug/adapter', async (req) => {
+    const body = await readBody(req)
+    const text = String(body.text || '')
+    if (!text.trim()) return { ok: false, message: 'text 不能为空' }
+    const platform = String(body.platform || 'satori')
+    const sent: Array<{ method: string; target: string; content: unknown }> = []
+    const stub: BotLike = {
+      id: `${platform}:debug`,
+      platform,
+      selfId: 'debug',
+      status: 'online',
+      supports: () => true,
+      async sendMessage(channelId: string, content: unknown) {
+        sent.push({ method: 'sendMessage', target: String(channelId), content })
+        return { ok: true, message_id: `debug-${sent.length}` }
+      },
+      async sendPrivateMessage(userId: string, content: unknown) {
+        sent.push({ method: 'sendPrivateMessage', target: String(userId), content })
+        return { ok: true, message_id: `debug-${sent.length}` }
+      },
+    }
+    const bot = adapterRegistry.get(String(body.botId || '')) ?? stub
+    const type = body.type === 'channel' ? 'channel' : body.type === 'private' ? 'private' : 'group'
+    const userId = String(body.userId || 'debug-user')
+    const result = await dispatchInbound(bot, {
+      type,
+      channelId: String(body.channelId || (type === 'private' ? `private:${userId}` : 'debug-channel')),
+      userId,
+      userName: String(body.userName || '调试用户'),
+      content: text,
+    })
+    return {
+      ok: true,
+      platform,
+      order: pipeline.order(),
+      bot: { id: bot.id, platform: bot.platform, registered: Boolean(adapterRegistry.get(bot.id)) },
+      sent,
+      result: result
+        ? { handled: result.handled, by: result.by, error: result.error ?? null }
+        : { handled: false, by: null, error: null },
+    }
   })
 
   // ---------- 面板代理：目的引擎 / 桌宠 ----------

@@ -48,10 +48,14 @@ function render(element: Element): string {
   return `<${type}${attrs}>${element.children.map(render).join('')}</${type}>`
 }
 
-/** 元素树 → Satori 片段（带 <message> 外壳，和协议一致）。 */
+/** 元素树 → Satori 消息正文（不带外壳）。发消息时 `content` 要的就是这一段。 */
+export function toSatoriBody(source: ElementSource): string {
+  return normalize(source).map(render).join('')
+}
+
+/** 元素树 → Satori 片段（带 <message> 外壳，事件里那种整段消息）。 */
 export function toSatori(source: ElementSource): string {
-  const body = normalize(source).map(render).join('')
-  return `<message>${body}</message>`
+  return `<message>${toSatoriBody(source)}</message>`
 }
 
 /** Satori 片段 → 元素树。坏标签按 h.parse 的容错规则处理（丢标签、留正文）。 */

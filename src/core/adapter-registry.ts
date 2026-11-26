@@ -6,7 +6,7 @@
 //
 // 内置 QQ 不是插件拉起来的，用 `adopt()` 挂进来；插件走 `start()`。
 
-import type { AdapterHandle, AdapterInfo, AdapterSpec } from '../types/adapter.ts'
+import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMessage } from '../types/adapter.ts'
 import type { BotLike } from '../types/bot.ts'
 import { startAdapter } from './adapter.ts'
 import type { BotRegistry } from './bot-registry.ts'
@@ -14,6 +14,14 @@ import type { BotRegistry } from './bot-registry.ts'
 export interface AdapterRegistryDeps {
   bots: BotRegistry
   log: (message: string) => void
+  /** 适配器投递入站消息：宿主建 Session 跑管线。 */
+  onMessage?: (bot: BotLike, message: InboundMessage) => void
+  /** 适配器的非消息事件（加群、撤回……）。 */
+  onEvent?: (platform: string, event: string, payload: unknown) => void
+  /** 宿主统一包装 bot 的发送方法。 */
+  wrapBot?: (bot: BotLike, spec: AdapterSpec) => BotLike
+  /** 文字转语音，给 `<voice>要念的话</voice>` 用。 */
+  speak?: (text: string) => Promise<string>
 }
 
 interface Entry {
@@ -42,12 +50,35 @@ export class AdapterRegistry {
 
   /** 插件入口：`ctx.adapter(spec, config)` 最终走这里。 */
   async start(spec: AdapterSpec, config?: unknown): Promise<AdapterHandle> {
-    const platform = String(spec?.platform || '').trim()
+    // 平台名可能是运行期才知道的（Satori 这种协议层适配器）
+    const resolved = spec?.resolvePlatform?.(config)
+    const platform = String(resolved || spec?.platform || '').trim()
     if (!platform) throw new Error('适配器要声明 platform')
-    const handle = await startAdapter(this.deps.bots, spec, config, {
+
+    // runtime 要在 connect() 之前交出去，但消息只能挂在 connect() 返回的 bot 上。
+    // 用一个可变槽位接住：连上之前投进来的消息直接丢（那时还没有实例可挂）。
+    let bound: BotLike | null = null
+    const runtime: AdapterRuntime = {
       platform,
       log: this.deps.log,
+      emitMessage: (message) => {
+        if (!bound) {
+          this.deps.log(`适配器 ${platform} 在 connect() 返回前投递了消息，已丢弃`)
+          return
+        }
+        this.deps.onMessage?.(bound, message)
+      },
+      emitEvent: (event, payload) => this.deps.onEvent?.(platform, event, payload),
+      speak: this.deps.speak,
+      supports: (capability) => {
+        if (!bound) return false
+        return bound.supports(capability)
+      },
+    }
+    const handle = await startAdapter(this.deps.bots, spec, config, runtime, {
+      wrapBot: this.deps.wrapBot,
     })
+    bound = handle.bot
     const key = handle.bot.id
     const existing = this.entries.get(key)
     if (existing?.handle) {

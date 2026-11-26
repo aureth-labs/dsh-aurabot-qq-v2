@@ -12,6 +12,7 @@
 
 import type {
   CommandHandler,
+  CommandOptions,
   LlmHandler,
   Middleware,
   MiddlewareOptions,
@@ -20,6 +21,7 @@ import type {
   PipelineErrorInfo,
   PipelineResult,
   PipelineSession,
+  SessionFilter,
 } from '../types/pipeline.ts'
 
 export type {
@@ -57,6 +59,7 @@ const NOT_CONSUMED: PipelineResult = { handled: false, by: null }
 export class Pipeline {
   private readonly entries: Entry[] = []
   private readonly commands = new Map<string, CommandHandler>()
+  private readonly filters = new Map<string, SessionFilter>()
   private llmHandler: LlmHandler | null = null
   private readonly onError?: (info: PipelineErrorInfo) => void
   private seq = 0
@@ -83,11 +86,20 @@ export class Pipeline {
     }
   }
 
-  /** 指令路由：name 就是去掉前缀后的第一个词。 */
-  command(name: string, handler: CommandHandler): () => void {
+  /**
+   * 指令路由：name 就是去掉前缀后的第一个词。
+   *
+   * `options.filter` 是作用域过滤器（`ctx.platform('qq')` 这类）：
+   * 不满足的会话直接当作「没有这条指令」，继续走中间件与模型，不会被指令吞掉。
+   */
+  command(name: string, handler: CommandHandler, options: CommandOptions = {}): () => void {
     this.commands.set(name, handler)
+    if (options.filter) this.filters.set(name, options.filter)
     return () => {
-      if (this.commands.get(name) === handler) this.commands.delete(name)
+      if (this.commands.get(name) === handler) {
+        this.commands.delete(name)
+        this.filters.delete(name)
+      }
     }
   }
 
@@ -123,7 +135,7 @@ export class Pipeline {
 
   async dispatch(session: PipelineSession): Promise<PipelineResult> {
     // ① 指令段
-    const parsed = this.findCommand(session.content)
+    const parsed = this.findCommand(session)
     if (parsed) {
       const handler = this.commands.get(parsed.command)!
       try {
@@ -163,22 +175,35 @@ export class Pipeline {
     }
   }
 
-  private findCommand(content: string): { command: string; args: string } | null {
-    const text = String(content ?? '')
+  private findCommand(session: PipelineSession): { command: string; args: string } | null {
+    const text = String(session.content ?? '')
     // 带前缀
     for (const prefix of this.config.commandPrefixes) {
       if (!prefix || !text.startsWith(prefix)) continue
       const rest = text.slice(prefix.length).trimStart()
       const { command, args } = splitWord(rest)
-      if (command && this.commands.has(command)) return { command, args }
+      if (this.matches(command, session)) return { command, args }
     }
     // 无前缀（含「命令消费后要不要继续」的默认口径：只有对得上指令才算）
     if (this.config.commandPrefixes.includes(null)) {
       const trimmed = text.trimStart()
       const { command, args } = splitWord(trimmed)
-      if (command && this.commands.has(command)) return { command, args }
+      if (this.matches(command, session)) return { command, args }
     }
     return null
+  }
+
+  /** 这条指令存在，且当前会话满足它的作用域过滤器。 */
+  private matches(command: string, session: PipelineSession): boolean {
+    if (!command || !this.commands.has(command)) return false
+    const filter = this.filters.get(command)
+    if (!filter) return true
+    try {
+      return Boolean(filter(session))
+    } catch {
+      // 过滤器自己炸了：按「不匹配」处理，别把消息吞掉
+      return false
+    }
   }
 
   private async run(index: number, session: PipelineSession): Promise<PipelineResult> {
