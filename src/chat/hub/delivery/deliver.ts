@@ -21,7 +21,7 @@ export function createDeliver(deps: DeliverDeps) {
     outputScope, outputSources, currentPromptSources, groupChatAllowed,
     cleaningFor, random, mood, silenceTurn, guardOutgoing, parseReply, hasSuspectTagShape, tidyPunctuation,
     cleanOutboundSegments, itemsToLine, bubbleDelay, pause, sendText, sendVoice, sendSticker, pokeBack,
-    localImageBlocked, sendImage, logChat, onActivity, noteTurnActivity, isDisposed,
+    localImageBlocked, sendImage, sendFile, logChat, onActivity, noteTurnActivity, isDisposed,
   } = deps
 
   // ---------- ACP 模型兜底（默认关，chat.acpSanitize.modelFallback 打开才用） ----------
@@ -239,7 +239,7 @@ export function createDeliver(deps: DeliverDeps) {
     // 模型明确选了引用编号时尊重它，不再自动引用另一条。
     const refs = inGroup ? groupRefs.get(chatId.slice(6)) || {} : {}
     const explicit = items.some((item) => item.replyTo)
-    const firstSendable = items.findIndex((item) => item.kind === 'text' || item.kind === 'voice' || item.kind === 'image' || (item.kind === 'sticker' && cfg.stickers.enabled && Boolean(item.value && typeof item.value === 'object' ? item.value : stickers.match(item.value))))
+    const firstSendable = items.findIndex((item) => item.kind === 'text' || item.kind === 'voice' || item.kind === 'image' || item.kind === 'file' || (item.kind === 'sticker' && cfg.stickers.enabled && Boolean(item.value && typeof item.value === 'object' ? item.value : stickers.match(item.value))))
     const missedAt = [] // 写了 @ 却没对上群里人的名字
     const failures = []
     const interacted = new Set()
@@ -269,6 +269,8 @@ export function createDeliver(deps: DeliverDeps) {
           const next = items[i + 1]
           if (asVoice && !opts.simulate && next && (next.kind === 'text' || next.kind === 'image' || next.kind === 'sticker')) await pause(1200)
         } else if (it.kind === 'sticker') await sendSticker(chatId, it.value, replyId, userId)
+        // `<file>路径</file>`：平台能发文件就发文件；发文件关着/目录不允许时由 sendFile 抛出原因，按发送失败记。
+        else if (it.kind === 'file') await sendFile(chatId, it.value, it.name)
         else if (it.kind === 'poke') { if (!opts.simulate) await pokeBack(chatId) }
         else if (it.kind === 'image') {
           if (localImageBlocked(chatId, it.value)) log.warn(`${chatId}：回复里的本机图片不在允许的目录里，没发`)

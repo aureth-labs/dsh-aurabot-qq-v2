@@ -1176,7 +1176,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     outputScope, outputSources, currentPromptSources, groupChatAllowed,
     cleaningFor, random, mood, silenceTurn, guardOutgoing, parseReply, hasSuspectTagShape, tidyPunctuation,
     cleanOutboundSegments, itemsToLine, bubbleDelay, pause, sendText, sendVoice, sendSticker, pokeBack,
-    localImageBlocked, sendImage, logChat, onActivity, noteTurnActivity, isDisposed: () => disposed,
+    localImageBlocked, sendImage, sendFile, logChat, onActivity, noteTurnActivity, isDisposed: () => disposed,
   })
   const { deliver, deliverTurn, setOutboundEngineResolver } = deliverMod
 

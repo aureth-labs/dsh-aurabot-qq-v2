@@ -40,7 +40,7 @@ export function parseReply(text, options) {
     const part = bubble.trim()
     if (!part) continue
     // 依次切出 poke / reply / voice / sticker / markdown 图片，其余是文字
-    const re = /<poke\s*\/?>|<\/poke\s*>|<reply:\s*(\d+)\s*>|<voice>([\s\S]*?)<\/voice>|<sticker:([^>]+?)>(?:\s*<\/sticker>)?|!\[[^\]]*\]\(\s*([^)\s]+)\s*\)|\[表情[:：]\s*([^\]\n]+?)\s*\]/g
+    const re = /<poke\s*\/?>|<\/poke\s*>|<reply:\s*(\d+)\s*>|<voice>([\s\S]*?)<\/voice>|<sticker:([^>]+?)>(?:\s*<\/sticker>)?|!\[[^\]]*\]\(\s*([^)\s]+)\s*\)|\[表情[:：]\s*([^\]\n]+?)\s*\]|<text>([\s\S]*?)<\/text>|<file(?:\s+name\s*=\s*["']([^"']*)["'])?>([\s\S]*?)<\/file>/g
     let last = 0
     let m
     while ((m = re.exec(part)) !== null) {
@@ -64,6 +64,12 @@ export function parseReply(text, options) {
         // 模型常写成「[表情: 无语死鱼脸]」而不是 <sticker:…>：按表情名尝试匹配，匹配不到宁可不发，也不能把描述当文字发出去。
         const v = m[5].trim()
         if (v) items.push({ kind: 'sticker', value: v })
+      } else if (m[6] !== undefined) {
+        // <text> 只是「这段是文字」的显式写法，里面照常拆行。
+        pushText(items, m[6])
+      } else if (m[8] !== undefined) {
+        const file = m[8].trim()
+        if (file) items.push({ kind: 'file', value: file, name: (m[7] || '').trim() })
       }
       attach(from)
       last = re.lastIndex
@@ -135,6 +141,7 @@ export function itemsToLine(items, resolveSticker: (value?: unknown) => any = ()
     .map((i) => {
       if (!i) return ''
       if (i.kind === 'text' || i.kind === 'voice') return String(i.value ?? '')
+    if (i.kind === 'file') return '[文件] ' + (i.name || i.value)
       if (i.kind === 'sticker') {
         const item = i.value && typeof i.value === 'object' ? i.value : resolveSticker(i.value)
         const name = item?.name || (item?.md5 ? String(item.md5).slice(0, 8) : '')
@@ -147,8 +154,8 @@ export function itemsToLine(items, resolveSticker: (value?: unknown) => any = ()
 }
 
 function pushText(items, s) {
-  // 写坏的引用标签直接去掉；混在正文里的沉默标记也全部剥掉，整行只剩标记时按沉默跳过。
-  const raw = String(s || '').replace(/<\/?reply[^>]*>/g, '')
+  // 写坏的引用标签、落单的 <text> 直接去掉；混在正文里的沉默标记也全部剥掉，整行只剩标记时按沉默跳过。
+  const raw = String(s || '').replace(/<\/?reply[^>]*>/g, '').replace(/<\/?text\s*>/gi, '')
   const t = stripSilenceMarks(stripMarkdown(tidyPunctuation(raw)))
   if (!t || isSilence(t)) return
   // 代码块在 stripMarkdown 之后围栏就没了，必须在原文里先判断，整段保留不拆行。
