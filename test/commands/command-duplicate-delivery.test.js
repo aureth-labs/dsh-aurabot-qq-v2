@@ -39,6 +39,8 @@ before(async () => {
     voice: { enabled: false },
     stickers: { autoChance: 0, collect: false },
     merge: { enabled: false },
+    // 内置命令表默认关；这里要测「同一条 /help 只执行一次」，显式打开
+    modules: { commands: { enabled: true } },
   }))
   fake = createFakeDsh({ brain: async () => '收到啦' })
   const host = await import('../../src/plugin/index.ts')

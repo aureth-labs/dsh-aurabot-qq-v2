@@ -125,7 +125,8 @@ before(async () => {
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0 }, stickers: { autoChance: 0 },
     merge: { waitSec: 0.2, maxSec: 2 },
-    modules: { bili: { enabled: false } },
+    // 内置命令表默认关；这组用例要测 /effort，显式打开
+    modules: { bili: { enabled: false }, commands: { enabled: true } },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
   const host = await import('../../src/plugin/index.ts')
