@@ -173,6 +173,7 @@ import { createSubagent } from './subagent/index.ts'
 import { createOutboundGuard } from './delivery/guard.ts'
 import { createFriends } from './events/friends.ts'
 import { createReact } from './media/react.ts'
+import { createSessionQuery } from './session/query.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -2337,83 +2338,9 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return result
   }
 
-  /** 这一轮里说话的人是不是全是主人（群管等敏感工具用）。 */
-  /** 这一轮里主人说过话（群里常有别人插话，不要求每条都是主人）。 */
-  // 主人私聊里只可能是主人说话：就算这一轮的记录丢了（工具是旧闭包、排队轮次被上一轮 turn/end 清掉等，见 #90），
-  // 「仅主人」也应当放行；群聊 / 别人私聊不放宽。
-  function ownerPrivateChat(sessionId) {
-    try { return chatOfSession(sessionId) === `private:${getConfig().ownerQQ}` } catch (error) { return false }
-  }
-
-  function turnHasOwner(sessionId) {
-    const st = turnState.get(sessionKey(sessionId))
-    if (st && st.directOwner) return true // 主人在 DSH 面板里直接打字
-    if (st && [...st.senders].some((u) => isOwner(getConfig(), u))) return true
-    return ownerPrivateChat(sessionId)
-  }
-
-  /** 这一轮说话的人（QQ 号）。 */
-  function turnSenders(sessionId) {
-    return [...(turnState.get(sessionKey(sessionId))?.senders || [])]
-  }
-
-  function turnSendersAllOwner(sessionId, state) {
-    const st = state || turnState.get(sessionKey(sessionId))
-    if (st && st.directOwner) return true // 主人在 DSH 面板里直接打字
-    if (!st || !st.senders.size) return ownerPrivateChat(sessionId)
-    return [...st.senders].every((u) => isOwner(getConfig(), u))
-  }
-
-  /** 生图的群聊例外：主人是本轮唯一明确 @ / 引用回复的请求者。 */
-  function turnDirectFromOwner(sessionId) {
-    const st = turnState.get(sessionKey(sessionId))
-    const uid = String(st?.directRequester?.uid || '')
-    return Boolean(uid && st?.senders.has(uid) && isOwner(getConfig(), uid))
-  }
-
-  function chatOfSession(sessionId) {
-    const key = sessionKey(sessionId)
-    const live = sessionToChat.get(key)
-    if (live) return live
-    return findSession(key)?.chatId || ''
-  }
-
-  // 重启后会话还没被第一条消息唤醒时，内存映射是空的：退回持久化的 聊天→会话 映射（#90 兜底要用）。
-  // 各人格的会话表都要找：主人可能直接在 DSH 窗口里给不是当前人格的会话打字。
-  function findSession(key) {
-    for (const { id } of personaDataRoots(getConfig())) {
-      try {
-        for (const [chatId, entry] of Object.entries(map(id).chats || {})) {
-          if (!entry?.sessionId || sessionKey(entry.sessionId) !== key) continue
-          sessionPersona.set(key, id)
-          return { chatId, persona: id }
-        }
-      } catch (error) {}
-    }
-    return null
-  }
-
-  /** 这个 DSH 会话属于哪个人格（不是 aurabot 的会话时为空）。 */
-  function personaOf(sessionId) {
-    const key = sessionKey(sessionId)
-    return sessionPersona.get(key) || findSession(key)?.persona || ''
-  }
-
-  /** 有聊天或后台轮次在进行：这时切人格，旧人格的回复会被当成新人格的发出去。 */
-  function hubBusy() {
-    return [...busy.keys()].some(isBusy) || running.size > 0 || systemStarting.size > 0 || [...turnState.values()].some((st) => st.system && st.system.timedOutAt == null)
-  }
-
-  /**
-   * 这个 DSH 会话是不是 aurabot 自己开出来的（由 QQ 聊天映射过来）。
-   * 主人自己在 DSH 面板 / CLI 里开的会话不算——危险命令守卫是进程级钩子，
-   * 会收到同一个 DSH 进程里所有会话的工具调用，得能把它们区分开。
-   */
-  function isOwnedSession(sessionId) {
-    if (chatOfSession(sessionId)) return true
-    // 刚挂上还没落盘时 chatOfSession 查不到，再看一眼 mounted
-    return mounted.has(sessionKey(sessionId))
-  }
+  // 会话归属 / 这一轮谁在说话：群管、生图、危险命令守卫靠它判放行。
+  const { chatOfSession, findSession, ownerPrivateChat, turnHasOwner, turnSenders, turnSendersAllOwner, turnDirectFromOwner, personaOf, hubBusy, isOwnedSession } =
+    createSessionQuery({ getConfig, isOwner, sessionKey, turnState, sessionToChat, sessionPersona, mounted, busy, isBusy, running, systemStarting, map, personaDataRoots })
 
   /** 只让一个聊天重新开始：归档它的会话，下一条消息开新会话。 */
   function resetChat(chatId, { memoryResetAt: cutoff = 0 } : ResetChatOptions = {}) {
