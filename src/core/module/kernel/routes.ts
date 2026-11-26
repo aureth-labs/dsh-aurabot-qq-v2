@@ -25,6 +25,10 @@ export class ModuleRoutes extends Map<string, OwnedPath> {
     }
   }
 
+  removeOwner(id: string) {
+    for (const [path, row] of this) if (row.id === id) this.delete(path)
+  }
+
   access(path: string, method = 'GET') {
     return this.get(path)?.methods.get(method.toUpperCase())?.access ?? null
   }

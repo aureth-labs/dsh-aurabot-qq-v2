@@ -1,3 +1,5 @@
+import { acknowledged } from '../../../src/core/bot/send-events.ts'
+import { targetKey } from '../../../src/core/pipeline/target.ts'
 import { identityNote } from './history.ts'
 import { personaScope } from '../../../src/persona/personas.ts'
 import { modelImages } from './images.ts'
@@ -112,7 +114,7 @@ export function apply(ctx: PluginContext) {
     if (reply.length && !ctx.text.isSilence(h.stringify(reply))) {
       const receipt = await session.send(reply)
       if (!active) return
-      if (!receipt || (typeof receipt !== 'object' || !('ok' in receipt) || receipt.ok !== false)) {
+      if (acknowledged(receipt)) {
         const text = toText(reply) || h.stringify(reply)
         lines.push({ role: 'assistant', speaker: persona.name, text })
         void mood?.judge?.({ userText: input, reply: text, who: speaker, chatId: room })
@@ -129,7 +131,7 @@ export function apply(ctx: PluginContext) {
     if (ctx.config.mentionOnly !== false && session.platform !== 'sandbox' && !addressed) return
     const input = incomingText(session)
     if (!input) return
-    const room = JSON.stringify([session.platform, session.bot.id, session.type, session.isPrivate ? session.userId : session.channelId])
+    const room = targetKey(session.target)
     const persona = ctx.get<PersonaService>('persona')?.current() ?? { id: '', name: 'AuraBot', body: '' }
     const turn = (queued.get(room) ?? Promise.resolve()).then(() => personaScope.run(persona.id, () => respond(session, room, persona, input, addressed)))
       .catch(error => ctx.logger.warn('跨平台对话失败', String(error?.message ?? error)))

@@ -1,3 +1,6 @@
+import type { ElementSource } from '../../../types/core/element.ts'
+import { acknowledged, withSendTarget } from '../../bot/send-events.ts'
+import { assertTarget } from '../../pipeline/target.ts'
 import type { HttpMethod, RouteOptions } from '../kernel/routes.ts'
 // 模块拿到的 ctx：只有 v2 能力，没有 v1 的 setup(api) 字段。
 
@@ -16,6 +19,7 @@ import type {
   ThinkOptions,
   ChatLogFacade,
   HttpHelpers,
+  ModuleSendOptions,
   TextHelpers,
 } from '../../../types/plugin/ctx.ts'
 import type { Middleware, MiddlewareOptions, SessionFilter } from '../../../types/plugin/pipeline.ts'
@@ -61,11 +65,7 @@ interface KernelApi {
   context: (fn: (args: any) => unknown) => () => void
   rule: (fn: any) => () => void
   dataDir: (...parts: string[]) => string
-  sendText: (chatId: string, text: string, opts?: any) => Promise<any>
-  sendImage: (chatId: string, src: unknown) => Promise<any>
-  sendFile: (chatId: string, file: unknown, name?: string) => Promise<any>
-  sendVoiceFile: (chatId: string, file: unknown, note?: string) => Promise<any>
-  reply: (msg: any, text: string) => Promise<any>
+  deliver?: (target: Target, content: ElementSource, transmit: () => Promise<unknown>, options?: ModuleSendOptions) => Promise<unknown>
   proactive: PluginContext['proactive']
   ask: (options: any) => Promise<any>
   think: (prompt: string, options?: ThinkOptions) => Promise<string>
@@ -144,16 +144,10 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('prompt', (fn: any) => api.context(fn))
   value('rule', (fn: any) => api.rule(fn))
 
-  value('sendTo', (chatId: string, content: any, options?: any) => api.sendText(chatId, String(content ?? ''), options))
-  value('sendImage', (chatId: string, src: any) => api.sendImage(chatId, src))
-  value('sendFile', (chatId: string, file: any, name?: string) => api.sendFile(chatId, file, name))
-  value('sendVoiceFile', (chatId: string, file: any, note?: string) => api.sendVoiceFile(chatId, file, note))
-  value('reply', (msg: any, content: any) => api.reply(msg, String(content ?? '')))
   value('proactive', api.proactive)
   value('ask', (options: any) => api.ask(options))
   value('think', (prompt: string, options?: ThinkOptions) => api.think(prompt, options).then((out: unknown) => String(out ?? '')))
   value('thinkCooldown', (key?: string) => api.thinkCooldown(key))
-  value('chatLog', api.chatLog)
   value('http', api.http)
   value('media', api.media)
   value('turnFromOwner', (sessionId: string) => api.turnFromOwner(sessionId))
@@ -278,7 +272,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
     return extras.registerPage(page)
   })
 
-  return installScopes(ctx, api.assertActive)
+  return installScopes(ctx, api)
 }
 
 /** 会话形状的判断只认这几个字段：平台、类型、群/频道号。 */
@@ -349,22 +343,16 @@ function filterBots(source: BotsAccessor, keep: (bot: BotLike) => boolean): Bots
 async function broadcast(
   ctx: PluginContext,
   targets: Target[],
-  content: unknown,
+  content: ElementSource,
   options: { timeoutMs?: number } = {},
   assertActive?: () => void,
 ): Promise<BroadcastResult[]> {
   const results: BroadcastResult[] = []
   for (const target of Array.isArray(targets) ? targets : []) {
     assertActive?.()
-    const bot = ctx.bots?.get(target.botId, target.platform)
-    if (!bot) {
-      results.push({ target, ok: false, error: `没有可用的「${target.platform}」机器人` })
-      continue
-    }
     try {
-      const sendOptions = options.timeoutMs ? { timeoutMs: options.timeoutMs } : undefined
-      if (target.type === 'private') await bot.sendPrivateMessage(target.id, content, sendOptions)
-      else await bot.sendMessage(target.id, content, sendOptions)
+      const receipt = await ctx.sendTo(target, content, options)
+      if (!acknowledged(receipt)) throw Error('消息未投递')
       results.push({ target, ok: true })
     } catch (error) {
       results.push({ target, ok: false, error: messageOf(error) })
@@ -385,7 +373,7 @@ interface ScopeRules {
 const ROOT_RULES: ScopeRules = { session: () => true, platform: () => true }
 
 /** 给 ctx 装上 `platform() / guild() / private()`：每次调用返回一层更窄的视图。 */
-function installScopes(ctx: PluginContext, assertActive?: () => void): PluginContext {
+function installScopes(ctx: PluginContext, api: KernelApi): PluginContext {
   const scoped = (rules: ScopeRules): PluginContext => {
     // 用属性描述符复制，不走 spread：`root` 是取值器，spread 会把它固化成快照
     const view = Object.create(
@@ -417,7 +405,27 @@ function installScopes(ctx: PluginContext, assertActive?: () => void): PluginCon
     if (ctx.bots) view.bots = filterBots(ctx.bots, (bot) => rules.platform(bot.platform))
     const fallback = view.bots ? undefined : ctx.bot?.()
     view.bot = makeBotAccessor(view.bots, fallback && rules.platform(fallback.platform) ? fallback : undefined)
-    view.broadcast = (targets, content, options) => broadcast(view, targets, content, options, assertActive)
+    const checkTarget = (target: Target) => {
+      api.assertActive?.()
+      assertTarget(target)
+      if (!rules.session({ platform: target.platform, type: target.type, channelId: target.id })) throw Error('目标不在当前插件作用域内')
+    }
+    view.sendTo = async (destination, content, options) => {
+      checkTarget(destination)
+      const target = { ...destination }
+      const bot = view.bots?.get(target.botId, target.platform)
+      if (bot?.status !== 'online') throw Error(`没有可用的「${target.platform}」机器人 ${target.botId}`)
+      const sendOptions = options && { replyTo: options.replyTo, timeoutMs: options.timeoutMs }
+      const transmit = () => withSendTarget(bot, target, () => target.type === 'private'
+        ? bot.sendPrivateMessage(target.id, content, sendOptions)
+        : bot.sendMessage(target.id, content, sendOptions))
+      return api.deliver ? api.deliver(target, content, transmit, options) : transmit()
+    }
+    view.broadcast = (targets, content, options) => broadcast(view, targets, content, options, api.assertActive)
+    view.chatLog = {
+      read(target, day) { checkTarget(target); return api.chatLog.read(target, day) },
+      append(target, who, text, userId) { checkTarget(target); return api.chatLog.append(target, who, text, userId) },
+    }
 
     view.platform = (name: string) => scoped({
       session: (session) => rules.session(session) && session.platform === String(name),

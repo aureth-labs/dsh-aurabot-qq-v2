@@ -5,9 +5,9 @@
  * 能力从 ctx 上取，注册的东西随模块卸载自动回收。
  */
 
-import type { BotsAccessor, BotLike } from '../adapter/bot.ts'
+import type { BotsAccessor, BotLike, SendOptions } from '../adapter/bot.ts'
 import type { AdapterHandle, AdapterSpec } from '../adapter/adapter.ts'
-import type { ElementFactory } from '../core/element.ts'
+import type { ElementFactory, ElementSource } from '../core/element.ts'
 import type { CommandOptions, Middleware, MiddlewareOptions, SessionFilter } from './pipeline.ts'
 import type { SessionLike } from '../core/session.ts'
 import type { Target } from '../core/target.ts'
@@ -27,6 +27,11 @@ export interface BotAccessor {
 }
 
 /** 一条广播的结果：谁发成了、谁没发成、为什么。 */
+export interface ModuleSendOptions extends SendOptions {
+  proactive?: boolean
+  proactiveCause?: string
+}
+
 export interface BroadcastResult {
   target: Target
   ok: boolean
@@ -133,17 +138,17 @@ export interface ThinkOptions {
 
 export interface ChatLogRow {
   t: number
-  chatId: string
+  target: Target
   who: string
   text: string
-  uid?: string
+  userId?: string
   forgottenAt?: number
 }
 
 /** `ctx.chatLog`：她的聊天流水（只读当天 + 追加一条旁白）。 */
 export interface ChatLogFacade {
-  read(day: string): ChatLogRow[]
-  append(chatId: string, who: string, text: string, uid?: string): unknown
+  read(target: Target, day: string): ChatLogRow[]
+  append(target: Target, who: string, text: string, userId?: string): boolean
 }
 
 /** `ctx.http`：面板路由里读请求、回响应的小工具。 */
@@ -159,7 +164,7 @@ export interface TextHelpers {
   clean(value: unknown, label?: string): string
   /** 模型选择了沉默（[沉默] 或只有标点）。 */
   isSilence(value: unknown): boolean
-  /** 平台回执里真的有 message_id（不是模拟发送 / 补发队列）。 */
+  /** 平台已确认本次投递。 */
   sent(receipt: unknown): boolean
 }
 
@@ -279,16 +284,7 @@ export interface PluginContext extends ScopeFactory {
   prompt: (fn: (args: any) => unknown) => () => void
   /** 追加到系统提示的规则行。 */
   rule: (fn: any) => () => void
-  /** 主动发一条消息：chatId 形如 private:<id> / group:<id>；按当前可用机器人发。 */
-  sendTo: (chatId: string, content: unknown, options?: any) => Promise<any>
-  /** 按 chatId 的前缀发图。 */
-  sendImage: (chatId: string, src: unknown) => Promise<any>
-  /** 按 chatId 的前缀发文件。 */
-  sendFile: (chatId: string, file: unknown, name?: string) => Promise<any>
-  /** 按 chatId 的前缀发语音文件。 */
-  sendVoiceFile: (chatId: string, file: unknown, note?: string) => Promise<any>
-  /** 回复某条消息。 */
-  reply: (msg: any, content: unknown) => Promise<any>
+  sendTo: (target: Target, content: ElementSource, options?: ModuleSendOptions) => Promise<unknown>
   /** 出站治理面。 */
   proactive: { available: boolean; submit(input?: any): any; statusOf(id: any): any }
   /** 直接问一次模型（不进会话）。 */
@@ -309,7 +305,7 @@ export interface PluginContext extends ScopeFactory {
   bots?: BotsAccessor
   /** 按 id 取机器人：`ctx.bot()` 默认、`ctx.bot('号')` 指定。 */
   bot?: BotAccessor
-  broadcast: (targets: Target[], content: unknown, options?: { timeoutMs?: number }) => Promise<BroadcastResult[]>
+  broadcast: (targets: Target[], content: ElementSource, options?: { timeoutMs?: number }) => Promise<BroadcastResult[]>
   /** 往模块总线发一个自定义事件（别的模块 `ctx.on(名字)` 能收到）。 */
   emit: (event: string, ...args: any[]) => void
   /** 事件：`dispose` 走卸载队列，其它自定义事件照常。 */

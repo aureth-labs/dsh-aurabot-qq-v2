@@ -68,6 +68,11 @@ export const description = '处理好友申请、加群申请和邀请，改私�
 
 export function apply(ctx, config) {
   const { hub, onebot } = ctx.host
+  function notifyOwner(userId: string, content: string) {
+    const bot = onebot.bot
+    if (bot) void ctx.sendTo({ platform: bot.platform, botId: bot.id, type: 'private', id: userId }, content)
+      .catch(error => ctx.logger.warn('发送申请通知失败', error.message))
+  }
   const pendingFile = () => ctx.dataDir('friend-requests.json')
   const groupPendingFile = () => ctx.dataDir('group-requests.json')
 
@@ -116,7 +121,7 @@ export function apply(ctx, config) {
     const cfg = ctx.root.config
     if (cfg.ownerQQ && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
       const note = req.comment ? `，验证消息：「${req.comment}」` : ''
-      ctx.sendTo(`private:${cfg.ownerQQ}`, `${groupRequestText(req, cfg.botQQ)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`).catch(() => {})
+      notifyOwner(cfg.ownerQQ, `${groupRequestText(req, cfg.botQQ)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`)
     }
   }
 
@@ -140,7 +145,7 @@ export function apply(ctx, config) {
       const how = isUnknownUser(userId)
         ? `现在它是第 ${list.length} 个待处理申请，跟我说「通过第 ${list.length} 个」或「拒绝第 ${list.length} 个」就行。`
         : `要通过就跟我说「通过 ${userId}」，不想加说「拒绝 ${userId}」。`
-      ctx.sendTo(`private:${cfg.ownerQQ}`, `有人想加我好友：${requestLabel(userId)}${note}。${how}`).catch(() => {})
+      notifyOwner(cfg.ownerQQ, `有人想加我好友：${requestLabel(userId)}${note}。${how}`)
     }
   })
 

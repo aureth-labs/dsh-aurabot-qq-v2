@@ -1,5 +1,6 @@
 // 模块调用的出站治理：谁在替哪个模块说话、能不能发、发出去算不算数。
 
+import { acknowledged } from '../bot/send-events.ts'
 import { PERSONA_MEMORY_MODULE } from './privileged.ts'
 
 // 日志兜底：出站治理的日志是「锦上添花」，绝不能因为它把发送链路炸了。
@@ -69,44 +70,6 @@ export function settleModuleCall(core, verdict, outcome, log) {
   }
 }
 
-/**
- * 带治理地执行一次模块发送：
- *   放行 → 调 run(opts)；按结果结算（真值 → sent，假值 → failed）；
- *   拦下 → 直接返回 null（铁律：旧调用口的真值语义不变，CONTRACT §4）。
- * opts 里的 outboundDone 告诉 hub「这条已经判过了，别再判一次」，避免同一条消息扣两份额度。
- *
- * 未注入服务（旧环境 / 纯测试）时**不设** outboundDone：让 hub 的第二道保险（若宿主挂了）
- * 仍然生效；两道都没有时就是原样直发，与改造前逐字节等价。
- */
- /**
- * 带治理地执行一次模块发送：
- *   放行 → 调 run(opts)；按结果结算（真值 → sent，假值 → failed）；
- *   拦下 → 直接返回 null（铁律：旧调用口的真值语义不变，CONTRACT §4）。
- * opts 里的 outboundDone 告诉 hub「这条已经判过了，别再判一次」，避免同一条消息扣两份额度。
- *
- * broker 档 + 发往主人私聊的纯文本 → **改走宿主代发**（api.proactive.submit 的
- * hostDelegate 路径）：内容先进「目的引擎（代发决断）」会话过目，再由宿主统一投递。
- * 这样普通模块（douyin / tophub / bili……）不改一行代码，也会被引擎审查并留下会话记录；
- * 只有 broker 档这样走，gate 档与 pass 档行为不变。
- *
- * broker 档 + 发往主人私聊的**非文本**（图片 / 文件 / 语音 / 纯消息段，无可审文本）→
- * 「识别不了就直发」口径（2026-11-05 少爷定）：策略源看不了这类内容，再让它们过
- * 安静时段 / 额度 / 在途串行，只会出现「文字发得出、图片老被拦」的失衡——
- * 所以与代发同口径：不占额度、不经决断，直接发（outboundDone 防 hub 二次判定）。
- *
- * 未注入服务（旧环境 / 纯测试）时**不设** outboundDone：让 hub 的第二道保险（若宿主挂了）
- * 仍然生效；两道都没有时就是原样直发，与改造前逐字节等价。
- */
-// 模块显式声明「这条是我说的话」（调用时带 `{ proactive: true }`）时，把留痕标记透给 hub：
-// hub.sendText / hub.sendSegments 只有看到 opts.proactive 才走 noteProactive() → chatlog 记一条 bot 发言，
-// 而模块捷径以前只转 (chatId, text)，标记根本传不进去 —— 于是模块发的消息在 chatlog 里零命中
-// （qq-peek 的 qq_say_in_group 就这么丢档，2026-11-22 修）。不声明就不加键：
-// 日报、画前提示这类本来不该进记忆的发送保持改造前的行为。
-export function logAsModuleSpeech(extra, opts, id) {
-  if (!opts || opts.proactive !== true) return extra
-  return { ...extra, proactive: true, proactiveCause: String(opts.proactiveCause || `module:${id}`) }
-}
-
 export function governedSend(core, id, ask, run, log) {
   const svc = outboundOf(core)
   if (!svc) return run({ sourceModule: id })
@@ -146,7 +109,7 @@ export function governedSend(core, id, ask, run, log) {
     return delegateToHost(core, id, ask, verdict, delegate, log)
   }
   const done = (value) => {
-    settleModuleCall(core, gate.verdict, value ? 'sent' : 'failed', log)
+    settleModuleCall(core, gate.verdict, acknowledged(value) ? 'sent' : 'failed', log)
     return value
   }
   let r
@@ -232,9 +195,8 @@ async function delegateToHost(core, id, ask, verdict, svc, log) {
       { hostDelegate: true },
     )
     const state = r && typeof r === 'object' ? String(r.state || '') : ''
-    if (state === 'sent' || state === 'pending' || state === 'queued') {
-      return { message_id: 'delegated-' + r.deliveryId }
-    }
+    if (state === 'sent') return { message_id: 'delegated-' + r.deliveryId }
+    if (state === 'pending' || state === 'queued') return { queued: true, deliveryId: r.deliveryId }
     safeLog('warn', log, `模块「${id}」这条代发没发出去（${state || 'unknown'}）`)
     return null
   } catch (error) {

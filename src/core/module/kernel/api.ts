@@ -1,3 +1,6 @@
+import type { ChatLogFacade, ModuleSendOptions } from '../../../types/plugin/ctx.ts'
+import type { ElementSource } from '../../../types/core/element.ts'
+import type { Target } from '../../../types/core/target.ts'
 import { pluginSettings } from './settings.ts'
 import type { ModuleRoutes, RouteOptions } from './routes.ts'
 // 内核给插件包的内部句柄：归属、停止、权限都在这里收口；插件看到的是 v2 的 ctx 视图。
@@ -7,7 +10,7 @@ import { join } from 'node:path'
 import { API_VERSION, BUILTIN_DIR, INSTANCE_RE } from '../loader.ts'
 import type { ModuleDef, ModuleRecord } from '../loader.ts'
 import { deepMerge, isObj, lazyProxy } from './util.ts'
-import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from '../governance.ts'
+import { scopeCoreForModule } from '../governance.ts'
 import { dataDir } from '../../store/index.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { personaScope, personaNow } from '../../../persona/personas.ts'
@@ -29,6 +32,8 @@ export interface ThinkOptions {
 }
 
 export interface ApiDeps {
+  chatLog?: ChatLogFacade
+  deliverModule?: (id: string, target: Target, content: ElementSource, send: () => Promise<unknown>, options?: ModuleSendOptions) => Promise<unknown>
   logger: { child(name: string): any }
   core: Record<string, any>
   getConfig: () => Record<string, any>
@@ -110,10 +115,8 @@ export function createApi(deps: ApiDeps) {
         return bridgeActive() ? personaMemoryBridge : undefined
       },
     })
-    // 出站治理的日志口（模块快捷发送层的判定/结算都往这里记；未注入服务时不会用到）
-    const obLog = outboundLogOf(core)
     const api = {
-      assertActive: writable('broadcast', () => {}),
+      assertActive: writable('插件接口', () => {}),
       id,
       instanceId: rec.key,
       source,
@@ -186,34 +189,14 @@ export function createApi(deps: ApiDeps) {
         }))
       },
       onDispose: (fn) => track(fn),
-      // ---- 常用操作的捷径（都是 core 里的东西包了一层）----
-      // 发送类捷径先过一层出站治理（CONTRACT §5）：moduleId 由宿主绑定，模块伪造不了；
-      // 拦下返回 null（旧真值语义不变），放行才真的调 hub 并由这里结算预占。
-      // 未注入 core.outbound（旧环境 / 纯测试）时 admitModuleCall 直接放行，行为与改造前一致。
-      // 注意 reply 不参与：那是「回某一条消息」的回合内响应，由 hub 自己的回复链路负责，
-      // 不是模块自发的主对话（治理对象只有主动私聊主人）。
-      send: writable('send', (chatId, text) => governedSend(core, id, { chatId: String(chatId), text: String(text ?? '') }, (extra) => core.hub.deliver(String(chatId), String(text ?? ''), extra), obLog)),
-      // 第三个参数可选：`{ proactive: true, proactiveCause: 'qq_say_in_group' }` —— 声明「这条是我说的话」，
-      // hub 会在目标聊天 chatlog 里补一条 bot 记录（否则模块发的消息不落档）。
-      sendText: writable('sendText', (chatId, text, opts) => governedSend(core, id, { chatId: String(chatId), text: String(text ?? '') }, (extra) => core.hub.sendText(String(chatId), String(text ?? ''), undefined, undefined, undefined, logAsModuleSpeech(extra, opts, id)), obLog)),
-      // 回某一条消息：群里以「引用回复」发出，私聊直接发
-      reply: writable('reply', (msg, text) => core.hub.sendText(String(msg.chatId), String(text ?? ''), msg.kind === 'group' ? msg.messageId : undefined)),
+      deliver: writable('sendTo', (target, content, transmit, options) => deps.deliverModule
+        ? deps.deliverModule(id, target, content, transmit, options) : transmit()),
       isOwner: (source, platform?, botId?) => isOwnerOf(getConfig(), source, platform, botId),
-      sendImage: writable('sendImage', (chatId, src) => governedSend(core, id, { chatId: String(chatId) }, (extra) => core.hub.sendImage(String(chatId), src, undefined, undefined, extra), obLog)),
-      // sendSegments(chatId, segs, note, opts)：opts 同上，供带 @ / 引用 / 图片段的发送声明留痕。
-      sendSegments: writable('sendSegments', (chatId, segs, note, opts) => governedSend(core, id, { chatId: String(chatId) }, (extra) => core.hub.sendSegments(String(chatId), segs, note || `[${id}]`, logAsModuleSpeech(extra, opts, id)), obLog)),
-      // 发任意文件（文档 / 压缩包 / 音频 / 视频……）：本机绝对路径，或网关能取到的网址 / base64://
-      sendFile: writable('sendFile', (chatId, file, name) => governedSend(core, id, { chatId: String(chatId) }, () => core.hub.sendFile(String(chatId), file, name), obLog)),
-      // 把一个音频文件当语音条发出去（不走念文字）
-      sendVoiceFile: writable('sendVoiceFile', (chatId, file, note) => governedSend(core, id, { chatId: String(chatId) }, () => core.hub.sendVoiceFile(String(chatId), file, note || `[${id}] 语音`), obLog)),
       // module: id —— 这次模型调用的用量记到哪个模块名下（面板「概览」的 token 明细）
       ask: writable('ask', (opts) => core.ask(typeof opts === 'string' ? { text: opts, module: id } : { ...opts, module: id })),
       think: writable('think', (prompt, opts : ThinkOptions = {}) => core.hub.runSystemTurn(`ext-${id}`, opts.title || def.name || id, String(prompt), opts)),
       thinkCooldown: (key = '') => core.hub.systemSessionCooldown?.(`ext-${id}`, { key }) ?? null,
-      chatLog: {
-        read: (day) => core.hub.chatLogOf(day),
-        append: (chatId, who, text, uid = '') => core.hub.logChat?.(chatId, who, text, uid),
-      },
+      chatLog: deps.chatLog,
       http: core.http,
       media: {
         download: (url: string, maxBytes: number) => {
@@ -228,7 +211,6 @@ export function createApi(deps: ApiDeps) {
         isSilence,
         sent: reallySent,
       },
-      onebot: writable('onebot', (action, params, opts) => core.onebot.call(action, params, opts)),
       // 出站治理面（主动发言策略）。
       // 宿主注入 core.outbound 才有；旧环境/纯测试下 available=false，模块据此降级，
       // 绝不因此抛错。moduleId 由宿主闭包绑定，模块无法伪造他人身份。

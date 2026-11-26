@@ -1,3 +1,11 @@
+import type { ElementSource } from '../../../src/types/core/element.ts'
+import type { ModuleSendOptions } from '../../../src/types/plugin/ctx.ts'
+import { acknowledged } from '../../../src/core/bot/send-events.ts'
+import { journalRoom } from './journal.ts'
+import type { Target } from '../../../src/types/core/target.ts'
+import { normalize, toText } from '../../../src/core/message/element/element.ts'
+import { governedSend } from '../../../src/core/module/governance.ts'
+import { defaultOneBotId } from '../onebot.ts'
 import { join } from 'node:path'
 import { dataDir } from '../../../src/core/store/index.ts'
 import { createOutboundPolicy } from '../../../src/chat/policy/outbound/index.ts'
@@ -97,5 +105,23 @@ export function createOutboundRuntime({ getConfig, logger, hub, use }) {
       logger.child('出站策略').warn('策略源装配失败：', error && error.message)
     }
   }
-  return { outbound, wirePolicySources }
+  async function deliverModule(id: string, target: Target, content: ElementSource, transmit: () => Promise<unknown>, options?: ModuleSendOptions) {
+    const primaryPrivate = target.platform === 'qq' && target.botId === defaultOneBotId && target.type === 'private'
+    if (!primaryPrivate && !options?.proactive) return transmit()
+    const elements = normalize(content)
+    const room = journalRoom(target)
+    const text = elements.every(el => el.type === 'text') ? toText(elements) : ''
+    const send = async () => {
+      const receipt = await transmit()
+      if (options?.proactive && acknowledged(receipt)) {
+        const said = toText(elements) || elements.map(el => '[' + el.type + ']').join(' ')
+        if (said) hub.noteProactive?.(room, [{ type: 'text', data: { text: said } }], { proactiveCause: options.proactiveCause || 'module:' + id })
+      }
+      return receipt
+    }
+    return primaryPrivate
+      ? governedSend({ outbound, hub }, id, { chatId: room, text }, send, logger.child('出站策略'))
+      : send()
+  }
+  return { outbound, wirePolicySources, deliverModule }
 }

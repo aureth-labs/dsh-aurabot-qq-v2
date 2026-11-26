@@ -16,7 +16,12 @@ export interface SendEvent {
   messageId?: string
 }
 
-const current = new AsyncLocalStorage<SessionLike>()
+type SendContext = Pick<SessionLike, 'bot' | 'platform' | 'target' | 'type' | 'channelId' | 'isPrivate'>
+const current = new AsyncLocalStorage<SendContext>()
+export function withSendTarget<T>(bot: BotLike, target: Target, send: () => T): T {
+  return current.run({ bot, platform: target.platform, target, type: target.type,
+    channelId: target.type === 'private' ? undefined : target.id, isPrivate: target.type === 'private' }, send)
+}
 export const withSendSession = <T>(session: SessionLike, send: () => T): T => current.run(session, send)
 
 export function acknowledged(result: unknown): boolean {

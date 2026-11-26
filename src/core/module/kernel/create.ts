@@ -46,7 +46,7 @@ import { createAdapterCatalog } from './adapters.ts'
 import { trackDependencies } from './dependencies.ts'
 import { ServiceError, ServiceRegistry } from '../../service/registry.ts'
 
-export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime, initialServices = {} }) {
+export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime, deliverModule = undefined, chatLog = undefined, initialServices = {} }) {
   const log = logger.child('modules')
   const importer = createImporter(userDir())
   const builtinDefs = new Map<string, ModuleDef>((builtins as ModuleDef[]).map((d) => [d.id, d]))
@@ -113,7 +113,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const { status, summarizeModules } = createModuleCatalog({ live, errors, routes, userSeen, builtinDefs, discover: scanUser, modCfg, isUserOn, routesAtRoot, revision: () => navigationRevisionCounter })
   const { buildTools, contextFor, rules, commands, dshTools } = createContributions(live, getConfig, log, note)
 
-  const apiOf = createApi({ logger, core, getConfig, setConfig, version, live, routes, subscribe: events.subscribe, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
+  const apiOf = createApi({ logger, core, chatLog, deliverModule, getConfig, setConfig, version, live, routes, subscribe: events.subscribe, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
   const makeApi = (id: string, source: string, rec: ModuleRecord) => apiOf(id, source, rec)
 
   /** 插件在面板侧栏注册的页面：路径唯一，模块卸载一起撤。 */
@@ -274,6 +274,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     generation++ // 停止或替换也使会话工具缓存失效
     bumpNavigation() // 模块停了/被替换：导航摘要可能变
     rec.stopped = true
+    routes.removeOwner(key)
     rec.cleaning = true
     try {
       for (const off of rec.offs.splice(0).reverse()) cleanup(off)
@@ -282,7 +283,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       rec.cleaning = false
     }
     rec.exports = null
-    // 路由和监听器由各自的 off 按实例撤销，清理期间可能已经启动了同名新实例。
     if (rec.dshTools.length) core.bridge?.refresh()
     if (!quiet) { log.info(`模块「${rec.def.name || rec.id}」${rec.instance ? `实例 ${rec.instance} ` : ''}已停下`); emit('module/stop', rec.id, key) }
     return true

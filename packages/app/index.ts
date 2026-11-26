@@ -1,5 +1,6 @@
 import { createIdentityDirectory } from '../../src/core/store/identity.ts'
 import { createPrimaryChat } from './runtime/primary-chat.ts'
+import { createPluginJournal } from './runtime/journal.ts'
 import { createOutboundRuntime } from './runtime/outbound.ts'
 import { createTransport } from './runtime/transport.ts'
 import { createPrimaryGateway } from './runtime/primary-gateway.ts'
@@ -264,7 +265,7 @@ export function apply(ctx) {
   })
   const http = createHttp({ ctx, getConfig, log, prefix: PREFIX, getMods: () => mods })
   const { send, readBody, readRaw, query, answer, route, panelBlocked, adminHostBlocked, csrfBlocked, isLoopbackAddr, panelNeedsLocal } = http
-  const { outbound, wirePolicySources } = createOutboundRuntime({ getConfig, logger, hub, use })
+  const { outbound, wirePolicySources, deliverModule } = createOutboundRuntime({ getConfig, logger, hub, use })
 
   // ---------- 模块 ----------
   const core = {
@@ -309,7 +310,7 @@ export function apply(ctx) {
     tools: where => mods.buildTools(where, true),
     generate: (prompt, turn) => generate({ ...prompt, module: 'chat-bridge', turn }),
   })
-  mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION,
+  mods = createModules({ ctx, core, deliverModule, chatLog: createPluginJournal(hub), getConfig, setConfig, logger, version: VERSION,
     builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue, 'log-stream': logger } })
   bridge = createBridge({ ctx, getConfig, setConfig, hub, mods, log: logger.child('bridge'), version: String(VERSION), apiVersion: API_VERSION, overview: () => overview() })
   core.bridge = bridge

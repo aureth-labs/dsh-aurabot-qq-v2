@@ -6,7 +6,12 @@ import type { Target } from '../../types/core/target.ts'
 export type { Target, TargetType } from '../../types/core/target.ts'
 
 export function targetKey(target: Target): string {
-  return `${target.platform}:${target.botId}:${target.type}:${target.id}`
+  return JSON.stringify([target.platform, target.botId, target.type, target.id])
+}
+
+export function assertTarget(target: Target): void {
+  if (!target || !['platform', 'botId', 'id'].every(key => typeof target[key] === 'string' && target[key].trim()) ||
+      !['private', 'group', 'channel'].includes(target.type)) throw Error('发送目标需要平台、机器人实例、会话类型和原始 ID')
 }
 
 export function groupTarget(platform: string, botId: string, groupId: string | number): Target {

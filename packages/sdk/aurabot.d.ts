@@ -47,6 +47,11 @@ export interface SendOptions {
   timeoutMs?: number
 }
 
+export interface ModuleSendOptions extends SendOptions {
+  proactive?: boolean
+  proactiveCause?: string
+}
+
 export interface User {
   id: string
   name?: string
@@ -418,22 +423,18 @@ export interface Ctx {
     list(): Bot[]
   }
   readonly bots: BotsAccessor
-  broadcast(targets: Target[], content: unknown, options?: { timeoutMs?: number }): Promise<Array<{ target: Target; ok: boolean; error?: string }>>
+  broadcast(targets: Target[], content: ElementSource, options?: { timeoutMs?: number }): Promise<Array<{ target: Target; ok: boolean; error?: string }>>
   adapter(spec: AdapterSpec, config?: unknown): Promise<{ bot: Bot; dispose(): Promise<void> }>
 
-  sendTo(chatId: string, content: unknown, options?: any): Promise<any>
-  sendImage(chatId: string, src: unknown): Promise<any>
-  sendFile(chatId: string, file: unknown, name?: string): Promise<any>
-  sendVoiceFile(chatId: string, file: unknown, note?: string): Promise<any>
-  reply(msg: any, content: unknown): Promise<any>
+  sendTo(target: Target, content: ElementSource, options?: ModuleSendOptions): Promise<unknown>
   ask(options: any): Promise<any>
   /** 以她的人格跑一轮后台会话（不发到聊天），返回正文。 */
   think(prompt: string, options?: { title?: string; key?: string; timeoutMs?: number; noTools?: boolean; level?: string }): Promise<string>
   /** 后台会话在退避期时返回重试时间，否则 null。 */
   thinkCooldown(key?: string): { retryAt: number; message?: string } | null
   readonly chatLog: {
-    read(day: string): Array<{ t: number; chatId: string; who: string; text: string; uid?: string; forgottenAt?: number }>
-    append(chatId: string, who: string, text: string, uid?: string): unknown
+    read(target: Target, day: string): Array<{ t: number; target: Target; who: string; text: string; userId?: string; forgottenAt?: number }>
+    append(target: Target, who: string, text: string, userId?: string): boolean
   }
   /** 工具执行时：这一轮说话的人是不是全是主人（sessionId 来自工具工厂的 where）。 */
   turnFromOwner(sessionId: string): boolean

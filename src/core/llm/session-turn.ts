@@ -1,3 +1,4 @@
+import { targetKey } from '../pipeline/target.ts'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { SessionLike } from '../../types/core/session.ts'
 import type { Target } from '../../types/core/target.ts'
@@ -63,7 +64,7 @@ export function createDialogue(options: Options): Dialogue {
                 level: owner() && session.isPrivate ? 'full' : 'social',
                 chat: {
                   kind: session.type,
-                  chatId: JSON.stringify([target.platform, target.botId, target.type, target.id]),
+                  chatId: targetKey(target),
                   userId: session.userId,
                   channelId: session.channelId,
                 },

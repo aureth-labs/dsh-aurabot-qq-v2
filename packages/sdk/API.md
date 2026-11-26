@@ -60,7 +60,8 @@ Schema 的 `title('字段名')` 与 `description('填写说明')` 分别用于�
 | `ctx.ask(options)` | 裸问一次模型（无人格、无会话） |
 | `ctx.llm.generate({ text, system?, sessionId?, maxTokens? })` | 使用配置的模型生成回复，调用失败会抛错 |
 | `ctx.llm.polish / rewrite / summarize` | 文本小任务 |
-| `ctx.chatLog.read(day) / append(...)` | 她的聊天流水 |
+| `ctx.sendTo(target, content)` / `ctx.broadcast(targets, content)` | 目标指定 platform、botId、type、id，内容为文本或 Satori 元素树 |
+| `ctx.chatLog.read(target, day)` / `append(target, who, text, userId?)` | 读取指定会话可见的日流水，或追加一条记录 |
 | `ctx.server.get/post/...` + `ctx.http.body/query/send` | 面板接口 |
 | `ctx.page({ path, name })` | 侧栏页面 |
 | `ctx.on / ctx.emit` | 事件 |

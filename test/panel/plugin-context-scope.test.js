@@ -3,6 +3,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createPluginContext } from '../../src/core/module/context/plugin-context.ts'
 import { createBotsAccessor, BotRegistry } from '../../src/core/bot/instance/registry.ts'
+import { createPluginJournal } from '../../packages/app/runtime/journal.ts'
+import { defaultOneBotId } from '../../packages/app/onebot.ts'
 import { Pipeline } from '../../src/core/pipeline/index.ts'
 
 function fakeBot(id, platform = 'qq') {
@@ -97,6 +99,38 @@ test('同 ID 的 Bot 按平台定位，指定实例缺失时广播不会改投�
   assert.equal((await ctx.platform('telegram').broadcast([target], 'hello'))[0].ok, false)
   assert.equal(telegram.sends.length, 0)
   assert.equal(discord.sends.length, 1)
+})
+
+test('平台日流水只返回指定实例，旧 QQ 记录归主账号，遗忘行不可读', () => {
+  const rows = [{ chatId: 'private:1', t: 1, who: '用户', text: '旧记录' },
+    { chatId: 'private:1', t: 2, who: '用户', text: '已忘记', forgottenAt: 3 }]
+  const log = createPluginJournal({
+    chatLogOf: () => rows,
+    logChat(chatId, who, text, uid) { rows.push({ chatId, t: 4, who, text, uid }); return true },
+  })
+  const primary = { platform: 'qq', botId: defaultOneBotId, type: 'private', id: '1' }
+  const secondary = { ...primary, botId: 'other:account' }
+  const day = '2026-11-27'
+  assert.equal(log.append(secondary, '用户', '另一个账号', '1'), true)
+  assert.deepEqual(log.read(primary, day).map(row => row.text), ['旧记录'])
+  assert.deepEqual(log.read(secondary, day), [{ target: secondary, t: 4, who: '用户', text: '另一个账号', userId: '1' }])
+  assert.deepEqual(log.read({ ...secondary, platform: 'discord' }, day), [])
+})
+
+test('多账号投递保留元素，拒绝无类型目标、离线账号与作用域外目标', async () => {
+  const registry = new BotRegistry()
+  const active = fakeBot('alice', 'matrix'), offline = { ...fakeBot('bob', 'matrix'), status: 'offline' }
+  registry.add(active); registry.add(offline)
+  const { ctx } = contextWith(createBotsAccessor(registry))
+  const target = { platform: 'matrix', botId: 'alice', type: 'channel', id: '!1:example' }
+  const tree = [{ type: 'img', attrs: { src: 'fixture' } }]
+  await ctx.sendTo(target, tree)
+  assert.deepEqual(active.sends, [['channel', '!1:example', tree]])
+  await assert.rejects(ctx.sendTo('private:1', 'x'), /发送目标/)
+  await assert.rejects(ctx.sendTo({ ...target, botId: 'bob' }, 'x'), /没有可用/)
+  await assert.rejects(ctx.private().sendTo(target, 'x'), /作用域/)
+  assert.equal(active.sends.length, 1)
+  assert.equal(offline.sends.length, 0)
 })
 
 test('ctx.guild / ctx.private 收窄会话类型，中间件不放行时直接 next', async () => {

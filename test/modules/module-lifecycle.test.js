@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto'
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { createBotsAccessor, BotRegistry } from '../../src/core/bot/instance/registry.ts'
+import { createOutboundRuntime } from '../../packages/app/runtime/outbound.ts'
 import { createModules } from '../../src/core/module/index.ts'
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -19,7 +21,7 @@ async function bounded(promise) {
   } finally { clearTimeout(timer) }
 }
 
-function fixture(t, { core = {}, builtins = [], onSetConfig } = {}) {
+function fixture(t, { core = {}, builtins = [], onSetConfig, deliverModule } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-module-lifecycle-'))
   const previousDir = process.env.AURABOT_DATA_DIR
   const previousGlobal = globalThis.aurabot
@@ -27,7 +29,7 @@ function fixture(t, { core = {}, builtins = [], onSetConfig } = {}) {
   let cfg = { modules: {}, ext: {}, safeMode: false, debug: false }
   const warnings = []
   const modules = createModules({
-    ctx: {}, core, getConfig: () => cfg, setConfig: (next) => { cfg = onSetConfig ? onSetConfig(next) : next },
+    ctx: {}, core, deliverModule, getConfig: () => cfg, setConfig: (next) => { cfg = onSetConfig ? onSetConfig(next) : next },
     logger: { child: () => ({ ...silent, warn: (...args) => warnings.push(args.join(' ')) }) }, version: 'test', builtins,
   })
   t.after(() => {
@@ -151,11 +153,12 @@ test('异步 setup 停止后，迟到的写操作不能发送消息或修改配�
       export async function apply(api) {
         gate.enter()
         await gate.ready
+        const target = { platform: 'test', botId: 'a', type: 'private', id: '1' }
         const actions = [
-          () => api.broadcast([{platform:'test',botId:'a',type:'private',id:'1'}], 'a'), () => api.sendTo('private:1', 'b'),
-          () => api.reply({ chatId: 'private:1' }, 'c'), () => api.sendImage('private:1', 'image'),
-          () => api.sendFile('private:1', 'file'),
-          () => api.sendVoiceFile('private:1', 'voice'), () => api.root.update({ ownerQQ: 'changed' }),
+          () => api.broadcast([target], 'a'), () => api.sendTo(target, 'b'),
+          () => api.platform('test').sendTo(target, api.h.image('fixture')),
+          () => api.chatLog.read(target, '2026-11-27'), () => api.chatLog.append(target, 'bot', 'late'),
+          () => api.root.update({ ownerQQ: 'changed' }),
           () => api.updateConfig({ secret: 'changed' }),
           () => api.ask('question'), () => api.think('prompt'), () => api.emit('probe'),
         ]
@@ -174,9 +177,9 @@ test('异步 setup 停止后，迟到的写操作不能发送消息或修改配�
     else f.modules.dispose()
     g.release()
     await bounded(syncing)
-    assert.equal(g.state.errors.length, 11)
+    assert.equal(g.state.errors.length, 10)
     assert.ok(g.state.errors.every((message) => message.includes('已停止')))
-    assert.equal(f.warnings.filter((message) => message.includes('已停止')).length, 11)
+    assert.equal(f.warnings.filter((message) => message.includes('已停止')).length, 10)
     assert.deepEqual(writes, [])
     assert.deepEqual(f.config(), before)
     assert.equal(g.state.disposed, 1)
@@ -406,30 +409,27 @@ test('异步清理拒绝被处理，正常和迟到清理均不影响其他资�
   })
 })
 
-test('模块声明 proactive 时把留痕标记透给 hub，不声明就不加（chatlog 丢档回归）', async (t) => {
-  const calls = []
-  const hub = {
-    sendText: (...args) => { calls.push(['sendText', args]); return { message_id: '1' } },
-    sendSegments: (...args) => { calls.push(['sendSegments', args]); return { message_id: '2' } },
-  }
-  const f = fixture(t, { core: { hub } })
+test('主动发言只在指定实例确认收件后记入该会话', async t => {
+  const spoken = [], registry = new BotRegistry()
+  registry.add({ platform: 'fixture', id: 'a', status: 'online', sendMessage: async (_id, content) => ({ ok: content !== '取消' }) })
+  const hub = { noteProactive: (...args) => spoken.push(args) }
+  const options = { core: { hub, bots: createBotsAccessor(registry) }, deliverModule: (...args) => runtime.deliverModule(...args) }
+  const f = fixture(t, options)
+  const runtime = createOutboundRuntime({ getConfig: f.config, logger: { child: () => silent }, hub, use: () => null })
   await f.modules.boot()
   f.write('say-log', `
     export const name = 'say-log'
-      export async function apply(api) {
-      await api.sendTo('group:1', '没声明')
-      await api.sendTo('group:1', '声明了', { proactive: true, proactiveCause: 'qq_say_in_group' })
-      await api.sendTo('group:1', '默认 cause')
-      await api.sendTo('group:1', '默认 cause', { proactive: true })
-      return {}
+    export async function apply(ctx) {
+      const target = { platform: 'fixture', botId: 'a', type: 'group', id: '1' }
+      await ctx.sendTo(target, '普通消息')
+      await ctx.sendTo(target, '取消', { proactive: true })
+      await ctx.sendTo(target, '主动消息', { proactive: true, proactiveCause: '提醒' })
+      await ctx.sendTo(target, '默认原因', { proactive: true })
     }
   `)
   await f.modules.sync()
-  assert.equal(calls.length, 4)
-  // hub.sendText(chatId, text, replyId, missed, userId, opts)：模块快捷 API 一律传 5 个占位 + opts
-  assert.equal(calls[0][1][5].proactive, undefined, '不声明时不能凭空造 proactive')
-  assert.equal(calls[1][1][5].proactive, true)
-  assert.equal(calls[1][1][5].proactiveCause, 'qq_say_in_group')
-  assert.equal(calls[3][1][5].proactiveCause, 'module:say-log', '没给 cause 时用 module:<id> 兜底')
-  assert.equal(calls[2][1][5].proactive, undefined)
+  assert.deepEqual(spoken.map(([room, segments, options]) => [JSON.parse(room), segments[0].data.text, options.proactiveCause]), [
+    [['fixture', 'a', 'group', '1'], '主动消息', '提醒'],
+    [['fixture', 'a', 'group', '1'], '默认原因', 'module:say-log'],
+  ])
 })
