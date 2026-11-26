@@ -8,7 +8,7 @@ const MODULES = ['bili', 'diary', 'qzone-social']
 
 for (const id of MODULES) {
   test(`模块 ${id}：网关未连接时跳过定时任务`, () => {
-    const src = readFileSync(new URL(`../src/modules/${id}/index.ts`, import.meta.url), 'utf8')
+    const src = readFileSync(new URL(`../../src/modules/${id}/index.ts`, import.meta.url), 'utf8')
     assert.match(src, /api\.core\.onebot\?\.state/, `${id}/index.js 的定时任务缺少 onebot 状态判断`)
     assert.match(src, /!== 'connected'/, `${id}/index.js 的定时任务没有判断「未连接」`)
   })

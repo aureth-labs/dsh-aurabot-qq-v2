@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { clockAt, clockLabel } from '../../src/chat/reply/index.ts'
 import { flatHistory } from '../../src/chat/inbound/parse/identity.ts'
-import { hubSource } from '../hub-source.js'
+import { hubSource } from '../helpers/hub-source.js'
 
 test('钟点统一按东八区压成 HH:MM', () => {
   assert.equal(clockAt(Date.UTC(2026, 10, 9, 13, 34)), '21:34')

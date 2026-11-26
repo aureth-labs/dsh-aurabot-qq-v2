@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { hubSource } from '../../hub-source.js'
+import { hubSource } from '../../helpers/hub-source.js'
 
 const src = hubSource()
 

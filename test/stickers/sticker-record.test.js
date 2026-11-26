@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { itemsToLine } from '../../src/chat/reply/index.ts'
-import { hubSource } from '../hub-source.js'
+import { hubSource } from '../helpers/hub-source.js'
 
 const STICKER = { name: '让我看看内鬼是谁', md5: 'd8c18f33aabbccdd' }
 

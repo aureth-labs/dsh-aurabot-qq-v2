@@ -10,7 +10,7 @@ import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../../../s
 import { normalize } from '../../../src/core/config/index.ts'
 import { readClientSource } from '../../helpers/client-source.js'
 
-import { hubSource } from '../../hub-source.js'
+import { hubSource } from '../../helpers/hub-source.js'
 const hubSrc = hubSource()
 const clientSrc = readClientSource()
 
