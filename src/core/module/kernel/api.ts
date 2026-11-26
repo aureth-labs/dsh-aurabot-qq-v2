@@ -36,7 +36,6 @@ export interface ApiDeps {
   ctx: Record<string, any>
   setConfig: (patch: Record<string, any>) => unknown
   version: string
-  lib: Record<string, any>
   live: Map<string, ModuleRecord>
   routes: Map<string, { id: string; handler: (...args: any[]) => unknown; access?: string | null }>
   listeners: Map<string, Array<{ id: string; fn: (...args: any[]) => unknown }>>
@@ -54,7 +53,7 @@ export interface ApiDeps {
 }
 
 export function createApi(deps: ApiDeps) {
-  const { logger, core, getConfig, setConfig, version, lib, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit, isEnabled, isUserOn, ctx } = deps
+  const { logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit, isEnabled, isUserOn, ctx } = deps
 
   function makeApi(id: string, source: string, rec: ModuleRecord) {
     const mlog = logger.child(id)
@@ -160,7 +159,6 @@ export function createApi(deps: ApiDeps) {
       has: (other) => hasModule(other),
       core: scopedCore,
       dsh: ctx,
-      lib,
       // ---- 往插件里加东西 ----
       tool: (builder) => { rec.tools.push(builder); return () => remove(rec.tools, builder) },
       defineTool,

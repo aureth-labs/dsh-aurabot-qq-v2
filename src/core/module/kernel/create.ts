@@ -8,7 +8,7 @@
 //
 // 接口说明给写模块的人看：packages/sdk/API.md（每次启动复制到数据目录 modules/ 里）。
 
-import { existsSync, readdirSync, statSync, lstatSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, renameSync, rmSync, watch } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, watch } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createPluginContext } from '../context/plugin-context.ts'
 import { isSchema, Schema } from '../../config/shape/schema.ts'
@@ -18,9 +18,7 @@ import { h } from '../../message/element/element.ts'
 ;(globalThis as { h?: typeof h }).h ??= h
 ;(globalThis as { Schema?: typeof Schema }).Schema ??= Schema
 import { readManifest, entryOf as entryOfManifest } from '../manifest.ts'
-import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
-import { pathToFileURL, fileURLToPath } from 'node:url'
-import { createRequire } from 'node:module'
+import { join, relative, resolve, isAbsolute } from 'node:path'
 import { dataDir } from '../../store/index.ts'
 import type { SettingsField } from '../../config/shape/schema.ts'
 import { defineTool } from '../../../tools/index.ts'
@@ -44,9 +42,10 @@ type StopOptions = Partial<Record<'quiet', any>>
 type RemoveModuleOptions = Partial<Record<'purge', any>>
 
 export * from '../loader.ts'
-import { loadLib, lib } from '../loader.ts'
+import { createImporter } from '../importer.ts'
+import { createPlugin } from '../scaffold.ts'
 export * from '../governance.ts'
-import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, filesOf, scanUser, namedModuleDef, checkDef, SRC, sourceRootOf, userDir, ID_RE, idDir, rewriteImports } from '../loader.ts'
+import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, scanUser, namedModuleDef, checkDef, userDir, ID_RE, idDir } from '../loader.ts'
 import type { ModuleDef, ModuleRecord, ModuleError } from '../loader.ts'
 import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from '../governance.ts'
 
@@ -58,6 +57,7 @@ import { ServiceRegistry } from '../../service/registry.ts'
 
 export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime }) {
   const log = logger.child('modules')
+  const importer = createImporter(userDir())
   const builtinDefs = new Map<string, ModuleDef>((builtins as ModuleDef[]).map((d) => [d.id, d]))
   const fields = new Map<string, SettingsField[]>()
   const live = new Map<string, ModuleRecord>() // id → 运行中的模块（见 start）
@@ -120,7 +120,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   // 面板里的 call('/x') 要用同一份判断决定基址（见 status().routesAtRoot），两边不能各算各的。
   const routesAtRoot = (id) => builtinDefs.has(id) || STABLE_ROUTES.has(id)
 
-  const apiOf = createApi({ logger, core, getConfig, setConfig, version, lib, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
+  const apiOf = createApi({ logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
   const makeApi = (id: string, source: string, rec: ModuleRecord) => apiOf(id, source, rec)
 
   /** 插件在面板侧栏注册的页面：路径唯一，模块卸载一起撤。 */
@@ -311,44 +311,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return stopped
   }
 
-  /** 加载一个自己写的模块（按修改时间重新 import，改了就是新的）。 */
-  /**
-   * 加载自己写的模块：先把整个文件夹拍一份快照（modules/<id>/.aurabot-cache/<版本戳>/）再加载快照。
-   * Node 会缓存加载过的文件，快照路径每次不同，所以改了模块里任何一个文件都会重新加载；
-   * 快照在模块文件夹里面，模块自己 npm install 的依赖（modules/<id>/node_modules）照样找得到。
-   */
-  async function importUser(u) {
-    const stamp = stampOfTarget(u)
-    // 单文件插件不拍快照：直接带 ?v=<版本戳> 重新 import。
-    // Node 按 URL 缓存，戳变了 URL 就变了，等于拿到一份新模块；同目录的兄弟文件照旧能 import。
-    if (u.single) {
-      const mod = await import(`${pathToFileURL(u.file).href}?v=${stamp}`)
-      return { mod, stamp }
-    }
-    const root = join(u.dir, SNAP)
-    const snap = join(root, String(stamp).replace('.', '-'))
-    // 入口是 .ts = 作者还在写源码、没构建：把整个文件夹的 .ts 转成 .js 再拍快照。
-    // 已经有构建产物（package.json 的 main 指向 lib/…）的模块走不到这条分支，不会误伤。
-    const entryIsTs = /\.ts$/i.test(u.file)
-    if (!existsSync(snap)) {
-      for (const f of filesOf(u.dir)) {
-        const target = join(snap, f)
-        mkdirSync(dirname(target), { recursive: true })
-        if (entryIsTs && /\.ts$/i.test(f) && !/\.d\.ts$/i.test(f)) {
-          writeFileSync(target.replace(/\.ts$/i, '.js'), transpileToJs(readFileSync(join(u.dir, f), 'utf8'), f), 'utf8')
-          continue
-        }
-        copyFileSync(join(u.dir, f), target)
-      }
-    }
-    // 旧快照删掉（加载过的代码已经在内存里，删文件不影响）
-    try { for (const n of readdirSync(root)) if (join(root, n) !== snap) rmSync(join(root, n), { recursive: true, force: true }) } catch (error) {}
-    const entryRel = relative(u.dir, u.file)
-    const importRel = entryIsTs ? entryRel.replace(/\.ts$/i, '.js') : entryRel
-    const mod = await import(pathToFileURL(join(snap, importRel)).href)
-    return { mod, stamp }
-  }
-
   async function startUser(u, instance = '') {
     if (disposed) return null
     const key = instance ? instanceKey(u.id, instance) : u.id
@@ -360,9 +322,9 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       return instancesOf(u.id).some((item) => item.id === instance && item.enabled)
     }
     let def
-    let stamp = 0
+    let stamp = ''
     try {
-      let imported = await importUser(u)
+      const imported = await importer.load(u)
       const mod = imported.mod
       def = namedModuleDef(mod)
       stamp = imported.stamp
@@ -433,9 +395,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return (async () => {
       await Promise.all(starting)
       if (disposed) return
-      await loadLib()
-      if (disposed) return
-      globalThis.aurabot = { lib, src: pathToFileURL(SRC).href, version, apiVersion: API_VERSION, modules: publicHandle, Schema, h }
+      globalThis.aurabot = { version, apiVersion: API_VERSION, modules: publicHandle, Schema, h }
       installDocs()
       await sync()
       if (disposed) return
@@ -625,6 +585,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     try { watcher?.close?.() } catch (error) {}
     watcher = null
     for (const id of [...live.keys()].reverse()) stop(id, { quiet: true })
+    importer.dispose()
     routes.clear()
     listeners.clear()
     if (globalThis.aurabot?.modules === publicHandle) delete globalThis.aurabot
@@ -890,46 +851,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return readFileSync(file, 'utf8')
   }
 
-  /** 新建一个自己写的模块（从模板）。 */
-  function create(id, name) {
-    if (!ID_RE.test(id)) return { ok: false, message: 'id 要小写字母开头，只能有小写字母、数字和 -，比如 weather' }
-    const dir = idDir(id)
-    if (existsSync(dir)) return { ok: false, message: `modules/${id} 已经有了` }
-    mkdirSync(dir, { recursive: true })
-    const tpl = readFileSync(join(BUILTIN_DIR, '_template', 'index.mjs'), 'utf8')
-    writeFileSync(join(dir, 'index.mjs'), tpl.replaceAll('__TOOL__', id.replace(/-/g, '_')).replaceAll('__ID__', id).replaceAll('__NAME__', String(name || id).replace(/['\\\n]/g, '')), 'utf8')
-    installDocs()
-    return { ok: true, dir, file: join(dir, 'index.mjs'), message: `建好了：${join(dir, 'index.mjs')}` }
-  }
-
-  /**
-   * 取一份内置模块源码（key 相对 src/，扩展名是 .js）。
-   * 发布包里读的是同级编译产物；开发期只有 .ts 源码，就地转成 JS——
-   * 复制出去的用户模块要能直接跑，不能依赖构建步骤。
-   */
-  function builtinSource(key) {
-    const { root, rel } = sourceRootOf(key)
-    const direct = join(root, ...rel.split('/'))
-    if (existsSync(direct)) return readFileSync(direct, 'utf8')
-    const tsFile = join(root, ...rel.replace(/\.js$/, '.ts').split('/'))
-    return transpileToJs(readFileSync(tsFile, 'utf8'), tsFile)
-  }
-
-  /** 开发期的兜底：把 TS 源码转成等价 JS（装了 typescript 才有；发布包走编译产物，不会到这里）。 */
-  function transpileToJs(source, file) {
-    let ts
-    try {
-      ts = createRequire(import.meta.url)('typescript')
-    } catch {
-      throw new Error('既没有编译产物也没有 typescript：先运行 npm run build 再复制模块')
-    }
-    const out = ts.transpileModule(source, {
-      fileName: file,
-      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: true },
-    })
-    return out.outputText.replace(/(from\s*['"]|import\(\s*['"])(\.{1,2}\/[^'"]+)\.ts(['"])/g, '$1$2.js$3')
-  }
-
   /** 删除用户模块：先停掉，再把源码和本地改动归档到 modules/.trash；默认保留数据和设置，purge 才清掉。 */
   async function removeModule(id, { purge = false } : RemoveModuleOptions = {}) {
     if (typeof id !== 'string' || !ID_RE.test(id)) return { ok: false, message: 'id 不对' }
@@ -986,12 +907,12 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return { ok: true, archive, message: `删掉了，源码和本地改动已移到 ${archive}。${dataStatus}。${fallback}` }
   }
 
-  const { installDocs, promptFor } = createDocs({ userDir, version, getConfig })
+  const { installDocs, promptFor } = createDocs({ userDir, version })
 
   const publicHandle = { use: exportsOf, has: hasModule, list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
-    fields, boot, sync, reload, dispose, status, create, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
+    fields, boot, sync, reload, dispose, status, create: createPlugin, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
     // 对外按模块 id 停 —— 一起停掉它的额外实例
     stop: (id, options) => stopModule(id, options),
     use: exportsOf, has: hasModule, running: (id) => live.get(id)?.source || null, generation: () => generation,

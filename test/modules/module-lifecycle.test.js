@@ -314,7 +314,7 @@ test('旧实例清理时启动同名新实例，路由和监听器仍属于新�
   assert.deepEqual(events, [2])
 })
 
-test('boot 等待 loadLib 时卸载，不覆盖新实例全局对象、不启动 watcher', async (t) => {
+test('boot 等待内置插件时卸载，不覆盖新实例全局对象、不启动 watcher', async (t) => {
   const f = fixture(t)
   const interval = t.mock.method(globalThis, 'setInterval')
   const booting = f.modules.boot()

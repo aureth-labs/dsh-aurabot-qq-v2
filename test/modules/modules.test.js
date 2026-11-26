@@ -232,7 +232,8 @@ test('新建模块：从模板建，能直接跑', async () => {
   assert.match(r.prompt, /API\.md/)
   const m = await mod('my-ext')
   assert.equal(m.running, 'user', m.error)
-  assert.deepEqual(m.tools, ['my_ext_keywords'])
+  assert.match(r.file, /index\.ts$/)
+  assert.equal(m.settings.some(field => field.key === 'greeting'), true)
   assert.equal((await fake.call('/modules/create', { id: 'Bad Id' })).json().ok, false)
 })
 

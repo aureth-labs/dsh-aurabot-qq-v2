@@ -1,12 +1,11 @@
 // 模块的来源与定义：内置目录、用户目录、加载 lib、扫描定义、校验与 schema 默认值。
 
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { existsSync, readdirSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { entryOf as entryOfManifest } from './manifest.ts'
 import { dataDir } from '../store/index.ts'
-import { ROOT } from '../support/util/root.ts'
-import { createRequire } from 'node:module'
+import { createHash } from 'node:crypto'
 
 /** 扩展接口版本。v2 起不再兼容 v1 的 api 对象。 */
 export const API_VERSION = 2
@@ -72,7 +71,6 @@ export interface ModuleError { message: string; at: number; source?: string; fal
 /** 磁盘上扫到的用户模块。 */
 export interface UserModule { id: string; dir: string; safe?: boolean; version?: string; [key: string]: unknown }
 
-export const SRC = fileURLToPath(new URL('../..', import.meta.url)) // 内核 src/（发布态是 lib/src/）
 export const REPO = fileURLToPath(new URL('../../..', import.meta.url)) // 插件根（发布态是 lib/）
 export const PKG = join(REPO, 'packages') // 插件与适配器包（发布态是 lib/packages/）
 /** 内置插件目录：src 只放内核，插件直接住在 packages/<插件名>，适配器在 packages/adapters。 */
@@ -80,18 +78,6 @@ export const BUILTIN_DIR = PKG
 /** 内置模块目录（社区安装时判断会不会替换内置用）。 */
 export const builtinDir = () => BUILTIN_DIR
 
-/**
- * 插件源码的根目录解析。key 是仓库相对路径：
- * - `src/...`      → 内核源码（编译产物在 lib/src）
- * - `packages/...` → 包源码（编译产物在 lib/packages）
- * 裸键（如 `features/memory.js`）按内核 src 解析。
- */
-export function sourceRootOf(key: string) {
-  const k = String(key || '').replace(/^\.?\//, '')
-  if (k.startsWith('packages/')) return { root: PKG, rel: k.slice('packages/'.length) }
-  if (k.startsWith('src/')) return { root: SRC, rel: k.slice('src/'.length) }
-  return { root: SRC, rel: k }
-}
 // 平铺 id 或 owner/name（带 scope 安装）
 export const ID_RE = /^[a-z][a-z0-9-]{1,39}(\/[a-z][a-z0-9-]{1,39})?$/
 export const DOC = 'API.md'
@@ -111,35 +97,6 @@ export const instanceKey = (id: string, instance: string) => `${id}@${instance}`
 /** 实例名：小写字母数字开头，允许字母数字、`-`、`_`，最长 40。 */
 export const INSTANCE_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/i
 
-/** 内部源码全部按「相对 src 的路径」开放出来：lib('features/memory.js') → 那个文件导出的全部东西。 */
-export const libCache = new Map()
-export async function loadLib() {
-  if (libCache.size) return libCache
-  const entries: Array<[string, string]> = []
-  const walk = (d, root, prefix) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const full = join(d, e.name)
-      if (e.isDirectory()) { if (!['node_modules', '.aurabot-cache', 'templates', 'separator', '_template'].includes(e.name)) walk(full, root, prefix) }
-      else if (e.name.endsWith('.js') || e.name.endsWith('.ts')) entries.push([full, prefix + relative(root, full).split(sep).join('/').replace(/\.ts$/, '.js')])
-    }
-  }
-  // 内核 src 按裸键索引（features/memory.js…）；packages 按 `packages/` 前缀索引，
-  // 让复制出去的内置插件能 __lib('packages/...') 拿到自己的实现。
-  walk(SRC, SRC, '')
-  walk(PKG, PKG, 'packages/')
-  for (const [full, key] of entries) {
-    try { libCache.set(key, await import(pathToFileURL(full).href)) } catch (error) {}
-  }
-  return libCache
-}
-export function lib(key) {
-  const k = String(key || '').replace(/^\.?\/?(src\/)?/, '')
-  const hit = libCache.get(k) || libCache.get(k + '.js')
-  if (!hit) throw new Error(`没有 ${key} 这个内部文件（看 API.md 的「内部源码」一节）`)
-  return hit
-}
-export const libKeys = () => [...libCache.keys()].sort()
-
 // 加载自己写的模块时跳过的目录：依赖、加载快照、版本库
 export const SKIP_DIRS = new Set(['node_modules', '.aurabot-cache', '.git'])
 export const SNAP = '.aurabot-cache'
@@ -158,16 +115,20 @@ export function filesOf(dir, base = dir, out = []) {
 
 /** 模块的「版本戳」：任何文件改了、加了、删了都会变。 */
 export function stampOf(dir) {
-  let t = 0
-  const files = filesOf(dir)
-  for (const f of files) { try { t = Math.max(t, statSync(join(dir, f)).mtimeMs) } catch (error) {} }
-  return Math.round(t) + files.length / 1000
+  const hash = createHash('sha256')
+  for (const f of filesOf(dir).sort()) {
+    try {
+      const stat = statSync(join(dir, f), { bigint: true })
+      hash.update(JSON.stringify([f, String(stat.mtimeNs), String(stat.ctimeNs), String(stat.size)]))
+    } catch { hash.update(JSON.stringify([f, null])) }
+  }
+  return hash.digest('hex')
 }
 /** 单个模块的版本戳：单文件插件只看它自己那一个文件，别被隔壁模块的改动带着重载。 */
 export function stampOfTarget(u) {
-  if (!u) return 0
+  if (!u) return ''
   if (u.single) {
-    try { return Math.round(statSync(u.file).mtimeMs) } catch (error) { return 0 }
+    try { return String(statSync(u.file, { bigint: true }).ctimeNs) } catch { return '' }
   }
   return stampOf(u.dir)
 }
@@ -319,59 +280,3 @@ export function settingsFromMeta(schema) {
   return fields
 }
 
-/** 把一份源码里指向插件内部的相对 import 改成走 lib()，这样复制出去也能跑。 */
-export function rewriteImports(code, fromKey, keep = new Set()) {
-  const base = fromKey.split('/').slice(0, -1)
-  const target = (spec) => {
-    if (!/^\.\.?\//.test(spec)) return null
-    const parts = [...base]
-    for (const seg of spec.split('/')) {
-      if (seg === '..') parts.pop()
-      else if (seg !== '.') parts.push(seg)
-    }
-    const key = parts.join('/').replace(/\.ts$/, '.js')
-    return keep.has(key) ? null : key
-  }
-  const names = (list) => list.split(',').map((s) => s.trim()).filter(Boolean).map((s) => s.replace(/\s+as\s+/, ': ')).join(', ')
-  let out = code.replace(/import\s+(\w+\s*,\s*)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"];?/g, (m, def, list, spec) => {
-    const key = target(spec)
-    if (!key) return m
-    const d = def ? `const ${def.replace(/[\s,]/g, '')} = __lib('${key}').default\n` : ''
-    return `${d}const { ${names(list)} } = __lib('${key}')`
-  })
-  out = out.replace(/import\s+\*\s+as\s+(\w+)\s+from\s*['"]([^'"]+)['"];?/g, (m, name, spec) => {
-    const key = target(spec)
-    return key ? `const ${name} = __lib('${key}')` : m
-  })
-  out = out.replace(/import\s+(\w+)\s+from\s*['"]([^'"]+)['"];?/g, (m, name, spec) => {
-    const key = target(spec)
-    return key ? `const ${name} = __lib('${key}').default` : m
-  })
-  out = out.replace(/import\(\s*['"]([^'"]+)['"]\s*\)/g, (m, spec) => {
-    const key = target(spec)
-    return key ? `Promise.resolve(__lib('${key}'))` : m
-  })
-  // 插件里带的数据文件（new URL('./x.py', import.meta.url)）：指回插件目录
-  out = out.replace(/new URL\(\s*['"](\.\.?\/[^'"]*)['"]\s*,\s*import\.meta\.url\s*\)/g, (m, spec) => {
-    const key = target(spec)
-    // globalThis.aurabot.src 就是内核 src 根，所以 src/ 前缀要剥掉；packages/ 资源没有这种用法。
-    return key ? `new URL('${key.replace(/^src\//, '')}', globalThis.aurabot.src)` : m
-  })
-  if (out !== code) out = "const __lib = globalThis.aurabot.lib // 插件内部源码（复制出来后靠它找到插件里的文件）\n" + out
-  return out
-}
-
-/**
- * @param {object} o
- * @param {object} o.ctx        DSH 给插件的 ctx
- * @param {object} o.core       核心对象（hub、onebot、local……），模块通过 api.core 拿到
- * @param {Function} o.getConfig
- * @param {Function} o.setConfig
- * @param {object} o.logger
- * @param {string} o.version     插件版本
- * @param {object[]} o.builtins  内置模块定义（按启动顺序）
- */
-// ── 出站治理（主动发言策略的模块侧接线 / CONTRACT §5）──
-// 第一道判定放在**模块包装层**：模块的每次发送都带上宿主绑定的 moduleId 去问策略，
-// 放行才真的调 hub；hub 侧的 setOutboundGuard 是第二道保险（覆盖任何绕过包装层的直调）。
-// 未注入服务（core.outbound 缺失：旧环境 / 纯测试）时全部返回放行 —— 完全惰性、零开销。

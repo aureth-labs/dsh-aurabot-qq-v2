@@ -2,7 +2,7 @@
 // 面板、市场、加载器都走这一个函数，避免三处各读各的。
 
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 export interface ModuleManifest {
   /** 对外 ID：平铺模块就是包名，装了 scope 的是 `owner/name` */
@@ -38,7 +38,7 @@ export interface ManifestResult {
 
 // 顺序即优先级：发行为主的 mjs / js 在前，TS 放最后 ——
 // 只有「本地在写源码、还没构建」时才会落到 index.ts（加载时转成 JS 再跑）。
-const FALLBACK_ENTRY = ['index.mjs', 'index.js', 'index.ts']
+const FALLBACK_ENTRY = ['index.mjs', 'index.js', 'index.ts', 'src/index.ts']
 const DEFAULT_PANEL = './dist/panel.js'
 /** 默认入口；产物不存在时再回退到源码入口，方便本地还没构建的情况。 */
 const DEFAULT_ENTRY = 'lib/index.js'
@@ -66,8 +66,10 @@ export function entryOf(dir: string): string {
   const pkg = readJson(join(dir, 'package.json'))
   const main = str(pkg?.main)
   if (main) {
-    const file = join(dir, main)
-    if (existsSync(file)) return file
+    const file = resolve(dir, main)
+    const path = relative(dir, file)
+    if (!path || path === '..' || path.startsWith('..' + sep) || isAbsolute(path)) return ''
+    if (existsSync(file) && statSync(file).isFile()) return file
   }
   for (const name of FALLBACK_ENTRY) {
     const file = join(dir, name)
