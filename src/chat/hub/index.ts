@@ -170,6 +170,7 @@ import { createQuoteResolver } from './format/quote.ts'
 import { createGroupPromptBuilder } from './context/group-prompt.ts'
 import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from './context/group-media.ts'
 import { createGroupEvents } from './events/group.ts'
+import { createMemberLookup, createNoticeHandler } from './events/notices.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -360,7 +361,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     }
   }
   const titleFilter = createTitleFilter({ getConfig, onebot, log }) // 勾选的群里，头衔是某个词的成员（别的机器人）不理
-  const groupMembers = new Map() // groupId → { at, list }  群成员（真 @ 时按名字找人，缓存 10 分钟）
+  const { membersOf } = createMemberLookup({ onebot, log })
   const noticesFor = new Map() // chatId → [一句话]  下次交给她时带上的群事件（撤回、禁言、进群……）
   const saidElsewhere = new Map() // chatId → [{ at, text }]  别处安排她在这里发的话，下次这个聊天交给她时补进去
   const proactiveLogAt = new Map() // chatId → 已从流水补进过一次的最大时间戳（重启后回捞用，避免同一批重复注入）
@@ -467,19 +468,6 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     }
   }
 
-  async function membersOf(groupId) {
-    const hit = groupMembers.get(groupId)
-    if (hit && Date.now() - hit.at < 10 * 60_000) return hit.list
-    try {
-      const r = await onebot.call('get_group_member_list', { group_id: Number(groupId) }, { timeoutMs: 15000 })
-      const list = Array.isArray(r) ? r : r?.data || []
-      groupMembers.set(groupId, { at: Date.now(), list })
-      return list
-    } catch (error) {
-      log.debug('拉群成员失败，@ 按文字发：', error.message)
-      return hit?.list || []
-    }
-  }
   const sentIds = new Set()
   const stats = createStats({ file: dataDir('stats.json'), log })
   let selfId = ''
@@ -491,24 +479,17 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   // ---------- 聊天流水（给空间日记、主动搭话、面板用） ----------
   const chatLog = createChatLog({ getConfig, log, hooks, saidElsewhere, proactiveLogAt, isBeforeMemoryReset, chatDir, chatMemoryCutoff, cleaningFor })
   const { logChat, noteSaid, noteProactive, chatLogDays, deleteChatLog, chatLogOf, proactiveFromChatLog } = chatLog
-  /** QQ 通知：不让她马上回话，记进流水，下一轮带给她。只管白名单里的聊天。 */
-  async function onNotice(ev) {
-    const cfg = getConfig()
-    const groupId = ev.group_id ? String(ev.group_id) : ''
-    if (groupId ? !cfg.allow.groups.map(String).includes(groupId) : !cfg.allow.private.map(String).includes(String(ev.user_id)) && String(ev.user_id) !== String(cfg.ownerQQ)) return
-    const names = new Map()
-    for (const qq of new Set([ev.user_id, ev.operator_id, ev.sender_id].filter(Boolean))) {
-      try {
-        const m = groupId ? await onebot.call('get_group_member_info', { group_id: Number(groupId), user_id: Number(qq) }, { timeoutMs: 3000, retries: 0 }) : null
-        names.set(String(qq), `${m?.card || m?.nickname || 'QQ 用户'}(${qq})`)
-      } catch (error) { names.set(String(qq), `QQ 用户(${qq})`) }
-    }
-    if (disposed) return
-    const note = noticeText(ev, { botQQ: cfg.botQQ, name: (qq) => names.get(String(qq)) || String(qq), ownMessage: (id) => sentIds.has(String(id)), faceName: faces.nameOf })
-    if (!note) return
-    logChat(note.chatId, '系统', `【系统】${note.text}`)
-    noticesFor.set(note.chatId, [...(noticesFor.get(note.chatId) || []), note.text].slice(-8))
-  }
+  const { onNotice } = createNoticeHandler({
+    getConfig,
+    onebot,
+    log,
+    isDisposed: () => disposed,
+    sentIds,
+    faces,
+    noticeText,
+    logChat,
+    noticesFor,
+  })
 
   // DSH 重启后，主动搭话的「最近一次主人私聊 / 她最后一句」只在内存里会归零，
   // 导致下一个 tick 把闲置时间算成几千万分钟、刚启动就插话。开机从最近流水恢复，
