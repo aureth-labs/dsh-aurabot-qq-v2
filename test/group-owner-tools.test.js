@@ -9,6 +9,7 @@ import { normalize, DEFAULTS } from '../src/core/config/index.ts'
 import { rulesText } from '../src/persona/personas.ts'
 import { readClientSource } from './helpers/client-source.js'
 
+import { hubSource } from './hub-source.js'
 const read = (rel) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8')
 const GROUP = { kind: 'group', chatId: 'group:100200300', groupId: '100200300', userId: '100200300' }
 const OTHER_GROUP = { kind: 'group', chatId: 'group:200300400', groupId: '200300400' }
@@ -78,7 +79,7 @@ test('接线契约：preset、人格变量、闸门、面板开关都在', () =>
   assert.ok(host.includes("variable('aurabot_rules_group_owner'"), 'host 没定义 aurabot_rules_group_owner')
   assert.ok(host.includes("rulesText('group-owner'"), 'host 没把 group-owner 传给 rulesText')
 
-  const hub = read('src/chat/hub.ts')
+  const hub = hubSource()
   assert.ok(hub.includes('applyGroupGate(key, turnSendersAllOwner(sessionId, st))'), 'pushToSession 没按发言人开合')
   assert.ok(hub.includes('const GROUP_GUEST_SAFE'), '非主人那一轮要有能力白名单')
   assert.ok(hub.includes('restrict({ allow })'), '闸门要用 allow 白名单收工具')

@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { itemsToLine } from '../src/chat/reply/index.ts'
+import { hubSource } from './hub-source.js'
 
 const STICKER = { name: '让我看看内鬼是谁', md5: 'd8c18f33aabbccdd' }
 
@@ -40,7 +41,7 @@ test('文字与语音原样、其它类型保持旧写法', () => {
 })
 
 test('hub 记流水时走 itemsToLine 并接入表情库解析（源码契约）', () => {
-  const src = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
+  const src = hubSource()
   // #349：记流水只认真正发出去的条目（sentItems），不再用「打算发的全部 items」。
   assert.match(src, /const said = itemsToLine\(sentItems, \(q\) => stickers\.match\(q\)\)/)
   assert.ok(!src.includes("`[${i.kind}]`"), '不能再有把表情写成 [sticker] 的老写法')

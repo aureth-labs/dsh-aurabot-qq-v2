@@ -1,9 +1,13 @@
 // #349：网关中途断开时，流水不能把没发出去的半截记成「她说过的话」。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 
-const HUB = () => readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
+// hub 已按职责拆成目录：把整个目录拼起来看，避免每次拆分都要改测试路径。
+const HUB = () => {
+  const dir = new URL('../src/chat/hub/', import.meta.url)
+  return readdirSync(dir).filter((f) => f.endsWith('.ts')).map((f) => readFileSync(new URL(f, dir), 'utf8')).join('\n')
+}
 
 test('流水只记实际发出去的条目，不记打算发的全部', () => {
   const src = HUB()

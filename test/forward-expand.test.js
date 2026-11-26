@@ -10,7 +10,8 @@ import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../src/cha
 import { normalize } from '../src/core/config/index.ts'
 import { readClientSource } from './helpers/client-source.js'
 
-const hubSrc = readFileSync(new URL('../src/chat/hub.ts', import.meta.url), 'utf8')
+import { hubSource } from './hub-source.js'
+const hubSrc = hubSource()
 const clientSrc = readClientSource()
 
 const node = (name, message) => ({ sender: { nickname: name, user_id: 2 }, message })
