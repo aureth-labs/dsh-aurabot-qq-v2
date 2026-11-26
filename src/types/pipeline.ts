@@ -37,8 +37,13 @@ export interface PipelineSession {
   bot?: { platform?: string }
   type?: string
   guildId?: string
+  /** 会话归属（回写时拼 chatId 用）。 */
+  userId?: string
+  channelId?: string
   /** 这条会话往外发过几次；中间件抛错时用它判断「是不是已经认领了这条消息」。 */
   sentCount?: number
+  /** 已经发出去的内容（出站回写），新的在末尾；宿主进模型前读走并清空。 */
+  sentLog?: Array<{ text: string; at: number }>
   /** 过渡期：OneBot 原始事件的挂载位（S8 适配器收口后由适配器自己消化）。 */
   __ev?: unknown
   /**

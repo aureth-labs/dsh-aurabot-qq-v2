@@ -545,7 +545,21 @@ export function apply(ctx) {
   // 谁能接谁接；QQ 这条链路行为完全不变。
   pipeline.onLlm((session) => {
     const fromOneBot = Boolean(session.__ev) && session.bot?.platform === 'qq'
-    if (fromOneBot && hub) return hub.onMessage(session.__ev)
+    if (fromOneBot && hub) {
+      // 出站回写（S5）：中间件 / 指令在交给她之前已经发过的话，先记进聊天流水和「刚才说过」，
+      // 这一轮她就能看到自己说过了，不会同一句话再说一遍。回写条数与字数在 Session 里封顶。
+      if (session.sentLog?.length) {
+        const chatId = session.type === 'private' ? `private:${session.userId}` : `group:${session.channelId}`
+        for (const item of session.sentLog.splice(0)) {
+          try {
+            hub.noteSaid?.(chatId, item.text)
+          } catch (error) {
+            log.warn('出站回写失败：', String((error as Error)?.message ?? error))
+          }
+        }
+      }
+      return hub.onMessage(session.__ev)
+    }
     mods?.emit('llm', session)
     return undefined
   })
