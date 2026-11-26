@@ -1,5 +1,6 @@
 // 她的小闹钟：对话里设定的一次性提醒。到点只把她叫醒（进主人私聊的真实会话），不替她发消息。
 
+import type { OwnerChannel } from '../../owners.ts'
 import { randomUUID } from 'node:crypto'
 import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 
@@ -7,10 +8,13 @@ export interface CreateRemindersOptions {
   getConfig: () => Record<string, any>
   log: { info(message: string): void; warn(message: string, error?: unknown): void }
   hub: Record<string, any>
+  primaryIdentity?: () => unknown
+  channel?: OwnerChannel
+  clean?: (text: string) => string
   purposeDir: (...parts: string[]) => string
 }
 
-export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemindersOptions) {  // ---------- 她的小闹钟（P2b 自 speakup 迁入，Q2 拍板 §2.2-A） ----------
+export function createReminders({ getConfig, log, hub, purposeDir, channel, clean, primaryIdentity }: CreateRemindersOptions) {
   const REMINDER_GRACE_MS = 15 * 60_000
   const REMINDER_RETRY_MS = 5 * 60_000
   const REMINDER_WAIT_MS = 4 * 60_000
@@ -37,6 +41,7 @@ export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemin
     if (!id || !Number.isFinite(at) || !note) return null
     return {
       id,
+      owner: String(raw.owner ?? ''),
       at,
       atText: String(raw.atText || '').trim() || reminderText(at),
       note,
@@ -50,11 +55,17 @@ export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemin
   function loadReminders() {
     // 新文件存在（哪怕存的是空数组）就只认新文件：首写后旧文件冻结
     const fresh = readJson(remindersFile(), null)
-    const raw = Array.isArray(fresh) ? fresh : (() => {
+    const raw = Array.isArray(fresh) ? fresh : channel ? [] : (() => {
       const legacy = readJson(dataDir('speakup-reminders.json'), null)
       return Array.isArray(legacy) ? legacy : []
     })()
-    return raw.map(normalizeReminder).filter(Boolean)
+    const reminders = raw.map(normalizeReminder).filter(Boolean)
+    const owner = channel?.target.id || String(getConfig().ownerQQ || '')
+    if (owner && reminders.some(row => !row.owner)) {
+      for (const row of reminders) row.owner ||= owner
+      saveReminders(reminders)
+    }
+    return reminders
   }
   function saveReminders(list) { writeJson(remindersFile(), list) }
   function pruneReminders(now = Date.now()) {
@@ -66,7 +77,7 @@ export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemin
   const reminderList = (now = Date.now()) => pruneReminders(now).sort((a, b) => a.at - b.at)
   /** 小闹钟的总闸：插件总开关 + 目的引擎未显式关 + 主人在面板开了「小闹钟」开关。 */
   function remindersOn(cfg = getConfig()) {
-    return Boolean(cfg.enabled) && ((cfg.ext && cfg.ext.purpose) || {}).enabled !== false && cfg.speakUp?.reminderEnabled === true
+    return Boolean(cfg.enabled) && !cfg.debug && ((cfg.ext && cfg.ext.purpose) || {}).enabled !== false && cfg.speakUp?.reminderEnabled === true
   }
   function addReminder(value, noteText) {
     const cfg = getConfig()
@@ -83,6 +94,7 @@ export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemin
     if (live.length >= (cfg.speakUp.reminderLimit ?? 5)) return { ok: false, message: '你设定的提醒太多了' }
     const reminder = {
       id: randomUUID(),
+      owner: channel?.target.id || String(cfg.ownerQQ || ''),
       at,
       atText: reminderText(at),
       note,
@@ -108,31 +120,26 @@ export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemin
   }
   async function attemptReminder(reminder, now = Date.now()) {
     const cfg = getConfig()
-    const owner = String(cfg.ownerQQ || '')
+    const owner = channel?.target.id || String(cfg.ownerQQ || '')
     if (!owner || !remindersOn(cfg)) return
-    const chatId = `private:${owner}`
-    const outcome: Record<string, any> = await new Promise<Record<string, any>>((resolve) => {
-      let settled = false
-      const timer = setTimeout(() => finish({ ok: false, error: '等回复超时' }), REMINDER_WAIT_MS)
-      timer.unref?.()
-      const finish = (result) => {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        resolve(result || { ok: false, error: '没有结果' })
-      }
-      try {
-        const waiting = hub.pushToSession(
-          { chatId, kind: 'private', userId: owner, nickname: cfg.ownerName || '主人' },
-          [{ type: 'text', text: reminderPrompt(reminder, cfg.ownerName || '主人') }],
-          '',
-          { onTurnEnd: finish },
-        )
-        Promise.resolve(waiting).catch((error) => finish({ ok: false, error: error?.message || String(error) }))
-      } catch (error) {
-        finish({ ok: false, error: error?.message || String(error) })
-      }
-    })
+    if (reminder.owner && reminder.owner !== owner) { closeReminder(reminder.id); return }
+    const primary = primaryIdentity?.()
+    const stillPending = () => remindersOn() && loadReminders().some(row => row.id === reminder.id) &&
+      (channel ? channel.available() : (primaryIdentity?.() === primary && String(getConfig().ownerQQ || '') === owner))
+    async function dispatch() {
+      const prompt = reminderPrompt(reminder, cfg.ownerName || '主人')
+      const room = 'private:' + owner
+      if (channel?.busy()) return { ok: false, error: '私聊忙或账号离线' }
+      const turn = channel ? { ok: true, raw: await channel.generate(prompt) }
+        : await hub.runTurnInChat(room, prompt, { noTools: true, timeoutMs: REMINDER_WAIT_MS, kind: 'reminder', suppressDelivery: true })
+      if (!turn.ok) return { ok: false, error: turn.error || turn.reason }
+      if (!stillPending()) return { ok: false, error: '提醒已撤销或目标已变更' }
+      const text = clean(turn.raw || '')
+      if (!text) return { ok: true }
+      const sent = channel ? await channel.send(text) : (await hub.deliver(room, text, { userText: '小闹钟' }))?.sent
+      return { ok: Boolean(sent), error: '投递未确认' }
+    }
+    const outcome = await dispatch().catch(error => ({ ok: false, error: error.message }))
     const live = loadReminders()
     const current = live.find((r) => r.id === reminder.id)
     if (!current) return

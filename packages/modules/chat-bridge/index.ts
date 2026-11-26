@@ -1,5 +1,5 @@
 import { acknowledged } from '../../../src/core/bot/send-events.ts'
-import { targetKey } from '../../../src/core/pipeline/target.ts'
+import type { Target } from '../../../src/types/core/target.ts'
 import { identityNote } from './history.ts'
 import { personaScope } from '../../../src/persona/personas.ts'
 import { modelImages } from './images.ts'
@@ -65,6 +65,12 @@ function scopedReply(elements: Element[], messageId?: string): Element[] {
   return select(elements)
 }
 
+export interface RoomTimeline {
+  enabled(): boolean
+  read(target: Target, selfId: string, persona: string): { room: string; busy: boolean; revision: number; messages: ConversationLine[] }
+  record(target: Target, selfId: string, persona: string, line: ConversationLine): void
+}
+
 export function apply(ctx: PluginContext) {
   let store: ReturnType<typeof openConversations> | undefined
   let active = true
@@ -75,14 +81,33 @@ export function apply(ctx: PluginContext) {
     store?.close()
   })
 
+  const database = () => {
+    if (!active || ctx.config.enabled === false) throw Error('跨平台对话已关闭')
+    return store ??= openConversations(ctx.dataDir('conversations.sqlite'))
+  }
+  const historyLimit = () => Math.max(0, Math.min(100, Math.floor(Number(ctx.config.history) || 0)))
+  const timeline: RoomTimeline = {
+    enabled: () => active && ctx.config.enabled !== false,
+    read(target, selfId, persona) {
+      const db = database()
+      const room = db.room(target, selfId)
+      return { room, busy: queued.has(room), revision: db.revision(room, persona), messages: db.recent(room, persona, historyLimit()) }
+    },
+    record(target, selfId, persona, line) {
+      const db = database()
+      db.append(db.room(target, selfId), persona, [line], historyLimit())
+    },
+  }
+  ctx.provide('room-timeline', timeline)
+
   async function respond(session: SessionLike, room: string, persona: ReturnType<PersonaService['current']>, input: string, addressed: boolean) {
     if (!active || ctx.config.enabled === false || (!ctx.root.config.enabled && session.platform !== 'sandbox')) return
-    const db = store ??= openConversations(ctx.dataDir('conversations.sqlite'))
+    const db = database()
     if (db.seen(room, session.messageId)) return
-    const limit = Math.max(0, Math.min(100, Math.floor(Number(ctx.config.history) || 0)))
+    const limit = historyLimit()
     const owner = ctx.isOwner(session)
     const speaker = session.userName || session.userId
-    const current: ConversationLine = { role: 'user', speaker, text: input }
+    const current: ConversationLine = { role: 'user', speaker, text: input, at: session.timestamp || Date.now() }
     const history = db.recent(room, persona.id, limit)
     const mood = ctx.get<Mood>('mood')
     const system = [persona.body, identityNote(session.platform, session.bot.selfId), mood?.contextLine(room), ctx.config.systemPrompt,
@@ -131,7 +156,7 @@ export function apply(ctx: PluginContext) {
     if (ctx.config.mentionOnly !== false && session.platform !== 'sandbox' && !addressed) return
     const input = incomingText(session)
     if (!input) return
-    const room = targetKey(session.target)
+    const room = database().room(session.target, session.bot.selfId)
     const persona = ctx.get<PersonaService>('persona')?.current() ?? { id: '', name: 'AuraBot', body: '' }
     const turn = (queued.get(room) ?? Promise.resolve()).then(() => personaScope.run(persona.id, () => respond(session, room, persona, input, addressed)))
       .catch(error => ctx.logger.warn('跨平台对话失败', String(error?.message ?? error)))

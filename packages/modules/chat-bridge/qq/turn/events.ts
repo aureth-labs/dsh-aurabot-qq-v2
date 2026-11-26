@@ -110,7 +110,7 @@ export function createTurnEvents({
         st.text = st.mergedText || st.text
       }
 
-      if (raw && everyStepOn(getConfig().chat?.everyStep, st)) {
+      if (raw && !st.suppressDelivery && everyStepOn(getConfig().chat?.everyStep, st)) {
         const dupThreshold = Number(getConfig().chat?.dupSimilarity ?? 0.45)
         const prevSameTurn = st.interimTurn === d.turn ? String(st.interimText || '') : ''
         const repeated = Boolean(prevSameTurn) && similarText(prevSameTurn, raw) >= dupThreshold

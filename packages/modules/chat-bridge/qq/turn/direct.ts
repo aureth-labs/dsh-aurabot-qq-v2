@@ -1,5 +1,4 @@
 import { type RunTurnInChatOptions, type ReceiveOwnerMessageOptions } from './options.ts'
-import { sessionKey } from '../context/context.ts'
 import { checkAllowed } from '../../../../../src/chat/policy/rules/access.ts'
 import { mimeOf } from '../../../../../src/core/message/media/inspect.ts'
 
@@ -11,7 +10,6 @@ export function createDirectTurns({
   outbound,
   sessions,
   store,
-  turnState,
   release,
   pushToSession,
   isMuted,
@@ -106,17 +104,6 @@ export function createDirectTurns({
     activeTurns.add(cancel)
     timer = setTimeout(
       () => {
-        try {
-          const cur = map().chats[id]
-          const key = cur?.sessionId ? sessionKey(cur.sessionId) : ''
-          const st = key ? turnState.get(key) : null
-          if (st) {
-            st.suppressDelivery = false
-            st.pendingSuppressDelivery = false
-          }
-        } catch (error) {
-          log.debug('超时清理 suppress 标记失败：', error.message)
-        }
         settle({ ok: false, reason: 'timeout' })
         if (turnToken) release(id, turnToken)
       },
@@ -135,8 +122,10 @@ export function createDirectTurns({
       suppressDelivery,
 
       onTurnEnd: (r) => {
-        if (suppressDelivery)
+        if (suppressDelivery) {
+          if (r?.ok === false) return settle({ ok: false, reason: 'generation-failed', error: r.error })
           return settle({ ok: true, silent: !String(r?.text || ''), raw: String(r?.text || '') })
+        }
 
         const error = String(r?.error || '')
         const sent = String(r?.result?.sent || '')

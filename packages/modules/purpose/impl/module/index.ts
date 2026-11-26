@@ -1,14 +1,4 @@
-// 目的机制（主动搭话引擎）的 Aurabot 接线层。
-//
-// 引擎本体在 ../engine/（逻辑移植自 Mieksido/surfcore 的 purpose-engine，MIT，
-// 署名见 THIRD-PARTY-NOTICES.md；零 import 零 I/O 的纯函数）。
-// 本文件负责副作用：状态文件、素材采集（记忆 + 聊天流水适配）、生成（hub.runSystemTurn）、
-// 投递（hub.deliver）、心情 nudge、追问、路由。
-//
-// 使用方式：独立的 purpose 内置模块（packages/modules/purpose/index.ts）。P1/Q1 拍板起默认开启
-// （ext.purpose.enabled 缺省=开、显式 false 尊重）；旧的「主动搭话」模块（speakup）在迁移期
-// （P1~P3）仍在，companion 会见目的引擎开着而自动让位。
-
+import type { OwnerChannel } from '../../owners.ts'
 import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 import { randomUUID } from 'node:crypto'
 import { quietWindowOf } from '../../../../../src/core/support/time/time-window.ts'
@@ -109,21 +99,22 @@ export function cleanReply(raw, options, cfg?) {
 
 import { createReminders } from './reminders.ts'
 
-export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, memory, personaText, pet: petOf, use }) {
+export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, memory, personaText, pet: petOf, use, primaryIdentity = undefined as (() => unknown) | undefined, channel = undefined as OwnerChannel | undefined }) {
   const moodOf = () => { try { return mood?.() || null } catch { return null } }
   // 心情项：用户配的情绪表（心情页可增删改名）。引擎只读，不自己存一份。
   const emotionItems = () => normalizeEmotions(getConfig().mood?.emotions)
   const memoryOf = () => { try { return memory?.() || null } catch { return null } }
   // 下面的 friend 是主动搭话白名单里的 QQ 号，不传就是主人。朋友各有各的状态，素材只看和这个人的私聊、关于这个人的记忆。
-  const chatIdOf = (cfg, friend?) => `private:${friend || cfg.ownerQQ}`
-  const lastPrivateAt = (cfg, friend) => friend ? (hub?.lastPrivateAt?.(friend) || 0) : Math.max(hub?.lastOwnerChatAt || 0, hub?.lastBotToOwner?.at || 0)
+  const ownerId = cfg => channel?.target.id || cfg.ownerQQ
+  const chatIdOf = (cfg, friend?) => channel?.namespace || `private:${friend || cfg.ownerQQ}`
+  const lastPrivateAt = (cfg, friend) => channel ? (channel.recent().at(-1)?.at || 0) : friend ? (hub?.lastPrivateAt?.(friend) || 0) : Math.max(hub?.lastOwnerChatAt || 0, hub?.lastBotToOwner?.at || 0)
   // 内驱力、目标、惦记的事是她自己的，跟着人格走（根目录人格还是老位置，见 personas.js）。
   // 人格卡片段做的目标依据也就只留在原人格的状态里，不会被换上的人格读到。出站额度在 outbound-policy，仍共用。
-  const purposeDir = (...parts) => personaDataDir(getConfig(), personaNow(getConfig()), 'purpose', ...parts)
+  const purposeDir = (...parts) => personaDataDir(getConfig(), personaNow(getConfig()), 'purpose', ...(channel ? ['rooms', channel.namespace] : []), ...parts)
   const stateFile = (friend?) => purposeDir(...(friend ? ['friends', `${friend}.json`] : ['purpose-state.json']))
   const nudgeFile = () => purposeDir('nudge.json')
 
-  const { addReminder, closeReminder, reminderList, tickReminders } = createReminders({ getConfig, log, hub, purposeDir })
+  const { addReminder, closeReminder, reminderList, tickReminders } = createReminders({ getConfig, log, hub, purposeDir, channel, primaryIdentity, clean: raw => cleanReply(raw, {}, getConfig()) })
 
   // ---------- 状态 ----------
   // 【一次性迁移】2026-11-17 之前心情向量存在目的引擎的状态文件里（moods/moodsAt）；
@@ -157,7 +148,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   function loadState(config, now = Date.now(), friend = '') {
     const raw = readJson(stateFile(friend), null)
     const state = normalizePurposeState(raw, now)
-    if (!raw && !friend) {
+    if (!raw && !friend && !channel) {
       // 旧 speakup.json 只读迁移当日次数，之后弃用
       const legacy = readJson(dataDir('speakup.json'), null)
       const legacyCount = Number(legacy?.count) || 0
@@ -170,7 +161,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     ensurePurposeDay(state, now)
     ensurePurposeSchedule(state, { now, config })
     // 迁移必须在 normalize 之后：normalize 只把旧向量原样读回来，不解释它的语义。
-    const migrated = migrateLegacyMoods(state, friend)
+    const migrated = !channel && migrateLegacyMoods(state, friend)
     if (migrated) writeJson(stateFile(friend), state) // 立刻落盘，避免每次 load 都重跑迁移
     return state
   }
@@ -178,6 +169,9 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
 
   // ---------- 素材（记忆 importance 0~1 → 引擎 0~100） ----------
   function memoryRecords(friend = '') {
+    if (channel) return channel.facts().map(fact => ({
+      id: fact.id, text: fact.text, importance: 65, lastSeenAt: fact.changed, createdAt: fact.changed,
+    }))
     try {
       const items = memoryOf()?.list?.('') || []
       return items
@@ -200,10 +194,15 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   // 聊天流水（hub.chatLogOf）→ 引擎的 conversations 结构：只看主人私聊 + 最近群；朋友只看 TA 自己的私聊
   function conversations(cfg, now = Date.now(), friend = '') {
     const ownerKey = chatIdOf(cfg, friend)
+    if (channel) return [{
+      key: ownerKey, type: 'private', platform: channel.target.platform,
+      recentMessages: channel.recent().map(row => ({ text: row.text, time: row.at,
+        isSelf: row.role === 'assistant', isOwner: row.role === 'user', sender: row.speaker })),
+    }]
     const per = new Map()
     const pick = (chatId) => {
       let c = per.get(chatId)
-      if (!c) { c = { key: chatId, recentMessages: [], activeTopics: [], pendingThoughts: [] }; per.set(chatId, c) }
+      if (!c) { c = { key: chatId, type: chatId === ownerKey ? 'private' : 'group', platform: 'qq', recentMessages: [], activeTopics: [], pendingThoughts: [] }; per.set(chatId, c) }
       return c
     }
     try {
@@ -236,7 +235,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   // 没配模型、回合出错或回包解析不出，都静默回退关键词亲和（enrichMaterial 已算好），零额外成本。
   async function scoreMaterials(config, materials, now = Date.now()) {
     const sel = config.scoringModel
-    if (!sel || !Array.isArray(materials) || !materials.length) return materials
+    if (channel || !sel || !Array.isArray(materials) || !materials.length) return materials
     const list = materials.slice(0, 28)
     const lines = list.map((m, i) => `${i + 1}. ${formatMaterialLine(m, now)}`)
     // 情绪候选按「用户配的心情项」给——删掉的项不该再让模型产出（也给不出标签）。
@@ -286,7 +285,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   }
 
   function rssEntries(friend = '') {
-    if (friend) return [] // 朋友的线不喂全站浏览素材：那是主人自己的阅读兴趣
+    if (friend || channel) return [] // 朋友的线不喂全站浏览素材：那是主人自己的阅读兴趣
     try {
       const mod = typeof use === 'function' ? use('rss-reader') : null
       const list = typeof mod?.materials === 'function' ? mod.materials() : null
@@ -305,12 +304,13 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   }
 
   async function prepare(cfg, config, state, now = Date.now(), friend = '') {
-    const followUp = memoryOf()?.dueFollowUp?.(friend || cfg.ownerQQ, now) || null
+    const followUp = channel ? null : memoryOf()?.dueFollowUp?.(friend || cfg.ownerQQ, now) || null
     const materials = collectMaterials({
       now, config,
-      ownerUin: friend || cfg.ownerQQ,
+      ownerUin: friend || ownerId(cfg),
       roleName: selfName(cfg),
       roleAliases: selfNames(cfg),
+      ownerKey: chatIdOf(cfg, friend),
       conversations: conversations(cfg, now, friend),
       biliEntries: rssEntries(friend), // 浏览型模块的素材口（rss-reader「自主上网」等）；空数组=与从前一致
       memoryRecords: memoryRecords(friend),
@@ -344,7 +344,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     const name = friend ? friendName(friend) : cfg.ownerName || '主人'
     const prompt = buildPurposePrompt({
       now, config, mode: 'auto', // 模型直接输出那句话（Aurabot 没有 QQ 发送工具）
-      ownerUin: friend || cfg.ownerQQ,
+      ownerUin: friend || ownerId(cfg),
       ownerName: name,
       contextBlocks: [],
       materials: ctx.materials.items,
@@ -412,14 +412,17 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
 
   // ---------- 生成 + 投递 + 回执（hub.deliver 内部吞错，成功判定看返回值） ----------
   async function runOnce({ reason = '定时', config, state, force = false, friend = '' } : RunOnceOptions = {}) {
-    const cooldown = hub.systemSessionCooldown?.('purpose', { key: friend })
+    if (channel && !channel.available()) return { outcome: 'unavailable' }
+    if (channel?.busy()) return { outcome: 'skipped-busy' }
+    const cooldown = !channel && hub.systemSessionCooldown?.('purpose', { key: friend })
     if (cooldown) return { outcome: 'skipped-cooldown', retryAt: cooldown.retryAt }
     // 迁进私聊会话之后（#446），会话故障的退避是记在 `private:<QQ>` 上的，不是 `system:purpose`。
     // 这里必须先查它：否则第一次挂载失败之后每个 tick 都会重新 prepare、重算驱动力/目标并落盘，
     // 把状态文件改得面目全非（实测会把 drives 一路推高），而实际一条消息都发不出去。
     const cfg = getConfig()
-    const roomCooldown = friend ? null : hub.chatCooldown?.(chatIdOf(cfg))
+    const roomCooldown = friend || channel ? null : hub.chatCooldown?.(chatIdOf(cfg))
     if (roomCooldown) return { outcome: 'skipped-cooldown', retryAt: roomCooldown.retryAt }
+    const primary = primaryIdentity?.()
     const now = Date.now()
     ensurePurposeDay(state, now)
     const ctx = await prepare(cfg, config, state, now, friend)
@@ -463,23 +466,15 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
 
     let raw = ''
     let genError = null
-    // 载体预判（#446）：真正的对外发言要归入目标私聊的统一时间线——但**只在它最终会以 QQ 消息出现时**。
-    // carrier=pet 且桌宠在线时这一轮走气泡，既不该往 QQ 发消息，也不能让私聊会话替它自动投递，
-    // 所以那种情况保持原来的 system 会话路径。
     const su = carrierSettings()
-    const petOnline = su.carrier === 'pet' && Boolean(petOf()?.online?.()?.online)
-    // 这一轮会不会以 QQ 私聊消息落地：
-    //   · 朋友（friend）永远走 QQ → 会；
-    //   · carrier=qq（默认）→ 会（petFallbackToQQ 只跟 pet 载体有关，这里不该掺进来）；
-    //   · carrier=pet 且桌宠在线 → 不会（走气泡）；
-    //   · carrier=pet 且桌宠离线 → 只有开了回落才会，否则静默。
-    const willUseQQ = friend
-      ? true
-      : (su.carrier !== 'pet' || (!petOnline && su.petFallbackToQQ))
-    const inChat = willUseQQ && typeof hub.runTurnInChat === 'function'
+    const petOnline = !channel && su.carrier === 'pet' && Boolean(petOf?.()?.online?.()?.online)
+    const inChat = !channel && (friend || su.carrier !== 'pet' || (!petOnline && su.petFallbackToQQ)) &&
+      typeof hub.runTurnInChat === 'function'
     try {
       log.info?.(`目的（${reason}）：${picked.purpose.text}`)
-      if (inChat) {
+      if (channel) {
+        raw = await channel.generate(prompt)
+      } else if (inChat) {
         // 在这一轮真正的私聊会话里生成：她看到的上下文就是这段聊天本身，
         // DSH 注入的 elapsed 也就天然是这段私聊的真实静默时长（#446 的核心）。
         // suppressDelivery：原文末尾带「内部备忘」（【目的】/【状态】/【待续】），
@@ -516,7 +511,14 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     if (!text) {
       outcome = genError ? 'failed' : 'silent' // 模型有权跳过（【状态】跳过 / [沉默]），silent 不硬发
     } else {
-      const where = friend ? 'qq' : await deliverByCarrier(text, picked.purpose.text, picked.purpose.emotion || '', emotionProfile(picked.purpose.emotion)) // 桌宠气泡只给主人看
+      const live = getConfig()
+      if (!live.enabled || live.debug || (!channel && (primary !== primaryIdentity?.() || (!friend && cfg.ownerQQ !== live.ownerQQ)))) {
+        Object.assign(state, beforeAttempt)
+        saveState(state, friend)
+        return { outcome: 'unavailable' }
+      }
+      const where = channel ? (await channel.send(text).catch(error => { log.warn('主动投递失败', error.message); return false }) ? 'sent' : 'failed')
+        : friend ? 'qq' : await deliverByCarrier(text, picked.purpose.text, picked.purpose.emotion || '', emotionProfile(picked.purpose.emotion)) // 桌宠气泡只给主人看
       if (where === 'sent') {
         outcome = 'sent' // dispatch 已推气泡或回落 QQ：正常结算次数与心情
       } else if (where === 'silent') {
@@ -926,8 +928,8 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   async function tickOne(cfg, config, friend = '') {
     const now = Date.now()
     const state = loadState(config, now, friend)
-    if (!friend && await maybeNudge(cfg, config, state, now)) return true
-    if (hub.systemSessionCooldown?.('purpose', { key: friend })) return false
+    if (!channel && !friend && await maybeNudge(cfg, config, state, now)) return true
+    if (channel ? channel.busy() : hub.systemSessionCooldown?.('purpose', { key: friend })) return false
     const env = {
       enabled: true, modeOk: true, dshReady: true, paused: false, ownerAllowed: true,
       busy: false, friendOk: true, budgetBlocked: false, // Aurabot 无 token 预算/好友探测服务，恒可用（留 env 位）
@@ -947,15 +949,17 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
    *  人格卡的性格覆写（胆量/话多/黏人地板）只作用于主人这条线；朋友的排程沿用基础配置。 */
   async function tick() {
     // 小闹钟优先（P2b 迁入）：到点的闹钟先于目的回合同；闸门（总开关/目的引擎/小闹钟开关）在 tickReminders 内判
+    if (channel && !channel.available()) return false
     if (await tickReminders()) return true
     const cfg = getConfig()
     const config = purposeConfig(cfg)
-    if (!config.enabled || !cfg.ownerQQ) return
+    if (!config.enabled || !ownerId(cfg)) return false
     const ownerConfig = applyPersonaOverrides(config, personaOf(cfg))
-    if (!isMuted?.(chatIdOf(cfg)) && !memoryOf()?.dislikes?.(cfg.ownerQQ) && await tickOne(cfg, ownerConfig)) return
+    if (channel) return tickOne(cfg, ownerConfig)
+    if (!isMuted?.(chatIdOf(cfg)) && !memoryOf()?.dislikes?.(cfg.ownerQQ) && await tickOne(cfg, ownerConfig)) return true
     for (const qq of cfg.speakUp?.allow || []) {
       if (String(qq) === String(cfg.ownerQQ) || isMuted?.(chatIdOf(cfg, qq)) || memoryOf()?.dislikes?.(qq)) continue
-      if (await tickOne(cfg, config, String(qq))) return
+      if (await tickOne(cfg, config, String(qq))) return true
     }
   }
 
@@ -964,9 +968,9 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     const cfg = getConfig()
     const config = applyPersonaOverrides(purposeConfig(cfg), personaOf(cfg))
     if (!config.enabled) return { outcome: 'disabled' }
-    if (isMuted?.(chatIdOf(cfg))) return { outcome: 'muted' }
-    if (memoryOf()?.dislikes?.(cfg.ownerQQ)) return { outcome: 'disliked' }
-    if (!cfg.ownerQQ) return { outcome: 'no-owner' }
+    if (!channel && isMuted?.(chatIdOf(cfg))) return { outcome: 'muted' }
+    if (!channel && memoryOf()?.dislikes?.(cfg.ownerQQ)) return { outcome: 'disliked' }
+    if (!ownerId(cfg)) return { outcome: 'no-owner' }
     const state = loadState(config)
     return runOnce({ reason, config, state, force: true })
   }

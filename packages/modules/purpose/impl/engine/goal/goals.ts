@@ -266,7 +266,7 @@ function hypothesesForEvent(event, { drives, now, lastMasterAt, hoursSinceMaster
   if (event.subject === 'owner') {
     const ownerText = String(event.material?.text ?? '').trim();
     const convKey = String(event.material?.meta?.key ?? '');
-    const isPrivate = convKey.startsWith('private:');
+    const isPrivate = event.material?.meta?.type === 'private' || (!event.material?.meta?.type && convKey.startsWith('private:'));
     const looksPlan = PLAN_RE.test(ownerText) || QUESTION_RE.test(ownerText);
     const isLife = event.domain === 'care' || event.domain === 'connect'
       || PLAN_RE.test(ownerText) || NEGATIVE_RE.test(ownerText) || POSITIVE_RE.test(ownerText);

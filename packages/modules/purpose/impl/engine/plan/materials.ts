@@ -29,6 +29,7 @@ export function collectMaterials({
   now = Date.now(),
   config = DEFAULT_PURPOSE_CONFIG,
   ownerUin = '',
+  ownerKey = '',
   roleName = '',
   roleAliases = [],
   conversations = [],
@@ -58,7 +59,7 @@ export function collectMaterials({
   }
 
   // ① 和主人的私聊：最重要，也最不容易「隔着群」。
-  const ownerKey = ownerUin ? `private:${String(ownerUin).replace(/[^\d]/g, '')}` : '';
+  ownerKey ||= ownerUin ? 'private:' + ownerUin : '';
   const ownerConv = ownerKey ? list.find((c) => c.key === ownerKey) : null;
   if (ownerConv) {
     const recent = (Array.isArray(ownerConv.recentMessages) ? ownerConv.recentMessages : [])
@@ -69,13 +70,13 @@ export function collectMaterials({
       if (!text || text.startsWith('[拍一拍]')) continue;
       const kind = m.isSelf ? 'self' : (m.isOwner ? 'owner' : 'member');
       push({
-        id: `qq:${ownerKey}:${messageAt(m)}:${kind}`,
-        source: 'qq',
+        id: `${ownerConv.platform || 'qq'}:${ownerKey}:${messageAt(m)}:${kind}`,
+        source: ownerConv.platform || 'qq',
         kind,
         at: messageAt(m) || now,
         who: kind === 'self' ? '你' : (kind === 'owner' ? '主人' : clip(m.sender, 20)),
         text,
-        meta: { key: ownerKey },
+        meta: { key: ownerKey, type: 'private' },
       });
       stats.qq += 1;
     }
@@ -83,7 +84,7 @@ export function collectMaterials({
 
   // ② 群聊：只取最近活跃的 3 个群，重点挑「跟她有关 / 在问事 / 有约定」的几句。
   const groups = list
-    .filter((c) => String(c.key ?? '').startsWith('group:'))
+    .filter((c) => c.type === 'group' || (!c.type && String(c.key ?? '').startsWith('group:')))
     .map((c) => {
       const recent = (Array.isArray(c.recentMessages) ? c.recentMessages : []).filter((m) => m && messageAt(m) >= windowStart);
       const lastAt = recent.length ? messageAt(recent[recent.length - 1]) : 0;
@@ -114,12 +115,12 @@ export function collectMaterials({
     for (const { m, text } of candidates.slice(0, 5)) {
       push({
         id: `qq:${c.key}:${messageAt(m)}`,
-        source: 'qq',
+        source: c.platform || 'qq',
         kind: m.isOwner ? 'owner' : 'member',
         at: messageAt(m) || now,
         who: m.isOwner ? '主人' : clip(m.sender || '群友', 20),
         text,
-        meta: { key: c.key },
+        meta: { key: c.key, type: 'group' },
       });
       stats.qq += 1;
     }
@@ -127,12 +128,12 @@ export function collectMaterials({
   for (const { c, m, text } of selfPromises.slice(-2)) {
     push({
       id: `qq:self:${c.key}:${messageAt(m)}`,
-      source: 'qq',
+      source: c.platform || 'qq',
       kind: 'self',
       at: messageAt(m) || now,
       who: '你',
       text,
-      meta: { key: c.key },
+      meta: { key: c.key, type: 'group' },
     });
     stats.qq += 1;
   }

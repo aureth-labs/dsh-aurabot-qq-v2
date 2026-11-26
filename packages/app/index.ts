@@ -278,6 +278,7 @@ export function apply(ctx) {
     adapters: {
       start: (spec, config, signal?: AbortSignal, instance?: string) => adapterRegistry.start(spec, config, signal, instance),
       list: () => adapterRegistry.list(),
+      connections: () => adapterRegistry.connections(),
     },
     root: ROOT,
     // 模块经 api.proactive 访问出站治理面（modules.js 里读它）
@@ -525,7 +526,7 @@ export function apply(ctx) {
   }
   // 「目的引擎」聚合：purpose 是默认关的独立内置模块，没开时 available=false，面板显示引导文案，不报错。
   // 安静时段真相 = speakUp 醒着窗口（与 purpose/module.js 的 purposeConfig 派生保持一致）。
-  function purposeOverview() {
+  function purposeOverview(target?: import('../../src/core/pipeline/target.ts').Target) {
     const pu = use('purpose')
     const ext: Record<string, any> = (cfg.ext && cfg.ext.purpose) || {}
     const sp: Record<string, any> = cfg.speakUp || {}
@@ -534,11 +535,14 @@ export function apply(ctx) {
     const awakeFrom = Number.isFinite(ext.awakeFrom) ? ext.awakeFrom : (Number.isFinite(sp.awakeFrom) ? sp.awakeFrom : 8)
     const awakeTo = Number.isFinite(ext.awakeTo) ? ext.awakeTo : (Number.isFinite(sp.awakeTo) ? sp.awakeTo : 23)
     const quiet = quietWindowOf(awakeFrom, awakeTo)
+    const state = pu?.state?.(target)
     return {
       available: typeof pu?.status === 'function',
       enabled: ext.enabled !== false, // P1/Q1 默认开：键缺省=开，显式 false 才算关（与 purposeConfig 同口径）
-      status: pu?.status?.() ?? null,
-      count: pu?.state?.().count ?? 0,
+      targets: pu?.targets?.() ?? [],
+      status: pu?.status?.(target) ?? null,
+      count: state?.count ?? 0,
+      reminders: state?.reminders ?? [],
       carrier: ext.carrier === 'pet' ? 'pet' : 'qq',
       petFallbackToQQ: ext.petFallbackToQQ !== false,
       pacing: ['conservative', 'default', 'active'].includes(ext.pacing) ? ext.pacing : 'default',

@@ -39,7 +39,7 @@ export function minePurposeSeeds({
   const query = normalizeDrives(drives);
   const hoursSinceMaster = lastMasterAt > 0 ? Math.max(0, (now - lastMasterAt) / HOUR) : 24;
   const selfTimes = materials
-    .filter((m) => m.kind === 'self' && (!m.meta?.key || String(m.meta.key).startsWith('private:')))
+    .filter((m) => m.kind === 'self' && (m.meta?.type === 'private' || (!m.meta?.type && (!m.meta?.key || String(m.meta.key).startsWith('private:')))))
     .map((m) => Number(m.at) || 0);
   const answeredAfter = (at, ms = 45 * MINUTE) => selfTimes.some((t) => t > at && t - at <= ms);
   const textOf = (m) => `${m?.title ?? ''} ${m?.text ?? ''} ${m?.quote ?? ''}`;

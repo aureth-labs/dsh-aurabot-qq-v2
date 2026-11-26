@@ -1,3 +1,4 @@
+import { assertTarget, type Target } from '../../../../src/core/pipeline/target.ts'
 import { loadConfig, mergeFromPanel } from '../../../../src/core/config/index.ts'
 import { normalizeWorkspace } from '../../../../src/features/notices/index.ts'
 import { normalizeSelection } from '../../../../src/core/config/chat-model.ts'
@@ -19,9 +20,13 @@ export function registerActivityRoutes({
 
   // ---------- 面板代理：目的引擎 / 桌宠 ----------
   // 统一走 /panel/* 前缀，避免和模块自注册的 /purpose/*、/pet/* 路由撞名；模块缺新接口时降级返回 available:false。
-  route('/panel/purpose/status', async () => ({
+  const selectedTarget = (target?: Target) => {
+    if (target !== undefined) assertTarget(target)
+    return target
+  }
+  route('/panel/purpose/status', async req => ({
     ok: true,
-    purpose: purposeOverview(),
+    purpose: purposeOverview(http.query(req).target ? selectedTarget(JSON.parse(http.query(req).target)) : undefined),
     pet: petStatus(),
     // 「素材打分模型」下拉的选项：DSH 里现有的全部模型（provider/model/name）。
     models: (getModels() || []).map((m) => ({
@@ -30,26 +35,32 @@ export function registerActivityRoutes({
       name: m.name || m.model,
     })),
   }))
-  route('/panel/purpose/preview', async () => {
+  route('/panel/purpose/preview', async req => {
     const pu = use('purpose')
     if (typeof pu?.preview !== 'function')
       return { ok: false, available: false, message: '目的引擎模块没在跑，没法预览' }
-    return { ok: true, result: redactTokens(await pu.preview()) }
+    const result = await pu.preview(selectedTarget((await readBody(req)).target))
+    return result ? { ok: true, result: redactTokens(result) } : { ok: false, message: '请选择一个在线的主人私聊', targets: pu.targets() }
   })
-  route('/panel/purpose/run', async () => {
+  route('/panel/purpose/run', async req => {
     const pu = use('purpose')
     if (typeof pu?.run !== 'function') return { ok: false, available: false, message: '目的引擎模块没在跑' }
-    const r = await pu.run('面板')
+    const r = await pu.run('面板', selectedTarget((await readBody(req)).target))
     const msg =
       r &&
       {
         sent: '已经去找你了',
         silent: '她这轮想了想，决定不说（不硬发）',
         muted: '主人在私聊里让她闭嘴了',
+        'select-owner': '请选择要联系的主人账号',
+        'no-owner': '没有在线的主人私聊连接',
+        'delivery-failed': '未确认消息送达',
+        unavailable: '账号已离线或配置已变更',
         disabled: '目的引擎开关是关的',
       }[r.outcome]
     return {
-      ok: !r || r.outcome !== 'disabled',
+      ok: !!r && !['disabled', 'select-owner', 'no-owner', 'unavailable', 'delivery-failed', 'failed'].includes(r.outcome),
+      targets: pu.targets(),
       message: msg || (r ? `这轮结束：${r.outcome}` : '没有结果'),
       result: redactTokens(r),
     }

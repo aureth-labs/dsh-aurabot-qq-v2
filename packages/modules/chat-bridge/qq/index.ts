@@ -484,7 +484,6 @@ export function createHub({
     outbound,
     sessions,
     store,
-    turnState,
     release,
     pushToSession,
     isMuted,

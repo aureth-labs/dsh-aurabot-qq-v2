@@ -27,6 +27,12 @@ export function createPrimaryChat({
   deniedTools,
   personaMemoryRuntime,
 }) {
+  const primaryContext = where => {
+    const chat = where.chat
+    const id = chat?.kind === 'private' ? chat.userId : chat?.kind === 'group' ? chat.groupId : ''
+    const target = id ? { platform: 'qq', botId: defaultOneBotId, type: chat.kind, id: String(id) } : undefined
+    return { ...where, target, primaryChat: true }
+  }
   const hub = createHub({
     localApi: local,
     dsh: ctx,
@@ -38,17 +44,10 @@ export function createPrimaryChat({
     tts,
     asr: () => modules()?.services?.get?.('asr') ?? null,
     askModel: generate,
-    buildTools: (where) => {
-      const chat = where.chat
-      const id = chat?.kind === 'private' ? chat.userId : chat?.kind === 'group' ? chat.groupId : ''
-      const target = id
-        ? { platform: 'qq', botId: defaultOneBotId, type: chat.kind, id: String(id) }
-        : undefined
-      return modules().buildTools({ ...where, target, primaryChat: true })
-    },
+    buildTools: where => modules().buildTools(primaryContext(where)),
     capabilitiesOf: (id) =>
       typeof modules().capabilitiesOf === 'function' ? modules().capabilitiesOf(id) : [],
-    contextProviders: [(args) => modules().contextFor(args)],
+    contextProviders: [(args) => modules().contextFor(primaryContext(args))],
     onActivity: (a) => modules().emit('activity', a),
     memoryScore: (text) => use('memory')?.topicScore?.(text) ?? 0,
     dislikes: (qq) => use('memory')?.dislikes?.(qq) ?? false,
@@ -120,7 +119,7 @@ export function createPrimaryChat({
       secrets: () => [],
       deniedTools: () => deniedTools(),
       groupDecide: (decision, info) => modules().filter('group/decide', decision, info),
-      prompt: (content, info) => modules().filter('prompt', content, info),
+      prompt: (content, info) => modules().filter('prompt', content, primaryContext(info)),
       items: (items, info) => modules().filter('reply/items', items, info),
       send: (message, info) => modules().filter('onebot/before-send', message, info),
       model: (sel, chat) => modules().filterSync('model', sel, chat),

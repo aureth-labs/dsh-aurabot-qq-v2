@@ -50,9 +50,10 @@ function setup({ remind = {}, extPurpose = {}, onTurnEnd = () => ({ ok: true }) 
     lastBotToOwner: { at: 0, text: '' },
     chatLogDays: () => [],
     chatLogOf: () => [],
-    pushToSession: async (chat, content, sender, opts) => {
-      pushed.push({ chat, text: content[0].text })
-      await opts?.onTurnEnd?.(onTurnEnd())
+    async runTurnInChat(chat, text, opts) {
+      assert.equal(opts.noTools && opts.suppressDelivery, true)
+      pushed.push({ chat, text })
+      return onTurnEnd()
     },
     async runSystemTurn() { return '嗯' },
     async deliver(chatId, text, opts = {}) { pushed.push({ chatId, text }); return { missedAt: [], failed: 0, errors: [], sent: text } },

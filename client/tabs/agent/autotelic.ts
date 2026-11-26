@@ -254,14 +254,14 @@ const GOAL_OWNER_LABELS = { self: '自己', owner: '主人', member: '群友', m
 
 const PACING_PRESETS = [{ value: 'conservative', label: '保守' }, { value: 'default', label: '默认' }, { value: 'active', label: '活跃' }]
 
-function PurposeStatus({ toast }) {
+function PurposeStatus({ target, toast }) {
   const [d, setD] = useState(null)
   const [awakeFrom, setAwakeFrom] = useState('')
   const [awakeTo, setAwakeTo] = useState('')
   const [maxN, setMaxN] = useState('')
   const [busy, setBusy] = useState('')
   const [preview, setPreview] = useState(null)
-  const load = () => get('/panel/purpose/status').then((r) => {
+  const load = () => get('/panel/purpose/status' + (target ? '?target=' + encodeURIComponent(JSON.stringify(target)) : '')).then((r) => {
     if (!r.ok) return
     setD(r)
     setAwakeFrom((v) => (v === '' && r.purpose.awakeFrom != null) ? String(r.purpose.awakeFrom) : v)
@@ -282,9 +282,9 @@ function PurposeStatus({ toast }) {
     try { const r = await post('/panel/purpose/config', patch); if (!r.ok) toast(r.message || '没成功', 'err'); else { setD(r); toast('保存好了', 'ok') } }
     catch (e) { toast(e.message) } finally { setBusy('') }
   }
-  return h(Card, { title: '目的引擎（实验）', desc: '可选的新引擎，默认关：ta会自己从聊天和记忆里找「想跟你说的事」——攒素材 → 记观察 → 立目标假设 → 挑一个候选，到点了才来找你。开着的话建议关掉上方「主动搭话」总开关，两套别同时开。' },
+  return h(Card, { title: '目的引擎', desc: '根据聊天记录、记忆和当前人格选择话题，也可以决定保持沉默。' },
     !p.available ? h('div', { className: 'ab-note' }, '目的引擎模块没在跑。到「已安装」页页看看模块状态。') : null,
-    h(Row, { label: '启用目的引擎', hint: '默认关。这是「主动搭话」的替代引擎，两套同时开会重复打扰' },
+    h(Row, { label: '启用目的引擎', hint: '关闭后暂停自动搭话和小闹钟' },
       h(Switch, { on: p.enabled, disabled: !p.available, onChange: save({ enabled: !p.enabled, __k: 'enabled' }) })),
     p.enabled ? h('div', { className: 'ab-flex', style: { gap: 8, flexWrap: 'wrap', margin: '4px 0 10px' } },
       chain.map(([l, n]) => h('div', { key: l, className: 'ab-card', style: { flex: '1 1 90px', padding: '8px 10px' } },
@@ -323,8 +323,8 @@ function PurposeStatus({ toast }) {
         save(patch)()
       } }, '应用')),
     h('div', { className: 'ab-flex', style: { marginTop: 10 } },
-      h(Btn, { small: true, disabled: !p.available || !p.enabled, onClick: async () => { setBusy('preview'); setPreview(null); try { const r = await post('/panel/purpose/preview'); setPreview(r); if (!r.ok) toast(r.message || '没成功', 'err') } catch (e) { toast(e.message) } finally { setBusy('') } } }, busy === 'preview' ? '预览中…' : '预览这一轮（零副作用）'),
-      h(Btn, { small: true, kind: 'primary', disabled: !p.available || !p.enabled, onClick: async () => { setBusy('run'); try { const r = await post('/panel/purpose/run'); toast(r.ok ? '发出去了，去 QQ 看看' : (r.message || '没成功'), r.ok ? 'ok' : 'err') } catch (e) { toast(e.message) } finally { setBusy('') } } }, busy === 'run' ? '在试…' : '立即试一次')),
+      h(Btn, { small: true, disabled: !target || !p.available || !p.enabled || !!busy, onClick: async () => { setBusy('preview'); setPreview(null); try { const r = await post('/panel/purpose/preview', { target }); setPreview(r); if (!r.ok) toast(r.message || '没成功', 'err') } catch (e) { toast(e.message) } finally { setBusy('') } } }, busy === 'preview' ? '预览中…' : '预览这一轮（零副作用）'),
+      h(Btn, { small: true, kind: 'primary', disabled: !target || !p.available || !p.enabled || !!busy, onClick: async () => { setBusy('run'); try { const r = await post('/panel/purpose/run', { target }); toast(r.message || '没有结果', r.ok ? 'ok' : 'err') } catch (e) { toast(e.message) } finally { setBusy('') } } }, busy === 'run' ? '在试…' : '立即试一次')),
     preview && preview.ok && preview.result ? h('div', { className: 'ab-note', style: { marginTop: 8 } },
       (() => {
         const r = preview.result

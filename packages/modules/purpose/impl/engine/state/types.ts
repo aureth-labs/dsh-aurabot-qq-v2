@@ -26,7 +26,7 @@ export type ApplyPurposeOutcomeOptions = Partial<Record<'now' | 'config' | 'outc
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 export type PrunePurposeStateOptions = Partial<Record<'now' | 'config', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-export type CollectMaterialsOptions = Partial<Record<'now' | 'config' | 'ownerUin' | 'roleName' | 'roleAliases' | 'conversations' | 'biliEntries' | 'memoryRecords' | 'followUpRecords', any>>
+export type CollectMaterialsOptions = Partial<Record<'now' | 'config' | 'ownerUin' | 'ownerKey' | 'roleName' | 'roleAliases' | 'conversations' | 'biliEntries' | 'memoryRecords' | 'followUpRecords', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 export type DeriveDrivesOptions = Partial<Record<'drives' | 'drivesAt' | 'materials' | 'now' | 'lastMasterAt' | 'personaBias' | 'needFeedback' | 'halfLifeHours' | 'connectFloor', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

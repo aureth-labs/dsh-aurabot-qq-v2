@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { normalize } from '../../../src/core/config/index.ts'
 import { purposeConfig } from '../../../packages/modules/purpose/impl/module/index.ts'
 import { quietWindowOf, inHourWindow } from '../../../src/core/support/time/time-window.ts'
-import purposeDef from '../../../packages/modules/purpose/index.ts'
+import * as purposeDef from '../../../packages/modules/purpose/index.ts'
 import { createModules } from '../../../src/core/module/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 
@@ -113,7 +113,7 @@ function makeMods(initialCfg) {
     setConfig: (next) => { cfg = normalize(next); writes.push(JSON.parse(JSON.stringify(cfg))) },
     logger: { child: () => noop },
     version: 'test',
-    builtins: [purposeDef],
+    builtins: [{ ...purposeDef, id: 'purpose' }],
   })
   return {
     mods,
