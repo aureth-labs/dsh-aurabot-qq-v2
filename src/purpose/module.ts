@@ -26,7 +26,7 @@ import {
   inQuietHours,
   minePurposeSeeds, selectPurpose, buildPurposePrompt, parsePurposeMemo, emotionProfile,
   summarizePurposeState, recordOwnerReplyHours, formatMaterialLine,
-} from './engine.ts'
+} from './engine/index.ts'
 // 心情项的唯一真相在心情模块：这里只读配置、不自己存一份情绪表。
 import { normalizeEmotions, resolveEmotion } from '../features/mood/emotions.ts'
 

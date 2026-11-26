@@ -6,8 +6,8 @@
  */
 
 import type { BotLike, Capability } from './bot.ts'
-import type { Element } from './element.ts'
-import type { TargetType } from './target.ts'
+import type { Element } from '../core/element.ts'
+import type { TargetType } from '../core/target.ts'
 
 /**
  * 适配器收到一条平台消息后投给宿主的东西。

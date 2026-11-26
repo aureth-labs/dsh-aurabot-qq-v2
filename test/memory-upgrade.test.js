@@ -8,7 +8,7 @@ import * as nodeModule from 'node:module'
 import { spawnSync } from 'node:child_process'
 import { normalize, DEFAULTS } from '../src/core/config/index.ts'
 import { createMemoryStore, COMPRESS } from '../src/features/memory/index.ts'
-import { createMemoryStorage, MEMORY_SCHEMA } from '../src/features/memory/store.ts'
+import { createMemoryStorage, MEMORY_SCHEMA } from '../src/features/memory/store/store.ts'
 import { createBackup, stageRestore, applyPendingRestore } from '../src/core/runtime/backup/backup.ts'
 import memoryModule from '../src/modules/memory/index.ts'
 
@@ -199,7 +199,7 @@ for (const broken of [false, true]) {
       context() {}, on() {}, every() {}, tool() {}, route() {},
     })
     assert.equal(mem.list('').length, original.items.length)
-    assert.ok(memoryModule.files.includes('features/memory-store.js'))
+    assert.ok(memoryModule.files.includes('features/memory/store/store.js'))
     assert.equal(migratedFiles(dir).length, broken ? 0 : 1)
     assert.equal(warnings.length, broken ? 1 : 0)
     assert.deepEqual(storage(t, dir).load(), original)
@@ -215,7 +215,7 @@ test('beta.2 默认保留天数 0 有意升级为 7；显式保留 0 与 -1 仍�
 test('实际拦截动态 import node:sqlite：模块仍可加载并使用 JSON', { skip: typeof nodeModule.registerHooks !== 'function' }, (t) => {
   const original = fixture(versions[0])
   const dir = setup(t, original)
-  const moduleUrl = new URL('../src/features/memory/store.ts', import.meta.url).href
+  const moduleUrl = new URL('../src/features/memory/store/store.ts', import.meta.url).href
   const script = `
     import { registerHooks } from 'node:module';
     import assert from 'node:assert/strict';

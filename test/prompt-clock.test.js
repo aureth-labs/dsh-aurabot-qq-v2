@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { clockAt, clockLabel } from '../src/chat/reply/index.ts'
-import { flatHistory } from '../src/chat/inbound/identity.ts'
+import { flatHistory } from '../src/chat/inbound/parse/identity.ts'
 import { hubSource } from './hub-source.js'
 
 test('钟点统一按东八区压成 HH:MM', () => {

@@ -6,7 +6,7 @@
  */
 
 import { degrade, normalize, type Element } from '../../../../../src/core/message/element/element.ts'
-import type { Capability } from '../../../../../src/types/bot.ts'
+import type { Capability } from '../../../../../src/types/adapter/bot.ts'
 
 export interface RenderQQTextOptions {
   supports: (capability: Capability) => boolean

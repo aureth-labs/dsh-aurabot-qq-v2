@@ -6,7 +6,7 @@ import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, 
 export { looksLikeRuleMemory } from '../../features/memory/index.ts'
 // 记忆星图：算法全在 memory-graph.js（原样搬自记忆中枢 0.9.2 的 graph.mjs，纯函数）。
 // 这里只用它的建边/布局/亮度和 tier 值域映射，不搬中枢的 assoc.mjs 和 pipeline.mjs。
-import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../features/memory/graph.ts'
+import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../features/memory/store/graph.ts'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dataDir } from '../../core/store/index.ts'
@@ -43,8 +43,8 @@ export default {
   tab: 'memory',
   files: [
     'features/memory/index.js',
-    'features/memory/rules.js',
-    'features/memory/store.js',
+    'features/memory/query/rules.js',
+    'features/memory/store/store.js',
     'features/memory/vector.js',
   ],
   setup(api, { fetchImpl, registerNativePreview } : SetupOptions = {}) {
@@ -598,7 +598,7 @@ export default {
       return { ok: true, message: `存进记忆库 ${n} 条` }
     })
 
-    // ---------- 记忆继承：当前人格从另一个人格继承记忆（见 features/memory-inherit.js） ----------
+    // ---------- 记忆继承：当前人格从另一个人格继承记忆（见 features/memory/store/inherit.js） ----------
     // 面板先要计划、再一批批请求（进度条按批走，失败只重试那一批），最后提交勾选的。
     // 每一步都核对当前人格还是开始时那个：切了人格就作废，免得写进别的人格。
     function inheritPair(b) {

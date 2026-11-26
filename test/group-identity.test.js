@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { pickAutoReply, pickDirectRequester, sameNameNote } from '../src/chat/policy/group-policy.ts'
+import { pickAutoReply, pickDirectRequester, sameNameNote } from '../src/chat/policy/group/group-policy.ts'
 
 const msg = (uid, mid, direct = false, nick = '小明') => ({ uid, mid, direct, nick })
 

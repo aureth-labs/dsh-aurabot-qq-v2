@@ -16,7 +16,7 @@
 
 import { readJson, writeJson } from '../../core/store/index.ts'
 import { quietWindowOf } from '../../core/support/time/time-window.ts'
-import { inQuietHours, quietEndAfter, nextDayStartAfter, bestReplyHourShift } from '../../purpose/engine.ts'
+import { inQuietHours, quietEndAfter, nextDayStartAfter, bestReplyHourShift } from '../../purpose/engine/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ScheduleConfigOptions = Partial<Record<'enabled' | 'awakeFrom' | 'awakeTo' | 'minIntervalMinutes' | 'maxIntervalMinutes' | 'maxPerDay' | 'igniteCooldownMinutes', any>>

@@ -12,8 +12,8 @@
  * ```
  */
 
-import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../../src/types/adapter.ts'
-import type { BotLike } from '../../../../../src/types/bot.ts'
+import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../../src/types/adapter/adapter.ts'
+import type { BotLike } from '../../../../../src/types/adapter/bot.ts'
 import { AccessTokenProvider } from '../../common/src/access-token.ts'
 import { QQGateway, type GatewaySocket } from '../../common/src/gateway.ts'
 import { QQOpenApi } from '../../common/src/openapi.ts'
@@ -21,7 +21,7 @@ import { QQGuildBot } from './bot.ts'
 
 export { QQGuildBot }
 export type { QQGuildBotInit, QQGuildCreateDmParams, QQGuildDmChannel } from './bot.ts'
-export type { QQGuildMessageParams } from '../../../../../src/types/adapter.ts'
+export type { QQGuildMessageParams } from '../../../../../src/types/adapter/adapter.ts'
 
 export interface QQGuildSpecOptions {
   appId?: string

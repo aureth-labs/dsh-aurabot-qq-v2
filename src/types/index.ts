@@ -5,8 +5,8 @@
  * 不用去猜宿主的内部文件结构。
  */
 
-export type { Target, TargetType } from './target.ts'
-export type { Element, ElementSource, ElementFactory, OneBotSegment, Selector } from './element.ts'
+export type { Target, TargetType } from './core/target.ts'
+export type { Element, ElementSource, ElementFactory, OneBotSegment, Selector } from './core/element.ts'
 export type {
   BotLike,
   BotStatus,
@@ -21,8 +21,8 @@ export type {
   MessageQuery,
   SendOptions,
   User,
-} from './bot.ts'
-export type { SessionInit, SessionLike } from './session.ts'
+} from './adapter/bot.ts'
+export type { SessionInit, SessionLike } from './core/session.ts'
 export type {
   StageName,
   PipelineConfig,
@@ -36,7 +36,7 @@ export type {
   SessionFilter,
   CommandHandler,
   LlmHandler,
-} from './pipeline.ts'
+} from './plugin/pipeline.ts'
 export type {
   AdapterHandle,
   AdapterInfo,
@@ -50,7 +50,7 @@ export type {
   QQOfficialMessageParams,
   TelegramMessageEntity,
   TelegramSendMessageParams,
-} from './adapter.ts'
+} from './adapter/adapter.ts'
 export type {
   ApiLike,
   BotAccessor,
@@ -68,7 +68,7 @@ export type {
   ScopeFactory,
   ServerFacade,
   TtsFacade,
-} from './ctx.ts'
+} from './plugin/ctx.ts'
 export type {
   MemoryAssocMap,
   MemoryFollowUp,

@@ -15,8 +15,8 @@ import type {
   GuildMember,
   Message,
   SendOptions,
-} from '../../../../../src/types/bot.ts'
-import type { QQGuildMessageParams } from '../../../../../src/types/adapter.ts'
+} from '../../../../../src/types/adapter/bot.ts'
+import type { QQGuildMessageParams } from '../../../../../src/types/adapter/adapter.ts'
 import type { QQOpenApi } from '../../common/src/openapi.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
 import { renderQQText } from '../../common/src/render.ts'

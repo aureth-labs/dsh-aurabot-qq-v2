@@ -6,7 +6,7 @@
 // 失败一律退回原文：这类调用处在消息发送路径上，
 // 「润色失败就整条发不出去」比「照原文发出去」糟糕得多。
 
-import type { LlmFacade, LlmSummaryOptions, LlmTextOptions } from '../../types/ctx.ts'
+import type { LlmFacade, LlmSummaryOptions, LlmTextOptions } from '../../types/plugin/ctx.ts'
 
 /** 后台问一次模型的函数（host 用 askModel 包出来）。 */
 export type AskText = (options: {

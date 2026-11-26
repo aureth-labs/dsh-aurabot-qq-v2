@@ -11,7 +11,7 @@
 
 import { writeFileSync, mkdirSync, readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { parseClock } from '../../purpose/engine.ts'
+import { parseClock } from '../../purpose/engine/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ReflectionTextOptions = Partial<Record<'lesson' | 'evidence' | 'hypothesis', any>>

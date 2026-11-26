@@ -34,7 +34,7 @@ import { probePython, loadEnvCache, saveEnvCache, envUsable, runPython } from '.
 import { probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView } from '../../autotelic/exec/takeover.ts'
 import { reconcileDay, problemsText } from '../../autotelic/feedback/reconcile.ts'
 import { createJournal } from '../../autotelic/observe/reflect.ts'
-import { inQuietHours } from '../../purpose/engine.ts'
+import { inQuietHours } from '../../purpose/engine/index.ts'
 import { dataDir } from '../../core/store/index.ts'
 import { personaDataDir, personaNow, currentPersonaText } from '../../persona/personas.ts'
 

@@ -19,11 +19,11 @@ import { askModel, lastEmptyInfo } from '../../core/llm/index.ts'
 import { clipText } from '../../core/support/text.ts'
 import { createVectorIndexByMode } from './vector/index.ts'
 import { createReranker } from './vector/rerank.ts'
-import { createMemoryStorage } from './store.ts'
-import { inheritBlocks, inheritBatches, inheritPrompt, inheritInput, parseInherit, applyInherit } from './inherit.ts'
+import { createMemoryStorage } from './store/store.ts'
+import { inheritBlocks, inheritBatches, inheritPrompt, inheritInput, parseInherit, applyInherit } from './store/inherit.ts'
 import { shouldDeferBackground } from '../../core/llm/offpeak.ts'
 import { selfName, selfNames, isSelfName } from '../../persona/personas.ts'
-import { FACT_TIERS, isFactTier, isPermanentTier, followUpTier, tierDays, factTiers, strongerTier, memoryPlatforms } from './rules.ts'
+import { FACT_TIERS, isFactTier, isPermanentTier, followUpTier, tierDays, factTiers, strongerTier, memoryPlatforms } from './query/rules.ts'
 import type { MemoryGist, MemoryInput, MemoryItem, MemoryState } from '../../types/memory.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -71,8 +71,8 @@ type NoteViaOptions = Partial<Record<'via' | 'qq' | 'who' | 'text' | 'at', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ContextViaOptions = Partial<Record<'qq' | 'query', any>>
 
-export * from './query.ts'
-import { NATIVE_MEMORY_VIEW, isSelfFact, NO_ARRAY, EXTRACT_RETRY_TOKENS, VIA_NAMES, RELATED_MIN_SCORE, RELATED_LIMIT, ASSOC_MIN_SIM, ASSOC_LIMIT, ASSOC_RECALL_LIMIT, ASSOC_HOPS, ASSOC_HOP_DECAY, ASSOC_BUMP, ASSOC_BUMP_EVERY, TIER_GROW, validFromOf, validUntilOf, isCurrent, FOLLOW_UP_DELAYS, followUpChatAllowed, followUpPerson, parseFollowUpAt, parseValidityDate, validityText, eventText, seenMeta, pastWindow, cleanRelated, assocSignature, cleanAssocMap, tokenize, similarity, conflicting, sameFact, buildIndex, memoryVisible, search, isPersonalMemory, AGREEMENT_QUERY, isAgreementMemory, EVENT_QUERY, agoText, whenText, saidTime, parseSaidAt, stamp, memoryLine, shouldForget, RETENTION_BASE, retention, parseMemoryCommand, looksLikeRuleMemory, stripMemoryHints, matchesMemoryKeyword, parseReflection, parseExtraction, normalizeRelation, relationText, relationPair, relationHas, COMPRESS, compressionClusters, parseAbstract, checkAbstractText, ExtractionFormatError } from './query.ts'
+export * from './query/query.ts'
+import { NATIVE_MEMORY_VIEW, isSelfFact, NO_ARRAY, EXTRACT_RETRY_TOKENS, VIA_NAMES, RELATED_MIN_SCORE, RELATED_LIMIT, ASSOC_MIN_SIM, ASSOC_LIMIT, ASSOC_RECALL_LIMIT, ASSOC_HOPS, ASSOC_HOP_DECAY, ASSOC_BUMP, ASSOC_BUMP_EVERY, TIER_GROW, validFromOf, validUntilOf, isCurrent, FOLLOW_UP_DELAYS, followUpChatAllowed, followUpPerson, parseFollowUpAt, parseValidityDate, validityText, eventText, seenMeta, pastWindow, cleanRelated, assocSignature, cleanAssocMap, tokenize, similarity, conflicting, sameFact, buildIndex, memoryVisible, search, isPersonalMemory, AGREEMENT_QUERY, isAgreementMemory, EVENT_QUERY, agoText, whenText, saidTime, parseSaidAt, stamp, memoryLine, shouldForget, RETENTION_BASE, retention, parseMemoryCommand, looksLikeRuleMemory, stripMemoryHints, matchesMemoryKeyword, parseReflection, parseExtraction, normalizeRelation, relationText, relationPair, relationHas, COMPRESS, compressionClusters, parseAbstract, checkAbstractText, ExtractionFormatError } from './query/query.ts'
 
 export function createMemoryStore({ dsh, getConfig, hub, log, fetchImpl, setConfig = null, directory = dataDir(), blocked = null }) {
   // 用 ByMode：beta 的 createVectorIndex 只会走在线服务，本地 bge-small 模型完全用不上，

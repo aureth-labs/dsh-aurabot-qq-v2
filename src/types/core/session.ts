@@ -5,10 +5,10 @@
  * 所有发送方法都是异步的，调用方一律 `await`。
  */
 
-import type { BotLike, SendOptions } from './bot.ts'
+import type { BotLike, SendOptions } from '../adapter/bot.ts'
 import type { Element } from './element.ts'
 import type { Target, TargetType } from './target.ts'
-import type { PipelineResult, PipelineRunner } from './pipeline.ts'
+import type { PipelineResult, PipelineRunner } from '../plugin/pipeline.ts'
 
 export interface SessionInit {
   bot: BotLike

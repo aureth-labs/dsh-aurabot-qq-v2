@@ -7,7 +7,7 @@
 //
 // 业务插件对它是无感的：`ctx.command` / `ctx.middleware` / `session.send` 照旧。
 
-import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../src/types/adapter.ts'
+import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../src/types/adapter/adapter.ts'
 import type {
   BotLike,
   BotStatus,
@@ -20,7 +20,7 @@ import type {
   MessageQuery,
   SendOptions,
   User,
-} from '../../../../src/types/bot.ts'
+} from '../../../../src/types/adapter/bot.ts'
 import { Bot } from '../../../../src/core/bot/index.ts'
 import { isElement, toText } from '../../../../src/core/message/element/element.ts'
 import { fromSatori, toSatoriBody } from '../../../../src/core/message/satori/satori.ts'

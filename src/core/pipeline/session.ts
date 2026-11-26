@@ -2,15 +2,15 @@
 // 群消息、私聊、定时任务、指令回调都走同一个工厂，插件拿到的永远是这一套字段。
 // 所有发送方法都是异步的，调用方一律 await。
 
-import type { BotLike, SendOptions } from '../../types/bot.ts'
-import type { Element } from '../../types/element.ts'
-import type { PipelineResult, PipelineRunner } from '../../types/pipeline.ts'
-import type { SessionInit, SessionLike } from '../../types/session.ts'
-import type { Target, TargetType } from '../../types/target.ts'
+import type { BotLike, SendOptions } from '../../types/adapter/bot.ts'
+import type { Element } from '../../types/core/element.ts'
+import type { PipelineResult, PipelineRunner } from '../../types/plugin/pipeline.ts'
+import type { SessionInit, SessionLike } from '../../types/core/session.ts'
+import type { Target, TargetType } from '../../types/core/target.ts'
 import { targetOfBot } from '../bot/index.ts'
 import { isElement, toText } from '../message/element/element.ts'
 
-export type { SessionInit, SessionLike } from '../../types/session.ts'
+export type { SessionInit, SessionLike } from '../../types/core/session.ts'
 
 export interface ExecuteResult {
   handled: boolean

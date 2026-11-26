@@ -1,9 +1,9 @@
 // 清洗：Markdown、协议残片、工具调用文本、思考前缀、提示词复读，全在这里剥掉。
 // 出站清洗与截断也在这一层，因为它和区间表共用同一套坐标。
 
-import { chatRecordRanges, contextInjectionRanges, currentPromptSources, imageHandleRanges, memoryTranscriptRanges, promptFingerprint, promptTextRanges } from '../../security/leak-guard.ts'
-import { stripMarkers } from './reply-marker.ts'
-import { stripHtmlFragments, fenceRanges } from '../media/html-fragments.ts'
+import { chatRecordRanges, contextInjectionRanges, currentPromptSources, imageHandleRanges, memoryTranscriptRanges, promptFingerprint, promptTextRanges } from '../../../security/leak-guard.ts'
+import { stripMarkers } from '../context/reply-marker.ts'
+import { stripHtmlFragments, fenceRanges } from '../../media/html-fragments.ts'
 /** 迁移期选项对象：属性名固定，值由调用方传。 */
 export type ToolTextRangesOptions = Partial<Record<'ownerPrivate', any>>
 /** 迁移期选项对象：属性名固定，值由调用方传。 */

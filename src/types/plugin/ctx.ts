@@ -5,11 +5,11 @@
  * 能力从 ctx 上取，注册的东西随模块卸载自动回收。
  */
 
-import type { BotsAccessor, BotLike } from './bot.ts'
-import type { AdapterHandle, AdapterSpec } from './adapter.ts'
-import type { ElementFactory } from './element.ts'
+import type { BotsAccessor, BotLike } from '../adapter/bot.ts'
+import type { AdapterHandle, AdapterSpec } from '../adapter/adapter.ts'
+import type { ElementFactory } from '../core/element.ts'
 import type { CommandOptions, Middleware, MiddlewareOptions, SessionFilter } from './pipeline.ts'
-import type { Target } from './target.ts'
+import type { Target } from '../core/target.ts'
 
 /**
  * `ctx.bot`：按 id 取机器人，不传 id 就取默认那个。

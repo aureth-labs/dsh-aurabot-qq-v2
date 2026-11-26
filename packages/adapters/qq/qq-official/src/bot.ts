@@ -5,8 +5,8 @@
  * 被动回复必须带 `msg_id` + 递增的 `msg_seq`，否则会被平台拒掉。
  */
 
-import type { BotStatus, Capability, SendOptions } from '../../../../../src/types/bot.ts'
-import type { QQOfficialMessageParams } from '../../../../../src/types/adapter.ts'
+import type { BotStatus, Capability, SendOptions } from '../../../../../src/types/adapter/bot.ts'
+import type { QQOfficialMessageParams } from '../../../../../src/types/adapter/adapter.ts'
 import type { QQOpenApi } from '../../common/src/openapi.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
 import { renderQQText } from '../../common/src/render.ts'

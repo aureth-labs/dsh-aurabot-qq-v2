@@ -1,5 +1,5 @@
 // Bot：一个已上线的机器人实例。
-// 契约本身在 src/types/bot.ts；这里只留运行时行为（状态校验、目标构造）。
+// 契约本身在 src/types/adapter/bot.ts；这里只留运行时行为（状态校验、目标构造）。
 
 import type {
   BotLike,
@@ -12,8 +12,8 @@ import type {
   MessageQuery,
   SendOptions,
   User,
-} from '../../types/bot.ts'
-import type { Target } from '../../types/target.ts'
+} from '../../types/adapter/bot.ts'
+import type { Target } from '../../types/core/target.ts'
 
 // 老代码一直从 core/bot.ts 取这些类型，这里原样转发，别让调用方跟着改 import 路径。
 export type {
@@ -29,7 +29,7 @@ export type {
   MessageQuery,
   SendOptions,
   User,
-} from '../../types/bot.ts'
+} from '../../types/adapter/bot.ts'
 
 export class BotStateError extends Error {
   constructor(bot: BotLike, action: string) {

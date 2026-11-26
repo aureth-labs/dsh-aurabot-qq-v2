@@ -6,7 +6,7 @@
  * 平台不支持的接口由基类抛 UnsupportedApiError，不静默返回空。
  */
 
-import type { Element } from './element.ts'
+import type { Element } from '../core/element.ts'
 
 export type BotStatus = 'registered' | 'connecting' | 'online' | 'offline' | 'error'
 

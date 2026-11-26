@@ -11,7 +11,7 @@ import type {
   MessageQuery,
   SendOptions,
   User,
-} from '../../../../../src/types/bot.ts'
+} from '../../../../../src/types/adapter/bot.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
 import { toOneBot, isElement, normalize, degrade, fromOneBot, toText } from '../../../../../src/core/message/element/element.ts'
 import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'

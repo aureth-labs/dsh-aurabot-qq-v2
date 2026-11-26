@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 import { normalize } from '../src/core/config/index.ts'
-import { currentTimeLine } from '../src/chat/reply/time-context.ts'
+import { currentTimeLine } from '../src/chat/reply/context/time-context.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-time-poke-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')

@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { Script } from 'node:vm'
 import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config/index.ts'
 import { createMemoryStore } from '../src/features/memory/index.ts'
-import { createMemoryStorage } from '../src/features/memory/store.ts'
+import { createMemoryStorage } from '../src/features/memory/store/store.ts'
 import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 function panelHarness(initial = {}) {

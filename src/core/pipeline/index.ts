@@ -8,7 +8,7 @@
 // - 每段有超时与失败隔离：一个中间件抛错/超时不影响其它
 //
 // 顺序按名字定位，不用数字：before / after 指向已注册的中间件名，或三个段名本身。
-// 类型声明在 src/types/pipeline.ts，这里只留实现。
+// 类型声明在 src/types/plugin/pipeline.ts，这里只留实现。
 
 import type {
   CommandHandler,
@@ -22,7 +22,7 @@ import type {
   PipelineResult,
   PipelineSession,
   SessionFilter,
-} from '../../types/pipeline.ts'
+} from '../../types/plugin/pipeline.ts'
 
 export type {
   CommandHandler,
@@ -35,7 +35,7 @@ export type {
   PipelineResult,
   PipelineSession,
   StageName,
-} from '../../types/pipeline.ts'
+} from '../../types/plugin/pipeline.ts'
 
 export interface PipelineOptions extends Partial<PipelineConfig> {
   /** 某段出错时的回调（中间件失败会被跳过，这里负责让它可见）。 */

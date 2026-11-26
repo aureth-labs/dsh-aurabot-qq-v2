@@ -1,5 +1,5 @@
 // 测试通过真实存储边界读写状态，不再假定运行后的记忆一定落在 memories.json。
-import { createMemoryStorage } from '../../src/features/memory/store.ts'
+import { createMemoryStorage } from '../../src/features/memory/store/store.ts'
 
 const log = { warn() {} }
 export function readMemoryState(directory) {

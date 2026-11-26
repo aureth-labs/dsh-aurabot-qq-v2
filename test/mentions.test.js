@@ -1,7 +1,7 @@
 // 群里真 @：<at:QQ号>、<at:名字>、顺手打的「@名字」换成 @ 消息段；对不上或重名的不乱 @。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { expandMentions, hasMention } from '../src/chat/inbound/mentions.ts'
+import { expandMentions, hasMention } from '../src/chat/inbound/parse/mentions.ts'
 
 const members = [
   { user_id: 10001, card: '张小明（摸鱼仔）', nickname: 'zyb' },

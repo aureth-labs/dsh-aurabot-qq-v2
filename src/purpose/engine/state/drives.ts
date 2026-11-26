@@ -1,9 +1,9 @@
 // 驱动与心情：需要、情绪、人格偏向怎么影响「现在想干嘛」。
 
-import { DEFAULT_EMOTIONS, emotionLabels, emotionProfiles, profileOf, resolveEmotion } from '../features/mood/emotions.ts'
+import { DEFAULT_EMOTIONS, emotionLabels, emotionProfiles, profileOf, resolveEmotion } from '../../../features/mood/emotions.ts'
 import { PURPOSE_STATE_VERSION, FOLLOW_UP_WEIGHT, DEFAULT_PURPOSE_CONFIG, MINUTE, HOUR, DAY, isPlainObject, clampInt, clip, redactNumbers } from './types.ts'
 import type { NormalizePurposeConfigOptions, EnsurePurposeScheduleOptions, BestReplyHourShiftOptions, BestReplyWeekdayShiftOptions, PlanNextFireOptions, EvaluatePurposeTickOptions, MarkPurposeDeliveredOptions, MarkPurposeSkipOptions, ApplyPurposeOutcomeOptions, PrunePurposeStateOptions, CollectMaterialsOptions, DeriveDrivesOptions, AppraiseMaterialOptions, SatisfyDrivesOptions, NormalizeMoodsOptions, DeriveMoodsOptions, AnalyzeEventOptions, MakeGoalOptions, HypothesesForEventOptions, MergeGoalOptions, PersonaGoalSpecOptions, FormGoalHypothesesOptions, ActionForNeedOptions, IntentForNeedOptions, MinePurposeSeedsOptions, AddOptions, SelectPurposeOptions, BuildPurposePromptOptions, ParseFeelingsOptions, AddPendingPurposeOptions, SummarizePurposeStateOptions } from './types.ts'
-import { clamp01 } from './goals.ts'
+import { clamp01 } from '../goal/goals.ts'
 
 export const DESIRE_RE = /想玩|想吃|想买|想去|想要|好想|想试试|想学|求推荐|求带/;
 export const PLAN_RE = /明天|后天|周末|下周|考试|面试|加班|出差|回家|生日|旅行|医院|搬家|开会|比赛|约会|放假|开学/;

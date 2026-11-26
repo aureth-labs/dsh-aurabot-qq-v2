@@ -8,7 +8,7 @@ import { selfName, selfNames, isSelfName, savePersona, currentPersonaText } from
 import { createMemoryStore } from '../src/features/memory/index.ts'
 import { createMood } from '../src/features/mood/index.ts'
 import { createPurpose, cleanReply } from '../src/purpose/module.ts'
-import { collectMaterials, needAffinity } from '../src/purpose/engine.ts'
+import { collectMaterials, needAffinity } from '../src/purpose/engine/index.ts'
 import { createBridge } from '../src/core/runtime/bridge.ts'
 import { writeMemoryState } from './helpers/memory-state.js'
 

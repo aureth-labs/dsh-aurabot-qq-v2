@@ -9,10 +9,10 @@
  * THIRD-PARTY-NOTICES.md；已按 Aurabot 的模块与配置语境改写。
  */
 
-export * from './types.ts'
-export * from './schedule.ts'
-export * from './materials.ts'
-export * from './drives.ts'
-export * from './goals.ts'
-export * from './select.ts'
-export * from './prompt.ts'
+export * from './state/types.ts'
+export * from './plan/schedule.ts'
+export * from './plan/materials.ts'
+export * from './state/drives.ts'
+export * from './goal/goals.ts'
+export * from './goal/select.ts'
+export * from './reply/prompt.ts'

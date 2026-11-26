@@ -1,9 +1,9 @@
 // 素材：从聊天流水 / 视频 / 记忆 / 追问里挑出「今天能聊的事」，并去重。
 
-import { DEFAULT_EMOTIONS, emotionLabels, emotionProfiles, profileOf, resolveEmotion } from '../features/mood/emotions.ts'
-import { PURPOSE_STATE_VERSION, FOLLOW_UP_WEIGHT, DEFAULT_PURPOSE_CONFIG, MINUTE, HOUR, DAY, isPlainObject, clampInt, clip, redactNumbers } from './types.ts'
-import type { NormalizePurposeConfigOptions, EnsurePurposeScheduleOptions, BestReplyHourShiftOptions, BestReplyWeekdayShiftOptions, PlanNextFireOptions, EvaluatePurposeTickOptions, MarkPurposeDeliveredOptions, MarkPurposeSkipOptions, ApplyPurposeOutcomeOptions, PrunePurposeStateOptions, CollectMaterialsOptions, DeriveDrivesOptions, AppraiseMaterialOptions, SatisfyDrivesOptions, NormalizeMoodsOptions, DeriveMoodsOptions, AnalyzeEventOptions, MakeGoalOptions, HypothesesForEventOptions, MergeGoalOptions, PersonaGoalSpecOptions, FormGoalHypothesesOptions, ActionForNeedOptions, IntentForNeedOptions, MinePurposeSeedsOptions, AddOptions, SelectPurposeOptions, BuildPurposePromptOptions, ParseFeelingsOptions, AddPendingPurposeOptions, SummarizePurposeStateOptions } from './types.ts'
-import { enrichMaterial } from './drives.ts'
+import { DEFAULT_EMOTIONS, emotionLabels, emotionProfiles, profileOf, resolveEmotion } from '../../../features/mood/emotions.ts'
+import { PURPOSE_STATE_VERSION, FOLLOW_UP_WEIGHT, DEFAULT_PURPOSE_CONFIG, MINUTE, HOUR, DAY, isPlainObject, clampInt, clip, redactNumbers } from '../state/types.ts'
+import type { NormalizePurposeConfigOptions, EnsurePurposeScheduleOptions, BestReplyHourShiftOptions, BestReplyWeekdayShiftOptions, PlanNextFireOptions, EvaluatePurposeTickOptions, MarkPurposeDeliveredOptions, MarkPurposeSkipOptions, ApplyPurposeOutcomeOptions, PrunePurposeStateOptions, CollectMaterialsOptions, DeriveDrivesOptions, AppraiseMaterialOptions, SatisfyDrivesOptions, NormalizeMoodsOptions, DeriveMoodsOptions, AnalyzeEventOptions, MakeGoalOptions, HypothesesForEventOptions, MergeGoalOptions, PersonaGoalSpecOptions, FormGoalHypothesesOptions, ActionForNeedOptions, IntentForNeedOptions, MinePurposeSeedsOptions, AddOptions, SelectPurposeOptions, BuildPurposePromptOptions, ParseFeelingsOptions, AddPendingPurposeOptions, SummarizePurposeStateOptions } from '../state/types.ts'
+import { enrichMaterial } from '../state/drives.ts'
 
 function convoList(conversations) {
   if (conversations instanceof Map) return [...conversations.entries()].map(([key, value]) => ({ key, ...value }));

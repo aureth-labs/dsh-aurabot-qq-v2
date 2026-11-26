@@ -2,7 +2,7 @@
 // 队列内容本身留在 hub/index.ts，这里只提供状态与判定。
 
 import { sessionKey } from '../context/context.ts'
-import { levelFor, presetFor, groupResponseMode } from '../../policy/access.ts'
+import { levelFor, presetFor, groupResponseMode } from '../../policy/access/access.ts'
 
 export interface TurnStateDeps {
   [key: string]: any

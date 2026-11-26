@@ -8,7 +8,7 @@
 // 适配器拿到的是包装后的 bot 发消息；它自己的实例仍然只保留在自己手里，
 // 断开连接时用的是原实例（见 core/adapter.ts）。
 
-import type { BotLike, Capability, SendOptions } from '../../types/bot.ts'
+import type { BotLike, Capability, SendOptions } from '../../types/adapter/bot.ts'
 import { degrade, isElement, normalize } from '../message/element/element.ts'
 import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../message/element/voice-element.ts'
 
