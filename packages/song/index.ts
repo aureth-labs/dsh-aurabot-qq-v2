@@ -93,6 +93,7 @@ export default {
       const b = await http.body(req)
       return song.request({ song: b.song, songId: b.songId, pitch: b.pitch, voice: b.voice, startSec: b.startSec, durationSec: b.durationSec, chatId: b.chatId || `private:${ctx.root.config.ownerQQ}` })
     })
+    ctx.provide('sing', song)
     return song
   },
 }

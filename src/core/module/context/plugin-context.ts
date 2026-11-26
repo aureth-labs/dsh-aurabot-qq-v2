@@ -86,9 +86,41 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('host', api.core)
   value('harness', api.dsh)
 
-  value('get', (id: string) => api.use(id) as any)
+  const services = extras.services
+  value('get', (id: string) => (services?.get(id) as any) ?? (api.use(id) as any))
+  const lazyService = (id: string) => new Proxy({}, {
+    get: (_t, key) => {
+      const impl: any = (services?.get(id) as any) ?? (api.use(id) as any)
+      const v = impl?.[key]
+      return typeof v === 'function' ? v.bind(impl) : v
+    },
+    has: (_t, key) => Boolean(((services?.get(id) as any) ?? (api.use(id) as any)) && key in ((services?.get(id) as any) ?? (api.use(id) as any))),
+  })
+  value('provide', (name: string, impl: any) => {
+    if (!services) return () => {}
+    const off = services.provide(name, impl, api.id)
+    api.onDispose(off)
+    return off
+  })
+  value('require', (name: string) => {
+    if (!services) throw new Error('宿主没有提供服务表')
+    return services.require(name)
+  })
+  value('services', {
+    get: (name: string) => services?.get(name) ?? null,
+    has: (name: string) => Boolean(services?.has(name)),
+    require: (name: string) => {
+      if (!services) throw new Error('宿主没有提供服务表')
+      return services.require(name)
+    },
+    names: () => services?.names() ?? [],
+  })
   value('has', (id: string) => api.has(id))
-  value('lazy', (id: string) => api.lazy(id) as any)
+  value('lazy', (id: string) => lazyService(id))
+  getter('voice', () => services?.get('voice') ?? null)
+  getter('sing', () => services?.get('sing') ?? null)
+  getter('database', () => services?.get('database') ?? null)
+  getter('ffmpeg', () => services?.get('ffmpeg') ?? null)
   value('defineTool', (spec: any) => api.defineTool(spec))
   value('tool', (builder: any) => api.tool(builder))
   value('prompt', (fn: any) => api.context(fn))

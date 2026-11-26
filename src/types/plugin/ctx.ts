@@ -165,6 +165,8 @@ export interface PluginContextExtras {
   registerPage?: (page: PluginPage) => () => void
   /** 记忆模块的本地预览入口（内核注入，只有 memory 用）。 */
   nativePreview?: (read: any) => () => void
+  /** 内核服务表（voice / sing / database / ffmpeg…）。 */
+  services?: { provide(name: string, impl: any, provider: string): () => void; get<T = any>(name: string): T | null; has(name: string): boolean; require<T = any>(name: string): T; names(): string[] }
 }
 
 export interface PluginPage {
@@ -223,6 +225,12 @@ export interface PluginContext extends ScopeFactory {
   harness: Record<string, any>
   /** 取另一个模块的导出对象；没在跑返回 null。 */
   get: <T = unknown>(id: string) => T | null
+  /** 注册一项能力（服务），模块卸载自动摘掉；别的插件用 ctx.get(name) 取。 */
+  provide: (name: string, impl: any) => () => void
+  /** 取服务，没有就抛错（比 get 更适合必须可用的场合）。 */
+  require: <T = unknown>(name: string) => T
+  /** 服务表。 */
+  services: { get<T = any>(name: string): T | null; has(name: string): boolean; require<T = any>(name: string): T; names(): string[] }
   /** 取另一个模块导出对象的懒代理（对方晚加载也能用）。 */
   lazy: <T = unknown>(id: string) => T
   /** 另一个模块是否在跑。 */

@@ -50,6 +50,7 @@ export * from './util.ts'
 import { deepMerge, isObj } from './util.ts'
 import { createApi } from './api.ts'
 import { createDocs } from './docs.ts'
+import { ServiceRegistry } from '../../service/registry.ts'
 
 export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime }) {
   const log = logger.child('modules')
@@ -58,6 +59,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const errors = new Map<string, ModuleError>() // id → { message, at }  启动失败 / 加载失败
   const routes = new Map() // 完整路径 → { id, handler }
   const pages = new Map() // 完整路径 → { id, path, name, icon, order }
+  const services = new ServiceRegistry()
   const listeners = new Map() // 事件名 → [{ id, fn }]
   const revisions = new Map() // id → 停止次数，取消在途 import
   // 模块每次（重）启动都递增一次「代际」：hub 用它判断会话里挂的工具是不是旧模块实例的闭包。
@@ -122,7 +124,16 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     if (path === '/') throw new Error('ctx.page 需要 path，例如 { path: "/sandbox", name: "聊天沙盒" }')
     const current = pages.get(path)
     if (current && current.id !== rec.key && live.has(current.id)) throw new Error(`页面 ${path} 已经被模块「${current.id}」注册`)
-    const item = { id: rec.key, path, name: String(page.name || path), icon: String(page.icon || ''), order: Number(page.order) || 0 }
+    const prefix = rec.instance ? `/ext/${rec.moduleId}/i/${rec.instance}` : (routesAtRoot(rec.moduleId) ? '' : `/ext/${rec.moduleId}`)
+    const item = {
+      id: rec.key,
+      moduleId: rec.moduleId,
+      path,
+      name: String(page.name || path),
+      icon: String(page.icon || ''),
+      order: Number(page.order) || 0,
+      url: '/aurabot/api' + prefix + path,
+    }
     pages.set(path, item)
     rec.offs.push(() => { if (pages.get(path) === item) pages.delete(path) })
     return () => { if (pages.get(path) === item) pages.delete(path) }
@@ -214,6 +225,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         llm: core.llm,
         tts: core.tts,
         startAdapter: core.adapters?.start,
+        services,
         registerPage: (page) => registerPage(rec, page),
         nativePreview: id === 'memory' && personaMemoryRuntime
           ? (read) => api.onDispose(personaMemoryRuntime.registerNativePreview(read))
@@ -274,6 +286,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         llm: core.llm,
         tts: core.tts,
         startAdapter: core.adapters?.start,
+        services,
         registerPage: (page) => registerPage(rec, page),
         nativePreview: id === 'memory' && personaMemoryRuntime
           ? (read) => api.onDispose(personaMemoryRuntime.registerNativePreview(read))
@@ -1023,6 +1036,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     // 对外按模块 id 停 —— 一起停掉它的额外实例
     stop: (id, options) => stopModule(id, options),
     use: exportsOf, has: hasModule, running: (id) => live.get(id)?.source || null, generation: () => generation,
+    services: {
+      get: (name: string) => services.get(name),
+      has: (name: string) => services.has(name),
+      require: (name: string) => services.require(name),
+      names: () => services.names(),
+    },
+    pages: () => [...pages.values()].sort((a, b) => a.order - b.order || a.path.localeCompare(b.path)),
     /** 某个模块正在跑的额外实例名（面板/调试用）。 */
     instances: (id) => [...live.values()].filter((rec) => rec.moduleId === id && rec.key !== id).map((rec) => rec.instance),
     capabilitiesOf,

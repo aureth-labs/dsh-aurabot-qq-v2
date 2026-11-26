@@ -219,6 +219,8 @@ export default {
   })
   ctx.setInterval(3600_000, () => autoClaimOnce(ctx.root.config, { log: ctx.logger }), '领 Breeze 额度')
 
+  ctx.provide('voice', { speak, edgeInstalled })
+  ctx.provide('tts', { speak: async (text: string) => String((await speak(text))?.file ?? '') })
   return { speak, edgeInstalled }
   },
 }

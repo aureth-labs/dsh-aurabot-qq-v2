@@ -581,8 +581,8 @@ export function apply(ctx) {
   }
   const tts = {
     speak: async (text) => {
-      const v = use('voice')
-      if (!v?.speak) throw new Error('语音模块关着')
+      const v = mods?.services.get('voice')
+      if (!v?.speak) throw new Error('没有插件提供 voice 服务（语音插件关着？）')
       return v.speak(text)
     },
   }
@@ -811,6 +811,7 @@ export function apply(ctx) {
       modulesReady: modsReady,
       navigationRevision: nav.navigationRevision,
       modules: nav.modules,
+      pages: mods ? mods.pages() : [],
     }
   })
   route('/panel/pulse', async (req, res) => {
