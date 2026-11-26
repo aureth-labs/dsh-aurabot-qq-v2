@@ -4,6 +4,7 @@ import type { VoiceResolver } from '../../../../../src/core/message/element/voic
 
 interface ConnectionOptions {
   id?: string
+  expandForwards?: boolean
   endpoint(): { httpUrl: string; wsUrl: string; httpToken: string; wsToken: string }
   expectedAccount(): string | undefined
   enabled(): boolean
@@ -50,6 +51,7 @@ export function createOneBotConnection(options: ConnectionOptions) {
   })
   const bot = new OneBotBot({
     id: options.id,
+    expandForwards: options.expandForwards,
     isConnected: () => client.isConnected(),
     speak: options.speak,
     log: options.log,

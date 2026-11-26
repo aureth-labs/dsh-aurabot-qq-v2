@@ -3,7 +3,7 @@ import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/messag
 import { QUOTE_FORWARD_MAX_CHARS } from '../context/context.ts'
 
 /** 引用消息解析：QQ 的引用段只有 message_id，正文要再取一次；取不到也留一笔，让她能如实说没看到。 */
-export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, historyVisible, expandForwards, imagesOf }) {
+export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, historyVisible, imagesOf }) {
   // QQ 的引用段只有 message_id，正文要用 get_msg 再取一次。取到后把「谁、说了什么、几张图」带上；
   // 取不到也记一笔，让她知道「这条引用没读到」，可以如实说没看到（别装作看见了）。
   const quoteCache = new Map()
@@ -70,29 +70,22 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
       if (out.time && !historyVisible(chatId, out.uid, out.time)) return null
       out.who = String(sender.card || sender.nickname || out.uid || '某人')
       const kind = ctx?.groupId ? 'group' : 'private'
-      let parsed = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender, message: m?.message ?? m?.raw_message ?? '' }, selfId(), { faceName })
+      const project = async message => onebot.projectQuote ? onebot.projectQuote(message, id) : message
+      const content = await project(m?.message ?? m?.raw_message ?? '')
+      let parsed = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender, message: content }, selfId(), { faceName })
       if (quoteNeedsHistory(parsed)) {
         const hit = await quoteFromHistory(id, ctx)
         if (hit) {
           out.time ||= Number(hit?.time) || 0
-          const again = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender: hit.sender || sender, message: hit.message ?? '' }, selfId(), { faceName })
+          const again = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender: hit.sender || sender, message: await project(hit.message ?? '') }, selfId(), { faceName })
           if (!quoteNeedsHistory(again)) parsed = again
           else { parsed.images = [...(parsed.images || []), ...(again.images || [])]; parsed.stickers = [...(parsed.stickers || []), ...(again.stickers || [])] }
         }
       }
-      out.text = String(parsed.text || '').trim().slice(0, 300)
+      out.text = String(parsed.text || '').trim().slice(0, content !== (m?.message ?? m?.raw_message ?? '') ? QUOTE_FORWARD_MAX_CHARS : 300)
       out.images = parsed.images || []
       out.stickers = parsed.stickers || []
       out.records = (parsed.records || []).length
-      // 引用的是一条合并转发：把里面的内容也拉出来。默认跟 forward.expandEarly 一起开——
-      // 她引用别人消息时能看到正文，但被引用消息里套的转发只是占位符，等于没看到。
-      if (parsed.forwards?.length && getConfig().forward?.expandEarly) {
-        const tmp = { forwards: parsed.forwards, images: [], stickers: [] }
-        const full = await expandForwards(tmp, String(parsed.text || ''), { timeoutMs: 5000 })
-        if (full) out.text = full.trim().slice(0, QUOTE_FORWARD_MAX_CHARS)
-        out.images = [...(out.images || []), ...tmp.images].slice(0, 4)
-        out.stickers = [...(out.stickers || []), ...tmp.stickers].slice(0, 4)
-      }
       out.isBot = out.uid === String(selfId() || getConfig().botQQ)
       out.ok = true
       out.at = Date.now()

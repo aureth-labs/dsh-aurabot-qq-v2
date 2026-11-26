@@ -10,7 +10,6 @@ export const MAX_FORWARD_LINES = 200 // 一条消息里所有层加起来最多�
 export const MAX_FORWARD_CHARS = 12000 // 展开后的总字数
 export const MAX_FORWARD_IMAGES = 6 // 转发里最多带几张图给她
 const MAX_LINE = 500
-export const FORWARD_PLACEHOLDER = '[合并转发]' // 收到转发段时正文里的占位符
 export const FORWARD_NOT_EXPANDED = '[合并转发·没展开（可能已过期 / 被风控 / 内层消息）]' // 内容一条都没拉到时的占位
 
 /**
@@ -25,7 +24,7 @@ export async function readForward(onebot, ref, { selfId, faceName, log, depth = 
   const id = String(r.id || '')
   const content = Array.isArray(r.content) && r.content.length ? r.content : null
   // 去重键：两个 id 都算上，转发套自己时别转圈
-  const seenKey = [outerId, id].filter(Boolean).join('|') || (content ? 'content' : '')
+  const seenKey = [outerId, id].filter(Boolean).join('|')
   if (seenKey && st.seen.has(seenKey)) return st
   if (seenKey) st.seen.add(seenKey)
   const pad = '  '.repeat(depth)
@@ -60,21 +59,6 @@ export async function readForward(onebot, ref, { selfId, faceName, log, depth = 
     } else if (m.forwards.length) st.lines.push(`${pad}  （里面还有一层转发，太深了没展开）`)
   }
   return st
-}
-
-/**
- * 把文案里的占位符按顺序换成各自的内容。一次替换到位，内容里即使又出现占位符也不会错位；
- * 内容比占位符少时，剩下的占位符原样留着（她至少能看到「这儿有个转发」）。
- */
-export function applyForwardBodies(text, bodies) {
-  const parts = String(text ?? '').split(FORWARD_PLACEHOLDER)
-  if (parts.length < 2) return parts[0] ?? ''
-  let out = parts[0]
-  for (let i = 1; i < parts.length; i++) {
-    out += i - 1 < bodies.length ? bodies[i - 1] : FORWARD_PLACEHOLDER
-    out += parts[i]
-  }
-  return out
 }
 
 /** 拼成交给她的文字。 */

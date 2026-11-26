@@ -504,9 +504,7 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.merge.maxSec = Math.max(c.merge.waitSec, num(c.merge.maxSec, 8, 0, BIG))
   c.merge.groupWaitSec = num(c.merge.groupWaitSec, 5, 0, BIG)
   c.merge.groupMaxSec = Math.max(c.merge.groupWaitSec, num(c.merge.groupMaxSec, 15, 0, BIG))
-  if (!isObj(c.forward)) c.forward = structuredClone(DEFAULTS.forward)
-  c.forward.expandEarly = bool(c.forward.expandEarly, false)
-  c.forward.expandHistory = bool(c.forward.expandHistory, false)
+  delete (c as RawConfig).forward
   c.memberFilter = normalizeMemberFilter(c.memberFilter)
   delete (c as RawConfig).titleFilter
   g.burstMax = num(g.burstMax, 8, 1, BIG)

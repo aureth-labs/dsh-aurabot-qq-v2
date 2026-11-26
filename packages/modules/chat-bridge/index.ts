@@ -47,7 +47,8 @@ function addressedToBot(session: SessionLike, words: string[], ignoreAtOthers: b
 function incomingText(session: SessionLike) {
   const labels: Record<string, string> = { image: '图片', voice: '语音', video: '视频', file: '文件' }
   const media = h.select(session.elements, element => Object.hasOwn(labels, element.type))
-  return [session.content.trim(), ...media.map(element => '[' + labels[element.type] + ']')].filter(Boolean).join(' ')
+  const forwards = session.elements.filter(el => el.type === 'forward' && !el.children?.length)
+  return [session.content.trim(), ...forwards.map(() => '[合并转发]'), ...media.map(element => '[' + labels[element.type] + ']')].filter(Boolean).join(' ')
 }
 
 function scopedReply(elements: Element[], messageId?: string): Element[] {

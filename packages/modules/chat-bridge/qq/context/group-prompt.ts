@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 import { clockLabel } from '../../../../../src/chat/reply/index.ts'
 import { engagedHint, pickAutoReply, pickDirectRequester, sameNameNote } from '../../../../../src/chat/policy/rules/group.ts'
 import { identityNote } from '../../history.ts'
-import { emptyGroupPrompt } from './context.ts'
 import type { GroupPromptResult } from './context.ts'
 
 export interface GroupPromptDeps {
@@ -10,11 +9,8 @@ export interface GroupPromptDeps {
   groupRefs: Map<string, Record<string, any>>
   groupEngagedRun: Map<string, number>
   groupName: (groupId: string) => Promise<string>
-  expandForwards: (msg: any, text: string, opts?: { timeoutMs?: number }) => Promise<string>
-  isDisposed: () => boolean
   platform: () => string
   getSelfId: () => string
-  getConfig: () => any
   quotedInfo: (replyId: any, chat: any) => Promise<any>
   quoteInline: (quote: any) => string
   quoteImages: (quote: any, take: number) => Promise<any[]>
@@ -22,7 +18,7 @@ export interface GroupPromptDeps {
 }
 
 export function createGroupPromptBuilder (deps: GroupPromptDeps) {
-  const { groupBuf, groupRefs, groupEngagedRun, getConfig } = deps
+  const { groupBuf, groupRefs, groupEngagedRun } = deps
 
   async function groupPrompt(chat, mode, imageRoom = 0, refOffset = 0): Promise<GroupPromptResult> {
     const name = await deps.groupName(chat.groupId)
@@ -34,16 +30,6 @@ export function createGroupPromptBuilder (deps: GroupPromptDeps) {
     const pendingVoices = fresh.filter((x) => x.voicePromise && !x.voiceText).map((x) => x.voicePromise)
     if (pendingVoices.length) await Promise.all(pendingVoices)
     for (const x of buf) x.fed = true
-    // 早先没交给她、因而没展开过的转发：现在要拼提示词了，顺手把内容补上（每条只拉一次）
-    if (getConfig().forward?.expandHistory) {
-      const pending = buf.filter((x) => x.forwards?.length && !x.forwardExpanded).slice(-3)
-      for (const x of pending) {
-        x.forwardExpanded = true // 先标记再拉：这一段重触发时别把同一条转发再消耗一次
-        const full = await deps.expandForwards(x, x.text, { timeoutMs: 5000 })
-        if (full) x.text = full
-        if (deps.isDisposed()) return emptyGroupPrompt()
-      }
-    }
     // 引用内容只在这一段真要交给她时才取（缓存在 quoteCache 里，取失败也会记一笔）
     const need = fresh.filter((x) => x.replyId && !('quote' in x))
     if (need.length) {

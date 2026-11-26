@@ -3,7 +3,6 @@ import { createImageReader } from './images.ts'
 import { createQuoteResolver } from '../format/quote.ts'
 import { segmentBytes } from '../../../../../src/core/net/index.ts'
 import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
-import { readForward, forwardBody, applyForwardBodies } from '../../../../adapters/qq/onebot-v11/src/message/forward.ts'
 import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from '../context/group-media.ts'
 import { createGroupPromptBuilder } from '../context/group-prompt.ts'
 
@@ -17,7 +16,6 @@ export function createMessageMedia({
   faces,
   activity,
   sentIds,
-  isDisposed,
   assertActive,
   asr,
 }) {
@@ -50,7 +48,6 @@ export function createMessageMedia({
     selfId: () => activity.selfId,
     faceName: faces.nameOf,
     historyVisible,
-    expandForwards,
     imagesOf,
   })
 
@@ -112,22 +109,6 @@ export function createMessageMedia({
   }
   const localTranscribe = seg => recognize(seg, undefined, undefined, true)
 
-  async function expandForwards(msg, text, { timeoutMs = 15000 }: { timeoutMs?: number } = {}) {
-    const bodies = []
-    for (const id of msg.forwards.slice(0, 5)) {
-      const r = await readForward(onebot, id, {
-        selfId: activity.selfId,
-        faceName: faces.nameOf,
-        log,
-        timeoutMs,
-      })
-      msg.images.push(...r.images)
-      msg.stickers.push(...r.stickers)
-      bodies.push(forwardBody(r))
-    }
-    return applyForwardBodies(text, bodies)
-  }
-
   async function addGroupImages(msg, entry = null) {
     const p = pending.get(msg.chatId)
     if (!p || p.images.length >= mediaLimits(getConfig().media).maxImages) return
@@ -181,11 +162,8 @@ export function createMessageMedia({
     groupRefs,
     groupEngagedRun,
     groupName,
-    expandForwards,
-    isDisposed: isDisposed,
     platform: () => onebot.bot?.platform,
     getSelfId: () => onebot.bot?.selfId || activity.selfId,
-    getConfig,
     quotedInfo,
     quoteInline,
     quoteImages,
@@ -203,7 +181,6 @@ export function createMessageMedia({
     repliedToBot,
     transcribe,
     localTranscribe,
-    expandForwards,
     addGroupImages,
     imagesOf,
     fitForModel,

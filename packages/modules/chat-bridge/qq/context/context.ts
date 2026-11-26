@@ -93,9 +93,6 @@ export interface GroupPromptResult {
   freshCount: number
 }
 
-/** 没有新内容时的空结果：调用方不用先判 null。 */
-export const emptyGroupPrompt = (): GroupPromptResult => ({ text: '', query: '', speakers: [], autoReply: null, directRequester: null, images: [], archiveMessages: [], freshCount: 0 })
-
 /** capture 期间记下的数组：模拟结束打 closed，继承到后台链上的旧上下文不能吞真实发送。 */
 export type CapturedList = CapturedSend[] & { closed?: boolean }
 

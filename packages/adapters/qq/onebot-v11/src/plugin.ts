@@ -9,6 +9,7 @@ import type { OneBotBot } from './bot.ts'
 import { Schema } from '../../../../../src/core/config/shape/schema.ts'
 
 export interface Config {
+  expandForwards?: boolean
   wsUrl: string
   httpUrl: string
   wsToken: string
@@ -21,6 +22,7 @@ export const reusable = true
 export const reloadOnConfig = true
 export const name = 'QQ · OneBot v11'
 export const config = Schema.object({
+  expandForwards: Schema.boolean().default(true).description('展开接收到的合并转发'),
   wsUrl: Schema.string().required().description('OneBot WebSocket 地址'),
   httpUrl: Schema.string().description('HTTP 接口地址（可选）'),
   wsToken: Schema.string().role('secret').description('WebSocket 访问令牌'),
@@ -39,6 +41,7 @@ export function apply(ctx: PluginContext, config: Config) {
       const ready = Promise.withResolvers<OneBotBot>()
       connection = createOneBotConnection({
         id: ctx.instanceId,
+        expandForwards: config.expandForwards,
         endpoint: () => config,
         expectedAccount: () => config.selfId || undefined,
         enabled: () => true,
@@ -62,7 +65,13 @@ export function apply(ctx: PluginContext, config: Config) {
           }
         },
       })
+      const expand = connection.bot.expandForwards
       ctx.provide('onebot/' + ctx.instanceId, connection)
+      if (config.expandForwards !== false) ctx.on('before-parse', async draft => {
+        if (draft.platform !== 'qq' || draft.botId !== ctx.instanceId || !ctx.root.config.enabled ||
+            ctx.root.config.debug || ctx.host.canReadMedia?.(ctx.bots.get(ctx.instanceId, 'qq'), draft) === false) return
+        draft.elements = await expand(draft.elements, draft.messageId)
+      })
       ctx.provide('voice-source/' + JSON.stringify(['qq', ctx.instanceId]), { open: voiceSource(connection.bot) })
       const cancel = () => {
         connection.client.stop()

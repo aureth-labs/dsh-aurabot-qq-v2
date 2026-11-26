@@ -41,7 +41,6 @@ export function createIncomingMessages({
     faces,
     stickers,
     stickerStash,
-    expandForwards,
     recentFiles,
     recentMedia,
     transcribe,
@@ -94,7 +93,6 @@ export function createIncomingMessages({
         ...(quoteDeleted ? { quote: null } : {}),
         images: msg.images,
         stickers: msg.stickers,
-        forwards: msg.forwards?.length ? [...msg.forwards] : undefined,
         voicePromise: null,
         voiceText: '',
       }
@@ -156,17 +154,6 @@ export function createIncomingMessages({
         images: msg.images,
         mid: msg.messageId,
       })
-
-    if (cfg.forward?.expandEarly && msg.forwards?.length) {
-      msg.text = await expandForwards(msg, msg.text, { timeoutMs: 5000 })
-      if (isDisposed() || wasCleared()) return
-      msg.forwardExpanded = true
-      if (groupEntry) {
-        groupEntry.text = msg.text || groupEntry.text
-        groupEntry.forwards = [...msg.forwards]
-        groupEntry.forwardExpanded = true
-      }
-    }
 
     if (msg.files.length) {
       const list = (recentFiles.get(msg.chatId) || []).concat(
@@ -382,18 +369,6 @@ export function createIncomingMessages({
     }
 
     let text = msg.text
-    if (msg.forwards?.length && !msg.forwardExpanded) {
-      text = await expandForwards(msg, text)
-      if (isDisposed()) return
-      msg.forwardExpanded = true
-      if (msg.kind === 'group') {
-        const last = (groupBuf.get(msg.groupId) || []).findLast?.((x) => x.uid === msg.userId)
-        if (last) {
-          last.text = text
-          last.forwardExpanded = true
-        }
-      }
-    }
     const voiceText =
       cfg.voice.asr && msg.records.length
         ? groupEntry?.voicePromise

@@ -336,7 +336,6 @@ export function createHub({
     faces,
     activity,
     sentIds,
-    isDisposed,
     assertActive,
     asr,
   })

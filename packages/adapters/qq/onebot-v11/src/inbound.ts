@@ -1,6 +1,8 @@
 import type { InboundMessage } from '../../../../../src/types/adapter/adapter.ts'
+import type { Element } from '../../../../../src/types/core/element.ts'
 import type { Session } from '../../../../../src/core/pipeline/session.ts'
 import { h, toText } from '../../../../../src/core/message/element/element.ts'
+import { oneBotSegments, type OneBotSegment } from './cq.ts'
 import { fromOneBot, toOneBot } from './element.ts'
 
 interface MessageEvent {
@@ -37,15 +39,29 @@ export function inboundOf(event: MessageEvent): InboundMessage {
   }
 }
 
-/** 旧聊天中枢仍消费原生事件。execute 只沿用身份和来源，重建消息段。 */
+export function hubSegments(elements: Element[], source?: unknown): OneBotSegment[] {
+  const originals = new Map<string, OneBotSegment[]>()
+  for (const raw of oneBotSegments(source)) {
+    if (raw.type === 'text') continue
+    const key = JSON.stringify(fromOneBot([raw])[0])
+    const matches = originals.get(key)
+    if (matches) matches.push(raw)
+    else originals.set(key, [raw])
+  }
+  for (const matches of originals.values()) matches.reverse()
+  return elements.flatMap(el => {
+    if (el.type === 'forward' && el.children?.length) return toOneBot(el.children.flatMap(child => child.type === 'message' ? child.children ?? [] : [child]))
+    const heard = el.type === 'voice' && el.children?.find(child => child.type === 'translateVoice')
+    if (heard) return toOneBot(h.text('[语音] ' + toText(heard)))
+    const raw = el.type !== 'text' && originals.get(JSON.stringify(el))?.pop()
+    return raw ? [raw] : toOneBot(el)
+  })
+}
+
 export function eventForHub(session: Session): unknown {
   if (!session.parent) {
     if (!session.reparsed || !session.raw || typeof session.raw !== 'object') return session.raw
-    const elements = session.elements.map(el => {
-      const heard = el.type === 'voice' && el.children?.find(child => child.type === 'translateVoice')
-      return heard ? h.text('[语音] ' + toText(heard)) : el
-    })
-    return { ...session.raw, raw_message: session.content, message: toOneBot(elements) }
+    return { ...session.raw, raw_message: session.content, message: hubSegments(session.elements, 'message' in session.raw ? session.raw.message : undefined) }
   }
   const source = session.parent.raw
   if (!source || typeof source !== 'object') return

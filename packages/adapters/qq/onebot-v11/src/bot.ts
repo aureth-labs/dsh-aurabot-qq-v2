@@ -13,6 +13,7 @@ import type {
   User,
 } from '../../../../../src/types/adapter/bot.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
+import { createForwardExpansion, forwardBudget } from './message/project.ts'
 import { messageSource } from './message/source.ts'
 import { toOneBot, fromOneBot } from './element.ts'
 import { isElement, normalize, degrade, toText } from '../../../../../src/core/message/element/element.ts'
@@ -23,6 +24,7 @@ export interface OneBotCall {
 }
 
 export interface OneBotBotInit {
+  expandForwards?: boolean
   call: OneBotCall
   isConnected: () => boolean
   selfId?: string
@@ -37,6 +39,7 @@ const CAPABILITIES: Capability[] = ['text', 'at', 'face', 'image', 'voice', 'vid
 export class OneBotBot extends Bot {
   readonly platform = 'qq'
   readonly call: OneBotCall
+  readonly expandForwards: ReturnType<typeof createForwardExpansion>
   private readonly connected: () => boolean
   private self: string
   private readonly key: string
@@ -47,6 +50,7 @@ export class OneBotBot extends Bot {
 
   constructor(init: OneBotBotInit) {
     super()
+    this.expandForwards = createForwardExpansion(this, init.expandForwards !== false)
     this.call = init.call
     this.connected = init.isConnected
     this.self = init.selfId ?? ''
@@ -180,7 +184,7 @@ export class OneBotBot extends Bot {
     const { type, id: channel } = messageSource(info, this.selfId)
     if (!channel || channel !== channelId)
       throw Error('引用消息不属于当前会话')
-    return { ...mapMessage(info, channel), channelType: type }
+    return this.projectMessage(info, channel, type, forwardBudget())
   }
 
   async getMessageList(channelId: string, query: MessageQuery = {}): Promise<Message[]> {
@@ -198,7 +202,16 @@ export class OneBotBot extends Bot {
     const result = await this.callApi(direct ? 'get_friend_msg_history' : 'get_group_msg_history', params)
     const rows = Array.isArray(result) ? result : result?.messages
     if (!Array.isArray(rows)) return []
-    return rows.map(item => ({ ...mapMessage(item, channelId), channelType: direct ? 'private' : 'group' }))
+    const budget = forwardBudget()
+    const resultRows: Message[] = []
+    for (const item of rows) resultRows.push(await this.projectMessage(item, channelId, direct ? 'private' : 'group', budget))
+    return resultRows
+  }
+
+  private async projectMessage(raw, channel: string, channelType: Message['channelType'], budget: ReturnType<typeof forwardBudget>) {
+    const row = mapMessage(raw, channel)
+    const elements = await this.expandForwards(row.elements, row.id, budget)
+    return { ...row, channelType, elements, content: toText(elements) }
   }
 
   async deleteMessage(channelId: string, messageId: string): Promise<void> {
