@@ -21,5 +21,6 @@ dev 流程内置 tsc -w（对开发者透明），HMR 目录指向产物；文�
 - 实测：`npm run build` 之后 8787 上的 `logger` 仍显示旧版本号，说明 dsh-hmr 没跟随重新构建的 `lib/`。
   入口 `index.mjs` 静态导出 `lib/src/plugin/index.js`，监听只覆盖它自己那张图；
   改 `.ts` 能热重载，改完再 build 的产物不行。
-- 待办：开发期默认走 dev 入口（`AURABOT_DEV=1` → `dev.mjs` → `src/plugin/index.ts`），
-  保存即生效；产物路径只给发行包用。
+- 已落地：`pnpm run dev` 起 DSH 并带 `AURABOT_DEV=1`（dev 入口 + 前端 watch），
+  `pnpm run start` 走 `lib/`。实测改 `packages/logger/index.ts` 的 version，4 秒后
+  8787 上的模块列表就变成新版本，没有 build。

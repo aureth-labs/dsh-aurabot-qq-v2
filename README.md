@@ -93,12 +93,16 @@ export default {
 ## 开发
 
 ```bash
+npm run dev          # 开发模式：起 DSH（8787）+ 前端 watch，插件直接跑 src/**/*.ts
+npm run start        # 生产模式：起 DSH，插件走 lib/（编译产物）
 npm run check        # tsc 两套配置 + 生命周期检查，和 VS Code 报错一致
 npm run build
 npm test             # 分域跑，别全量并发，会卡机器
 ```
 
-- TS 入口直接热重载：不用先编译，DSH 监听数据目录，保存即重新加载
+- `dev` / `start` 的区别只有一个环境变量：`AURABOT_DEV=1` 时 `cordis.patch.yml` 把插件入口换成
+  `dev.mjs`（静态 re-export `src/plugin/index.ts`），改 `.ts` 保存即热重载；`start` 走 `index.mjs` → `lib/`，和用户装的包一致。
+- 端口用 `DSH_PORT` 改，默认 8787；找不到 DSH 时用 `DSH_BIN` 指向 `.../@deepseek-ai/dsh/lib/bin.js`
 - 调试输出走 `ctx.logger.debug`，只在面板打开「调试模式」时出现
 - 日志文件在数据目录的 `logs/`，面板「日志」页可按文件查看
 
