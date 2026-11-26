@@ -282,7 +282,11 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
     if (req.method === 'POST' && path === '/_sandbox/send') {
       const body = await readBody(req)
       const text = String(body.text ?? '').trim()
-      if (!text) return json(res, 400, { ok: false, message: '消息不能为空' })
+      const image = String(body.image ?? '')
+      if (image && !/^data:image\/(?:png|jpeg|gif|webp);base64,[a-z0-9+/]+={0,2}$/i.test(image)) return json(res, 400, { ok: false, message: '图片需要内联 PNG、JPEG、GIF 或 WebP' })
+      if (!text && !image) return json(res, 400, { ok: false, message: '消息不能为空' })
+      const attachment = image ? '<img src="' + image + '"' + (body.sticker === true ? ' sticker' : '') + '/>' : ''
+      const content = (text ? '<text>' + escapeXml(text) + '</text>' : '') + attachment
       const kind = body.kind === 'private' ? 'private' : 'group'
       const user = userOf(String(body.userId || defaultUserId), String(body.userName || defaultUserName))
       const channelId = kind === 'private' ? `dm-${user.id}` : String(body.channelId || 'sandbox-1')
@@ -298,7 +302,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         channelName: channels.get(channelId)!.name,
         userId: user.id,
         userName: user.name,
-        content: text,
+        content: image ? content : text,
         direction: 'in',
       }
       remember(message)
@@ -308,7 +312,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
       }
       push({
         type: 'message-created',
-        message: { id: message.id, content: (quoted ? '<quote id="' + quoted.id + '"/>' : '') + '<text>' + escapeXml(text) + '</text>' },
+        message: { id: message.id, content: (quoted ? '<quote id="' + quoted.id + '"/>' : '') + content },
         channel: { id: channelId, type: kind === 'private' ? 1 : 0, name: message.channelName },
         guild: kind === 'private' ? undefined : guild,
         user: { id: user.id, name: user.name },

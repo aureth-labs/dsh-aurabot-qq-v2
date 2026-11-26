@@ -25,7 +25,7 @@ function setup(t, patch = {}, options = {}) {
     log: Object.fromEntries(['info', 'debug', 'warn', 'error'].map(k => [k, (...args) => logs.push(args.join(' '))])),
     onebot: { async call(action, params) { calls.push({ action, params }); return { message_id: calls.length } } },
     stickers: { match: () => item, pickForReply: () => { picks++; return item }, markUsed() {},
-      segmentFor: () => ({ type: 'image', data: { file: 'base64://test', sub_type: 1 } }) } })
+      elementFor: () => ({ type: 'image', attrs: { url: 'base64://test', sticker: true } }) } })
   t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   return { cfg, hub, calls, logs, draws: () => draws, picks: () => picks,
     segments: () => calls.flatMap(c => c.params.message || []) }
@@ -113,12 +113,12 @@ test('单独发表情工具、普通图片和 QQ 小黄脸不受回复配图限�
   assert.ok(!words(s).includes('<'))
 })
 
-test('表情总开关和试运行原有约束照常生效', async t => {
+test('表情总开关和框架停用约束照常生效', async t => {
   const s = setup(t, { stickers: { enabled: false, limitTagged: true, autoChance: 1 } })
   await s.hub.deliver('private:1', '<sticker:开心>')
   assert.equal(await s.hub.sendSticker('private:1', '开心'), false)
   assert.equal(images(s).length, 0)
-  s.cfg.stickers.enabled = true; s.cfg.dryRun = true
+  s.cfg.stickers.enabled = true; s.cfg.enabled = false
   await s.hub.deliver('private:1', '<sticker:开心>')
   assert.equal(images(s).length, 0)
 })
@@ -193,10 +193,10 @@ test('扩展追加表情按最终正文判断关键词；没有词仍不放行',
   await s.hub.deliver('private:1', '你好呀', { simulate: true }); assert.equal(images(s).length, 1)
 })
 
-test('实验豁免不能绕过表情总开关或试运行', async t => {
+test('实验豁免不能绕过表情总开关或框架停用', async t => {
   const s = setup(t, { stickers: { enabled: false, limitTagged: true, keywordExemption: true, autoChance: 0 } })
   await s.hub.deliver('private:1', '给你看看<sticker:开心>', { simulate: true }); assert.equal(images(s).length, 0)
-  s.cfg.stickers.enabled = true; s.cfg.dryRun = true
+  s.cfg.stickers.enabled = true; s.cfg.enabled = false
   await s.hub.deliver('private:1', '给你看看<sticker:开心>'); assert.equal(images(s).length, 0)
 })
 
@@ -219,13 +219,13 @@ for (const chatId of ['private:1', 'group:2']) test(`${chatId}：实验模式下
   assert.ok(!s.logs.some(line => line.includes('选择不说话')))
 })
 
-test('纯表情豁免不绕过总开关、试运行和群消息条数限制', async t => {
+test('纯表情豁免不绕过总开关、框架停用和群消息条数限制', async t => {
   const s = setup(t, { stickers: { enabled: false, limitTagged: true, keywordExemption: true, autoChance: 0 } })
   const body = '<sticker:开心> ||| <sticker:委屈>'
   await s.hub.deliver('private:1', body, { simulate: true }); assert.equal(images(s).length, 0)
-  s.cfg.stickers.enabled = true; s.cfg.dryRun = true
+  s.cfg.stickers.enabled = true; s.cfg.enabled = false
   await s.hub.deliver('private:1', body, { simulate: true }); assert.equal(images(s).length, 0)
-  s.cfg.dryRun = false
+  s.cfg.enabled = true
   await s.hub.deliver('group:2', body + '|||<sticker:开心>|||<sticker:开心>', { simulate: true })
   assert.equal(images(s).length, 3)
 })

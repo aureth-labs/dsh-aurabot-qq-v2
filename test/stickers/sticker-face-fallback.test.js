@@ -1,3 +1,4 @@
+import { mockStickerSource } from '../helpers/sticker-source.js'
 import { test } from 'node:test'
 import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
@@ -5,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createStickerStore } from '../../src/features/stickers/index.ts'
+import { createStickerStore } from '../../packages/modules/stickers/store.ts'
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
 const base64 = 'base64://' + png.toString('base64')
@@ -24,12 +25,12 @@ function makeStore(t, addFace) {
   const store = createStickerStore({
     dsh: null,
     getConfig: () => cfg,
-    onebot: {
+    source: mockStickerSource({
       async call(action, params) {
         calls.push([action, params])
         if (action === 'add_custom_face') return addFace(params.file)
       },
-    },
+    }),
     log: { info() {}, warn() {}, debug() {} },
   })
   return { store, calls }
@@ -53,7 +54,7 @@ test('#502 手动收藏先传本地文件，并写入 QQ 备注', async (t) => {
 
 test('#502 自动收藏先传本地文件', async (t) => {
   const { store, calls } = makeStore(t, pathOnly)
-  const r = await store.collect({ type: 'image', data: { file: base64 } }, 'private:1')
+  const r = await store.collect({ type: 'image', attrs: { url: base64, sticker: true } }, 'private:1')
   assert.equal(r.ok, true, r.reason)
   assert.equal(r.item.emojiId, 'e1')
   assert.deepEqual(calls.map(([action]) => action), ['add_custom_face'])

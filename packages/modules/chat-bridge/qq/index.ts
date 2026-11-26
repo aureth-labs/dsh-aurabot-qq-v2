@@ -1,3 +1,4 @@
+import { fromOneBot } from '../../../adapters/qq/onebot-v11/src/element.ts'
 import { createMessageMedia } from './media/context.ts'
 import { createTimeline } from './store/timeline.ts'
 import { createSessionReset } from './session/reset.ts'
@@ -595,6 +596,8 @@ export function createHub({
     modelFor: targetModel,
 
     recentMedia: recentMediaOf,
+    recentImages: (id: string) => recentMediaOf(id).map(({ seg, ...ref }) => ({ ...ref, element: fromOneBot([seg])[0] })),
+    stickerElement: (id: string, index: number) => fromOneBot([currentMedia()?.stickers.of(id, index)].filter(Boolean))[0],
     referenceImage,
     recentFiles: (chatId) => currentMedia()?.files.get(chatId) || [],
     stickerOf: (chatId, index) => currentMedia()?.stickers.of(chatId, index) ?? null,

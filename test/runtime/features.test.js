@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { moodLabel, scoreText, decayed } from '../../packages/modules/mood/state.ts'
-import { matchSticker, pickForReply } from '../../src/features/stickers/index.ts'
+import { matchSticker, pickForReply } from '../../packages/modules/stickers/store.ts'
 import { join } from 'node:path'
 
 test('心情：关键词推动、半衰期回落', () => {
@@ -90,7 +90,7 @@ test('心情：对她说的话、主人的话影响更大；心情明显时每�
 })
 
 test('表情库上限：只清偷来的、最少用的、最老的', async () => {
-  const { pickEvict } = await import('../../src/features/stickers/index.ts')
+  const { pickEvict } = await import('../../packages/modules/stickers/store.ts')
   const items = [
     { md5: 'a', from: 'group:1', uses: 3, at: 1 },
     { md5: 'b', from: 'group:1', uses: 0, at: 5 },

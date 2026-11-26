@@ -11,6 +11,8 @@ import { activeCapture, failStore, workspaceDirOf } from '../context/context.ts'
 import type { OutputScope } from '../context/context.ts'
 import { dataDir } from '../../../../../src/core/store/index.ts'
 import { fetchImage } from '../../../../../src/core/net/index.ts'
+import { toOneBot } from '../../../../adapters/qq/onebot-v11/src/element.ts'
+import { reallySent } from '../../../../../src/core/message/receipt.ts'
 import { h } from '../../../../../src/core/message/element/element.ts'
 import { acknowledged } from '../../../../../src/core/bot/send-events.ts'
 import { isDefiniteFailure } from '../../../../../src/core/bot/delivery.ts'
@@ -423,9 +425,12 @@ export function createOutbound(deps: OutboundDeps) {
       log.debug(`没找到「${query}」这张表情，跳过`)
       return false
     }
-    const seg = stickers.segmentFor(item)
-    if (!seg) return false
-    await sendSegments(chatId, [...quote(replyId), ...mention(userId), seg], `[表情] ${item.name || item.md5.slice(0, 8)}`)
+    const element = stickers.elementFor(item)
+    if (!element) return false
+    const sender = onebot.bot, self = sender?.selfId
+    const isCurrent = () => !isDisposed() && sender === onebot.bot && self === sender?.selfId
+    const receipt = await sendSegments(chatId, [...quote(replyId), ...mention(userId), ...toOneBot(element)], `[表情] ${item.name || item.md5.slice(0, 8)}`, { isCurrent })
+    if (!isCurrent() || !reallySent(receipt)) return false
     stickers.markUsed?.(item.md5)
     bump('stickers')
     return true

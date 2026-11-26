@@ -1,6 +1,8 @@
 import type { PluginContext } from '../../../../../src/types/plugin/ctx.ts'
 import type { AdapterSpec } from '../../../../../src/types/adapter/adapter.ts'
 import { createOneBotConnection } from './connection.ts'
+import { stickerService } from '../../../../../src/core/message/media/sticker.ts'
+import { stickerSource } from './stickers.ts'
 import { voiceSource } from './voice.ts'
 import { oneBotNotice } from './notices.ts'
 import { inboundOf, isMessageEvent } from './inbound.ts'
@@ -72,6 +74,7 @@ export function apply(ctx: PluginContext, config: Config) {
             ctx.root.config.debug || ctx.host.canReadMedia?.(ctx.bots.get(ctx.instanceId, 'qq'), draft) === false) return
         draft.elements = await expand(draft.elements, draft.messageId)
       })
+      ctx.provide(stickerService('qq', ctx.instanceId), stickerSource(connection))
       ctx.provide('voice-source/' + JSON.stringify(['qq', ctx.instanceId]), { open: voiceSource(connection.bot) })
       const cancel = () => {
         connection.client.stop()

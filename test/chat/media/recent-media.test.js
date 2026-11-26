@@ -157,7 +157,7 @@ test('媒体缓存关闭后旧实例不可取图，迟到消息不再改写暂�
 function saveTool(hub, cfg, chat = { kind: 'private', chatId: CHAT, userId: OWNER }) {
   let build
   installStickers({
-    host: { hub, onebot: {}, http: {} }, root: { config: cfg, read: () => cfg }, harness: {}, logger: log,
+    get() {}, effect() {}, on() {}, host: { hub, http: {} }, root: { config: cfg, read: () => cfg }, harness: {}, logger: log,
     tool: (fn) => { build = fn }, server: { get() {}, post() {} }, rule() {},
   })
   return build({ chat, sessionId: 'save-test', level: 'full' }).find((tool) => tool.name === 'qq_save_sticker')

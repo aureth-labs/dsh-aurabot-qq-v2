@@ -91,7 +91,7 @@ for (const [limitTagged, autoChance, sendsSticker, keywordExemption = false, not
       return ''
     },
     hooks: { send: async (segments, info) => { sent.push(info.note); return segments } },
-    stickers: { match: () => ({ name: '开心', md5: 'stub' }), segmentFor: () => ({ type: 'text', data: { text: '[表情] 开心' } }), markUsed() {} },
+    stickers: { match: () => ({ name: '开心', md5: 'stub' }), elementFor: () => ({ type: 'text', attrs: { content: '[表情] 开心' } }), markUsed() {} },
     buildTools: () => [{ name: 'slow-auto', slow: true, execute: () => work.promise }],
   })
   fake = s.fake

@@ -1,5 +1,6 @@
 import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
 import { personaScope } from '../../../../../src/persona/personas.ts'
+import { fromOneBot } from '../../../../adapters/qq/onebot-v11/src/element.ts'
 import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/message/parse.ts'
 import { ignoredGroupMember } from '../../../../../src/chat/inbound/filter/member-filter.ts'
 import { isOwner, checkAllowed, shouldObserveGroup, groupResponseMode } from '../../../../../src/chat/policy/rules/access.ts'
@@ -116,7 +117,7 @@ export function createIncomingMessages({
         if (collectMode === 'auto') {
           for (const s of msg.stickers)
             stickers
-              .collect(s, msg.chatId)
+              .collect(fromOneBot([s])[0], msg.chatId, () => currentMedia() === account && !wasCleared())
               .then((r) => {
                 if (!r.ok) log.debug('没收这张表情：', r.reason)
               })

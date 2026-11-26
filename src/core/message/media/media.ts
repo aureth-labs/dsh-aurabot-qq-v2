@@ -5,7 +5,6 @@ import { dataDir } from '../../store/index.ts'
 import { findFfmpeg } from './img.ts'
 import { mimeOf } from './inspect.ts'
 import { parseWav, toMono16k } from './wav.ts'
-import { stickerPath } from '../../../features/stickers/index.ts'
 
 export function createMediaAccess({ root, use, config }) {
   function picture(path) {
@@ -18,8 +17,7 @@ export function createMediaAccess({ root, use, config }) {
     ffmpegPath: () => findFfmpeg(config().local?.ffmpegPath || ''),
     avatar: () => picture(existsSync(dataDir('avatar.img')) ? dataDir('avatar.img') : join(root, 'assets', 'dafeiyu.jpg')),
     sticker(md5) {
-      const item = use('stickers')?.library?.().items.find((i) => i.md5 === md5)
-      return item ? picture(stickerPath(item)) : null
+      return use('stickers')?.picture?.(md5) ?? null
     },
   }
 }

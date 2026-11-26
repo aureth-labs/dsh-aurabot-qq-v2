@@ -1,3 +1,5 @@
+import { stickerService } from '../../src/core/message/media/sticker.ts'
+import type { stickerSource } from '../adapters/qq/onebot-v11/src/stickers.ts'
 import { createMediaScope } from '../modules/chat-bridge/qq/media/account.ts'
 import { fileURLToPath } from 'node:url'
 import * as adapter from '../adapters/qq/onebot-v11/src/plugin.ts'
@@ -30,6 +32,7 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
         return connection?.verified ? connection.login.uin : null
       }, ctx.logger)
       ctx.provide('primary-chat-media', media)
+      ctx.provide('primary-sticker-source', { capture: () => ctx.get<ReturnType<typeof stickerSource>>(stickerService('qq', ctx.instanceId))?.capture(), botId: ctx.instanceId, platform: 'qq' })
       ctx.effect(() => media.dispose())
       ctx.on('onebot/connection', (id, state) => { if (id === ctx.instanceId && state !== 'connected') media.reset() })
       return adapter.apply(ctx, config)

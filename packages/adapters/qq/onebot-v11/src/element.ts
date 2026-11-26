@@ -1,5 +1,6 @@
 import { h, normalize, type Element, type ElementSource } from '../../../../../src/core/message/element/element.ts'
 
+import { isStickerSegment } from './message/parse.ts'
 import { oneBotSegments, type OneBotSegment } from './cq.ts'
 export type { OneBotSegment } from './cq.ts'
 
@@ -7,6 +8,7 @@ const ONEBOT_TO_TYPE: Record<string, string> = {
   text: 'text',
   at: 'at',
   image: 'image',
+  mface: 'image',
   record: 'voice',
   video: 'video',
   file: 'file',
@@ -43,6 +45,15 @@ export function fromOneBot(segments: unknown): Element[] {
       const attrs: Record<string, unknown> = { url }
       if (data.file && data.url) attrs.file = data.file
       if (data.name) attrs.name = data.name
+      if (isStickerSegment(raw)) {
+        attrs.sticker = true
+        if (data.summary) attrs.alt = String(data.summary)
+        if (data.emoji_id || data.emojiId) {
+          attrs['qq:emoji'] = String(data.emoji_id || data.emojiId)
+          attrs['qq:pack'] = String(data.emoji_package_id ?? data.emojiPackageId ?? '')
+          attrs['qq:key'] = String(data.key ?? '')
+        }
+      }
       out.push(h(type, attrs))
       continue
     }
@@ -66,7 +77,14 @@ export function toOneBot(source: ElementSource): OneBotSegment[] {
     if (element.type === 'at') return { type: 'at', data: { qq: String(element.attrs.id ?? '') } }
     if (element.type === 'image' || element.type === 'voice' || element.type === 'video' || element.type === 'file') {
       const url = String(element.attrs.url ?? element.attrs.file ?? '')
-      return { type, data: { file: url.replace(/^data:[\w.+/-]+;base64,/i, 'base64://') } }
+      const file = url.replace(/^data:[\w.+/-]+;base64,/i, 'base64://')
+      if (element.type === 'image' && String(element.attrs.sticker) === 'true') {
+        const summary = String(element.attrs.alt || '[表情]')
+        if (element.attrs['qq:emoji']) return { type, data: { emoji_id: String(element.attrs['qq:emoji']),
+          emoji_package_id: Number(element.attrs['qq:pack']) || 0, key: String(element.attrs['qq:key'] || ''), summary } }
+        return { type, data: { file, sub_type: 1, summary } }
+      }
+      return { type, data: { file } }
     }
     if (element.type === 'quote') return { type: 'reply', data: { id: String(element.attrs.id ?? '') } }
     return { type, data: { ...element.attrs } }

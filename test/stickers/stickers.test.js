@@ -1,4 +1,5 @@
 // 表情包（#31）：关掉以后提示词不教她发、发送一律不发；商城表情收进来记住身份、发出去按商城表情原样发；面板改标签会清洗。
+import { fromOneBot, toOneBot } from '../../packages/adapters/qq/onebot-v11/src/element.ts'
 import { test, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
@@ -11,7 +12,7 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-stickers-'))
-  ;({ createStickerStore } = await import('../../src/features/stickers/index.ts'))
+  ;({ createStickerStore } = await import('../../packages/modules/stickers/store.ts'))
   ;({ rulesText } = await import('../../src/persona/personas.ts'))
   ;({ normalize } = await import('../../src/core/config/index.ts'))
 })
@@ -38,17 +39,19 @@ test('#31 商城表情：收进来记住 emoji_id / 包 id / key，发出去按�
   const cfg = normalize({ dryRun: true, stickers: { caption: false } })
   const store = createStickerStore({ dsh: {}, getConfig: () => cfg, onebot: { call: async () => ({}) }, log })
   const market = { type: 'image', data: { url: 'base64://' + gif(1).toString('base64'), summary: '[开心]', sub_type: 0, emoji_id: 'abcdef0123456789abcdef0123456789', emoji_package_id: 23456, key: 'k3y' } }
-  const r = await store.collect(market, 'group:1')
+  const r = await store.collect(fromOneBot([market])[0], 'group:1')
   assert.equal(r.ok, true, r.reason)
-  const item = store.library().items.find((i) => i.market)
-  assert.deepEqual(item.market, { emojiId: 'abcdef0123456789abcdef0123456789', packageId: 23456, key: 'k3y' })
-  const seg = store.segmentFor({ ...item, name: '开心' })
+  const item = store.library().items.find((i) => i.metadata['qq:emoji'])
+  const el = store.elementFor({ ...item, name: '开心' })
+  assert.equal(el.attrs.sticker, true)
+  assert.match(el.attrs.url, /^data:image\/gif;base64,/)
+  const [seg] = toOneBot(el)
   assert.deepEqual(seg, { type: 'image', data: { emoji_id: 'abcdef0123456789abcdef0123456789', emoji_package_id: 23456, key: 'k3y', summary: '[开心]' } })
 
   const plain = { type: 'image', data: { url: 'base64://' + gif(2).toString('base64'), sub_type: 1 } }
-  assert.equal((await store.collect(plain, 'group:1')).ok, true)
-  const p = store.library().items.find((i) => !i.market)
-  const ps = store.segmentFor(p)
+  assert.equal((await store.collect(fromOneBot([plain])[0], 'group:1')).ok, true)
+  const p = store.library().items.find((i) => !i.metadata['qq:emoji'])
+  const [ps] = toOneBot(store.elementFor(p))
   assert.equal(ps.data.sub_type, 1)
   assert.match(ps.data.file, /^base64:\/\/R0lGOD/, '动图原样发（GIF 字节不改）')
 })
@@ -56,7 +59,7 @@ test('#31 商城表情：收进来记住 emoji_id / 包 id / key，发出去按�
 test('#31 面板改名字 / 标签：去掉 #、去重、最多 5 个，名字最多 12 字', async () => {
   const cfg = normalize({ dryRun: true, stickers: { caption: false } })
   const store = createStickerStore({ dsh: {}, getConfig: () => cfg, onebot: { call: async () => ({}) }, log })
-  await store.collect({ type: 'image', data: { url: 'base64://' + gif(3).toString('base64'), sub_type: 1 } }, 'private:1')
+  await store.collect({ type: 'image', attrs: { url: 'base64://' + gif(3).toString('base64'), sticker: true } }, 'private:1')
   const md5 = store.library().items[0].md5
   const r = store.rename(md5, '  一个特别特别长的表情名字超过十二个字  ', ['#开心', '开心', '卖萌', '', '一二三四五六七八九', 'a', 'b', 'c'])
   assert.equal(r.ok, true)

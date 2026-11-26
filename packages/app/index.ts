@@ -212,6 +212,8 @@ export function apply(ctx) {
       return claimed ? claimed.result : mods?.emitAsync('llm', session)
     },
   })
+  ctx.effect(() => botRegistry.on('online', bot => mods?.emit('bot/online', bot)))
+  ctx.effect(() => botRegistry.on('offline', (bot, reason) => mods?.emit('bot/offline', bot, reason)))
   ctx.effect(() => () => adapterRegistry.stopAll(), 'aurabot: 适配器下线')
 
   const groupRoles = createGroupRoles({ onebot, getConfig, log: logger.child('chat') })
@@ -237,10 +239,10 @@ export function apply(ctx) {
   const use = (id) => mods?.use(id) || null
   const stickers = {
     match: (q) => use('stickers')?.match?.(q) ?? null,
-    segmentFor: (it) => use('stickers')?.segmentFor?.(it) ?? null,
+    elementFor: (it) => use('stickers')?.elementFor?.(it) ?? null,
     markUsed: (md5) => use('stickers')?.markUsed?.(md5),
     pickForReply: (t) => use('stickers')?.pickForReply?.(t) ?? null,
-    collect: async (s, chatId) => (use('stickers')?.collect ? use('stickers').collect(s, chatId) : { ok: false, reason: '表情包模块关着' }),
+    collect: async (el, chatId, current) => (use('stickers')?.collect ? use('stickers').collect(el, chatId, current) : { ok: false, reason: '表情包模块关着' }),
     library: () => use('stickers')?.library?.() ?? { items: [] },
   }
   const tts = {

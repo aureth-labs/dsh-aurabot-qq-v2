@@ -1,5 +1,6 @@
 // 表情改名：本地库和 QQ 收藏备注必须一起变（回归测试）。
 // 曾经的现象：QQ 那边名字变了，面板/库里还是旧名字。
+import { mockStickerSource } from '../helpers/sticker-source.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
@@ -8,7 +9,7 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-sticker-'))
 
-const { createStickerStore } = await import('../../src/features/stickers/index.ts')
+const { createStickerStore } = await import('../../packages/modules/stickers/store.ts')
 const { normalize } = await import('../../src/core/config/index.ts')
 
 function fakePng (w = 240, h = 240) {
@@ -35,7 +36,7 @@ function makeStore () {
     },
   }
   const log = { info () {}, warn () {}, debug () {} }
-  const store = createStickerStore({ dsh: null, getConfig: () => cfg, onebot, log })
+  const store = createStickerStore({ dsh: null, getConfig: () => cfg, source: mockStickerSource(onebot), log })
   return { store, calls }
 }
 

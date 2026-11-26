@@ -1,4 +1,5 @@
 // 收表情：同一张重复收时不能白跑一次，提示也要说清楚「之前就收过了」。
+import { mockStickerSource } from '../helpers/sticker-source.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync } from 'node:fs'
@@ -9,7 +10,7 @@ process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-addsticker-')
 // 每条用例换一个数据目录，互不干扰（dataDir() 每次都读这个环境变量）
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-addsticker-')) }
 
-const { createStickerStore } = await import('../../src/features/stickers/index.ts')
+const { createStickerStore } = await import('../../packages/modules/stickers/store.ts')
 const { normalize } = await import('../../src/core/config/index.ts')
 
 function fakePng (salt = 0) {
@@ -26,7 +27,7 @@ function makeStore () {
   const calls = []
   const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '10000001', stickers: { enabled: true, caption: false } })
   const onebot = { call: async (a, p) => { calls.push({ a, p }); return a === 'add_custom_face' ? { emoji_id: 'e1' } : {} } }
-  const store = createStickerStore({ dsh: null, getConfig: () => cfg, onebot, log: { info () {}, warn () {}, debug () {} } })
+  const store = createStickerStore({ dsh: null, getConfig: () => cfg, source: mockStickerSource(onebot), log: { info () {}, warn () {}, debug () {} } })
   return { store, calls }
 }
 
@@ -74,4 +75,24 @@ test('重复收、库里已经有名字：不覆盖人家已有的名字', async
   assert.equal(r.touched, false, '没什么可补的')
   assert.equal(store.library().items[0].name, '原来的名字')
   assert.deepEqual(store.library().items[0].tags, ['开心'])
+})
+
+test('并发收藏复用同一条记录，卸载后的同步回执不会覆盖新备注', async () => {
+  freshDir()
+  const sync = Promise.withResolvers()
+  let adds = 0
+  const source = mockStickerSource({ call: async () => { adds++; return sync.promise } })
+  const config = normalize({ stickers: { caption: false } })
+  const store = createStickerStore({ dsh: null, getConfig: () => config, source, log: { debug() {}, warn() {}, info() {} } })
+  const first = store.addFromBuffer(fakePng(7))
+  const duplicate = await store.addFromBuffer(fakePng(7), { name: '晚安' })
+  assert.equal(duplicate.existed, true)
+  assert.equal(adds, 1)
+  store.dispose()
+  sync.resolve({ emoji_id: 'stale' })
+  await first
+  const rows = store.library().items
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].emojiId, '')
+  assert.equal(rows[0].name, '晚安')
 })

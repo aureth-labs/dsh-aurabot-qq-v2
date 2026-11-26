@@ -1,50 +1,36 @@
 // 表情库：偷表情（严格判定 + 尺寸兜底 + MD5 去重 + 每小时限额）→ 收藏到 QQ → 视觉模型起备注；
 // 发送时按备注 / 标签模糊匹配。本地库：~/.dsh/plugins-data/aurabot/stickers/
 
-import { createHash } from 'node:crypto'
+import { readSticker, type StickerSource } from '../../../src/core/message/media/sticker.ts'
+import { h, type Element } from '../../../src/core/message/element/element.ts'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs'
-import { join } from 'node:path'
-import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
-import { mediaLimits } from '../../core/message/media/limits.ts'
-import { imageSize, mimeOf, stickerSizeOk } from '../../core/message/media/inspect.ts'
-import { segmentBytes, fetchImage } from '../../core/net/index.ts'
-import { askModel, canSeeImages } from '../../core/llm/index.ts'
+import { basename, join } from 'node:path'
+import { dataDir, readJson, writeJson } from '../../../src/core/store/index.ts'
+import { mediaLimits } from '../../../src/core/message/media/limits.ts'
+import { imageSize, mimeOf, stickerSizeOk } from '../../../src/core/message/media/inspect.ts'
+import { fetchImage } from '../../../src/core/net/index.ts'
+import { askModel, canSeeImages } from '../../../src/core/llm/index.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type SaveFromSegmentOptions = Partial<Record<'name' | 'tags' | 'from', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type AddFromBufferOptions = Partial<Record<'name' | 'tags' | 'from' | 'toQQ', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type RemoveOptions = Partial<Record<'fromQQ', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type RemoveManyOptions = Partial<Record<'fromQQ', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ImportFromQQOptions = Partial<Record<'limit', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CaptionTargetsOptions = Partial<Record<'all', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CaptionLibraryOptions = Partial<Record<'all' | 'limit', any>>
-
-const dir = () => dataDir('stickers')
-const indexFile = () => join(dir(), 'index.json')
+interface AddOptions { name?: string; tags?: string[]; from?: string; toQQ?: boolean; element?: Element }
+const metadataOf = (element?: Element) => Object.fromEntries(Object.entries(element?.attrs ?? {}).filter(([key]) => key.includes(':')))
+interface CaptionOptions { all?: boolean; limit?: number }
+type RemoveOptions = { fromQQ?: boolean }
+type ImportOptions = { limit?: number }
+interface StoreOptions {
+  dsh: Parameters<typeof canSeeImages>[0]
+  generate?: (options: any) => Promise<string>
+  getConfig: () => any
+  source?: () => StickerSource | undefined
+  log: { info: Function; warn: Function; debug: Function }
+  directory?: string
+}
 
 export const PANEL_UPLOAD_MAX_BYTES = 20 * 1024 * 1024
 
 const ext = (mime) => ({ 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' })[mime] || 'jpg'
 
 export const DEFAULT_TAGS = ['开心', '卖萌', '生气', '委屈', '无语', '嘲讽', '疑惑', '早晚安']
-
-export function loadLibrary() {
-  return readJson(indexFile(), () => ({ items: [] }))
-}
-
-function saveLibrary(lib) {
-  writeJson(indexFile(), lib)
-}
-
-export function stickerPath(item) {
-  return join(dir(), item.file)
-}
 
 /** 模糊匹配：备注 / 标签里包含关键词得分高；完全找不到返回 null。 */
 export function matchSticker(items, query) {
@@ -98,18 +84,32 @@ export function pickEvict(items) {
   return pool.slice().sort((a, b) => (a.uses || 0) - (b.uses || 0) || (a.lastUsed || a.at || 0) - (b.lastUsed || b.at || 0))[0]
 }
 
-export function createStickerStore({ dsh, generate = options => askModel(dsh, options), getConfig, onebot, log }) {
-  const recent = [] // 每小时限额
-
-  /** NapCat 的 add_custom_face 接收已落盘的表情文件路径。 */
-  async function addToQQ(localPath, label) {
+export function createStickerStore({ dsh, generate = options => askModel(dsh, options), getConfig, source = () => undefined, log, directory = dataDir('stickers') }: StoreOptions) {
+  const recent: number[] = []
+  const indexFile = join(directory, 'index.json')
+  const loadLibrary = () => {
+    const data = readJson(indexFile, () => ({ items: [] }))
+    return Array.isArray(data?.items) ? data : { items: [] }
+  }
+  const saveLibrary = lib => writeJson(indexFile, lib)
+  const stickerPath = item => join(directory, basename(String(item.file)))
+  const accountFor = item => {
+    const account = source()
+    return account && account.selfId === item.accountId ? account : undefined
+  }
+  async function syncFavorite(item, account: StickerSource | undefined) {
+    if (!account?.active() || disposed) return
     try {
-      const r = await onebot.call('add_custom_face', { file: localPath })
-      return String(r?.emoji_id || '')
-    } catch (error) {
-      log.debug(`收藏到 QQ 失败（本地已留档：${label}）`, error?.message || '未知错误')
-      return ''
-    }
+      const id = await account.add(stickerPath(item))
+      if (!id || !account.active() || disposed) return
+      const latest = loadLibrary()
+      const saved = latest.items.find(row => row.md5 === item.md5 && row.revision === item.revision)
+      if (!saved) return
+      saved.emojiId = item.emojiId = id
+      saved.accountId = item.accountId = account.selfId
+      saveLibrary(latest)
+      if (saved.name) await account.rename(id, saved.name)
+    } catch (error) { log.debug('表情已保存到本地，收藏同步失败', error.message) }
   }
 
   /** 面板里给起名单独挑的模型；没挑（或者只填了一半）就返回 null = 跟随聊天用的模型。 */
@@ -158,7 +158,7 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
   }
 
   /** 收一张表情。seg 必须已经过 isStickerSegment 严格判定。 */
-  async function collect(seg, from) {
+  async function collect(el: Element, from: string, current = () => true) {
     if (!mediaLimits(getConfig().media).receiveImages) return { ok: false, reason: '已关闭接收图片' }
     const cfg = getConfig().stickers
     if (getConfig().debug) return { ok: false, reason: '调试模式，不收表情' } // 调试不往表情库里添东西
@@ -166,31 +166,32 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
     const now = Date.now()
     while (recent.length && now - recent[0] > 3600_000) recent.shift()
     if (recent.length >= cfg.maxPerHour) return { ok: false, reason: '这小时收够了' }
-    const d = seg.data || {}
+    const account = source()
     let buf
     try {
-      buf = await segmentBytes(seg, onebot, { maxBytes: mediaLimits(getConfig().media).maxImageMB * 1048576 })
+      buf = await readSticker(el, mediaLimits(getConfig().media).maxImageMB * 1048576, account)
     } catch (error) {
       return { ok: false, reason: '下载失败：' + error.message }
     }
+    if (disposed || !current() || recent.length >= cfg.maxPerHour || !getConfig().stickers.collect || (account && !account.active())) return { ok: false, reason: '收集已停止' }
     const { width, height } = imageSize(buf)
     if (!stickerSizeOk({ width, height, bytes: buf.length }, { maxSide: cfg.maxSide })) return { ok: false, reason: `尺寸不像表情（${width}x${height}，${Math.round(buf.length / 1024)}KB，上限 ${cfg.maxSide || 520}px）` }
     const md5 = createHash('md5').update(buf).digest('hex')
     const lib = loadLibrary()
     if (lib.items.some((i) => i.md5 === md5)) return { ok: false, reason: '已经有了' }
     const mime = mimeOf(buf)
-    mkdirSync(dir(), { recursive: true })
+    if (!mime.startsWith('image/')) return { ok: false, reason: '不是图片' }
+    mkdirSync(directory, { recursive: true })
     const file = `collected-${md5}.${ext(mime)}`
-    writeFileSync(join(dir(), file), buf)
-    const item: any = { md5, file, name: '', tags: [], from, at: now, width, height, bytes: buf.length, emojiId: '', summary: String(d.summary || '').replace(/[[\]]/g, '') }
-    // 商城表情（QQ 表情商店里的）：存下来的只是一张预览图，原样发回去才会按商城表情播放动画（#31）
-    const marketId = String(d.emoji_id ?? d.emojiId ?? '').trim()
-    if (marketId) item.market = { emojiId: marketId, packageId: Number(d.emoji_package_id ?? d.emojiPackageId ?? 0) || 0, key: String(d.key ?? '') }
+    writeFileSync(join(directory, file), buf)
+    const item = { md5, file, name: '', tags: [], from, at: now, width, height, bytes: buf.length, emojiId: '',
+      accountId: '', revision: randomUUID(), summary: String(el.attrs.alt || '').replace(/[[\]]/g, ''),
+      metadata: metadataOf(el) }
     recent.push(now)
-    // 收藏到 QQ
-    item.emojiId = await addToQQ(join(dir(), file), '自动收藏')
     lib.items.push(item)
     saveLibrary(lib)
+    await syncFavorite(item, account)
+    if (disposed || !current() || (account && !account.active())) return { ok: true, item }
     log.info(`收了一张表情 ${md5.slice(0, 8)}（${width}x${height}）`)
     await trim()
     // 后台起备注，写回 QQ 和本地
@@ -198,12 +199,12 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
       caption(buf, mime, item.summary).then(async ({ name, tags }) => {
         const l = loadLibrary()
         const it = l.items.find((i) => i.md5 === md5)
-        if (!it) return
-        it.name = name || item.summary || '表情'
+        if (!it || it.revision !== item.revision || disposed || !current()) return
+        it.name = it.name || name || item.summary || '表情'
         it.tags = tags.length ? tags : it.tags
         saveLibrary(l)
         if (it.emojiId && it.name) {
-          try { await onebot.call('modify_custom_face', { emoji_id: it.emojiId, desc: it.name.slice(0, 20) }) } catch (error) { log.warn('写回 QQ 备注失败：', error.message) }
+          try { await accountFor(it)?.rename(it.emojiId, it.name) } catch (error) { log.warn('写回 QQ 备注失败：', error.message) }
         }
         log.info(`表情 ${md5.slice(0, 8)} 起名「${it.name}」${it.tags.length ? ' #' + it.tags.join(' #') : ''}`)
       }).catch((error) => log.warn('表情起名收尾出错：', error.message))
@@ -211,29 +212,10 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
     return { ok: true, item }
   }
 
-  /**
-   * 「她挑」模式：把聊天里收到的那个表情直接收下来。
-   * 名字是她自己起的，所以不走后台看图起名；也不占「每小时最多收」的额度。
-   */
-  async function saveFromSegment(seg, { name = '', tags = [], from = 'picked' } : SaveFromSegmentOptions = {}) {
-    if (getConfig().debug) return { ok: false, reason: '调试模式，不收表情' }
-    const cfg = getConfig().stickers
-    if (!cfg.enabled) return { ok: false, reason: '表情包模块关着' }
-    let buf
-    try {
-      buf = await segmentBytes(seg, onebot, { maxBytes: 1.5 * 1024 * 1024 })
-    } catch (error) {
-      return { ok: false, reason: '拿不到这张图：' + error.message }
-    }
-    const { width, height } = imageSize(buf)
-    if (!stickerSizeOk({ width, height, bytes: buf.length }, { maxSide: cfg.maxSide })) {
-      return { ok: false, reason: `尺寸不像表情（${width}x${height}，${Math.round(buf.length / 1024)}KB）` }
-    }
-    return await addFromBuffer(buf, { name, tags, from })
-  }
-
   /** 手动添加（工具 / 面板上传）。 */
-  async function addFromBuffer(buf, { name = '', tags = [], from = 'manual', toQQ = true } : AddFromBufferOptions = {}) {
+  async function addFromBuffer(buf, { name = '', tags = [], from = 'manual', toQQ = true, element }: AddOptions = {}) {
+    if (disposed) return { ok: false, reason: '插件已卸载' }
+    const account = toQQ ? source() : undefined
     const md5 = createHash('md5').update(buf).digest('hex')
     const lib = loadLibrary()
     const exist = lib.items.find((i) => i.md5 === md5)
@@ -247,26 +229,21 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
     }
     const mime = mimeOf(buf)
     if (!mime.startsWith('image/')) return { ok: false, reason: '不是图片' }
-    mkdirSync(dir(), { recursive: true })
+    mkdirSync(directory, { recursive: true })
     const file = `manual-${md5}.${ext(mime)}`
-    writeFileSync(join(dir(), file), buf)
+    writeFileSync(join(directory, file), buf)
     const { width, height } = imageSize(buf)
-    const item = { md5, file, name: String(name).slice(0, 12), tags, from, at: Date.now(), width, height, bytes: buf.length, emojiId: '' }
-    if (toQQ) {
-      item.emojiId = await addToQQ(join(dir(), file), '手动收藏')
-      if (item.emojiId && item.name) {
-        try { await onebot.call('modify_custom_face', { emoji_id: item.emojiId, desc: item.name }) } catch (error) { log.debug('收藏备注写回失败：', error.message) }
-      }
-    }
+    const item = { md5, file, name: String(name).slice(0, 12), tags, from, metadata: metadataOf(element), at: Date.now(), width, height, bytes: buf.length, emojiId: '', accountId: '', revision: randomUUID() }
     lib.items.push(item)
     saveLibrary(lib)
+    await syncFavorite(item, account)
     return { ok: true, item }
   }
 
   /** 表情库超过上限就清掉最少用的（QQ 收藏表情有数量上限，满了就收不进去了）。 */
   async function trim() {
     const max = getConfig().stickers.maxLibrary
-    for (let guard = 0; guard < 20; guard++) {
+    for (let guard = 0; !disposed && guard < 20; guard++) {
       const items = loadLibrary().items
       if (items.length <= max) return
       const out = pickEvict(items)
@@ -290,34 +267,30 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
     const lib = loadLibrary()
     const it = lib.items.find((i) => i.md5 === md5)
     if (!it) return { ok: false, reason: '没有这张' }
-    if (fromQQ && it.emojiId) {
-      try { await onebot.call('delete_custom_face', { emoji_id: it.emojiId }) } catch (error) { log.warn('从 QQ 收藏里删除失败：', error.message) }
-    }
-    try { unlinkSync(join(dir(), it.file)) } catch (error) {}
-    lib.items = lib.items.filter((i) => i.md5 !== md5)
+    const account = fromQQ && it.emojiId ? accountFor(it) : undefined
+    lib.items = lib.items.filter(row => row.md5 !== md5)
     saveLibrary(lib)
+    try { unlinkSync(stickerPath(it)) } catch {}
+    try { await account?.remove(it.emojiId) } catch (error) { log.warn('同步删除表情失败', error.message) }
     return { ok: true }
   }
 
   /** 一次删一批：面板多选后一键删掉。fromQQ = 连 QQ 收藏里的那张一起删。 */
-  async function removeMany(md5s, { fromQQ = true } : RemoveManyOptions = {}) {
+  async function removeMany(md5s, { fromQQ = true } : RemoveOptions = {}) {
     const list = [...new Set((Array.isArray(md5s) ? md5s : []).map((x) => String(x || '').trim()).filter(Boolean))]
     if (!list.length) return { ok: false, removed: 0, message: '没选表情' }
     const found = loadLibrary().items.filter((i) => list.includes(i.md5))
     if (!found.length) return { ok: false, removed: 0, message: '这些表情已经不在库里了' }
-    let qqFailed = 0
-    if (fromQQ) {
-      for (const it of found) {
-        if (!it.emojiId) continue
-        try { await onebot.call('delete_custom_face', { emoji_id: it.emojiId }) } catch (error) { qqFailed++; log.warn('从 QQ 收藏里删除失败：', error.message) }
-      }
-    }
-    for (const it of found) { try { unlinkSync(join(dir(), it.file)) } catch (error) {} }
-    const gone = new Set(found.map((i) => i.md5))
-    // 重新读一遍再写：后台可能刚给别的表情起完名，别把那些改动冲掉
+    const gone = new Set(found.map(item => item.md5))
     const fresh = loadLibrary()
-    fresh.items = fresh.items.filter((i) => !gone.has(i.md5))
+    fresh.items = fresh.items.filter(item => !gone.has(item.md5))
     saveLibrary(fresh)
+    const remote = found.map(item => ({ item, account: fromQQ && item.emojiId ? accountFor(item) : undefined }))
+    for (const item of found) { try { unlinkSync(stickerPath(item)) } catch {} }
+    let qqFailed = 0
+    for (const { item, account } of remote) {
+      try { await account?.remove(item.emojiId) } catch (error) { qqFailed++; log.warn('同步删除表情失败', error.message) }
+    }
     log.info(`批量删掉 ${found.length} 张表情${fromQQ ? '' : '（QQ 收藏保留）'}`)
     return { ok: true, removed: found.length, qqFailed, message: `删掉了 ${found.length} 张${qqFailed ? `（${qqFailed} 张没从 QQ 收藏删掉）` : ''}` }
   }
@@ -329,16 +302,22 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
     if (name !== undefined) it.name = String(name).trim().slice(0, 12)
     if (tags !== undefined) it.tags = [...new Set((Array.isArray(tags) ? tags : []).map((t) => String(t).replace(/^#/, '').trim().slice(0, 8)).filter(Boolean))].slice(0, 5)
     saveLibrary(lib)
-    if (it.emojiId) onebot.call('modify_custom_face', { emoji_id: it.emojiId, desc: it.name }).catch(() => {})
+    if (it.emojiId) accountFor(it)?.rename(it.emojiId, it.name).catch(() => {})
     return { ok: true, item: it }
   }
 
-  /** 发表情用的消息段：商城表情按商城表情原样发（带 emoji_id，网关会认回成 mface）；其余本地图片按表情（sub_type=1）发。 */
-  function segmentFor(item) {
-    if (item.market?.emojiId) return { type: 'image', data: { emoji_id: item.market.emojiId, emoji_package_id: item.market.packageId, key: item.market.key, summary: `[${item.name || '表情'}]` } }
-    const p = stickerPath(item)
-    if (!existsSync(p)) return null
-    return { type: 'image', data: { file: 'base64://' + readFileSync(p).toString('base64'), sub_type: 1, summary: `[${item.name || '表情'}]` } }
+  function picture(md5: string) {
+    const item = loadLibrary().items.find(row => row.md5 === md5)
+    if (!item || !existsSync(stickerPath(item))) return null
+    const bytes = readFileSync(stickerPath(item))
+    const type = mimeOf(bytes)
+    return type.startsWith('image/') ? { bytes, type } : null
+  }
+  function elementFor(item): Element | null {
+    const img = picture(item.md5)
+    if (!img) return null
+    return h.image('data:' + img.type + ';base64,' + img.bytes.toString('base64'),
+      { ...source()?.attributes?.(item), ...item.metadata, sticker: true, alt: '[' + (item.name || '表情') + ']' })
   }
 
   /**
@@ -346,13 +325,14 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
    * 不再往 QQ 收藏里加一遍。开了「看图起名」就在后台一张张起名。
    */
   let importing = null
-  async function importFromQQ({ limit = getConfig().stickers.maxLibrary } : ImportFromQQOptions = {}) {
+  async function importFromQQ({ limit = getConfig().stickers.maxLibrary } : ImportOptions = {}) {
     if (importing) return importing
+    const account = source()
     importing = (async () => {
       let urls
       try {
-        const r = await onebot.call('fetch_custom_face', { count: Math.max(1, Math.min(500, Number(limit) || 300)) }, { timeoutMs: 30000 })
-        urls = (Array.isArray(r) ? r : r?.data || []).map((x) => (typeof x === 'string' ? x : x?.url || '')).filter(Boolean)
+        if (!account) return { ok: false, message: '当前账号未提供收藏同步' }
+        urls = await account.list(Math.max(1, Math.min(500, Number(limit) || 300)))
       } catch (error) {
         return { ok: false, message: '读不到机器人号的 QQ 收藏表情：' + error.message }
       }
@@ -362,7 +342,8 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
       const named = []
       for (const url of urls) {
         let buf
-        try { buf = await fetchImage(url, { maxBytes: mediaLimits(getConfig().media).maxImageMB * 1048576 }) } catch (error) { failed++; continue }
+        try { buf = await fetchImage(url, { maxBytes: mediaLimits(getConfig().media).maxImageMB * 1048576, allowLocal: false }) } catch (error) { failed++; continue }
+        if (disposed || !account.active()) break
         const md5 = createHash('md5').update(buf).digest('hex')
         if (loadLibrary().items.some((i) => i.md5 === md5)) { existed++; continue }
         const r = await addFromBuffer(buf, { from: 'qq', toQQ: false })
@@ -376,6 +357,7 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
             const { name, tags } = await caption(buf, mimeOf(buf), '')
             const l = loadLibrary()
             const it = l.items.find((i) => i.md5 === md5)
+            if (disposed || !account.active()) break
             if (!it || it.name) continue
             it.name = name || '表情'
             if (tags.length) it.tags = tags
@@ -424,13 +406,13 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
   }
 
   /** 哪些要补：默认只补名字或标签空着的（文件丢了的跳过）；all = 全库重做。 */
-  function captionTargets({ all = false } : CaptionTargetsOptions = {}) {
-    const items = loadLibrary().items.filter((i) => existsSync(join(dir(), i.file)))
+  function captionTargets({ all = false } : CaptionOptions = {}) {
+    const items = loadLibrary().items.filter((i) => existsSync(stickerPath(i)))
     return all ? items : items.filter((i) => !String(i.name || '').trim() || !(i.tags || []).length)
   }
 
   /** 开始批量起名：立刻返回，真正干活在后台。 */
-  async function captionLibrary({ all = false, limit = 0 } : CaptionLibraryOptions = {}) {
+  async function captionLibrary({ all = false, limit = 0 } : CaptionOptions = {}) {
     if (disposed) return { ok: false, message: '模块重载了，重新打开面板再试' }
     if (captionJob && captionJob.running) return { ok: false, message: '上一轮还在跑，等它跑完（或者点「停」）', status: captionStatus() }
     const target = captionModelOf(getConfig())
@@ -462,9 +444,10 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
         if (!it || (!all && String(it.name || '').trim() && (it.tags || []).length)) { job.skipped++; job.done++; continue }
         job.current = it.name || it.md5.slice(0, 8)
         let buf
-        try { buf = readFileSync(join(dir(), it.file)) } catch (error) { job.failed++; job.done++ }
+        try { buf = readFileSync(stickerPath(it)) } catch (error) { job.failed++; job.done++ }
         if (!buf) continue
         const { name, tags, noVision } = await caption(buf, mimeOf(buf), it.summary || '')
+        if (job.cancel || disposed) break
         if (!name) {
           job.failed++
           job.done++
@@ -481,7 +464,7 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
         if (tags.length) cur.tags = tags
         saveLibrary(l)
         if (cur.emojiId) {
-          try { await onebot.call('modify_custom_face', { emoji_id: cur.emojiId, desc: cur.name.slice(0, 20) }) } catch (error) { log.warn('写回 QQ 备注失败：', error.message) }
+          try { await accountFor(cur)?.rename(cur.emojiId, cur.name) } catch (error) { log.warn('写回 QQ 备注失败：', error.message) }
         }
         job.ok++
         job.last = cur.name
@@ -499,5 +482,5 @@ export function createStickerStore({ dsh, generate = options => askModel(dsh, op
     return { ok: true, total: queue.length, started: true, status: captionStatus(), message: `开始给 ${queue.length} 张表情起名字（后台跑，可以关掉面板）` }
   }
 
-  return { importFromQQ, collect, addFromBuffer, saveFromSegment, remove, removeMany, rename, segmentFor, markUsed, trim, captionLibrary, captionStatus, captionCancel, captionTargets, dispose, library: loadLibrary, match: (q) => matchSticker(loadLibrary().items, q), pickForReply: (t) => pickForReply(loadLibrary().items, t) }
+  return { importFromQQ, collect, addFromBuffer, remove, removeMany, rename, elementFor, picture, stickerPath, markUsed, trim, captionLibrary, captionStatus, captionCancel, captionTargets, dispose, library: loadLibrary, match: (q) => matchSticker(loadLibrary().items, q), pickForReply: (t) => pickForReply(loadLibrary().items, t) }
 }
