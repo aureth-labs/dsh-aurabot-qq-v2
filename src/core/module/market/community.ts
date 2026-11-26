@@ -12,8 +12,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
 import { inflateRawSync, crc32 } from 'node:zlib'
-import { dataDir } from '../store/index.ts'
-import { API_VERSION, builtinDir, userDir, idDir } from './index.ts'
+import { dataDir } from '../../store/index.ts'
+import { API_VERSION, builtinDir, userDir, idDir } from '../index.ts'
 
 export const REGISTRY_URL = 'https://raw.githubusercontent.com/aureth-labs/dsh-aurabot-qq-mods/registry/index.json'
 // Gitee 官方镜像（由 github-to-gitee-sync 每天从 registry 分支同步），国内访问更稳
@@ -47,8 +47,8 @@ const netError = (error: unknown): Error => {
 export interface FetchInit { signal?: AbortSignal; cache?: 'no-store'; redirect?: 'follow' | 'manual' | 'error'; headers?: Record<string, string> }
 export type Fetcher = (url: string, init?: FetchInit) => Promise<Response>
 
-import type { AurabotConfig } from '../config/index.ts'
-import type { AreaLogger } from '../support/log/logger.ts'
+import type { AurabotConfig } from '../../config/index.ts'
+import type { AreaLogger } from '../../support/log/logger.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type LoadIndexOptions = Partial<Record<'force', any>>

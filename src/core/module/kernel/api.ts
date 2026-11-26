@@ -2,14 +2,14 @@
 
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { API_VERSION, BUILTIN_DIR, INSTANCE_RE } from './loader.ts'
-import type { ModuleDef, ModuleRecord } from './loader.ts'
+import { API_VERSION, BUILTIN_DIR, INSTANCE_RE } from '../loader.ts'
+import type { ModuleDef, ModuleRecord } from '../loader.ts'
 import { deepMerge, isObj, lazyProxy } from './util.ts'
-import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from './governance.ts'
-import { dataDir } from '../store/index.ts'
-import { defineTool } from '../../tools/index.ts'
-import { personaScope, personaNow } from '../../persona/personas.ts'
-import { PERSONA_MEMORY_MODULE } from '../support/persona-memory-bridge.ts'
+import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from '../governance.ts'
+import { dataDir } from '../../store/index.ts'
+import { defineTool } from '../../../tools/index.ts'
+import { personaScope, personaNow } from '../../../persona/personas.ts'
+import { PERSONA_MEMORY_MODULE } from '../../support/persona-memory-bridge.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 export type RouteOptions = Partial<Record<'access', any>>

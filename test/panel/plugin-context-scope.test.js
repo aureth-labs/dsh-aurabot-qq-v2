@@ -1,7 +1,7 @@
 // S1 补全：ctx.bot(id)、ctx.broadcast、平台/群/私聊过滤器、ctx.root、ctx.emit。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createPluginContext } from '../../src/core/module/plugin-context.ts'
+import { createPluginContext } from '../../src/core/module/context/plugin-context.ts'
 import { createBotsAccessor, BotRegistry } from '../../src/core/bot/instance/registry.ts'
 import { Pipeline } from '../../src/core/pipeline/index.ts'
 

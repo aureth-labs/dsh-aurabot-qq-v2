@@ -322,7 +322,7 @@ test('导航版本：模块停/起时 navigationRevision 递增，摘要同步�
 })
 
 test('summarizeModules 纯内存：不调 scanUser 重扫、不做文件系统遍历（静态契约）', async () => {
-  const src = readFileSync(new URL('../../src/core/module/index.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../../src/core/module/kernel/create.ts', import.meta.url), 'utf8')
   const start = src.indexOf('function summarizeModules')
   assert.ok(start > 0, '要有 summarizeModules')
   // 函数体截到下一个顶层函数为止

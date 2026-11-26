@@ -1,8 +1,8 @@
 // 模块拿到的 ctx：v1 的 api 原样保留（老插件零改动），再补 v2 的别名。
 // 规则：v1 里已有同名能力的，只做转发，不改语义；v1 没有的才新增。
 
-import type { AdapterHandle, AdapterSpec } from '../../types/adapter/adapter.ts'
-import type { BotsAccessor, BotLike } from '../../types/adapter/bot.ts'
+import type { AdapterHandle, AdapterSpec } from '../../../types/adapter/adapter.ts'
+import type { BotsAccessor, BotLike } from '../../../types/adapter/bot.ts'
 import type {
   ApiLike,
   BotAccessor,
@@ -14,9 +14,9 @@ import type {
   PluginContext,
   PluginContextExtras,
   TtsFacade,
-} from '../../types/plugin/ctx.ts'
-import type { Middleware, MiddlewareOptions, SessionFilter } from '../../types/plugin/pipeline.ts'
-import type { Target } from '../../types/core/target.ts'
+} from '../../../types/plugin/ctx.ts'
+import type { Middleware, MiddlewareOptions, SessionFilter } from '../../../types/plugin/pipeline.ts'
+import type { Target } from '../../../types/core/target.ts'
 
 export type {
   ApiLike,
@@ -27,7 +27,7 @@ export type {
   PluginContext,
   PluginContextExtras,
   TtsFacade,
-} from '../../types/plugin/ctx.ts'
+} from '../../../types/plugin/ctx.ts'
 
 export function createPluginContext(api: ApiLike, extras: PluginContextExtras = {}): PluginContext {
   const ctx = { ...api } as PluginContext

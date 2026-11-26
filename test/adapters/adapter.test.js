@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { BotRegistry } from '../../src/core/bot/instance/registry.ts'
 import { startAdapter } from '../../src/core/bot/adapter/contract.ts'
-import { createPluginContext } from '../../src/core/module/plugin-context.ts'
+import { createPluginContext } from '../../src/core/module/context/plugin-context.ts'
 
 function fakeBot(id, platform) {
   return {

@@ -59,7 +59,7 @@ import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } 
 import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow } from '../persona/personas.ts'
 import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook } from '../persona/persona-look.ts'
 import { createModules, API_VERSION } from '../core/module/index.ts'
-import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../core/module/community.ts'
+import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../core/module/market/community.ts'
 import { createApprovalRelay } from '../security/approval.ts'
 import { createNoticeRelay, normalizeWorkspace } from '../features/notices/index.ts'
 import { captureSystemPrompt } from '../security/leak-guard.ts'

@@ -77,7 +77,7 @@ const rel = (tag, counts, publishedAt) => ({ tag_name: tag, assets: counts.map((
 before(async () => {
   root = mkdtempSync(join(tmpdir(), 'aurabot-community-dl-'))
   process.env.AURABOT_DATA_DIR = root
-  ;({ createCommunity } = await import('../../src/core/module/community.ts'))
+  ;({ createCommunity } = await import('../../src/core/module/market/community.ts'))
   ;({ userDir } = await import('../../src/core/module/index.ts'))
   mkdirSync(userDir(), { recursive: true })
 })
