@@ -1,8 +1,18 @@
-// S4 契约：默认写法是 h('text', { content })，坏 XML 只丢标签、不吞正文。
 import { fromOneBot, toOneBot } from '../../../packages/adapters/qq/onebot-v11/src/element.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { h, parse, stringify, select, normalize, toText, degrade } from '../../../src/core/message/element/element.ts'
+
+test('能力降级深入消息和转发，转义文本保持字面含义', () => {
+  const xml = '<message><forward><img src="a&amp;b"/></forward>&lt;acp&gt;</message>'
+  const tree = parse(xml)
+  assert.equal(select(tree, 'image')[0].attrs.url, 'a&b')
+  assert.equal(toText(degrade(tree, cap => cap !== 'image')), '[图片]<acp>')
+  assert.deepEqual(parse(stringify(tree)), tree)
+  assert.equal(toText(parse('前<acp><acp>内部</acp>余下')), '前')
+  assert.equal(toText(parse('前<voice url="未结束')), '前')
+  assert.equal(toText(parse('前<!--内部-->后')), '前后')
+})
 
 test('默认写法：h(text, { content })', () => {
   const el = h('text', { content: '你好' })
@@ -38,16 +48,15 @@ test('解析：不认识的标签整块丢掉（连正文），后面的文字�
   assert.equal(select(tree, 'acp').length, 0)
 })
 
-test('解析：不认识的标签没闭合，丢标签、把正文退回来', () => {
-  // 未闭合时拿不准边界：误吞用户的正常回复比漏出一点内部块更糟
+test('解析：不认识的标签没闭合，只保留块前文字', () => {
   const tree = parse('你好<acp>没收口的内容')
-  assert.equal(toText(tree), '你好没收口的内容')
+  assert.equal(toText(tree), '你好')
   assert.equal(select(tree, 'acp').length, 0)
 })
 
-test('解析：认识的标签没闭合，丢标签本体、保留正文', () => {
+test('解析：认识的标签没闭合，整块丢弃', () => {
   const tree = parse('<voice>念这句话')
-  assert.equal(toText(tree), '念这句话')
+  assert.equal(toText(tree), '')
 })
 
 test('解析：<file>路径</file> 的正文就是 url', () => {

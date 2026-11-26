@@ -22,7 +22,6 @@ const TO_SATORI: Record<string, string> = {
 const FROM_SATORI: Record<string, string> = {
   img: 'image',
   audio: 'voice',
-  message: 'forward',
 }
 
 /** 属性改名：内部叫 url，Satori 叫 src。 */
@@ -40,9 +39,10 @@ function escapeAttr(value: unknown): string {
 function render(element: Element): string {
   const type = TO_SATORI[element.type] || element.type
   if (element.type === 'text') return `<text>${escapeText(String(element.attrs.content ?? ''))}</text>`
-  const attrs = Object.entries(element.attrs)
+  const attributes = element.type === 'forward' ? { ...element.attrs, forward: true } : element.attrs
+  const attrs = Object.entries(attributes)
     .filter(([, value]) => value !== undefined && value !== null)
-    .map(([key, value]) => ` ${ATTR_OUT[key] || key}="${escapeAttr(value)}"`)
+    .map(([key, value]) => value === true ? ' ' + (ATTR_OUT[key] || key) : ` ${ATTR_OUT[key] || key}="${escapeAttr(value)}"`)
     .join('')
   if (!element.children || !element.children.length) return `<${type}${attrs}/>`
   return `<${type}${attrs}>${element.children.map(render).join('')}</${type}>`
@@ -58,18 +58,18 @@ export function toSatori(source: ElementSource): string {
   return `<message>${toSatoriBody(source)}</message>`
 }
 
-/** Satori 片段 → 元素树。坏标签按 h.parse 的容错规则处理（丢标签、留正文）。 */
 export function fromSatori(xml: string): Element[] {
   const roots = parse(String(xml ?? ''))
   // 外层 <message> 是协议外壳，不是内容；里面的 <message forward> 才当转发处理
-  const body = roots.length === 1 && roots[0].type === 'message' ? roots[0].children || [] : roots
+  const body = roots.length === 1 && roots[0].type === 'message' && !Object.keys(roots[0].attrs).length ? roots[0].children || [] : roots
   return normalize(body.map(convert))
 }
 
 function convert(element: Element): Element {
-  const type = FROM_SATORI[element.type] || element.type
+  const forward = element.type === 'message' && (element.attrs.forward === true || element.attrs.forward === 'true')
+  const type = forward ? 'forward' : FROM_SATORI[element.type] || element.type
   const attrs: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(element.attrs)) attrs[ATTR_IN[key] || key] = value
-  // <text>正文</text> 在 h.parse 里已经并进 content 了
+  if (forward) delete attrs.forward
   return element.children?.length ? { type, attrs, children: element.children.map(convert) } : { type, attrs }
 }

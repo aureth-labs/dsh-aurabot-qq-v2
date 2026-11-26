@@ -31,19 +31,11 @@ export function wrapAdapterBot(bot: BotLike, options: WrapAdapterBotOptions): Bo
   const supports = (capability: Capability) => bot.supports(capability)
 
   const prepare = async (content: unknown): Promise<unknown> => {
-    if (typeof content === 'string') {
-      if (options.speak && needsVoiceResolve(content)) return degrade(await resolveVoice(content, options.speak), supports)
-      return content
-    }
-    if (isElement(content)) {
-      const resolved = options.speak && needsVoiceResolve(content) ? await resolveVoice(content, options.speak) : [content]
-      return degrade(resolved, supports)
-    }
-    if (Array.isArray(content) && content.length && content.every((item) => isElement(item))) {
-      const resolved = options.speak && needsVoiceResolve(content) ? await resolveVoice(content, options.speak) : normalize(content)
-      return degrade(resolved, supports)
-    }
-    return content
+    if (typeof content === 'string' && !/[<&]/.test(content)) return content
+    if (typeof content !== 'string' && !isElement(content) && !(Array.isArray(content) && content.every(isElement))) return content
+    const elements = normalize(content)
+    const resolved = options.speak && needsVoiceResolve(elements) ? await resolveVoice(elements, options.speak) : elements
+    return degrade(resolved, supports)
   }
 
   const send = async (
@@ -57,6 +49,7 @@ export function wrapAdapterBot(bot: BotLike, options: WrapAdapterBotOptions): Bo
       return { ok: false, simulated: true }
     }
     const prepared = await prepare(content)
+    if (prepared === '' || (Array.isArray(prepared) && !prepared.length)) return { ok: false, skipped: true }
     return method === 'sendMessage'
       ? bot.sendMessage(targetId, prepared, sendOptions)
       : bot.sendPrivateMessage(targetId, prepared, sendOptions)

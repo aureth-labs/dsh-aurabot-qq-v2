@@ -64,8 +64,11 @@ export function fromOneBot(segments: unknown): Element[] {
 }
 
 export function toOneBot(source: ElementSource): OneBotSegment[] {
-  return normalize(source).map((element) => {
-    const type = TYPE_TO_ONEBOT[element.type] || element.type
+  return normalize(source).flatMap<OneBotSegment>((element) => {
+    if (element.type === 'br') return [{ type: 'text', data: { text: '\n' } }]
+    const type = TYPE_TO_ONEBOT[element.type]
+    if (!type) return element.children ? toOneBot(element.children) : []
+    if (type === 'forward' && !element.attrs.id && element.children) return toOneBot(element.children)
     if (element.type === 'text') return { type: 'text', data: { text: String(element.attrs.content ?? '') } }
     if (element.type === 'at') return { type: 'at', data: { qq: String(element.attrs.id ?? '') } }
     if (element.type === 'image' || element.type === 'voice' || element.type === 'video' || element.type === 'file') {

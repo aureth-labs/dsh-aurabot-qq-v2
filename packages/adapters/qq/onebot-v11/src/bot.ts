@@ -15,7 +15,7 @@ import type {
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
 import { toOneBot, fromOneBot } from './element.ts'
 import { isElement, normalize, degrade, toText } from '../../../../../src/core/message/element/element.ts'
-import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
+import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
 
 export interface OneBotCall {
   (action: string, params?: Record<string, unknown>, options?: { retries?: number; timeoutMs?: number }): Promise<any>
@@ -217,26 +217,16 @@ export class OneBotBot extends Bot {
   }
 
   private async toMessage(content: unknown): Promise<unknown> {
-    const speak = this.speak
-    if (speak && needsVoiceResolve(content as any)) {
-      const elements = await resolveVoice(content as any, speak, this.log)
-      return toOneBot(elements)
-    }
-    if (typeof content === 'string') {
-      if (speak && hasVoiceText(content)) return toOneBot(await resolveVoice(content, speak, this.log))
-      return content
-    }
-    const fits = (capability: Capability) => this.supports(capability)
-    if (isElement(content)) return toOneBot(degrade(content, fits))
-    if (Array.isArray(content)) {
-      if (content.length && content.every((item) => isElement(item))) return toOneBot(degrade(normalize(content), fits))
-      return content
-    }
-    return String(content ?? '')
+    if (typeof content === 'string' && !/[<&]/.test(content)) return content
+    if (typeof content !== 'string' && !isElement(content) && !(Array.isArray(content) && content.every(isElement))) return content
+    const elements = normalize(content)
+    const resolved = this.speak && needsVoiceResolve(elements) ? await resolveVoice(elements, this.speak, this.log) : elements
+    return toOneBot(degrade(resolved, capability => this.supports(capability)))
   }
 
   private async deliver(action: string, params: Record<string, unknown>, options?: SendOptions): Promise<unknown> {
     if (this.status !== 'online') throw new BotStateError(this, action)
+    if (params.message === '' || (Array.isArray(params.message) && !params.message.length)) return { ok: false, skipped: true }
     const result = await this.call(action, params, { timeoutMs: options?.timeoutMs })
     return result
   }

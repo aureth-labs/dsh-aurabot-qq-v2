@@ -32,6 +32,8 @@ function join(elements: Element[], options: RenderQQTextOptions): string {
       out += options.at ? options.at(id) : `@${String(element.attrs.name || id)}`
       continue
     }
+    if (element.children) { out += join(element.children, options); continue }
+    if (element.type === 'br') { out += '\n'; continue }
     out += `[${element.type}]`
   }
   return out

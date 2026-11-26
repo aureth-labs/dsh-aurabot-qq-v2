@@ -4,6 +4,13 @@ import assert from 'node:assert/strict'
 import { h } from '../../src/core/message/element/element.ts'
 import { toSatori, fromSatori } from '../../src/core/message/satori/satori.ts'
 
+test('转发保留子消息、布尔属性与实体，协议外壳只拆一层', () => {
+  const source = '<message forward><message><author id="A&amp;B"/>&#x732b; &lt;3</message></message>'
+  const expected = [h.forward([h('message', {}, [h('author', { id: 'A&B' }), h.text('猫 <3')])])]
+  assert.deepEqual(fromSatori(source), expected)
+  assert.deepEqual(fromSatori(toSatori(expected)), expected)
+})
+
 test('toSatori：文本 / 图片 / @ 都映射成 Satori 标签', () => {
   const xml = toSatori([
     h.text('你好'),
@@ -24,11 +31,11 @@ test('fromSatori：img/audio 换回内部类型，src 改成 url', () => {
   ])
 })
 
-test('fromSatori 容错：未知标签丢内容，未闭合标签留正文，标签外文字保留', () => {
+test('fromSatori 容错：未知标签丢内容，未闭合块丢弃，标签外文字保留', () => {
   const tree = fromSatori('<message></ACP>你好啊</message>')
   assert.deepEqual(tree, [{ type: 'text', attrs: { content: '你好啊' } }])
   const broken = fromSatori('<message><text>前</text><b>粗</text>后</message>')
-  assert.deepEqual(broken, [{ type: 'text', attrs: { content: '前粗后' } }])
+  assert.deepEqual(broken, [h.text('前')])
 })
 
 test('往返：toSatori → fromSatori 不丢内容', () => {
