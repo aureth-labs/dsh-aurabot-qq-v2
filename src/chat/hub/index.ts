@@ -174,6 +174,8 @@ import { createOutboundGuard } from './delivery/guard.ts'
 import { createFriends } from './events/friends.ts'
 import { createReact } from './media/react.ts'
 import { createSessionQuery } from './session/query.ts'
+import { createTyping } from './media/typing.ts'
+import { createCapture } from './turn/capture.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -1786,27 +1788,9 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return content.filter((c) => c.type === 'text')
   }
 
-  // 私聊里等她回复时，在 QQ 上显示「对方正在输入…」（模型慢的时候让人知道她在想）
-  const typing = new Map() // sessionKey → timer
-  function startTyping(key, chat) {
-    if (disposed) return
-    const cfg = getConfig()
-    if (chat.kind !== 'private' || !cfg.enabled || cfg.dryRun || typing.has(key)) return
-    const ping = () => { if (!disposed) onebot.call('set_input_status', { user_id: Number(chat.userId), event_type: 1 }, { timeoutMs: 5000 }).catch(() => {}) }
-    ping()
-    const started = Date.now()
-    const t = setInterval(() => {
-      if (Date.now() - started > 6 * 60_000) return stopTyping(key)
-      ping()
-    }, 15_000)
-    t.unref?.()
-    typing.set(key, t)
-  }
-  function stopTyping(key) {
-    const t = typing.get(key)
-    if (t) clearInterval(t)
-    typing.delete(key)
-  }
+  // 私聊「对方正在输入…」指示器
+  const typing = createTyping({ isDisposed: () => disposed, getConfig, onebot })
+  const { startTyping, stopTyping } = typing
 
   // 新会话第一次收到消息时，补看最近几条历史（默认关，开 chat.seedHistory 才生效）
   const historySeeded = new Set()
@@ -2443,22 +2427,8 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return n
   }
 
-  /** 模拟测试：fn 里发出去的消息都记下来不真发，返回 { result, sent }。 */
-  async function capture(fn, { simulate = false } : CaptureOptions = {}) {
-    const sent: CapturedList = []
-    const run = () => captureStore.run(sent, fn)
-    try {
-      const result = simulate ? await simulationStore.run(true, run) : await run()
-      return { result, sent }
-    } finally {
-      // 模拟结束立刻作废；继承到定时任务/后台链上的旧上下文不能吞真实发送。
-      Object.defineProperty(sent, 'closed', { value: true, enumerable: false })
-    }
-  }
-  /** 模拟测试：假装这个会话这一轮是谁在说话（工具里的「主人才能用」靠它判断）。 */
-  function simulateTurn(sessionId, senders) {
-    turnState.set(sessionKey(sessionId), { lastTurn: -1, text: '', senders: new Set(senders.map(String)) })
-  }
+  // 模拟测试：采集 / 假装这一轮谁在说话
+  const { capture, simulateTurn } = createCapture({ captureStore, simulationStore, turnState, sessionKey })
 
   /** 工具清单可能变了：把已挂载的会话重新挂一遍（DSH 会话窗口直接打字时也能用上新工具）。 */
   function remountAll(reason = '') {
@@ -2491,7 +2461,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     subagent.reset()
     for (const p of pending.values()) clearTimeout(p.timer)
     pending.clear()
-    for (const key of [...typing.keys()]) stopTyping(key)
+    typing.stopAll()
     for (const done of [...pauses]) done()
     for (const wait of [...replyWaits]) {
       clearTimeout(wait.timer)
