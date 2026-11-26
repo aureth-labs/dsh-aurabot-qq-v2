@@ -13,7 +13,7 @@ import { pathToFileURL } from 'node:url'
 import { dataDir } from '../../../src/core/store/index.ts'
 import { fetchGuarded } from '../../../src/core/net/index.ts'
 import { findFfmpeg } from '../../../src/core/message/media/img.ts'
-import { askModel, canSeeImages } from '../../../src/core/llm/index.ts'
+import { canSeeImages } from '../../../src/core/llm/index.ts'
 import { privateCapabilityAllowed } from '../../../src/chat/policy/rules/access.ts'
 import { defineTool, str } from '../../../src/tools/index.ts'
 
@@ -334,7 +334,7 @@ export function apply(ctx, config) {
         if (f) frames.push(f)
       }
       if (!frames.length) return ''
-      const out = await askModel(ctx.harness, {
+      const out = await ctx.ask({
         module: 'video-selfview',
         cfg: cfg(),
         system: '你在看自己刚生成的一段视频的截图。只写画面上确实能看到的东西：场景、主体、动作、光线、色调、画面里的文字。不要猜剧情，不要编造。用 2~4 句中文写。',

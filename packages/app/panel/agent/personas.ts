@@ -22,9 +22,8 @@ import {
 import { dataDir } from '../../../../src/core/store/index.ts'
 import { closeMessageLogsUnder } from '../../../../src/core/store/messages.ts'
 import { rmSync } from 'node:fs'
-import { askModel } from '../../../../src/core/llm/index.ts'
 
-export function registerPersonaRoutes({ http, ctx, getConfig, bridge, use, hub, setConfig, log }) {
+export function registerPersonaRoutes({ http, ctx, generate, getConfig, bridge, use, hub, setConfig, log }) {
   const { send, route, query, readRaw, readBody } = http
 
   // 人格：新增写操作显式限制 POST，避免 GET 绕过 CSRF 方法检查。
@@ -85,7 +84,7 @@ export function registerPersonaRoutes({ http, ctx, getConfig, bridge, use, hub, 
     const buffers = lookImages(id)
     if (!buffers.length) throw new Error('请先上传人设图')
     const imageHash = readLook(id).imageHash
-    const text = await describeLook({ dsh: ctx, cfg: getConfig(), buffers })
+    const text = await describeLook({ dsh: ctx, generate, cfg: getConfig(), buffers })
     // 在途解析不覆盖换图后的状态；描述仍由面板确认保存。
     if (!readPersona(id) || readLook(id).imageHash !== imageHash) throw new Error('人设图已变化，请重新解析')
     return { ok: true, text, imageHash }
@@ -177,7 +176,7 @@ export function registerPersonaRoutes({ http, ctx, getConfig, bridge, use, hub, 
       .join('\n')
     try {
       const out = String(
-        (await askModel(ctx, {
+        (await generate({
           cfg: getConfig(),
           module: 'persona',
           system,

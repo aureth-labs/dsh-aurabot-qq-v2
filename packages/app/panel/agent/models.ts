@@ -1,6 +1,6 @@
-import { clearReasoningCache, clearVisionCache, askModel } from '../../../../src/core/llm/index.ts'
+import { clearReasoningCache, clearVisionCache } from '../../../../src/core/llm/index.ts'
 
-export function registerModelRoutes({ http, listModels, ctx }) {
+export function registerModelRoutes({ http, listModels, generate }) {
   const { route, readBody } = http
 
   // 模型：列出 DSH 里可用的模型，测一下哪个回得快
@@ -19,7 +19,7 @@ export function registerModelRoutes({ http, listModels, ctx }) {
     const b = await readBody(req)
     const t = Date.now()
     try {
-      const text = await askModel(ctx, {
+      const text = await generate({
         cfg: { model: { provider: b.provider, model: b.model } },
         module: 'model-ping',
         system: '只回复两个字：在呢',

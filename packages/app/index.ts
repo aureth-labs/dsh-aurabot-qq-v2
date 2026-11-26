@@ -40,10 +40,9 @@ import { createPersonaMemoryRuntime } from './runtime/persona-memory.ts'
 import { realWorkspace } from '../../src/core/runtime/workspace-move.ts'
 import { createLocal } from '../../src/local/index.ts'
 
-import { defaultModel, askModel, modelReasoning, modelVision } from '../../src/core/llm/index.ts'
+import { defaultModel, type AskModelOptions, modelReasoning, modelVision } from '../../src/core/llm/index.ts'
 import { isOwnerOf } from '../../src/core/config/owners.ts'
 import { createDialogue } from '../../src/core/llm/session-turn.ts'
-import { createLlmFacade } from '../../src/core/llm/facade.ts'
 import { createMediaAccess } from '../../src/core/message/media/media.ts'
 import { dataDir } from '../../src/core/store/index.ts'
 import { createUsageFx } from '../../src/core/llm/usage/fx.ts'
@@ -247,8 +246,9 @@ export function apply(ctx) {
     },
   }
 
+  const generate = (options: AskModelOptions): Promise<string> => mods.services.require('llm').generate(options)
   hub = createPrimaryChat({
-    local, ctx, getConfig, setConfig, logger, onebot, outbox, stickers, tts, use, mutes, listModels, personaMemoryRuntime,
+    local, ctx, getConfig, setConfig, logger, onebot, outbox, stickers, tts, use, mutes, listModels, personaMemoryRuntime, generate,
     modules: () => mods, models: () => modelCache, deniedTools: () => bridge?.deniedTools() || [],
   })
   const http = createHttp({ ctx, getConfig, log, prefix: PREFIX, getMods: () => mods })
@@ -270,9 +270,7 @@ export function apply(ctx) {
     root: ROOT,
     // 模块经 api.proactive 访问出站治理面（modules.js 里读它）
     outbound,
-    ask: (opts) => askModel(ctx, { cfg: getConfig(), ...opts }),
-    // 模块侧的 ctx.llm：润色 / 改写 / 摘要（后台调用，不进聊天会话）
-    llm: createLlmFacade({ ask: (opts) => askModel(ctx, { cfg: getConfig(), ...opts }), log: logger.child('llm') }),
+    ask: generate,
     // 模块侧的 ctx.tts：文字转语音，`<voice>文字</voice>` 和主动发语音都走它
     tts,
     listModels,
@@ -298,7 +296,7 @@ export function apply(ctx) {
   const dialogue = createDialogue({
     isOwner: session => isOwnerOf(getConfig(), session),
     tools: where => mods.buildTools(where, true),
-    generate: (prompt, turn) => askModel(ctx, { ...prompt, cfg: getConfig(), module: 'chat-bridge', turn }),
+    generate: (prompt, turn) => generate({ ...prompt, module: 'chat-bridge', turn }),
   })
   mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION,
     builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue } })
@@ -575,7 +573,7 @@ export function apply(ctx) {
   registerPermissionRoutes({ http, logger, mods, getConfig, setConfig, onebot })
   registerUpdateRoutes({ PKG, log, getConfig, http, ROOT, VERSION })
   const { connectionProblem } = registerDiagnostics({ http, getConfig, endpoint, onebot, warmSince, warmPhase, mods, hub })
-  registerPersonaRoutes({ http, ctx, getConfig, bridge, use, hub, setConfig, log })
+  registerPersonaRoutes({ http, ctx, generate, getConfig, bridge, use, hub, setConfig, log })
 
   // 按群头衔不理：白名单里的群（带群名）+ 这些群里现有的头衔，面板里点一个就设成要过滤的那类
   route('/groups/titles', async () => {
@@ -604,7 +602,7 @@ export function apply(ctx) {
   registerModuleRoutes({ http, mods, getConfig, community, setConfig, log, openFolder, hub, use })
   registerFaceRoutes({ http, onebot, logger })
   registerBridgeRoutes({ http, getConfig, bridge })
-  registerModelRoutes({ http, listModels, ctx })
+  registerModelRoutes({ http, listModels, generate })
   const { avatarInfo } = registerAvatarRoutes({ http, ROOT, log, onebot })
 
   backup?.scheduleRemoteBackup() // 云备份：到点自动打包推送（配置里关着就是空操作）

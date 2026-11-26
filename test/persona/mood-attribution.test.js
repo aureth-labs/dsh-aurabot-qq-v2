@@ -59,7 +59,7 @@ test('模块事件把聊天和带 QQ 的说话人传给心情：主人私聊的�
   const { cfg } = setup(t)
   const handlers = new Map()
   const mood = moodModule.apply({ root: { config: cfg, read: () => cfg }, logger: {}, harness: null,
-    effect: () => {}, server: { get() {} },
+    effect: () => {}, services: { has: () => false }, server: { get() {} },
     on: (event, handler) => handlers.set(event, handler),
     route: () => {},
   })

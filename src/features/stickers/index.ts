@@ -98,7 +98,7 @@ export function pickEvict(items) {
   return pool.slice().sort((a, b) => (a.uses || 0) - (b.uses || 0) || (a.lastUsed || a.at || 0) - (b.lastUsed || b.at || 0))[0]
 }
 
-export function createStickerStore({ dsh, getConfig, onebot, log }) {
+export function createStickerStore({ dsh, generate = options => askModel(dsh, options), getConfig, onebot, log }) {
   const recent = [] // 每小时限额
 
   /** NapCat 的 add_custom_face 接收已落盘的表情文件路径。 */
@@ -127,7 +127,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
         log.debug('模型不支持看图，跳过表情起名')
         return { name: '', tags: [], noVision: true }
       }
-      const ask = (extra = {}) => askModel(dsh, {
+      const ask = (extra = {}) => generate({
         module: 'stickers',
         cfg,
         ...(target ? { model: target } : {}),

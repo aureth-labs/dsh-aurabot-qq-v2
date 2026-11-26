@@ -1,5 +1,6 @@
 // 插件发现、清单及入口契约。
 
+import type { ServiceError } from '../service/registry.ts'
 import type { SettingsField } from '../config/shape/schema.ts'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -25,6 +26,7 @@ export interface ModuleDef {
   /** 允许多份配置；适配器默认 true。 */
   reusable?: boolean
   panel?: string
+  inject?: string[]
   capabilities?: string[]
   defaults?: Record<string, unknown>
   settings?: Array<Omit<Partial<SettingsField>, 'type'> & { type?: string }>
@@ -68,7 +70,7 @@ export interface ModuleRecord {
 }
 
 /** 启动失败 / 加载失败。 */
-export interface ModuleError { adapter?: boolean; message: string; at: number; source?: string; fallback?: boolean }
+export interface ModuleError { service?: ServiceError; adapter?: boolean; message: string; at: number; source?: string; fallback?: boolean }
 
 /** 磁盘上扫到的用户模块。 */
 export interface UserModule { id: string; dir: string; safe?: boolean; version?: string; [key: string]: unknown }
@@ -184,6 +186,7 @@ export function checkDef(def, id) {
   if (!ID_RE.test(String(def.id || id || ''))) return `模块 id「${def.id ?? id ?? ''}」不对：小写字母开头，只能有小写字母、数字和 -，2~40 个字`
   // 带 scope 的安装目录是 modules/<owner>/<name>，入口里写 <name> 就行
   if (id && def.id && def.id !== id && def.id !== String(id).split('/').pop()) return `模块 id「${def.id}」要和文件夹名「${id}」一样`
+  if (def.inject !== undefined && (!Array.isArray(def.inject) || def.inject.some(name => typeof name !== 'string' || !name.trim()))) return 'inject 应为服务名称数组'
   const want = Number(def.api ?? API_VERSION)
   if (want > API_VERSION) return `这个模块要扩展接口 v${want}，现在的插件只有 v${API_VERSION}，先更新插件`
   if (want < MIN_API_VERSION) return `这个模块是按扩展接口 v${want} 写的，现在最低支持 v${MIN_API_VERSION}，按更新说明改一下`
@@ -210,6 +213,7 @@ export function namedModuleDef(mod) {
     defaults: mod.defaults,
     settings: mod.settings,
     capabilities: mod.capabilities,
+    inject: mod.inject,
     api: mod.api,
     apply: mod.apply,
   }

@@ -5,7 +5,7 @@ import {
   delegatedCommandKey,
   runPersonalModelCommand,
 } from '../../../src/chat/commands/delegated-commands.ts'
-import { askModel, defaultModel, modelReasoning } from '../../../src/core/llm/index.ts'
+import { defaultModel, modelReasoning } from '../../../src/core/llm/index.ts'
 import { defaultOneBotId } from '../onebot.ts'
 
 export function createPrimaryChat({
@@ -19,6 +19,7 @@ export function createPrimaryChat({
   stickers,
   tts,
   modules,
+  generate,
   use,
   mutes,
   listModels,
@@ -36,7 +37,7 @@ export function createPrimaryChat({
     stickers,
     tts,
     asr: () => modules()?.services?.get?.('asr') ?? null,
-    askModel: (opts) => askModel(ctx, { cfg: getConfig(), ...opts }),
+    askModel: generate,
     buildTools: (where) => {
       const chat = where.chat
       const id = chat?.kind === 'private' ? chat.userId : chat?.kind === 'group' ? chat.groupId : ''

@@ -248,3 +248,34 @@ test('Schema 统一启动、热读、面板与实例更新，保留继承关系'
   f.setExt(valid)
   assert.equal(two.config.options.delay, 7)
 })
+
+test('必需服务按实例启停，冲突插件等待原提供者退出', async t => {
+  const providers = ['original', 'replacement'].map(id => ({
+    id, apply(ctx) { ctx.provide('translator', { id }); return { id } },
+  }))
+  const events = []
+  const app = {
+    id: 'consumer', inject: ['translator'],
+    apply(ctx) {
+      const { id } = ctx.require('translator')
+      events.push('start:' + id)
+      ctx.effect(() => events.push('stop:' + id))
+      return { id }
+    },
+  }
+  const f = fixture(t, {}, [app, ...providers])
+  await f.modules.boot()
+  assert.equal(f.modules.use('consumer').id, 'original')
+  assert.match(f.modules.status().find(m => m.id === 'replacement').error, /original.*replacement/)
+  f.config().modules.original = { enabled: false }
+  f.modules.stop('original')
+  assert.equal(f.modules.has('consumer'), false)
+  assert.match(f.modules.status().find(m => m.id === 'consumer').error, /translator/)
+  await f.modules.sync()
+  assert.equal(f.modules.use('consumer').id, 'replacement')
+  assert.deepEqual(events, ['start:original', 'stop:original', 'start:replacement'])
+  f.config().modules.replacement = { enabled: false }
+  await f.modules.sync()
+  assert.equal(f.modules.services.has('translator'), false)
+  assert.equal(f.modules.has('consumer'), false)
+})

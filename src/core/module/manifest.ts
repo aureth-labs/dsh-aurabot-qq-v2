@@ -22,6 +22,7 @@ export interface ModuleManifest {
   capabilities: string[]
   minPluginVersion: string
   api: number
+  inject: string[]
   requires: string[]
   panel: string
   /** 面板保存设置后要不要重载这个模块（apply 里的 config 才会是新的）。默认 false。 */
@@ -119,6 +120,7 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
       minPluginVersion: str(aurabot.minPluginVersion),
       api: Number(aurabot.api ?? 2) || 2,
       requires: strings(aurabot.requires),
+      inject: strings(aurabot.inject),
       panel: str(aurabot.panel, str(pkg.dsh?.client?.panel, DEFAULT_PANEL)),
       reloadOnConfig: aurabot.reloadOnConfig === true,
       entry,

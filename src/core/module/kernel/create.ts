@@ -42,7 +42,8 @@ import { createContributions } from './contributions.ts'
 import { createModuleCatalog } from './catalog.ts'
 import { loadDefinition } from './definition.ts'
 import { createAdapterCatalog } from './adapters.ts'
-import { ServiceRegistry } from '../../service/registry.ts'
+import { trackDependencies } from './dependencies.ts'
+import { ServiceError, ServiceRegistry } from '../../service/registry.ts'
 
 export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime, initialServices = {} }) {
   const log = logger.child('modules')
@@ -72,6 +73,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   let watcher = null
   let pendingSync = null
   let disposed = false
+  const dependencies = trackDependencies(services, live, errors, stop, sync, error => log.warn(String(error)))
 
   const modCfg = (id) => getConfig().modules?.[id] || {}
   const isEnabled = (id) => modCfg(id).enabled !== false
@@ -218,6 +220,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     if (source !== 'builtin' || errors.get(key)?.source !== 'user') errors.delete(key)
     generation++ // 新实例：会话里的工具要在下一轮重挂（issue #73）
     try {
+      for (const name of def.inject ?? []) services.require(name)
       const api = makeApi(id, source, rec)
       // 插件只写 apply(ctx, config)：ctx 是 v2 能力面，config 是本插件的配置。
       const ctx = createPluginContext(api, {
@@ -249,7 +252,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     } catch (error) {
       if (disposed || rec.stopped || live.get(key) !== rec) return null
       stop(key, { quiet: true })
-      errors.set(key, { message: String(error && error.message ? error.message : error).slice(0, 800), at: Date.now(), source, adapter: def.kind === 'adapter' })
+      errors.set(key, { message: String(error && error.message ? error.message : error).slice(0, 800), at: Date.now(), source, adapter: def.kind === 'adapter', service: error instanceof ServiceError ? error : undefined })
       bumpNavigation() // 启动失败也进导航（availability=error）
       log.warn(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}启动失败：`, error.message)
     }
@@ -398,11 +401,15 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const want = wanted(id, users)
       const rec = live.get(id)
       const u = users.find((x) => x.id === id)
-      if (!want) { if (hasModule(id)) stopModule(id); continue }
+      if (!want) {
+        if (hasModule(id)) stopModule(id)
+        for (const [key, error] of errors) if (error.service && (key === id || key.startsWith(id + '@'))) errors.delete(key)
+        continue
+      }
       if (want === 'builtin') {
         if (rec && rec.source === 'builtin') { await syncInstances(id, users); continue }
         if (hasModule(id)) stopModule(id)
-        if (errors.get(id)?.source === 'builtin' && !rec) continue // 内置的启动失败过，别每 3 秒重试
+        if (errors.get(id)?.source === 'builtin' && !rec && !dependencies.ready(id)) continue // 内置的启动失败过，别每 3 秒重试
         await start(builtinDefs.get(id), 'builtin')
         await syncInstances(id, users)
         continue
@@ -411,7 +418,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const seen = userSeen.get(id)
       const changed = !seen || seen.file !== u.file || seen.stamp !== stampOfTarget(u)
       if (rec && rec.source === 'user' && !changed) { await syncInstances(id, users); continue }
-      if (!changed && (!rec || rec.fallback)) continue // 上次加载失败、文件也没改：等改了再试
+      if (!changed && !dependencies.ready(id) && (!rec || rec.fallback)) continue // 上次加载失败、文件也没改：等改了再试
       // 代码变了：主实例和所有额外实例一起换代，别让实例继续跑旧代码
       if (hasModule(id)) stopModule(id, { quiet: true })
       clearInstanceSeen(id)
@@ -422,7 +429,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       // import 期间被停止或改了配置时，由下一次检查决定是否启动。
       if ((revisions.get(id) || 0) !== revision || resyncRequested) continue
       // 替换版加载失败：先用回内置的，免得这项功能直接没了
-      if (!ok && builtinDefs.has(id)) {
+      if (!ok && builtinDefs.has(id) && !errors.get(id)?.service) {
         await start(builtinDefs.get(id), 'builtin')
         const back = live.get(id)
         if (back) { back.fallback = true; log.warn(`模块「${id}」：你的版本没加载成功，先用内置的`) }
@@ -446,6 +453,12 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     const reusable = Boolean(def?.reusable)
     const source = rec?.source
     const wanted = reusable && isEnabled(id) && source ? instancesOf(id).filter((item) => item.enabled) : []
+    for (const key of errors.keys()) {
+      if (key.startsWith(id + '@') && !instancesOf(id).some(item => item.enabled && instanceKey(id, item.id) === key)) {
+        errors.delete(key)
+        instanceSeen.delete(key)
+      }
+    }
     // 1) 配置里已经没有的实例：停掉
     for (const key of [...live.keys()]) {
       const running = live.get(key)
@@ -463,12 +476,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const snapshot = JSON.stringify(item.config || {})
       const running = live.get(key)
       if (running && running.source === source && instanceSeen.get(key) === snapshot) continue
+      if (!running && errors.get(key)?.service && !dependencies.ready(key) && instanceSeen.get(key) === snapshot) continue
       if (running) stop(key, { quiet: true })
       errors.delete(key)
       const started = source === 'builtin'
         ? await start(def, 'builtin', { instance: item.id })
         : await startUser(u, item.id)
-      if (started) {
+      if (started || errors.get(key)?.service) {
         instanceSeen.set(key, snapshot)
       } else if (!errors.has(key)) {
         // startUser 在「配置里已经没有这个实例」时会直接返回 null，这里不当作失败
@@ -519,6 +533,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function dispose() {
     if (disposed) return
     disposed = true
+    dependencies.off()
     events.close()
     clearInterval(watching)
     clearTimeout(pendingSync)

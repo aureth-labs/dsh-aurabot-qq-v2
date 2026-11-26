@@ -19,7 +19,7 @@ export const tab = 'stickers'
 
 export function apply(ctx, config) {
   const { hub, onebot, http } = ctx.host
-  const store = createStickerStore({ dsh: ctx.harness, getConfig: ctx.root.read, onebot, log: ctx.logger })
+  const store = createStickerStore({ dsh: ctx.harness, generate: ctx.ask, getConfig: ctx.root.read, onebot, log: ctx.logger })
 
   ctx.tool(({ chat, level, sessionId }) => {
     if (chat.kind === 'system') return []

@@ -7,6 +7,7 @@
   "main": "./index.js",
   "aurabot": {
     "api": 2,
+    "inject": ["llm"],
     "displayName": "跨平台对话",
     "platforms": [
       "*"

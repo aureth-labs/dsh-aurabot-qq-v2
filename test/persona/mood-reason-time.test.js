@@ -105,7 +105,7 @@ test('普通聊天和主动搭话共用有时效的心情提示，只放本轮�
   const { cfg } = setup(t)
   const handlers = new Map()
   const mood = moodModule.apply({ root: { config: cfg, read: () => cfg }, logger: {}, harness: null,
-    effect: () => {}, server: { get() {} },
+    effect: () => {}, services: { has: () => false }, server: { get() {} },
     on: (event, handler) => handlers.set(event, handler),
     route: () => {},
     context: () => assert.fail('动态心情不得进入常驻上下文'),

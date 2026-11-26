@@ -130,3 +130,9 @@ export async function apply(ctx, config) {
 ### 引用消息
 
 原消息包含引用时，命令和中间件可读取 `session.quote`。引用始终包含原消息 ID 与频道 ID。本机已有记录或适配器能按会话确认来源时，还会提供正文和发送者。已撤回的记录提供 `deletedAt`。
+
+## 服务依赖
+
+插件可导出 `export const inject = ['llm']`，也可以在 package.json 中声明 `aurabot.inject`。宿主等待这些服务就绪后调用 `apply`。提供者退出时，依赖它的实例会释放命令、定时器和监听器。服务恢复后，仍启用的实例会重新启动。
+
+用 `ctx.provide('服务名', 实现对象)` 提供服务。同一个服务名只能由一个实例持有；面板会显示冲突双方的实例名。可选功能通过 `ctx.services.get(name)` 查询。默认的 `llm` 插件提供 `ctx.llm.generate`、`polish`、`rewrite` 和 `summarize`。替换模型实现时，先停用原提供者，再启用实现同一接口的插件。

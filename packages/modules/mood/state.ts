@@ -85,7 +85,7 @@ export function parseMoodJudge(out) {
   }
 }
 
-export function createMood({ getConfig, dsh, log, active = () => true }) {
+export function createMood({ getConfig, dsh, log, available = () => Boolean(dsh), generate = options => askModel(dsh, options), active = () => true }) {
   let judgeDeferLogged = false
   // 心情是她自己的，跟着人格走（根目录人格还是老位置，见 personas.js）；主动搭话的次数是对主人的打扰频率，仍共用
   const file = () => personaDataDir(getConfig(), personaNow(getConfig()), 'mood.json')
@@ -234,7 +234,7 @@ export function createMood({ getConfig, dsh, log, active = () => true }) {
      */
     observe(text, who, { direct = true, owner = false, silent = false, chatId = '' } : ObserveOptions = {}) {
       // 开了模型判断就不用关键词；但峰时省钱模式会把模型判断推迟到谷时，这时退回关键词，心情照样有起伏
-      const modelJudge = getConfig().mood.judge && dsh && !shouldDeferBackground(getConfig())
+      const modelJudge = getConfig().mood.judge && available() && !shouldDeferBackground(getConfig())
       if (silent ? !modelJudge : modelJudge) return
       const d0 = scoreText(text)
       if (!d0) return
@@ -248,7 +248,7 @@ export function createMood({ getConfig, dsh, log, active = () => true }) {
     async judge({ userText, reply, who = '对方', origin = 'user', chatId = '' }) {
       const cfg = getConfig().mood
       if (getConfig().debug) return null // 调试模式不判心情（省一次模型调用，也不留下状态）
-      if (!active() || !cfg.enabled || !cfg.judge || !dsh) return null
+      if (!active() || !cfg.enabled || !cfg.judge || !available()) return null
       // 峰谷省钱：峰时不跑这次额外模型调用，observe() 已经用关键词兜底；谷时恢复模型判断
       if (shouldDeferBackground(getConfig())) {
         if (!judgeDeferLogged) { log?.debug?.('峰时：心情模型判断推迟到谷时（先用关键词）'); judgeDeferLogged = true }
@@ -258,7 +258,7 @@ export function createMood({ getConfig, dsh, log, active = () => true }) {
       const v = current()
       const scene = origin === 'speak-up' ? `这一轮是她自己想${who}了、主动去找${who}说话（不是被叫来干活）` : `这一轮是${who}在跟她说话`
       try {
-        const out = await askModel(dsh, {
+        const out = await generate({
         module: 'mood',
           cfg: getConfig(),
           system: `你在判断聊天角色「${selfName(getConfig())}」聊完一轮后的心情变化。她现在心情 ` + v + '/100（' + base() + ' 是平常）。' + scene + '。只看这一轮真正影响她心情的东西：被夸、被关心、被惦记会开心；被凶、被冷落、被嫌弃会难过。对方明显是在开玩笑、调侃、傲娇或亲昵称呼时（例如「讨厌~」「笨蛋」「坏蛋」「哼」），即使字面带负面词，也不要判成被嘲讽/被嫌弃，按轻松互动给 0 或轻微正向；只有明确恶意、攻击、羞辱或刻意冷落才降心情。只输出 JSON：{"delta": -15~15 的整数, "reason": "十几个字的理由", "confidence": 0~1 你有多确定}。没什么影响就 delta 为 0。',

@@ -70,7 +70,7 @@ export function createModuleCatalog({
         safeSkipped: Boolean(u && !isUserOn()),
         running: rec ? rec.source : null, // 'builtin' | 'user' | null
 
-        instances: instanceRecs.map((item) => ({
+        instances: [...instanceRecs.map((item) => ({
           id: item.instance,
           key: item.key,
           running: item.source,
@@ -82,7 +82,10 @@ export function createModuleCatalog({
           routes: [...routes]
             .filter(([, route]) => route.id === item.key)
             .map(([p]) => p.replace('/aurabot/api', '')),
-        })),
+        })), ...[...errors].filter(([key]) => key.startsWith(id + '@') && !live.has(key)).map(([key, error]) => ({
+          id: key.slice(id.length + 1), key, running: null, startedAt: null, error: error.message,
+          errors: [], tools: [], commands: [], routes: [],
+        }))],
         fallback: Boolean(rec?.fallback),
         enabled: m.enabled !== false,
         useBuiltin: Boolean(m.useBuiltin),

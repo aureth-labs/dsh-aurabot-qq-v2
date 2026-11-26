@@ -114,7 +114,8 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   })
   value('provide', (name: string, impl: any) => {
     if (!services) return () => {}
-    const off = services.provide(name, impl, api.id)
+    api.assertActive?.()
+    const off = services.provide(name, impl, api.instanceId ?? api.id)
     api.onDispose(off)
     return off
   })
@@ -177,7 +178,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('emit', (event: string, ...args: any[]) => { api.emit(event, ...args) })
   if (extras.Schema) value('Schema', extras.Schema)
   if (extras.h) value('h', extras.h)
-  if (extras.llm) value('llm', extras.llm)
+  getter('llm', () => services?.get('llm') ?? extras.llm ?? services?.require('llm'))
   if (extras.tts) value('tts', extras.tts)
   if (extras.nativePreview) value('nativePreview', extras.nativePreview)
 

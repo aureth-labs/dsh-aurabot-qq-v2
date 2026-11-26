@@ -61,7 +61,7 @@ export function apply(ctx, config) {
   function storeOf(pid) {
     if (!active) throw new Error('记忆模块已关闭')
     const directory = personaDataDir(ctx.root.config, pid)
-    if (!stores.has(directory)) stores.set(directory, createMemoryStore({ dsh: ctx.harness, getConfig: ctx.root.read, hub, log: ctx.logger, fetchImpl: undefined, setConfig: ctx.root.update, directory, blocked }))
+    if (!stores.has(directory)) stores.set(directory, createMemoryStore({ dsh: ctx.harness, generate: ctx.ask, getConfig: ctx.root.read, hub, log: ctx.logger, fetchImpl: undefined, setConfig: ctx.root.update, directory, blocked }))
     const key = pid + '|' + directory
     if (!scoped.has(key)) scoped.set(key, new Proxy(stores.get(directory), { get: (t, k) => (typeof t[k] === 'function' ? (...args) => personaScope.run(pid, () => t[k](...args)) : t[k]) }))
     return scoped.get(key)

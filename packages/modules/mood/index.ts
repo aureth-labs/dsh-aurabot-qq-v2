@@ -26,7 +26,10 @@ export const tab = 'mood'
 export function apply(ctx, config) {
   let active = true
   ctx.effect(() => { active = false })
-  const mood = createMood({ getConfig: ctx.root.read, dsh: ctx.harness, log: ctx.logger, active: () => active })
+  const mood = createMood({
+    getConfig: ctx.root.read, dsh: ctx.harness, log: ctx.logger, generate: ctx.ask,
+    active: () => active, available: () => ctx.services.has('llm'),
+  })
   // 理由的相对时间每轮变化，和相关记忆一样放进本轮消息，避免上下文快照膨胀（#79）。
   // 带上当前 chat：只在原因所属的聊天里显示「因为…」，别的私聊/群不继承（#273）。
   ctx.on('prompt', (content, { chat }) => {

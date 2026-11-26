@@ -3,6 +3,7 @@
 import { fileURLToPath } from 'node:url'
 import { readManifest } from '../src/core/module/manifest.ts'
 import { namedModuleDef, type ModuleDef } from '../src/core/module/loader.ts'
+import * as llm from './modules/llm/index.ts'
 import * as logger from './modules/logger/index.ts'
 import * as persona from './modules/persona/index.ts'
 import * as chatBridge from './modules/chat-bridge/index.ts'
@@ -25,6 +26,7 @@ import * as sandbox from './modules/sandbox/index.ts'
 
 const entries: Array<[string, Record<string, any>]> = [
   ['logger', logger],
+  ['llm', llm],
   ['persona', persona],
   ['chat-bridge', chatBridge],
   ['stickers', stickers],
@@ -51,5 +53,5 @@ export const BUILTINS: ModuleDef[] = entries.map(([id, mod]) => {
   const packageDir = fileURLToPath(new URL('./modules/' + id + '/', import.meta.url))
   const { manifest, error } = readManifest(packageDir)
   if (!manifest || error || manifest.id !== id) throw new Error('内置包清单无效 ' + id + ' ' + error)
-  return { ...def, id, packageDir, version: manifest.version, platforms: manifest.platforms, capabilities: manifest.capabilities }
+  return { ...def, id, packageDir, inject: def.inject ?? manifest.inject, version: manifest.version, platforms: manifest.platforms, capabilities: manifest.capabilities }
 })
