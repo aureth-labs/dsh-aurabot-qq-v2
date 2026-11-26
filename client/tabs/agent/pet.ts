@@ -1,7 +1,7 @@
-import { useState, useEffect } from '../core/react.ts'
-import { API, get, post } from '../core/api.ts'
-import { timeAgo } from '../core/format.ts'
-import { Btn, Card, Empty, Row, Select, Switch, cx, h } from '../core/ui.ts'
+import { useState, useEffect } from '../../core/ui/react.ts'
+import { API, get, post } from '../../core/api/api.ts'
+import { timeAgo } from '../../core/ui/format.ts'
+import { Btn, Card, Empty, Row, Select, Switch, cx, h } from '../../core/ui/ui.ts'
 
 // 「桌宠」面板卡：状态、装客户端、专注模式、心跳、表情预览。数据走 /panel/pet/* 代理，模块没装好时给引导。
 const PET_MOODS = [{ key: 'idle', label: '😐 平常' }, { key: 'happy', label: '😄 开心' }, { key: 'shy', label: '😳 害羞' }, { key: 'sad', label: '😢 委屈' }, { key: 'angry', label: '😠 生气' }, { key: 'sleepy', label: '😴 困了' }, { key: 'think', label: '🤔 想事' }, { key: 'love', label: '🥰 喜欢你' }]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from './react.ts'
-import { get } from './api.ts'
+import { get } from '../api/api.ts'
 import { getPath, pct, setPath } from './format.ts'
 
 const h = React.createElement

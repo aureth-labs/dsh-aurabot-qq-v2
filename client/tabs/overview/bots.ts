@@ -1,6 +1,6 @@
-import { useEffect, useState } from '../core/react.ts'
-import { get } from '../core/api.ts'
-import { Btn, Card, cx, h } from '../core/ui.ts'
+import { useEffect, useState } from '../../core/ui/react.ts'
+import { get } from '../../core/api/api.ts'
+import { Btn, Card, cx, h } from '../../core/ui/ui.ts'
 
 // 机器人列表：内置 QQ + 插件通过 ctx.adapter() 挂上来的平台。
 // 这里只负责「看得见」，接不接入是各平台自己的事（QQ 在「连接」页）。

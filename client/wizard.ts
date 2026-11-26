@@ -1,8 +1,8 @@
-import { useState, useEffect } from './core/react.ts'
-import { get, post } from './core/api.ts'
-import { Btn, Choices, Row, cx, h, useField } from './core/ui.ts'
-import { Agreement, GatewayChoice, OneBotFields, SnowLumaAuth } from './tabs/connect.ts'
-import { Backup } from './tabs/system.ts'
+import { useState, useEffect } from './core/ui/react.ts'
+import { get, post } from './core/api/api.ts'
+import { Btn, Choices, Row, cx, h, useField } from './core/ui/ui.ts'
+import { Agreement, GatewayChoice, OneBotFields, SnowLumaAuth } from './tabs/chat/connect.ts'
+import { Backup } from './tabs/system/system.ts'
 
 // ---------------- 首次使用向导 ----------------
 const WIZ_STEPS = ['你们的 QQ 号', '接 QQ 网关', '启动并同意协议', '连上机器人号', '完成']

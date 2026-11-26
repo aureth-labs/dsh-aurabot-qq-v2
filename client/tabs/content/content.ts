@@ -1,8 +1,8 @@
-import { useState, useEffect, Fragment } from '../core/react.ts'
-import { API, bustCache, get, getCached, post } from '../core/api.ts'
-import { setPath, timeAgo } from '../core/format.ts'
-import { Btn, Card, Empty, Row, cx, h, useField } from '../core/ui.ts'
-import { BiliCookie } from './system.ts'
+import { useState, useEffect, Fragment } from '../../core/ui/react.ts'
+import { API, bustCache, get, getCached, post } from '../../core/api/api.ts'
+import { setPath, timeAgo } from '../../core/ui/format.ts'
+import { Btn, Card, Empty, Row, cx, h, useField } from '../../core/ui/ui.ts'
+import { BiliCookie } from '../system/system.ts'
 
 const CONTENT_PLATFORMS = [
   { id: 'bili', label: 'B站', mod: 'bili' },

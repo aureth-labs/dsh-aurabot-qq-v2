@@ -1,4 +1,4 @@
-import { clone } from './api.ts'
+import { clone } from '../api/api.ts'
 
 // /save 回执的 committedPaths / unchangedPaths 是 JSON Pointer（如 /voice/enabled）；
 // 草稿内部用点路径（voice.enabled），这里换算（~0/~1 转义按 RFC 6901 还原）。

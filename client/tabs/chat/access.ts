@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, Fragment } from '../core/react.ts'
-import { clone, get, post } from '../core/api.ts'
-import { getPath, pct, setPath } from '../core/format.ts'
-import { modOn } from '../core/nav.ts'
-import { Btn, Card, Choices, Empty, ListArea, Row, Seg, Select, Switch, cx, h, useField } from '../core/ui.ts'
-import { PersonMemoryReset } from './persona-graph.ts'
-import { NoticeWorkspaces } from './persona.ts'
+import { useState, useEffect, useRef, Fragment } from '../../core/ui/react.ts'
+import { clone, get, post } from '../../core/api/api.ts'
+import { getPath, pct, setPath } from '../../core/ui/format.ts'
+import { modOn } from '../../core/nav/nav.ts'
+import { Btn, Card, Choices, Empty, ListArea, Row, Seg, Select, Switch, cx, h, useField } from '../../core/ui/ui.ts'
+import { PersonMemoryReset } from '../persona/persona-graph.ts'
+import { NoticeWorkspaces } from '../persona/persona.ts'
 
 function Access(props) {
   const [tab, setTab] = useState('global')

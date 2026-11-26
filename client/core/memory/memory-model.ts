@@ -1,5 +1,5 @@
-import { useState, useEffect } from './react.ts'
-import { cx, h } from './ui.ts'
+import { useState, useEffect } from '../ui/react.ts'
+import { cx, h } from '../ui/ui.ts'
 
 // 自动记忆原本按来源分别限额；调整总数时按当前比例分配整数名额。
 const MEMORY_CAPACITY_DEFAULT = { auto: 2000, event: 600, diary: 400 }

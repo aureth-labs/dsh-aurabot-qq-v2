@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from '../core/react.ts'
-import { API, get, post } from '../core/api.ts'
-import { chatLabel, fmtCost, fmtTokens, getPath } from '../core/format.ts'
-import { LogLine } from '../core/log-line.ts'
-import { Btn, Card, Empty, Switch, cx, h } from '../core/ui.ts'
-import { DebugChat } from './system.ts'
+import { useState, useEffect, useRef, useCallback, Fragment } from '../../core/ui/react.ts'
+import { API, get, post } from '../../core/api/api.ts'
+import { chatLabel, fmtCost, fmtTokens, getPath } from '../../core/ui/format.ts'
+import { LogLine } from '../../core/log/log-line.ts'
+import { Btn, Card, Empty, Switch, cx, h } from '../../core/ui/ui.ts'
+import { DebugChat } from '../system/system.ts'
 
 // SnowLuma 版本提醒：只针对「低于最低支持版本」弹一次；升级到 >= 2.3.4 或点过「不再提示」就不再出现
 const SNOWLUMA_WARN_KEY = 'aurabot.snowlumaCompatDismissed'

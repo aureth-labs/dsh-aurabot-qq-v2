@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from '../core/react.ts'
-import { get, post } from '../core/api.ts'
-import { setPath, timeAgo } from '../core/format.ts'
-import { ModOff, modOn } from '../core/nav.ts'
-import { Btn, Card, Empty, Row, Select, h, useField } from '../core/ui.ts'
-import { OutboundPolicy, PurposeStatus } from './autotelic.ts'
+import { useState, useEffect, useRef } from '../../core/ui/react.ts'
+import { get, post } from '../../core/api/api.ts'
+import { setPath, timeAgo } from '../../core/ui/format.ts'
+import { ModOff, modOn } from '../../core/nav/nav.ts'
+import { Btn, Card, Empty, Row, Select, h, useField } from '../../core/ui/ui.ts'
+import { OutboundPolicy, PurposeStatus } from '../agent/autotelic.ts'
 
 // 和 QQ 空间自身的可见范围一致（ugc_right 1/4/16/64/128）
 const AUDIENCE_OPTIONS = [

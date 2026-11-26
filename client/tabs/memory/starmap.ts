@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from '../core/react.ts'
-import { get } from '../core/api.ts'
-import { Btn, Card, h, usePersisted } from '../core/ui.ts'
+import { useState, useEffect, useRef } from '../../core/ui/react.ts'
+import { get } from '../../core/api/api.ts'
+import { Btn, Card, h, usePersisted } from '../../core/ui/ui.ts'
 
 const SM_REGION = {
   person: { label: '人物', color: '#6ee7ff' },

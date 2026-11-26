@@ -1,5 +1,5 @@
-import { PANEL_ID } from './core/constants.ts'
-import { WhaleIcon } from './core/icons.ts'
+import { PANEL_ID } from './core/api/constants.ts'
+import { WhaleIcon } from './core/ui/icons.ts'
 import { AurabotPage } from './panel.ts'
 
 function apply(ctx) {

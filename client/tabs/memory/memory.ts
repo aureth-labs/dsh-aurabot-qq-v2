@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, Fragment } from '../core/react.ts'
-import { API, get, post } from '../core/api.ts'
-import { setPath, timeAgo } from '../core/format.ts'
-import { MEMORY_PAGE_SIZE, SOURCE, memoryCapacity, memoryEnded, resizeMemoryCapacity } from '../core/memory-model.ts'
-import { ModOff, modOn } from '../core/nav.ts'
-import { Btn, Card, Empty, Fold, Row, Select, cx, h, useField } from '../core/ui.ts'
-import { AssocPreview, PersonaMemory, RecallLog } from './persona-graph.ts'
+import { useState, useEffect, useRef, Fragment } from '../../core/ui/react.ts'
+import { API, get, post } from '../../core/api/api.ts'
+import { setPath, timeAgo } from '../../core/ui/format.ts'
+import { MEMORY_PAGE_SIZE, SOURCE, memoryCapacity, memoryEnded, resizeMemoryCapacity } from '../../core/memory/memory-model.ts'
+import { ModOff, modOn } from '../../core/nav/nav.ts'
+import { Btn, Card, Empty, Fold, Row, Select, cx, h, useField } from '../../core/ui/ui.ts'
+import { AssocPreview, PersonaMemory, RecallLog } from '../persona/persona-graph.ts'
 import { StarMap } from './starmap.ts'
 
 function MemoryTab({ memoryView, setMemoryView, st, draft, setDraft, toast, go }) {

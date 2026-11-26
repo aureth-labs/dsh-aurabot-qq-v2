@@ -1,9 +1,9 @@
-import { useState, useEffect } from '../core/react.ts'
-import { get } from '../core/api.ts'
-import { setPath, timeAgo } from '../core/format.ts'
-import { ModOff, modOn } from '../core/nav.ts'
-import { Btn, Card, Row, h, useField } from '../core/ui.ts'
-import { StyleEditor } from './memory-parts.ts'
+import { useState, useEffect } from '../../core/ui/react.ts'
+import { get } from '../../core/api/api.ts'
+import { setPath, timeAgo } from '../../core/ui/format.ts'
+import { ModOff, modOn } from '../../core/nav/nav.ts'
+import { Btn, Card, Row, h, useField } from '../../core/ui/ui.ts'
+import { StyleEditor } from '../memory/memory-parts.ts'
 
 // 心情项默认十项（与 src/features/mood-emotions.js 的 DEFAULT_EMOTIONS 对齐）：
 // 只在草稿里还没有这个键时用来画「出厂长什么样」，真正的默认值由后端 normalize 补。

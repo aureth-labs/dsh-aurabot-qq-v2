@@ -209,7 +209,7 @@ test('心情页：情绪数据读 st.mood.emotionsItems，不再读目的引擎�
 
 test('心情页：历史从 /mood/history 拉（/state 已剥掉 history，过去这段渲染不出来）', () => {
   // 契约按文件读：打包后模块顺序会变，跨文件切片切不出心情页这一段
-  const moodSrc = readClientFile('tabs/mood.ts')
+  const moodSrc = readClientFile('tabs/chat/mood.ts')
   assert.match(moodSrc, /\/mood\/history/, '心情页要主动拉 /mood/history')
   assert.doesNotMatch(moodSrc, /st\.mood\.history/, '不能再指望 /state 带 history')
 })

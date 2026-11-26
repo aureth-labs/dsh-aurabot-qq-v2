@@ -1,7 +1,7 @@
-import { useState, useEffect, Fragment } from '../core/react.ts'
-import { API, get, post } from '../core/api.ts'
-import { copy, setPath, timeAgo } from '../core/format.ts'
-import { Btn, Card, Choices, Row, cx, h, useField } from '../core/ui.ts'
+import { useState, useEffect, Fragment } from '../../core/ui/react.ts'
+import { API, get, post } from '../../core/api/api.ts'
+import { copy, setPath, timeAgo } from '../../core/ui/format.ts'
+import { Btn, Card, Choices, Row, cx, h, useField } from '../../core/ui/ui.ts'
 
 function SnowLumaAuth({ running, toast, onChange }) {
   const [s, setS] = useState(null)
