@@ -18,8 +18,7 @@ import { parseReply, bubbleDelay, wantsVoice, itemsToLine, cleanOutboundText, cl
 import { decideGroupReply, engagedHint, pickAutoReply, pickDirectRequester, policyFor, sameNameNote, topicRelevance } from '../policy/rules/group.ts'
 import { checkAllowed, groupResponseMode, shouldObserveGroup, levelFor, presetFor, isOwner } from '../policy/rules/access.ts'
 import { fetchImage, segmentBytes } from '../../core/net/index.ts'
-import { toMono16k } from '../../voice/audio/wav.ts'
-import { asrConfigured, transcribeAudio } from '../../voice/asr/index.ts'
+import { toMono16k } from '../../core/message/media/wav.ts'
 import { mimeOf } from '../inbound/index.ts'
 import { applyForwardBodies, forwardBody, readForward } from '../inbound/hooks/forward.ts'
 import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../core/message/media/img.ts'
@@ -68,7 +67,7 @@ interface LogChatOptions {
  * 分批收紧前先集中在这里，别在每处再散一份。
  */
 interface SendOptions {
-  /** 跳过总开关与试运行（内部补发用） */
+  /** 跳过总开关与调试模式（内部补发用） */
   force?: boolean
   /** 这一条还该不该发（用户已经又说话了 → false 就别补旧回复） */
   isCurrent?: (() => boolean) | null
@@ -180,7 +179,7 @@ import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulat
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
 
-export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, buildTools, contextProviders, onActivity, memoryScore, onMemoryCommand, onCommand, isMuted, dislikes, random = Math.random, moodEffects, localApi, hooks, availableModels, toolsGeneration, capabilitiesOf, askModel }) {
+export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, asr, buildTools, contextProviders, onActivity, memoryScore, onMemoryCommand, onCommand, isMuted, dislikes, random = Math.random, moodEffects, localApi, hooks, availableModels, toolsGeneration, capabilitiesOf, askModel }) {
   const archives = new Map()
   let forgottenRules = null
   const forgottenFile = () => join(dataDir('conversation-context'), 'forgotten.json')
@@ -1228,7 +1227,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return Boolean(q && q.ok && q.isBot)
   }
 
-  const { transcribe, localTranscribe } = createTranscriber({ dsh, onebot, getConfig, log, localApi })
+  const { transcribe, localTranscribe } = createTranscriber({ dsh, onebot, getConfig, log, localApi, asr })
 
   // 收消息时的当前人格贯穿这一条消息：合并等待、建会话、写流水都按它
   function onMessage(event) {

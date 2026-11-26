@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { dataDir } from '../../store/index.ts'
 import { findFfmpeg } from './img.ts'
 import { mimeOf } from '../../../chat/inbound/index.ts'
-import { parseWav, toMono16k } from '../../../voice/audio/wav.ts'
+import { parseWav, toMono16k } from './wav.ts'
 import { stickerPath } from '../../../features/stickers/index.ts'
 
 export function createMediaAccess({ root, use, config }) {

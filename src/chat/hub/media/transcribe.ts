@@ -1,8 +1,13 @@
 // 语音转文字：本地识别接口优先、云端兜底、QQ 自带识别收尾；QQ 语音是 silk，先转 wav 再重采样。
 
 import { fetchImage } from '../../../core/net/index.ts'
-import { toMono16k } from '../../../voice/audio/wav.ts'
-import { asrConfigured, transcribeAudio } from '../../../voice/asr/index.ts'
+import { toMono16k } from '../../../core/message/media/wav.ts'
+
+/** 云端识别服务（由语音插件提供，内核不直接依赖它的实现）。 */
+export interface AsrService {
+  configured(voice: Record<string, any>): boolean
+  transcribe(buffer: Buffer, voice: Record<string, any>, log: unknown): Promise<string>
+}
 
 export interface CreateTranscriberOptions {
   dsh: Record<string, any>
@@ -10,9 +15,11 @@ export interface CreateTranscriberOptions {
   getConfig: () => Record<string, any>
   log: { debug(message: string, error?: unknown): void }
   localApi?: Record<string, any> | null
+  /** 每次都重新取：插件可能在运行中被开关。 */
+  asr?: () => AsrService | null
 }
 
-export function createTranscriber({ dsh, onebot, getConfig, log, localApi }: CreateTranscriberOptions) {  /** QQ 语音是 silk：让网关转成 wav，再统一成 16kHz 单声道 PCM16。 */
+export function createTranscriber({ dsh, onebot, getConfig, log, localApi, asr }: CreateTranscriberOptions) {  /** QQ 语音是 silk：让网关转成 wav，再统一成 16kHz 单声道 PCM16。 */
   async function recordWav(rec, suppliedWav) {
     if (suppliedWav) return toMono16k(suppliedWav)
     const info = await onebot.call('get_record', { file: rec.data?.file, out_format: 'wav' }, { timeoutMs: 30000 })
@@ -41,8 +48,9 @@ export function createTranscriber({ dsh, onebot, getConfig, log, localApi }: Cre
       }
       const voiceCfg = getConfig().voice
       const viaCloud = async () => {
-        if (!asrConfigured(voiceCfg)) return ''
-        try { return await transcribeAudio(await recordWav(rec, suppliedWav), voiceCfg, log) } catch (error) {
+        const service = asr?.() || null
+        if (!service || !service.configured(voiceCfg)) return ''
+        try { return await service.transcribe(await recordWav(rec, suppliedWav), voiceCfg, log) } catch (error) {
           log.debug('云端语音识别失败：', error.message)
           return ''
         }

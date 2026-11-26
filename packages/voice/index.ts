@@ -4,13 +4,13 @@
 
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { textToSpeech, edgeInstalled, installEdge, voiceConverters, volcanoResourceFor, volcanoSynth, systemVoiceEngine } from '../../src/voice/tts/index.ts'
-import { fishBalances, fishPrimary } from '../../src/voice/tts/fish.ts'
-import { runCloud } from '../../src/voice/tts/index.ts'
-import { VOLCANO_VOICES } from '../../src/voice/tts/volcano-voices.ts'
-import { breezeBalance, breezeClaim, breezeSession, autoClaimOnce, breezeVoices } from '../../src/voice/asr/breeze.ts'
-import { createSongVoice } from '../../src/voice/audio/rvc.ts'
-import { toMono16k } from '../../src/voice/audio/wav.ts'
+import { textToSpeech, edgeInstalled, installEdge, voiceConverters, volcanoResourceFor, volcanoSynth, systemVoiceEngine } from './tts/index.ts'
+import { fishBalances, fishPrimary } from './tts/fish.ts'
+import { runCloud } from './tts/index.ts'
+import { VOLCANO_VOICES } from './tts/volcano-voices.ts'
+import { breezeBalance, breezeClaim, breezeSession, autoClaimOnce, breezeVoices } from './asr/breeze.ts'
+import { createSongVoice } from './audio/rvc.ts'
+import { toMono16k } from '../../src/core/message/media/wav.ts'
 import { fileOf } from '../../src/local/index.ts'
 
 /** 识别链路只吃 PCM16 WAV：自检拿到 mp3 时先用 ffmpeg 转一道（#255）。 */
@@ -35,7 +35,7 @@ export function asPcmWav (file, buf, ffmpegPath = '', { platform = process.platf
   return converted
 }
 
-import { asrConfigured, transcribeAudio } from '../../src/voice/asr/index.ts'
+import { asrConfigured, transcribeAudio } from './asr/index.ts'
 import { mergeFromPanel, normalize } from '../../src/core/config/index.ts'
 import { findFfmpeg } from '../../src/core/message/media/img.ts'
 
@@ -221,6 +221,11 @@ export default {
 
   ctx.provide('voice', { speak, edgeInstalled })
   ctx.provide('tts', { speak: async (text: string) => String((await speak(text))?.file ?? '') })
+  // 语音识别也是服务：内核不再 import 本插件，谁提供都能用。
+  ctx.provide('asr', {
+    configured: (voice) => asrConfigured(voice),
+    transcribe: (buffer, voice, log) => transcribeAudio(buffer, voice, log),
+  })
   return { speak, edgeInstalled }
   },
 }

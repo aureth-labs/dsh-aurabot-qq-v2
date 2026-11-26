@@ -84,7 +84,7 @@ export function createChatLog(deps: ChatLogDeps) {
   /**
    * 主动发出的话（刷B站分享、群分享、私聊问询……）也要在目标聊天留痕：
    * 写一条聊天流水 + 记进「别处说过」桥接，主人下次在这个聊天里接话时她才知道自己刚发过什么。
-   * 只在该条消息真发出去之后调用；试运行、补发队列、失败都不记。
+   * 只在该条消息真发出去之后调用；调试模式、补发队列、失败都不记。
    */
   function noteProactive(chatId: string, message: any, opts: NoteProactiveOptions = {}) {
     const said = (Array.isArray(message) ? message : [])

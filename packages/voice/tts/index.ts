@@ -1,4 +1,4 @@
-import { createKeyRouter, rateMeta } from './key-pool.ts'
+import { createKeyRouter, rateMeta } from '../../../src/core/config/state/key-pool.ts'
 export const runCloud = createKeyRouter()
 // 文字 → 语音文件。
 //   首选：edge-tts（微软在线朗读，音色好），装在插件自己的 Python 虚拟环境 C:\Aurabot\pyenv 里，不污染系统。
@@ -8,11 +8,11 @@ export const runCloud = createKeyRouter()
 import { fishSpeech } from './fish.ts'
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, statSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs'
-import { buildWav } from '../audio/wav.ts'
+import { buildWav } from '../../../src/core/message/media/wav.ts'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
-import { dataDir } from '../../core/store/index.ts'
+import { dataDir } from '../../../src/core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RunOptions = Partial<Record<'timeoutMs' | 'input' | 'env', any>>

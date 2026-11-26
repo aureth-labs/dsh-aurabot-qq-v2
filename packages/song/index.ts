@@ -2,8 +2,8 @@
 // 换声这一步可以在「本地接口」里接你自己的推理（so-vits-svc、自己训练的 RVC……）；整个模块也可以替换掉。
 
 import { createHash } from 'node:crypto'
-import { createSongStudio } from '../../src/song/studio/studio.ts'
-import { checkRoot, listDrives } from '../../src/song/studio/env/install.ts'
+import { createSongStudio } from './studio/studio.ts'
+import { checkRoot, listDrives } from './studio/env/install.ts'
 import { privateCapabilityAllowed } from '../../src/chat/policy/rules/access.ts'
 import { defineTool, str, int, bool } from '../../src/tools/index.ts'
 

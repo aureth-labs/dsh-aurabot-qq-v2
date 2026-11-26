@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync,
 import { join, basename, dirname, delimiter } from 'node:path'
 import { homedir } from 'node:os'
 import { createHash } from 'node:crypto'
-import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
+import { dataDir, readJson, writeJson } from '../../../src/core/store/index.ts'
 import { searchSongs, songUrl, account } from '../source/netease.ts'
 import { installLinuxUv } from '../source/linux-uv.ts'
 import { SongClipError, validateSongClip, clipCacheParts, clipLabel, clipFade } from '../audio/segment.ts'
@@ -277,6 +277,7 @@ export function createSongStudio({ getConfig, log, sendVoiceFile, sendText, say,
   function watchDownload(dir) {
     let last = { at: Date.now(), bytes: dirSize(dir) }
     const base = last.bytes
+    // lifecycle-safe: 返回的停止函数由调用方在安装结束 / 失败时执行
     const t = setInterval(() => {
       const bytes = dirSize(dir)
       const now = Date.now()
@@ -417,7 +418,7 @@ export function createSongStudio({ getConfig, log, sendVoiceFile, sendText, say,
     const p = P()
     const out = join(dir, 'vocals_rvc.wav')
     if (local?.active('song')) {
-      const { fileOf } = await import('../../local/index.ts')
+      const { fileOf } = await import('../../../src/local/index.ts')
       const r = await local.call('song', { input: vocals, output: out, pitch, voice: voice?.id || '', voiceFile: voice?.pth || '', indexFile: voice?.index || '' })
       const file = fileOf(r) || out
       if (!existsSync(file)) throw new Error('本地换声脚本没写出文件：' + file)

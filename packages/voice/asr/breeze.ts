@@ -11,7 +11,7 @@
 // 直接 403 Request origin is not allowed），所以站点那几个请求走 node:https 手动发。
 import { request as httpsRequest } from 'node:https'
 import { request as httpRequest } from 'node:http'
-import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
+import { dataDir, readJson, writeJson } from '../../../src/core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type SiteRequestOptions = Partial<Record<'method' | 'headers' | 'body' | 'timeoutMs', any>>

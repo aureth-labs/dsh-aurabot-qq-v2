@@ -561,7 +561,7 @@ export function createOutboundPolicy(opts : CreateOutboundPolicyOptions = {}) {
    *
    * 返回体给调用方（模块）用：模块只需要判断 `state` 是否算发出去了，
    * 不必自己关心发送、超时、状态回写这些事——这就是「不给模块加负担」的落点。
-   * 失败与结果未明的区分沿用 hub 的口径：明确失败（开关关着/试运行/参数非法）算 failed，
+   * 失败与结果未明的区分沿用 hub 的口径：明确失败（开关关着/调试模式/参数非法）算 failed，
    * 网关超时这种「不知道发没发出去」算 uncertain，且不重试（避免重复打扰）。
    */
   function deliverItem(item) {

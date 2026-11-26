@@ -61,7 +61,7 @@ export function createSubagent({ dsh, getConfig, agentFor, assertActive, capabil
     // ② 必须带「主人开口」的来源；③ 后台调用只有 config.subagentBackground=true 才放行。
     const caps = typeof capabilitiesOf === 'function' ? capabilitiesOf(moduleId) : []
     if (!moduleId || !Array.isArray(caps) || !caps.includes('plugin-internals')) {
-      throw Object.assign(new Error(`模块「${moduleId || '未声明'}」没有 plugin-internals 能力，不能用子智能体委派（在 module.json 的 capabilities 里声明）`), { code: 'CAPABILITY_REQUIRED' })
+      throw Object.assign(new Error(`模块「${moduleId || '未声明'}」没有 plugin-internals 能力，不能用子智能体委派（在 package.json 的 aurabot.capabilities 里声明）`), { code: 'CAPABILITY_REQUIRED' })
     }
     const c = getConfig()
     const ownerQQ = String(c.ownerQQ || '')

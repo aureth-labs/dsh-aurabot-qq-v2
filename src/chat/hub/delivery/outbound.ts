@@ -454,7 +454,7 @@ export function createOutbound(deps: OutboundDeps) {
           log.debug(`${chatId}：按路径发图「${local.slice(-40)}」`)
           return r
         }
-        // 总开关关着、试运行、或者扩展模块拦下了：这不是错误，也不该再走 base64 发一遍
+        // 总开关关着、调试模式、或者扩展模块拦下了：这不是错误，也不该再走 base64 发一遍
         return null
       } catch (error) {
         if (!isDefiniteFailure(error)) {
