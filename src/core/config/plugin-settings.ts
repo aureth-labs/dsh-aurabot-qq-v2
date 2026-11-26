@@ -1,7 +1,17 @@
-import { isObj, type RawConfig } from './state/shared.ts'
+import { deepMerge, isObj, type RawConfig } from './state/shared.ts'
 
 type Field = { key: string; type?: string }
 export type PluginFields = ReadonlyMap<string, readonly Field[]>
+
+export function instanceSettings(settings: RawConfig | undefined, fields: readonly Partial<Field>[], instance?: string) {
+  const base = { ...settings }
+  delete base.instances
+  if (!instance) return base
+  for (const field of fields) if (field.key && field.type === 'password') delete base[field.key]
+  const rows = Array.isArray(settings?.instances) ? settings.instances : []
+  const own = rows.find(row => isObj(row) && (row.id ?? row.name) === instance)
+  return deepMerge(base, own?.config)
+}
 
 function view(config: RawConfig, fields: readonly Field[]): RawConfig {
   const result: RawConfig = {}

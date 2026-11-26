@@ -66,7 +66,7 @@ export interface ModuleRecord {
 }
 
 /** 启动失败 / 加载失败。 */
-export interface ModuleError { message: string; at: number; source?: string; fallback?: boolean }
+export interface ModuleError { adapter?: boolean; message: string; at: number; source?: string; fallback?: boolean }
 
 /** 磁盘上扫到的用户模块。 */
 export interface UserModule { id: string; dir: string; safe?: boolean; version?: string; [key: string]: unknown }

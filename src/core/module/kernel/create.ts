@@ -45,7 +45,7 @@ export * from '../loader.ts'
 import { createImporter } from '../importer.ts'
 import { createPlugin } from '../scaffold.ts'
 export * from '../governance.ts'
-import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, scanUser, namedModuleDef, checkDef, userDir, ID_RE, idDir } from '../loader.ts'
+import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, scanUser, userDir, ID_RE, idDir } from '../loader.ts'
 import type { ModuleDef, ModuleRecord, ModuleError } from '../loader.ts'
 import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from '../governance.ts'
 
@@ -53,6 +53,8 @@ export * from './util.ts'
 import { deepMerge, isObj } from './util.ts'
 import { createApi } from './api.ts'
 import { createDocs } from './docs.ts'
+import { loadDefinition } from './definition.ts'
+import { createAdapterCatalog } from './adapters.ts'
 import { ServiceRegistry } from '../../service/registry.ts'
 
 export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime, initialServices = {} }) {
@@ -85,6 +87,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const modCfg = (id) => getConfig().modules?.[id] || {}
   const isEnabled = (id) => modCfg(id).enabled !== false
   const isUserOn = () => !getConfig().safeMode
+  const adapterCatalog = createAdapterCatalog(builtinDefs, live, importer, isUserOn, id => Boolean(modCfg(id).useBuiltin))
   /**
    * 一份插件的额外实例（`ext.<id>.instances`）。
    *
@@ -121,7 +124,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   // 面板里的 call('/x') 要用同一份判断决定基址（见 status().routesAtRoot），两边不能各算各的。
   const routesAtRoot = (id) => builtinDefs.has(id) || STABLE_ROUTES.has(id)
 
-  const apiOf = createApi({ logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
+  const apiOf = createApi({ logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
   const makeApi = (id: string, source: string, rec: ModuleRecord) => apiOf(id, source, rec)
 
   /** 插件在面板侧栏注册的页面：路径唯一，模块卸载一起撤。 */
@@ -238,7 +241,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         pipeline: core.pipeline,
         llm: core.llm,
         tts: core.tts,
-        startAdapter: core.adapters?.start,
+        startAdapter: core.adapters && ((spec, config, signal) => core.adapters.start(spec, config, signal, rec.key)),
         services,
         registerPage: (page) => registerPage(rec, page),
         nativePreview: id === 'memory' && personaMemoryRuntime
@@ -274,7 +277,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     } catch (error) {
       if (disposed || rec.stopped || live.get(key) !== rec) return null
       stop(key, { quiet: true })
-      errors.set(key, { message: String(error && error.message ? error.message : error).slice(0, 800), at: Date.now(), source })
+      errors.set(key, { message: String(error && error.message ? error.message : error).slice(0, 800), at: Date.now(), source, adapter: def.kind === 'adapter' })
       bumpNavigation() // 启动失败也进导航（availability=error）
       log.warn(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}启动失败：`, error.message)
     }
@@ -325,36 +328,11 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     let def
     let stamp = ''
     try {
-      const imported = await importer.load(u)
-      const mod = imported.mod
-      def = namedModuleDef(mod)
+      const imported = await loadDefinition(importer,u)
+      def = imported.def
       stamp = imported.stamp
-      if (!def) throw new Error('入口要具名导出 apply(ctx, config)（可选 name / Config），见 API.md')
-      def = { ...def, id: u.id }
-      // v2 清单（package.json.aurabot）：入口里没写的字段从清单补上，
-      // 这样面板显示的名字/版本、模块声明的 panel 和 capabilities 都只有一个来源。
-      const { manifest } = readManifest(u.dir, { id: u.id })
-      if (manifest) {
-        // 清单里的 panel 只是「应该放这儿」，文件不在就别让面板挂个空标签
-        const panelFile = manifest.panel ? resolve(u.dir, String(manifest.panel).replace(/^\.\//, '')) : ''
-        def = {
-          ...def,
-          name: def.name || manifest.name,
-          description: def.description || manifest.description,
-          version: def.version || manifest.version,
-          panel: def.panel || (panelFile && existsSync(panelFile) ? manifest.panel : undefined),
-          capabilities: def.capabilities || manifest.capabilities,
-          platforms: def.platforms ?? manifest.platforms,
-          api: Math.max(Number(def.api || 1) || 1, manifest.api),
-          kind: def.kind || manifest.kind,
-          reusable: def.reusable ?? manifest.reusable,
-          reloadOnConfig: def.reloadOnConfig ?? manifest.reloadOnConfig,
-        }
-      }
       if (disposed || (revisions.get(key) || 0) !== revision) return null
       if (!stillWanted()) { resyncRequested = true; return null }
-      const why = checkDef(def, u.id)
-      if (why) throw new Error(why)
     } catch (error) {
       if (disposed || (revisions.get(key) || 0) !== revision) return null
       if (!stillWanted()) { resyncRequested = true; return null }
@@ -561,11 +539,11 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
    * 清单里写了 `aurabot.reloadOnConfig: true` 的模块才重载 —— 那些在 `apply(ctx, config)` 里
    * 直接把 config 存进闭包的插件，重载一次最省心。
    */
-  async function reloadOnConfigChange(beforeExt: Record<string, unknown> = {}, nextExt: Record<string, unknown> = {}) {
-    const ids = new Set([...Object.keys(beforeExt || {}), ...Object.keys(nextExt || {})])
+  async function reloadOnConfigChange(beforeExt: Record<string, unknown> = {}, nextExt: Record<string, unknown> = {}, force: readonly string[] = []) {
+    const ids = new Set([...force, ...Object.keys(beforeExt), ...Object.keys(nextExt)])
     for (const id of ids) {
       const changed = JSON.stringify((beforeExt || {})[id]) !== JSON.stringify((nextExt || {})[id])
-      if (!changed) continue
+      if (!changed && !force.includes(id)) continue
       // 有实例的模块：改配置（改实例、加实例、删实例、改主配置里的 token）必须让实例重连，
       // 否则面板上明明改了、实际还在用旧参数跑。
       const runningInstance = [...live.values()].some((rec) => rec.moduleId === id && rec.key !== id)
@@ -573,7 +551,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         await reload(id).catch(() => {})
         continue
       }
-      if (live.get(id)?.def?.reloadOnConfig !== true) continue
+      if (!force.includes(id) && !errors.get(id)?.adapter && live.get(id)?.def?.kind !== 'adapter' && live.get(id)?.def?.reloadOnConfig !== true) continue
       await reload(id).catch(() => {})
     }
   }
@@ -916,7 +894,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const publicHandle = { use: exportsOf, has: hasModule, list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
-    fields, boot, sync, reload, dispose, status, create: createPlugin, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
+    failedAdapters: () => [...errors].filter(([key, error]) => error.adapter && isEnabled(key.split('@')[0])).map(([key]) => key),
+    adapterCatalog, fields, boot, sync, reload, dispose, status, create: createPlugin, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
     // 对外按模块 id 停 —— 一起停掉它的额外实例
     stop: (id, options) => stopModule(id, options),
     use: exportsOf, has: hasModule, running: (id) => live.get(id)?.source || null, generation: () => generation,

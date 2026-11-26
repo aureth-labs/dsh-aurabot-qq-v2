@@ -19,7 +19,7 @@ export const reusable = true
 export const reloadOnConfig = true
 export const name = 'QQ · OneBot v11'
 export const config = Schema.object({
-  wsUrl: Schema.string().description('OneBot WebSocket 地址'),
+  wsUrl: Schema.string().required().description('OneBot WebSocket 地址'),
   httpUrl: Schema.string().description('HTTP 接口地址（可选）'),
   wsToken: Schema.string().role('secret').description('WebSocket 访问令牌'),
   httpToken: Schema.string().role('secret').description('HTTP 访问令牌'),

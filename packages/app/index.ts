@@ -6,6 +6,7 @@ import { registerUpdateRoutes } from './panel/system/update.ts'
 import { registerDiagnostics } from './panel/platform/diagnostics.ts'
 import { registerBackups } from './panel/system/backups.ts'
 import { registerLocalRoutes } from './panel/system/local.ts'
+import { registerConnectionRoutes } from './panel/platform/connect.ts'
 import { registerBootstrap } from './panel/system/bootstrap.ts'
 import { registerNoticeHandling } from './panel/platform/notifications.ts'
 import { registerPetControls } from './panel/pet/controls.ts'
@@ -134,15 +135,13 @@ export function apply(ctx) {
     // 值与已发布配置完全一致时不落盘不递增（面板「只提交没变化字段」回执取接纳时版本）。
     cfg = commitConfig(next, before)
     debugSwitch.on = Boolean(cfg.debug)
-    if (before.botQQ !== cfg.botQQ || before.enabled !== cfg.enabled || !isDeepStrictEqual(before.onebot, cfg.onebot)) {
-      mods?.reload(defaultOneBotId).catch(error => log.warn('刷新 OneBot 连接失败', error.message))
-    }
+    const reconnectQQ = before.botQQ !== cfg.botQQ || before.enabled !== cfg.enabled || !isDeepStrictEqual(before.onebot, cfg.onebot)
     secrets()
     if (bridge && (before.bridge.dshTools !== cfg.bridge.dshTools || before.persona.current !== cfg.persona.current)) bridge.refresh()
     if (mods && (JSON.stringify(before.modules) !== JSON.stringify(cfg.modules) || before.safeMode !== cfg.safeMode)) mods.sync().catch(() => {})
     mods?.emit('config', cfg, before)
     // 声明了 reloadOnConfig 的模块：设置一改就重载，apply 里的 config 才是新的。
-    mods?.reloadOnConfigChange(before?.ext, cfg.ext).catch(() => {})
+    mods?.reloadOnConfigChange(before.ext, cfg.ext, reconnectQQ ? [defaultOneBotId] : []).catch(error => log.warn('刷新插件配置失败', error.message))
     if (JSON.stringify(before.backup?.remote) !== JSON.stringify(cfg.backup?.remote)) backup?.scheduleRemoteBackup()
     return cfg
   }
@@ -263,7 +262,7 @@ export function apply(ctx) {
     pipeline,
     // S8：适配器插件化。插件调 ctx.adapter(spec, config) 就能挂一个平台上来
     adapters: {
-      start: (spec, config, signal?: AbortSignal) => adapterRegistry.start(spec, config, signal),
+      start: (spec, config, signal?: AbortSignal, instance?: string) => adapterRegistry.start(spec, config, signal, instance),
       list: () => adapterRegistry.list(),
     },
     root: ROOT,
@@ -304,6 +303,7 @@ export function apply(ctx) {
   bridge = createBridge({ ctx, getConfig, setConfig, hub, mods, log: logger.child('bridge'), version: String(VERSION), apiVersion: API_VERSION, overview: () => overview() })
   core.bridge = bridge
   core.modules = mods
+  registerConnectionRoutes({ http, mods, adapterRegistry, getConfig, setConfig, onReloadError: error => log.warn('重试平台连接失败', error.message) })
   registerBootstrap({ getConfig, onebot, warmSince, mods, coreIsReady: () => panelCoreReady, http, bootId, VERSION, areModulesReady: () => modsReady, adapterRegistry })
   // 配置已加载、上述路由已注册：之后轻量读接口直接回 200（503 只覆盖装配早期）。
   panelCoreReady = true

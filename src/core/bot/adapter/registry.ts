@@ -18,6 +18,7 @@ export interface AdapterRegistryDeps {
 }
 
 interface Entry {
+  instance?: string
   platform: string
   name: string
   bot: BotLike
@@ -28,6 +29,8 @@ interface Entry {
 export class AdapterRegistry {
   private readonly deps: AdapterRegistryDeps
   private readonly entries = new Map<string, Entry>()
+  private readonly connecting = new Map<symbol, { instance: string; platform: string; signal: AbortSignal }>()
+  private readonly failures = new Map<string, { instance: string; platform: string; id: string; selfId: string; status: string }>()
   private lifetime = new AbortController()
   private readonly listeners = new Set<() => void>()
 
@@ -36,7 +39,7 @@ export class AdapterRegistry {
   }
 
   /** 插件入口：`ctx.adapter(spec, config)` 最终走这里。 */
-  async start(spec: AdapterSpec, config?: unknown, owner?: AbortSignal): Promise<AdapterHandle> {
+  async start(spec: AdapterSpec, config?: unknown, owner?: AbortSignal, instance?: string): Promise<AdapterHandle> {
     // 平台名可能是运行期才知道的（Satori 这种协议层适配器）
     const resolved = spec?.resolvePlatform?.(config)
     const platform = String(resolved || spec?.platform || '').trim()
@@ -64,10 +67,24 @@ export class AdapterRegistry {
       emitMessage: message => deliver(bot => this.deps.onMessage?.(bot, message)),
       emitEvent: (event, payload) => deliver(bot => this.deps.onEvent?.(platform, event, payload, bot)),
     }
+    const attempt = Symbol()
+    if (instance) {
+      this.failures.delete(instance)
+      this.connecting.set(attempt, { instance, platform, signal })
+    }
     const connection = await startAdapter(this.deps.bots, spec, config, runtime, {
       platform, wrapBot: this.deps.wrapBot,
       active: () => !signal.aborted,
-    })
+    }).catch(error => {
+      if (instance && !signal.aborted) {
+        const failure = { instance, platform, id: '', selfId: '', status: 'error' }
+        this.failures.set(instance, failure)
+        signal.addEventListener('abort', () => {
+          if (this.failures.get(instance) === failure) this.failures.delete(instance)
+        }, { once: true })
+      }
+      throw error
+    }).finally(() => this.connecting.delete(attempt))
     const bot = connection.bot
     if (signal.aborted) {
       await connection.dispose()
@@ -87,7 +104,7 @@ export class AdapterRegistry {
         await connection.dispose()
       },
     }
-    entry = { platform, bot, handle, name: spec.name || platform, startedAt: Date.now() }
+    entry = { platform, bot, instance, handle, name: spec.name || platform, startedAt: Date.now() }
     this.entries.set(key, entry)
     this.changed()
     try {
@@ -110,6 +127,16 @@ export class AdapterRegistry {
       selfId: String(entry.bot.selfId || ''),
       status: entry.bot.status,
     }))
+  }
+
+  connections() {
+    const online = [...this.entries.values()].map(({ instance, platform, bot }) => ({
+      instance: instance || '', platform, id: bot.id, selfId: bot.selfId, status: bot.status,
+    }))
+    const pending = [...this.connecting.values()].filter(row => !row.signal.aborted).map(({ instance, platform }) => ({
+      instance, platform, id: '', selfId: '', status: 'connecting',
+    }))
+    return [...online, ...pending, ...this.failures.values()]
   }
 
   get(id: string, platform?: string): BotLike | undefined {

@@ -1,3 +1,4 @@
+import { instanceSettings } from '../../config/plugin-settings.ts'
 // 内核给插件包的内部句柄：归属、停止、权限都在这里收口；插件看到的是 v2 的 ctx 视图。
 
 import { mkdirSync } from 'node:fs'
@@ -49,12 +50,11 @@ export interface ApiDeps {
   exportsOf: (id: string) => Record<string, any> | null
   hasModule: (id: string) => boolean
   routesAtRoot: (id: string) => boolean
-  instancesOf: (id: string) => Array<{ id: string; config?: Record<string, any> }>
   emit: (event: string, ...args: unknown[]) => unknown
 }
 
 export function createApi(deps: ApiDeps) {
-  const { logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit, isEnabled, isUserOn, ctx } = deps
+  const { logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit, isEnabled, isUserOn, ctx } = deps
 
   function makeApi(id: string, source: string, rec: ModuleRecord) {
     const mlog = logger.child(id)
@@ -92,14 +92,7 @@ export function createApi(deps: ApiDeps) {
       : (routesAtRoot(id) ? '' : `/ext/${id}`)
     const def = rec.def
     /** 这个实例自己的配置：插件基础配置（ext.<id>）+ 实例覆盖（ext.<id>.instances[n].config）。 */
-    const instanceConfig = () => {
-      const base = { ...(getConfig().ext?.[id] || {}) }
-      delete base.instances
-      if (!rec.instance) return base
-      for (const field of def.settings || []) if (field.type === 'password') delete base[field.key]
-      const own = instancesOf(id).find((item) => item.id === rec.instance)
-      return deepMerge(base, own?.config || {})
-    }
+    const instanceConfig = () => instanceSettings(getConfig().ext?.[id], def.settings || [], rec.instance)
     const setModuleConfig = writable('setConfig', (patch) => setConfig(typeof patch === 'function' ? patch(getConfig()) : deepMerge(getConfig(), patch)))
     // 兼容在同步收尾里恢复设置的模块；迟到的回调和旧实例不能再写。
     const setCoreConfig = writable('core.setConfig', (patch) => {

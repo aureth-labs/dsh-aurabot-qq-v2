@@ -21,6 +21,7 @@ export interface SettingsField {
   options?: Array<{ value: string; label: string }>
   fields?: SettingsField[]
   item?: SettingsField
+  required?: boolean
   hidden?: boolean
   deprecated?: boolean
   experimental?: boolean
@@ -160,6 +161,7 @@ export class SchemaNode<T = unknown> {
         if (input === 'false' || input === 0) return { ok: true, value: false as T }
         return { ok: false, error: '要 true / false' }
       case 'string':
+        if (this.isRequired && typeof input === 'string' && !input.trim()) return { ok: false, error: '必填项为空' }
         if (typeof input === 'string') return { ok: true, value: input as T }
         if (typeof input === 'number') return { ok: true, value: String(input) as T }
         return { ok: false, error: '要文本' }
@@ -235,6 +237,7 @@ export class SchemaNode<T = unknown> {
         return { value: String(m), label: String(m) }
       })
     }
+    if (this.isRequired) field.required = true
     if (this.isHidden) field.hidden = true
     if (this.isDeprecated) field.deprecated = true
     if (this.isExperimental) field.experimental = true

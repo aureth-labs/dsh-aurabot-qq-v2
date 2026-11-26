@@ -5,8 +5,8 @@ declare const Schema: typeof import('../../../../../src/core/config/shape/schema
 
 export const name = 'QQ 官方机器人'
 export const config = Schema.object({
-  appId: Schema.string().description('机器人 AppID'),
-  clientSecret: Schema.string().role('secret').description('机器人 AppSecret'),
+  appId: Schema.string().required().description('机器人 AppID'),
+  clientSecret: Schema.string().required().role('secret').description('机器人 AppSecret'),
 })
 
 export async function apply(ctx: PluginContext, config: QQOfficialBotSpecOptions) {

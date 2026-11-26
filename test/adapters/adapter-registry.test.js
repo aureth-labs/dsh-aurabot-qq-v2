@@ -185,3 +185,23 @@ test('被顶替的旧实例再收到事件，不会重复进管线', async () =>
   assert.deepEqual(got, [{ content: '新实例' }])
   await handle.dispose()
 })
+
+test('接入状态按安装实例跟踪握手、失败和重试，错误详情留在服务端', async () => {
+  const { registry } = makeRegistry()
+  const gate = Promise.withResolvers()
+  const scope = new AbortController()
+  const instance = 'adapter-satori@home'
+  const { spec } = fakeSpec('matrix', 'robot')
+  const connecting = registry.start({ ...spec, connect: () => gate.promise }, {}, scope.signal, instance)
+  const statuses = () => registry.connections().map(row => [row.instance, row.status, row.selfId])
+  assert.deepEqual(statuses(), [[instance, 'connecting', '']])
+  gate.reject(new Error('private detail'))
+  await assert.rejects(connecting, /private detail/)
+  assert.deepEqual(statuses(), [[instance, 'error', '']])
+  assert.equal(JSON.stringify(registry.connections()).includes('private detail'), false)
+  const handle = await registry.start(spec, {}, undefined, instance)
+  scope.abort()
+  assert.deepEqual(statuses(), [[instance, 'online', 'robot']])
+  await handle.dispose()
+  assert.deepEqual(statuses(), [])
+})
