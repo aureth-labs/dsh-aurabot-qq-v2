@@ -69,6 +69,12 @@ export abstract class Bot implements BotLike {
   abstract sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown>
   abstract sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown>
 
+  async internal<T = any>(action: string, params?: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<T> {
+    void params
+    void options
+    throw new UnsupportedApiError(this, `internal(${action})`)
+  }
+
   getSelfId(): string {
     return this.selfId
   }
@@ -168,6 +174,7 @@ export function botApiStubs(id = ''): Pick<
   | 'updateMessage'
   | 'createReaction'
   | 'deleteReaction'
+  | 'internal'
 > {
   const fail = (api: string) => async (): Promise<never> => {
     throw new Error(`${id || 'bot'} 不支持 ${api}`)
@@ -188,5 +195,6 @@ export function botApiStubs(id = ''): Pick<
     updateMessage: fail('updateMessage'),
     createReaction: fail('createReaction'),
     deleteReaction: fail('deleteReaction'),
+    internal: fail('internal'),
   }
 }

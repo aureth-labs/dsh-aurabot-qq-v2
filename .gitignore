@@ -19,3 +19,7 @@ coverage/
 TESTLOG.md
 lib/*
 dist/*
+
+# 本地规划笔记，不进仓库
+.future/
+HANDOFF.md

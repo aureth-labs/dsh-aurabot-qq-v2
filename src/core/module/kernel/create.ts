@@ -172,32 +172,29 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     try { Promise.resolve(fn()).catch(failed) } catch (error) { failed(error) }
   }
 
+  /** Config Schema → 面板字段与默认值；官方插件额外挂 registerCommands 开关（默认关）。 */
+  function prepareDef(def, source) {
+    if (isSchema(def.config)) {
+      def = { ...def, settings: def.config.toSettings(), defaults: def.config.defaults() }
+    } else if (def.config && !(Array.isArray(def.settings) && def.settings.length)) {
+      const derived = settingsFromMeta(def.config)
+      if (derived.length) def = { ...def, settings: derived, defaults: { ...(schemaDefaults(def.config) || {}), ...(def.defaults || {}) } }
+    }
+    if (source !== 'builtin' || def.settings?.some((f) => f?.key === 'registerCommands')) return def
+    return {
+      ...def,
+      defaults: { registerCommands: false, ...(def.defaults || {}) },
+      settings: [...(def.settings || []), { key: 'registerCommands', type: 'boolean', label: '注册指令（默认关，打开后本插件的 ctx.command 才生效）' }],
+    }
+  }
+
   // ---------- 启动 / 停止 ----------
   async function start(def, source, extra : StartOptions = {}) {
     if (disposed) return null
     const id = def.id
     const instance = String(extra.instance || '').trim()
     const key = instance ? instanceKey(id, instance) : id
-    // v2：配置用 Schema 声明时，面板字段与默认值都从它派生，不再手写 settings 数组
-    if (isSchema(def.config)) {
-      def = { ...def, settings: def.config.toSettings(), defaults: def.config.defaults() }
-    } else if (def.config && !(Array.isArray(def.settings) && def.settings.length)) {
-      // 模板仓库自带的精简 Schema（plugin-api.js）：只读地翻成面板字段，不改它自己的校验逻辑
-      const derived = settingsFromMeta(def.config)
-      if (derived.length) def = { ...def, settings: derived }
-    }
-    // 官方插件默认不注册指令：面板里显式打开 registerCommands 才让 ctx.command 生效。
-    // 社区插件没有这个字段（undefined），不受影响。
-    if (source === 'builtin') {
-      const settings = Array.isArray(def.settings) ? def.settings : []
-      def = {
-        ...def,
-        defaults: { registerCommands: false, ...(def.defaults || {}) },
-        settings: settings.some((f) => f?.key === 'registerCommands')
-          ? settings
-          : [...settings, { key: 'registerCommands', type: 'boolean', label: '注册指令（默认关，打开后本插件的 ctx.command 才生效）' }],
-      }
-    }
+    def = prepareDef(def, source)
     const rec: ModuleRecord = {
       key,
       moduleId: id,
@@ -285,6 +282,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   /** 同步启动（内置模块的 apply 都是同步的，插件一加载就要能用）。 */
   function startSync(def) {
     if (disposed) return
+    def = prepareDef(def, 'builtin')
     const id = def.id
     const rec: ModuleRecord = { key: id, moduleId: id, id, def, source: 'builtin', exports: null, offs: [], tools: [], contexts: [], rules: [], commands: [], dshTools: [], errors: [], startedAt: Date.now() }
     live.set(id, rec)
@@ -364,7 +362,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     // Node 按 URL 缓存，戳变了 URL 就变了，等于拿到一份新模块；同目录的兄弟文件照旧能 import。
     if (u.single) {
       const mod = await import(`${pathToFileURL(u.file).href}?v=${stamp}`)
-      return { def: mod.default, mod, stamp }
+      return { mod, stamp }
     }
     const root = join(u.dir, SNAP)
     const snap = join(root, String(stamp).replace('.', '-'))
@@ -387,7 +385,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     const entryRel = relative(u.dir, u.file)
     const importRel = entryIsTs ? entryRel.replace(/\.ts$/i, '.js') : entryRel
     const mod = await import(pathToFileURL(join(snap, importRel)).href)
-    return { def: mod.default, mod, stamp }
+    return { mod, stamp }
   }
 
   async function startUser(u, instance = '') {
@@ -405,24 +403,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     try {
       let imported = await importUser(u)
       const mod = imported.mod
-      // v2 清单式写法：没有 default，直接 export name / config / apply（和 Koishi 一样）
-      def = imported.def ?? namedModuleDef(mod)
+      def = namedModuleDef(mod)
       stamp = imported.stamp
-      if (!def) throw new Error('入口文件没有模块定义：export default { apply }，或者 export function apply(ctx, config)')
-      // v2：export default function apply(ctx, config) —— 用文件夹名补上 id
-      if (typeof def === 'function') {
-        def = {
-          id: u.id,
-          name: mod.name || u.id,
-          config: mod.config,
-          defaults: mod.defaults,
-          settings: mod.settings,
-          apply: def,
-        }
-      }
-      // 具名导出（export name / config / apply）没写 id：用文件夹名 / 单文件名补上，
-      // 注册表、路由前缀、配置存放位置全都按这个 id 走，缺了就到处是 undefined。
-      if (!def.id) def = { ...def, id: u.id }
+      if (!def) throw new Error('入口要具名导出 apply(ctx, config)（可选 name / Config），见 API.md')
+      def = { ...def, id: u.id }
       // v2 清单（package.json.aurabot）：入口里没写的字段从清单补上，
       // 这样面板显示的名字/版本、模块声明的 panel 和 capabilities 都只有一个来源。
       const { manifest } = readManifest(u.dir, { id: u.id })

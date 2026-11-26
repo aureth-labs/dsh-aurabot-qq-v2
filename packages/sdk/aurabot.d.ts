@@ -116,6 +116,8 @@ export interface Bot {
   getMessageList(channelId: string, query?: { limit?: number; next?: string; order?: 'asc' | 'desc' }): Promise<Message[]>
   deleteMessage(channelId: string, messageId: string): Promise<void>
   updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message>
+  /** 平台原生调用：QQ 是 OneBot action，Telegram 是 Bot API 方法名。不支持的平台抛错。 */
+  internal<T = any>(action: string, params?: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<T>
   createReaction(channelId: string, messageId: string, emoji: string): Promise<void>
   deleteReaction(channelId: string, messageId: string, emoji: string): Promise<void>
 }
@@ -312,40 +314,37 @@ export interface Ctx {
   sendVoiceFile(chatId: string, file: unknown, note?: string): Promise<any>
   reply(msg: any, content: unknown): Promise<any>
   ask(options: any): Promise<any>
+  /** 以她的人格跑一轮后台会话（不发到聊天），返回正文。 */
+  think(prompt: string, options?: { title?: string; key?: string; timeoutMs?: number; noTools?: boolean; level?: string }): Promise<string>
+  /** 后台会话在退避期时返回重试时间，否则 null。 */
+  thinkCooldown(key?: string): { retryAt: number; message?: string } | null
+  readonly chatLog: {
+    read(day: string): Array<{ t: number; chatId: string; who: string; text: string; uid?: string; forgottenAt?: number }>
+    append(chatId: string, who: string, text: string, uid?: string): unknown
+  }
+  readonly http: {
+    body(req: any): Promise<Record<string, any>>
+    query(req: any): Record<string, string>
+    send(res: any, status: number, body: unknown, type?: string): void
+  }
   isOwner(userId: string | number): boolean
   /** 本插件的数据目录（已建好）。 */
   dataDir(...parts: string[]): string
 }
 
-export interface SettingField {
-  key: string
-  label?: string
-  type?: 'string' | 'text' | 'textarea' | 'number' | 'boolean' | 'password' | 'select' | 'switch'
-  options?: Array<{ label: string; value: any }>
-  hint?: string
-  [key: string]: any
-}
-
-export interface AurabotModule {
-  id?: string
+/** 插件入口：和 Koishi 一样只有具名导出。 */
+export interface PluginModule<C = any> {
   name?: string
   version?: string
   description?: string
-  /** adapter = 适配器插件；普通插件不写。 */
+  /** adapter = 适配器插件。 */
   kind?: 'plugin' | 'adapter'
-  /** 适配器可以开多个实例。 */
+  /** 允许多份配置（适配器默认 true）。 */
   reusable?: boolean
-  /** 配置改动后是否整体重载（默认只换 config 对象）。 */
   reloadOnConfig?: boolean
-  api?: 2
-  defaults?: Record<string, any>
-  settings?: SettingField[]
-  /** 声明需要的本机能力（子智能体委派这类要额外授权）。 */
-  capabilities?: string[]
-  apply(ctx: Ctx, config: Record<string, any>): unknown
+  Config?: unknown
+  apply(ctx: Ctx, config: C): unknown
 }
-
-export default AurabotModule
 
 declare global {
   /** 宿主注入的消息元素工厂，和 Koishi 一样不用 import。 */

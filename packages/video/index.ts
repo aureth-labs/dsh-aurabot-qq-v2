@@ -272,179 +272,179 @@ function grabFrame(ffmpeg, file, at) {
   })
 }
 
-export default {
-  id: 'video',
-  name: '生视频',
-  version: '1.1.0',
-  description: '生成视频并发到聊天：本地脚本 / MiniMax / 自定义异步任务（qq_generate_video）',
-  apply(ctx, config) {
-    const { hub, local } = ctx.host
-    const cfg = () => ctx.root.config
-    let running = false
-    let stopped = false
-    const pending = new Map() // chatId -> { args, userId, timer }
-    const last = new Map() // chatId -> { at, desc, seconds }
+export const name = '生视频'
 
-    ctx.effect(() => {
-      stopped = true
-      for (const k of [...pending.keys()]) clearPending(k)
-    })
+export const version = '1.1.0'
 
-    const v = () => cfg().video || {}
-    const ready = () => videoReady(cfg(), local)
-    const timeoutMs = () => Math.max(1, Number(cfg().local?.videoTimeoutMin) || 20) * 60_000
+export const description = '生成视频并发到聊天：本地脚本 / MiniMax / 自定义异步任务（qq_generate_video）'
 
-    function clearPending(chatId) {
-      const p = pending.get(chatId)
-      if (p?.timer) clearTimeout(p.timer)
-      pending.delete(chatId)
+export function apply(ctx, config) {
+  const { hub, local } = ctx.host
+  const cfg = () => ctx.root.config
+  let running = false
+  let stopped = false
+  const pending = new Map() // chatId -> { args, userId, timer }
+  const last = new Map() // chatId -> { at, desc, seconds }
+
+  ctx.effect(() => {
+    stopped = true
+    for (const k of [...pending.keys()]) clearPending(k)
+  })
+
+  const v = () => cfg().video || {}
+  const ready = () => videoReady(cfg(), local)
+  const timeoutMs = () => Math.max(1, Number(cfg().local?.videoTimeoutMin) || 20) * 60_000
+
+  function clearPending(chatId) {
+    const p = pending.get(chatId)
+    if (p?.timer) clearTimeout(p.timer)
+    pending.delete(chatId)
+  }
+
+  ctx.prompt(({ chat }) => {
+    const parts = []
+    if (ready() && privateCapabilityAllowed(cfg(), chat, 'video')) parts.push('当前私聊对象已经获得主人的视频生成授权。对方请求生成视频时可以使用 qq_generate_video，以当前授权为准。')
+    const mine = last.get(String(chat?.chatId || ''))
+    if (mine && Date.now() - mine.at < 30 * 60_000) {
+      parts.push(`你刚在这里做了一段 ${mine.seconds} 秒的视频，你抽帧看过画面：${mine.desc}\n（这是你自己的记忆，聊到相关话题可以自然地提，别假装没看过，也别逐字复述。）`)
     }
+    return parts.join('\n')
+  })
 
-    ctx.prompt(({ chat }) => {
-      const parts = []
-      if (ready() && privateCapabilityAllowed(cfg(), chat, 'video')) parts.push('当前私聊对象已经获得主人的视频生成授权。对方请求生成视频时可以使用 qq_generate_video，以当前授权为准。')
-      const mine = last.get(String(chat?.chatId || ''))
-      if (mine && Date.now() - mine.at < 30 * 60_000) {
-        parts.push(`你刚在这里做了一段 ${mine.seconds} 秒的视频，你抽帧看过画面：${mine.desc}\n（这是你自己的记忆，聊到相关话题可以自然地提，别假装没看过，也别逐字复述。）`)
-      }
-      return parts.join('\n')
-    })
-
-    async function deliver(chatId, file) {
-      try {
-        await hub.sendSegments(chatId, [{ type: 'video', data: { file: pathToFileURL(file).href } }], '[视频]', { throwOnError: true, timeoutMs: 120_000 })
-      } catch (error) {
-        ctx.logger.warn('按视频发送失败，改发文件：', error.message)
-        await hub.sendFile(chatId, file)
-      }
+  async function deliver(chatId, file) {
+    try {
+      await hub.sendSegments(chatId, [{ type: 'video', data: { file: pathToFileURL(file).href } }], '[视频]', { throwOnError: true, timeoutMs: 120_000 })
+    } catch (error) {
+      ctx.logger.warn('按视频发送失败，改发文件：', error.message)
+      await hub.sendFile(chatId, file)
     }
+  }
 
-    /** 生成后抽 4 帧交给视觉模型，写一段「画面里有什么」。失败返回空，不影响发送。 */
-    async function selfView(file, prompt, seconds) {
-      if (v().selfView === false) return ''
-      try {
-        if (canSeeImages && (await canSeeImages(ctx.harness, cfg())) === false) { ctx.logger.debug('当前模型看不了图，跳过自检'); return '' }
-        const ffmpeg = findFfmpeg(cfg().bili?.ffmpegPath || '')
-        if (!ffmpeg) { ctx.logger.debug('没找到 ffmpeg，跳过抽帧'); return '' }
-        const d = Math.max(4, Math.round(Number(seconds) || 5))
-        const frames = []
-        for (const p of [0.2, 0.4, 0.6, 0.8]) {
-          const f = await grabFrame(ffmpeg, file, Math.max(0, Math.round(d * p * 10) / 10))
-          if (f) frames.push(f)
-        }
-        if (!frames.length) return ''
-        const out = await askModel(ctx.harness, {
-          module: 'video-selfview',
-          cfg: cfg(),
-          system: '你在看自己刚生成的一段视频的截图。只写画面上确实能看到的东西：场景、主体、动作、光线、色调、画面里的文字。不要猜剧情，不要编造。用 2~4 句中文写。',
-          text: `这些截图来自你刚才按这个描述做的视频（${d} 秒）：${prompt}\n按时间先后排列。如实记下你看到了什么。`,
-          images: frames.map((f) => ({ data: f.toString('base64'), mediaType: 'image/jpeg' })),
-          maxTokens: 500,
-          temperature: 0.3,
-        })
-        return String(out || '').trim()
-      } catch (error) {
-        ctx.logger.warn('视频自检失败（不影响发送）：', error.message)
-        return ''
+  /** 生成后抽 4 帧交给视觉模型，写一段「画面里有什么」。失败返回空，不影响发送。 */
+  async function selfView(file, prompt, seconds) {
+    if (v().selfView === false) return ''
+    try {
+      if (canSeeImages && (await canSeeImages(ctx.harness, cfg())) === false) { ctx.logger.debug('当前模型看不了图，跳过自检'); return '' }
+      const ffmpeg = findFfmpeg(cfg().bili?.ffmpegPath || '')
+      if (!ffmpeg) { ctx.logger.debug('没找到 ffmpeg，跳过抽帧'); return '' }
+      const d = Math.max(4, Math.round(Number(seconds) || 5))
+      const frames = []
+      for (const p of [0.2, 0.4, 0.6, 0.8]) {
+        const f = await grabFrame(ffmpeg, file, Math.max(0, Math.round(d * p * 10) / 10))
+        if (f) frames.push(f)
       }
+      if (!frames.length) return ''
+      const out = await askModel(ctx.harness, {
+        module: 'video-selfview',
+        cfg: cfg(),
+        system: '你在看自己刚生成的一段视频的截图。只写画面上确实能看到的东西：场景、主体、动作、光线、色调、画面里的文字。不要猜剧情，不要编造。用 2~4 句中文写。',
+        text: `这些截图来自你刚才按这个描述做的视频（${d} 秒）：${prompt}\n按时间先后排列。如实记下你看到了什么。`,
+        images: frames.map((f) => ({ data: f.toString('base64'), mediaType: 'image/jpeg' })),
+        maxTokens: 500,
+        temperature: 0.3,
+      })
+      return String(out || '').trim()
+    } catch (error) {
+      ctx.logger.warn('视频自检失败（不影响发送）：', error.message)
+      return ''
     }
+  }
 
-    /** 把一句话场景扩写成可直接喂视频模型的分镜提示词；失败用原文。 */
-    async function enhance(text) {
-      if (v().enhance === false) return text
-      try {
-        const out = await ctx.ask({
-          system: '你是视频分镜师。把用户的一句话场景扩写成一段可直接用于文生视频模型的提示词：镜头运动、主体外形与动作、环境与光线、色调与质感，按时间顺序描述，只输出提示词本身，不要解释、不要分点。中文，120 字以内。',
-          text,
-          maxTokens: 400,
-        })
-        const s = String(out || '').trim()
-        return s.length >= 20 ? s.slice(0, 900) : text
-      } catch (error) {
-        ctx.logger.debug('提示词扩写失败，用原文：', error.message)
-        return text
+  /** 把一句话场景扩写成可直接喂视频模型的分镜提示词；失败用原文。 */
+  async function enhance(text) {
+    if (v().enhance === false) return text
+    try {
+      const out = await ctx.ask({
+        system: '你是视频分镜师。把用户的一句话场景扩写成一段可直接用于文生视频模型的提示词：镜头运动、主体外形与动作、环境与光线、色调与质感，按时间顺序描述，只输出提示词本身，不要解释、不要分点。中文，120 字以内。',
+        text,
+        maxTokens: 400,
+      })
+      const s = String(out || '').trim()
+      return s.length >= 20 ? s.slice(0, 900) : text
+    } catch (error) {
+      ctx.logger.debug('提示词扩写失败，用原文：', error.message)
+      return text
+    }
+  }
+
+  async function produce(args) {
+    const provider = v().provider || 'local'
+    if (provider === 'minimax') return minimaxGenerate({ ...args, cfg: cfg(), log: ctx.logger, timeoutMs: timeoutMs() })
+    if (provider === 'custom') return customGenerate({ ...args, cfg: cfg(), log: ctx.logger, timeoutMs: timeoutMs() })
+    return videoFile(await local.call('video', { prompt: args.prompt, seconds: args.seconds, image: args.image }))
+  }
+
+  async function generate(chatId, args) {
+    running = true
+    try {
+      if (v().confirm !== false) await hub.sendText(chatId, '好，开始生成，可能要等一阵子…').catch(() => {})
+      const file = await produce(args)
+      if (stopped) return
+      if (!file) throw new Error('没拿到视频文件')
+      await deliver(chatId, file)
+      // 先发出去，再自检：视觉调用慢，不该拦住视频送达
+      const desc = await selfView(file, args.prompt, args.seconds)
+      if (desc) last.set(String(chatId), { at: Date.now(), desc, seconds: args.seconds || 5 })
+    } catch (error) {
+      if (!stopped) await hub.sendText(chatId, `视频没做成：${String(error.message || error).slice(0, 200)}`).catch(() => {})
+    } finally {
+      running = false
+    }
+  }
+
+  ctx.rule(() => (ready()
+    ? [
+      '- 你能用 qq_generate_video 生成视频，主人和已授权的私聊对象可以使用。生成本身很慢，开始前先告诉对方要等多久；做好会自动发出来，不用再发一次。',
+      v().confirm === false ? '' : '- 生成前系统会先把视频描述发给对方确认，对方回「确认」才会真的生成；不要自己连续调用两次。',
+      '- 对方给了参考图时，把图片地址或本机绝对路径放进 image 参数，会作为首帧。',
+    ].filter(Boolean)
+    : []))
+
+  ctx.tool(({ chat, sessionId }) => (ready() && chat.kind !== 'system' ? defineTool({
+    name: 'qq_generate_video',
+    description: '生成一段视频，做好后自动发到当前聊天。很慢，开始前先告诉对方要等。主人和已授权的私聊对象可以使用。',
+    properties: {
+      prompt: str('视频内容描述（场景、镜头、主体、光线、风格）'),
+      seconds: str('可选：时长（秒），4~15'),
+      image: str('可选：首帧参考图（公网地址或本机绝对路径）'),
+    },
+    required: ['prompt'],
+    execute: async ({ prompt, seconds, image }) => {
+      if (!hub.turnSendersAllOwner(sessionId) && !privateCapabilityAllowed(cfg(), chat, 'video')) return { ok: false, message: '你还没有获得视频生成权限' }
+      const text = String(prompt || '').trim()
+      if (!text) return { ok: false, message: '要生成什么内容？' }
+      if (running || pending.has(chat.chatId)) return { ok: false, message: '上一段视频还在生成，等它好了再说' }
+
+      const args = { prompt: await enhance(text), seconds: Math.max(4, Math.min(15, Math.round(Number(seconds) || 5))), image: image ? String(image) : '' }
+      if (v().confirm === false) {
+        generate(chat.chatId, args).catch(() => {})
+        return { ok: true, message: '开始生成了，做好会自动发到这里。告诉对方要等一阵子，这一轮不用再发视频。' }
       }
-    }
 
-    async function produce(args) {
-      const provider = v().provider || 'local'
-      if (provider === 'minimax') return minimaxGenerate({ ...args, cfg: cfg(), log: ctx.logger, timeoutMs: timeoutMs() })
-      if (provider === 'custom') return customGenerate({ ...args, cfg: cfg(), log: ctx.logger, timeoutMs: timeoutMs() })
-      return videoFile(await local.call('video', { prompt: args.prompt, seconds: args.seconds, image: args.image }))
-    }
+      clearPending(chat.chatId)
+      const timer = setTimeout(() => clearPending(chat.chatId), TTL_MS)
+      pending.set(chat.chatId, { args, userId: String(chat.userId || ''), timer })
+      await hub.sendText(chat.chatId, ['要按这段生成视频吗？', '', args.prompt, '', `（${args.seconds} 秒${args.image ? '，带首帧图' : ''}，回复「确认」开始，回复「取消」就算了）`].join('\n')).catch(() => {})
+      return { ok: true, message: '已经把视频描述发出去等确认了；这一轮不要再发一次，等对方回「确认」' }
+    },
+  }) : []))
 
-    async function generate(chatId, args) {
-      running = true
-      try {
-        if (v().confirm !== false) await hub.sendText(chatId, '好，开始生成，可能要等一阵子…').catch(() => {})
-        const file = await produce(args)
-        if (stopped) return
-        if (!file) throw new Error('没拿到视频文件')
-        await deliver(chatId, file)
-        // 先发出去，再自检：视觉调用慢，不该拦住视频送达
-        const desc = await selfView(file, args.prompt, args.seconds)
-        if (desc) last.set(String(chatId), { at: Date.now(), desc, seconds: args.seconds || 5 })
-      } catch (error) {
-        if (!stopped) await hub.sendText(chatId, `视频没做成：${String(error.message || error).slice(0, 200)}`).catch(() => {})
-      } finally {
-        running = false
-      }
-    }
-
-    ctx.rule(() => (ready()
-      ? [
-        '- 你能用 qq_generate_video 生成视频，主人和已授权的私聊对象可以使用。生成本身很慢，开始前先告诉对方要等多久；做好会自动发出来，不用再发一次。',
-        v().confirm === false ? '' : '- 生成前系统会先把视频描述发给对方确认，对方回「确认」才会真的生成；不要自己连续调用两次。',
-        '- 对方给了参考图时，把图片地址或本机绝对路径放进 image 参数，会作为首帧。',
-      ].filter(Boolean)
-      : []))
-
-    ctx.tool(({ chat, sessionId }) => (ready() && chat.kind !== 'system' ? defineTool({
-      name: 'qq_generate_video',
-      description: '生成一段视频，做好后自动发到当前聊天。很慢，开始前先告诉对方要等。主人和已授权的私聊对象可以使用。',
-      properties: {
-        prompt: str('视频内容描述（场景、镜头、主体、光线、风格）'),
-        seconds: str('可选：时长（秒），4~15'),
-        image: str('可选：首帧参考图（公网地址或本机绝对路径）'),
-      },
-      required: ['prompt'],
-      execute: async ({ prompt, seconds, image }) => {
-        if (!hub.turnSendersAllOwner(sessionId) && !privateCapabilityAllowed(cfg(), chat, 'video')) return { ok: false, message: '你还没有获得视频生成权限' }
-        const text = String(prompt || '').trim()
-        if (!text) return { ok: false, message: '要生成什么内容？' }
-        if (running || pending.has(chat.chatId)) return { ok: false, message: '上一段视频还在生成，等它好了再说' }
-
-        const args = { prompt: await enhance(text), seconds: Math.max(4, Math.min(15, Math.round(Number(seconds) || 5))), image: image ? String(image) : '' }
-        if (v().confirm === false) {
-          generate(chat.chatId, args).catch(() => {})
-          return { ok: true, message: '开始生成了，做好会自动发到这里。告诉对方要等一阵子，这一轮不用再发视频。' }
-        }
-
-        clearPending(chat.chatId)
-        const timer = setTimeout(() => clearPending(chat.chatId), TTL_MS)
-        pending.set(chat.chatId, { args, userId: String(chat.userId || ''), timer })
-        await hub.sendText(chat.chatId, ['要按这段生成视频吗？', '', args.prompt, '', `（${args.seconds} 秒${args.image ? '，带首帧图' : ''}，回复「确认」开始，回复「取消」就算了）`].join('\n')).catch(() => {})
-        return { ok: true, message: '已经把视频描述发出去等确认了；这一轮不要再发一次，等对方回「确认」' }
-      },
-    }) : []))
-
-    // 回「确认 / 取消」时才继续：主人，或者发起这次请求的那个人
-    ctx.on?.('message', async (msg) => {
-      const chatId = msg?.chatId
-      if (!chatId || !pending.has(chatId)) return false
-      const item = pending.get(chatId)
-      const mine = String(msg.userId || '') === item.userId
-      if (!mine && !ctx.isOwner?.(msg.userId) && !hub.turnSendersAllOwner?.(msg.sessionId)) return false
-      const text = String(msg.text || '').trim()
-      if (CANCEL_RE.test(text)) {
-        clearPending(chatId)
-        await hub.sendText(chatId, '好，那不生成啦').catch(() => {})
-        return true
-      }
-      if (!CONFIRM_RE.test(text)) return false
+  // 回「确认 / 取消」时才继续：主人，或者发起这次请求的那个人
+  ctx.on?.('message', async (msg) => {
+    const chatId = msg?.chatId
+    if (!chatId || !pending.has(chatId)) return false
+    const item = pending.get(chatId)
+    const mine = String(msg.userId || '') === item.userId
+    if (!mine && !ctx.isOwner?.(msg.userId) && !hub.turnSendersAllOwner?.(msg.sessionId)) return false
+    const text = String(msg.text || '').trim()
+    if (CANCEL_RE.test(text)) {
       clearPending(chatId)
-      generate(chatId, item.args).catch(() => {})
+      await hub.sendText(chatId, '好，那不生成啦').catch(() => {})
       return true
-    })
-  },
+    }
+    if (!CONFIRM_RE.test(text)) return false
+    clearPending(chatId)
+    generate(chatId, item.args).catch(() => {})
+    return true
+  })
 }

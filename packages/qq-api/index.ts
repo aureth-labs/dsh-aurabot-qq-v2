@@ -105,60 +105,59 @@ export function pickParams(action, params) {
   return out
 }
 
-export default {
-  id: 'qq-api',
-  name: 'QQ 接口',
-  version: '1.0.0',
-  description: '把协议端的 QQ 能力交给她：查群公告、精华、荣誉、群文件，主人开口时还能撤回、设精华、改群名片等（qq_api_find / qq_api_call）',
-  api: 1,
-  apply(ctx, config) {
-    const { hub, onebot } = ctx.host
-    ctx.tool(({ chat, level, sessionId }) => {
-      if (chat.kind === 'system' || ctx.root.config.qqApi?.enabled === false) return []
-      const isOwner = () => level === 'full' || Boolean(hub.turnSendersAllOwner?.(sessionId))
-      return [
-        defineTool({
-          name: 'qq_api_find',
-          description: '检索本轮权限范围内可用的 QQ 接口（比如 精华、公告、撤回、荣誉、群文件），返回接口名、参数和说明。无匹配不代表 QQ 账号没有该功能，也不代表已查询好友关系或账号状态。',
-          properties: { keyword: str('关键词，中文或接口名的一部分') },
-          required: ['keyword'],
-          execute: async ({ keyword }) => {
-            const key = String(keyword || '').trim()
-            const hits = Object.entries(QQ_API).filter(([name, e]) => (isOwner() || e[0] === 'open') && (name.includes(key) || e[2].includes(key))).slice(0, 12)
-            if (!hits.length) return { ok: true, scope: 'current-turn', matched: false, message: '当前会话的可用接口中没有匹配项。这不是 QQ 账号状态或功能是否存在的查询结果；不能据此判断好友关系、申请设置或账号是否支持某功能。同一需求不要反复换同义词重查；无法核实时如实说明，需要定位加好友问题可询问具体错误提示。' }
-            return { ok: true, message: hits.map(([name, e]) => `${name}(${e[1]})：${e[2]}`).join('\n') }
-          },
-          render: (_args, value) => [{ type: 'text', text: (value as any)?.message || '' }],
-        }),
-        defineTool({
-          name: 'qq_api_call',
-          description: '调用 QQ 接口。先用 qq_api_find 查到接口名和参数。param 是 JSON 对象文字，比如 {"group_id":123456}。',
-          properties: { action: str('接口名'), param: str('参数，JSON 对象文字') },
-          required: ['action'],
-          execute: async ({ action, param }) => {
-            let params = {}
-            try { params = JSON.parse(String(param || '{}')) } catch (error) { return { ok: false, message: 'param 不是合法的 JSON' } }
-            if (!params || typeof params !== 'object' || Array.isArray(params)) return { ok: false, message: 'param 要是 JSON 对象' }
-            const name = String(action || '')
-            const no = refusal({ action: name, params, cfg: ctx.root.config, owner: isOwner(), chat })
-            if (no) return { ok: false, message: no }
-            // 原始动作里的文本/转发/卡片参数也过出站清洗（和 QQ 投递同一套），别让工具文字走旁路露出。
-            const clean = typeof hub.cleanOutbound === 'function'
-              ? (text) => hub.cleanOutbound(chat.chatId, text)
-              : (text) => cleanOutboundText(text, { ownerPrivate: chat.chatId === `private:${ctx.root.config.ownerQQ}` })
-            const cleaned = cleanOutboundParams(name, pickParams(name, params), clean)
-            if (!cleaned.ok) return { ok: false, message: cleaned.message }
-            if (cleaned.changed) ctx.logger.info(`qq_api：${chat.chatId} 调用 ${name} 前清洗了外显文本`)
-            ctx.logger.info(`qq_api：${chat.chatId} 调用 ${name}`)
-            const data = await onebot.call(name, cleaned.params, { timeoutMs: 15000, retries: 0 })
-            return { ok: true, message: clipText(JSON.stringify(data ?? null), RESULT_CHARS) }
-          },
-          render: (_args, value) => [{ type: 'text', text: (value as any)?.message || '' }],
-        }),
-      ]
-    })
-    ctx.rule((kind, cfg) => (cfg.qqApi?.enabled === false ? [] : [kind === 'social'
-      ? '- 群公告、精华、荣誉、群文件这些，用 qq_api_find 查接口再用 qq_api_call 调；别人只能查当前这个群。'
-      : '- QQ 上想做的事（撤回、设精华、改群名片、点赞、表情回应、查群公告等）没有专门工具时，用 qq_api_find 查接口再用 qq_api_call 调。'].filter(Boolean)))
-  },
+export const name = 'QQ 接口'
+
+export const version = '1.0.0'
+
+export const description = '把协议端的 QQ 能力交给她：查群公告、精华、荣誉、群文件，主人开口时还能撤回、设精华、改群名片等（qq_api_find / qq_api_call）'
+
+export function apply(ctx, config) {
+  const { hub, onebot } = ctx.host
+  ctx.tool(({ chat, level, sessionId }) => {
+    if (chat.kind === 'system' || ctx.root.config.qqApi?.enabled === false) return []
+    const isOwner = () => level === 'full' || Boolean(hub.turnSendersAllOwner?.(sessionId))
+    return [
+      defineTool({
+        name: 'qq_api_find',
+        description: '检索本轮权限范围内可用的 QQ 接口（比如 精华、公告、撤回、荣誉、群文件），返回接口名、参数和说明。无匹配不代表 QQ 账号没有该功能，也不代表已查询好友关系或账号状态。',
+        properties: { keyword: str('关键词，中文或接口名的一部分') },
+        required: ['keyword'],
+        execute: async ({ keyword }) => {
+          const key = String(keyword || '').trim()
+          const hits = Object.entries(QQ_API).filter(([name, e]) => (isOwner() || e[0] === 'open') && (name.includes(key) || e[2].includes(key))).slice(0, 12)
+          if (!hits.length) return { ok: true, scope: 'current-turn', matched: false, message: '当前会话的可用接口中没有匹配项。这不是 QQ 账号状态或功能是否存在的查询结果；不能据此判断好友关系、申请设置或账号是否支持某功能。同一需求不要反复换同义词重查；无法核实时如实说明，需要定位加好友问题可询问具体错误提示。' }
+          return { ok: true, message: hits.map(([name, e]) => `${name}(${e[1]})：${e[2]}`).join('\n') }
+        },
+        render: (_args, value) => [{ type: 'text', text: (value as any)?.message || '' }],
+      }),
+      defineTool({
+        name: 'qq_api_call',
+        description: '调用 QQ 接口。先用 qq_api_find 查到接口名和参数。param 是 JSON 对象文字，比如 {"group_id":123456}。',
+        properties: { action: str('接口名'), param: str('参数，JSON 对象文字') },
+        required: ['action'],
+        execute: async ({ action, param }) => {
+          let params = {}
+          try { params = JSON.parse(String(param || '{}')) } catch (error) { return { ok: false, message: 'param 不是合法的 JSON' } }
+          if (!params || typeof params !== 'object' || Array.isArray(params)) return { ok: false, message: 'param 要是 JSON 对象' }
+          const name = String(action || '')
+          const no = refusal({ action: name, params, cfg: ctx.root.config, owner: isOwner(), chat })
+          if (no) return { ok: false, message: no }
+          // 原始动作里的文本/转发/卡片参数也过出站清洗（和 QQ 投递同一套），别让工具文字走旁路露出。
+          const clean = typeof hub.cleanOutbound === 'function'
+            ? (text) => hub.cleanOutbound(chat.chatId, text)
+            : (text) => cleanOutboundText(text, { ownerPrivate: chat.chatId === `private:${ctx.root.config.ownerQQ}` })
+          const cleaned = cleanOutboundParams(name, pickParams(name, params), clean)
+          if (!cleaned.ok) return { ok: false, message: cleaned.message }
+          if (cleaned.changed) ctx.logger.info(`qq_api：${chat.chatId} 调用 ${name} 前清洗了外显文本`)
+          ctx.logger.info(`qq_api：${chat.chatId} 调用 ${name}`)
+          const data = await onebot.call(name, cleaned.params, { timeoutMs: 15000, retries: 0 })
+          return { ok: true, message: clipText(JSON.stringify(data ?? null), RESULT_CHARS) }
+        },
+        render: (_args, value) => [{ type: 'text', text: (value as any)?.message || '' }],
+      }),
+    ]
+  })
+  ctx.rule((kind, cfg) => (cfg.qqApi?.enabled === false ? [] : [kind === 'social'
+    ? '- 群公告、精华、荣誉、群文件这些，用 qq_api_find 查接口再用 qq_api_call 调；别人只能查当前这个群。'
+    : '- QQ 上想做的事（撤回、设精华、改群名片、点赞、表情回应、查群公告等）没有专门工具时，用 qq_api_find 查接口再用 qq_api_call 调。'].filter(Boolean)))
 }

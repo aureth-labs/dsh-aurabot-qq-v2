@@ -205,6 +205,11 @@ export class OneBotBot extends Bot {
     await this.callApi('set_msg_emoji_like', { message_id: toId(messageId), emoji_id: emoji, set: true })
   }
 
+  override async internal<T = any>(action: string, params: Record<string, unknown> = {}, options?: { timeoutMs?: number }): Promise<T> {
+    if (this.status !== 'online') throw new BotStateError(this, action)
+    return this.call(action, params, options)
+  }
+
   private async callApi<T = any>(action: string, params: Record<string, unknown> = {}): Promise<T> {
     if (this.status !== 'online') throw new BotStateError(this, action)
     return this.call(action, params)

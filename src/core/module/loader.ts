@@ -217,13 +217,7 @@ export function scanUser() {
 
 /** 检查模块定义，返回出错原因（没问题返回空串）。 */
 export function checkDef(def, id) {
-  if (!def || (typeof def !== 'object' && typeof def !== 'function')) return '入口文件要 export default 一个对象或 apply 函数（看 API.md）'
-  // v2：export default function apply(ctx, config) —— id 取文件夹名
-  if (typeof def === 'function') {
-    if (!id) return '函数形态的入口必须放在以模块 id 命名的文件夹里'
-    if (!ID_RE.test(String(id))) return `模块 id「${id}」不对：小写字母开头，只能有小写字母、数字和 -，2~40 个字`
-    return ''
-  }
+  if (!def || typeof def !== 'object') return '入口要具名导出 apply(ctx, config)（看 API.md）'
   if (typeof def.apply !== 'function') return '模块里没有 apply(ctx, config) 函数'
   if (!ID_RE.test(String(def.id || id || ''))) return `模块 id「${def.id ?? id ?? ''}」不对：小写字母开头，只能有小写字母、数字和 -，2~40 个字`
   // 带 scope 的安装目录是 modules/<owner>/<name>，入口里写 <name> 就行
@@ -234,23 +228,15 @@ export function checkDef(def, id) {
   return ''
 }
 
-/**
- * 没有 default 导出时，从具名导出拼一个模块定义。
- *
- * 模板仓库 / Koishi 的习惯是 `export const name` + `export const config` + `export function apply`，
- * 没有默认导出；这里把这种写法也认成模块，省得每个插件都改一遍。
- */
+/** 具名导出 → 模块定义。和 Koishi 一样：name / Config / apply，id 取文件夹名。 */
 export function namedModuleDef(mod) {
   if (!mod) return undefined
   const apply = typeof mod.apply === 'function' ? mod.apply : null
   if (!apply) return undefined
   const raw = {
     name: mod.name,
-    // 模板/社区口径把说明写在 `usage`，老插件写 `description`，两个都认。
     description: mod.description ?? mod.usage,
     version: mod.version,
-    // 插件类型与多实例：模板仓库用「具名导出」写法（export const kind/reusable），
-    // 漏了这几个字段会让适配器在面板里变成普通插件、reusable 也永远起不来第二份配置。
     kind: mod.kind,
     reusable: mod.reusable,
     reloadOnConfig: mod.reloadOnConfig,
@@ -258,7 +244,6 @@ export function namedModuleDef(mod) {
     tab: mod.tab,
     navGroup: mod.navGroup,
     platforms: mod.platforms,
-    // 模板/社区口径写 `export const Config = Schema.object(...)`，老插件写 `config`，两个都认。
     config: mod.config ?? mod.Config,
     defaults: mod.defaults,
     settings: mod.settings,

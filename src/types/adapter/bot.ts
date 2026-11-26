@@ -109,6 +109,9 @@ export interface BotLike {
   deleteMessage(channelId: string, messageId: string): Promise<void>
   updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message>
 
+  /** 平台原生调用：QQ 是 OneBot action，Telegram 是 Bot API 方法名。没有原生口的平台抛 UnsupportedApiError。 */
+  internal<T = any>(action: string, params?: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<T>
+
   createReaction(channelId: string, messageId: string, emoji: string): Promise<void>
   deleteReaction(channelId: string, messageId: string, emoji: string): Promise<void>
 }

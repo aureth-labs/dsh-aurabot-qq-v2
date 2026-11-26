@@ -12,6 +12,9 @@ import type {
   PluginContext,
   PluginContextExtras,
   TtsFacade,
+  ThinkOptions,
+  ChatLogFacade,
+  HttpHelpers,
 } from '../../../types/plugin/ctx.ts'
 import type { Middleware, MiddlewareOptions, SessionFilter } from '../../../types/plugin/pipeline.ts'
 import type { Target } from '../../../types/core/target.ts'
@@ -60,7 +63,10 @@ interface KernelApi {
   reply: (msg: any, text: string) => Promise<any>
   proactive: PluginContext['proactive']
   ask: (options: any) => Promise<any>
-  onebot: PluginContext['onebot']
+  think: (prompt: string, options?: ThinkOptions) => Promise<string>
+  thinkCooldown: (key?: string) => { retryAt: number; message?: string } | null
+  chatLog: ChatLogFacade
+  http: HttpHelpers
   route: (path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' }) => () => void
 }
 
@@ -136,7 +142,10 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('reply', (msg: any, content: any) => api.reply(msg, String(content ?? '')))
   value('proactive', api.proactive)
   value('ask', (options: any) => api.ask(options))
-  value('onebot', api.onebot)
+  value('think', (prompt: string, options?: ThinkOptions) => api.think(prompt, options).then((out: unknown) => String(out ?? '')))
+  value('thinkCooldown', (key?: string) => api.thinkCooldown(key))
+  value('chatLog', api.chatLog)
+  value('http', api.http)
   value('dataDir', (...parts: string[]) => api.dataDir(...parts))
 
   // 定时器随模块卸载自动回收（Cordis 的 effect 语义），不要用裸 setInterval

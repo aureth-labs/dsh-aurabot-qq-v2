@@ -15,7 +15,13 @@ import { isOwnerOf } from '../../config/global.ts'
 /** 路由选项。 */
 export type RouteOptions = Partial<Record<'access', any>>
 /** 系统回合选项。 */
-export type ThinkOptions = Partial<Record<'title', any>>
+export interface ThinkOptions {
+  title?: string
+  key?: string
+  timeoutMs?: number
+  noTools?: boolean
+  level?: string
+}
 
 export interface ApiDeps {
   logger: { child(name: string): any }
@@ -221,6 +227,12 @@ export function createApi(deps: ApiDeps) {
       // module: id —— 这次模型调用的用量记到哪个模块名下（面板「概览」的 token 明细）
       ask: writable('ask', (opts) => core.ask(typeof opts === 'string' ? { text: opts, module: id } : { ...opts, module: id })),
       think: writable('think', (prompt, opts : ThinkOptions = {}) => core.hub.runSystemTurn(`ext-${id}`, opts.title || def.name || id, String(prompt), opts)),
+      thinkCooldown: (key = '') => core.hub.systemSessionCooldown?.(`ext-${id}`, { key }) ?? null,
+      chatLog: {
+        read: (day) => core.hub.chatLogOf(day),
+        append: (chatId, who, text, uid = '') => core.hub.logChat?.(chatId, who, text, uid),
+      },
+      http: core.http,
       onebot: writable('onebot', (action, params, opts) => core.onebot.call(action, params, opts)),
       // 出站治理面（主动发言策略）。
       // 宿主注入 core.outbound 才有；旧环境/纯测试下 available=false，模块据此降级，

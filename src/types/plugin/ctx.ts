@@ -118,6 +118,38 @@ export interface TtsFacade {
   speak(text: string): Promise<string>
 }
 
+/** `ctx.think`：以她的人格跑一轮后台会话（不发到任何聊天），返回模型输出的正文。 */
+export interface ThinkOptions {
+  title?: string
+  /** 同一插件里区分多个后台会话。 */
+  key?: string
+  timeoutMs?: number
+  noTools?: boolean
+  level?: string
+}
+
+export interface ChatLogRow {
+  t: number
+  chatId: string
+  who: string
+  text: string
+  uid?: string
+  forgottenAt?: number
+}
+
+/** `ctx.chatLog`：她的聊天流水（只读当天 + 追加一条旁白）。 */
+export interface ChatLogFacade {
+  read(day: string): ChatLogRow[]
+  append(chatId: string, who: string, text: string, uid?: string): unknown
+}
+
+/** `ctx.http`：面板路由里读请求、回响应的小工具。 */
+export interface HttpHelpers {
+  body(req: any): Promise<Record<string, any>>
+  query(req: any): Record<string, string>
+  send(res: any, status: number, body: unknown, type?: string): void
+}
+
 /** 管线本体（`ctx.middleware` 要挂到它上面）。 */
 export interface PipelineLike {
   use(fn: Middleware, options?: MiddlewareOptions): () => void
@@ -246,8 +278,12 @@ export interface PluginContext extends ScopeFactory {
   proactive: { available: boolean; submit(input?: any): any; statusOf(id: any): any }
   /** 直接问一次模型（不进会话）。 */
   ask: (options: any) => Promise<any>
-  /** 当前 QQ 适配器的底层调用；新插件优先用 ctx.bot(id)。 */
-  onebot: { call(action: string, params?: any, options?: any): Promise<any> }
+  /** 以人格跑一轮后台会话，返回正文；失败抛错。 */
+  think: (prompt: string, options?: ThinkOptions) => Promise<string>
+  /** 后台会话还在退避期就返回重试时间，否则 null。 */
+  thinkCooldown: (key?: string) => { retryAt: number; message?: string } | null
+  chatLog: ChatLogFacade
+  http: HttpHelpers
   /** 适配器实例：连接 → 上线 → 可用；模块卸载时自动断开。 */
   adapter: (spec: AdapterSpec, config?: unknown) => Promise<AdapterHandle>
   /** 已上线的机器人：`ctx.bots[0]` / `ctx.bots('号')` / `ctx.bots.list()`。 */
