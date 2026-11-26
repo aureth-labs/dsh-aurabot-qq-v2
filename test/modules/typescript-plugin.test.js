@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as wait } from 'node:timers/promises'
@@ -43,4 +43,15 @@ test('新建 TS 插件可使用指令，修改相对导入的子文件触发热�
   writeFileSync(helper, "export const value: string = 'two'")
   for (let count = 0; count < 50 && mods.use('tools/greet')?.value !== 'two'; count++) await wait(50)
   assert.equal(mods.use('tools/greet').value, 'two')
+  const common = join(dir, 'modules', 'wrong-format')
+  mkdirSync(common)
+  writeFileSync(join(common, 'package.json'), JSON.stringify({ main: 'entry.cjs' }))
+  writeFileSync(join(common, 'entry.cjs'), "throw Error('CommonJS entry executed')")
+  await mods.sync()
+  assert.match(mods.status().find(m => m.id === 'wrong-format').error, /只支持 ESM/)
+  writeFileSync(join(common, 'package.json'), JSON.stringify({ main: 'entry.js' }))
+  writeFileSync(join(common, 'entry.js'), 'exports.apply = () => {}')
+  await mods.sync()
+  assert.match(mods.status().find(m => m.id === 'wrong-format').error, /只支持 ESM/)
+
 })

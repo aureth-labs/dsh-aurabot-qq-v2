@@ -12,6 +12,10 @@
 
 每个文件要在面板「本地接口」页**打开开关**才会用；文件不存在或开关关着，就用插件内置的方式。
 
+## 插件与本地脚本
+
+社区插件用 TypeScript 编写，导出 `name`、Schema 配置和 `apply(ctx, config)`。市场包在 package.json 里指定 ESM 入口，发布时附带所需的 JavaScript 和本地脚本。下列文件只接管表中对应的媒体处理步骤，按说明导出默认函数即可。
+
 ## 写法约定
 
 - 是 Node.js 的 ES 模块（`.mjs`），`export default async function (参数) { ... }`。

@@ -2,12 +2,14 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import type { createImporter } from '../importer.ts'
 import { checkDef, namedModuleDef, type ModuleDef } from '../loader.ts'
-import { readManifest } from '../manifest.ts'
+import { assertEsm, readManifest } from '../manifest.ts'
 
 export async function loadDefinition(
   importer: ReturnType<typeof createImporter>,
   source: { id: string; dir: string; file: string },
 ) {
+  const formatError = assertEsm(source.dir, source.file)
+  if (formatError) throw new Error(formatError)
   const { mod, stamp } = await importer.load(source)
   const named = namedModuleDef(mod)
   if (!named) throw new Error('入口要具名导出 apply(ctx, config)')

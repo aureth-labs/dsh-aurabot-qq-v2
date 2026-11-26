@@ -43,27 +43,20 @@ delivery path.
 
 ## Writing a plugin
 
-Two forms, both hot-reload on save (release builds included):
-
-| Form | Location | Use for |
-| --- | --- | --- |
-| single file | `<data>/modules/<id>.mjs` | keyword replies, link parsing |
-| folder | `<data>/modules/<id>/index.ts` or `index.mjs` | multi-file, npm deps, panel pages |
+Create `modules/hello/index.ts` inside the AuraBot data directory. Sending `/hello` runs the local command with the current instance's greeting.
 
 ```ts
-export default {
-  name: 'Hello',
-  apply(ctx, config) {
-    ctx.middleware(async (session, next) => {
-      if (session.content.trim() !== 'hello') return next()
-      await session.send('hi~')
-    }, { name: 'hello' })
-  },
+import { Schema, type Ctx } from '@aurabot/plugin-api'
+
+export const name = 'hello'
+export const config = Schema.object({ greeting: Schema.string().default('Hello') })
+
+export function apply(ctx: Ctx) {
+  ctx.command('hello').action(({ session }) => session.send(ctx.config.greeting))
 }
 ```
 
-See `API.md` and `aurabot.d.ts` in the data directory for the full `ctx` surface, element tree and
-adapter contract. In-repo template: `packages/_template/`.
+Saving a TypeScript file in the package reloads the plugin and releases its previous registrations. Single-file ESM utilities can live at `modules/<id>.mjs`. Marketplace packages include a manifest and a built JavaScript entry. See the [plugin SDK](packages/sdk/API.md) for the context, element tree, and adapter contracts.
 
 ## Development
 

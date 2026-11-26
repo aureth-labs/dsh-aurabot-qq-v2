@@ -81,10 +81,10 @@ export function entryOf(dir: string): string {
 /** 宿主只跑 ESM。CommonJS 的入口早点拒绝，别等到 import 时报一句看不懂的错。 */
 export function assertEsm(dir: string, entry: string): string {
   if (!entry) return '找不到入口文件（package.json 的 main，或 index.mjs / index.js）'
-  if (/\.cjs$/i.test(entry)) return '入口是 CommonJS（.cjs），宿主只支持 ESM'
+  if (/\.c(?:js|ts)$/i.test(entry)) return '入口是 CommonJS，宿主只支持 ESM（.ts、.mjs 或 type: module 的 .js）'
   const pkg = readJson(join(dir, 'package.json'))
   const type = str(pkg?.type).toLowerCase()
-  if (type === 'commonjs' && /\.js$/i.test(entry)) {
+  if (type === 'commonjs' && /\.(?:js|ts)$/i.test(entry)) {
     return 'package.json 里 type 是 commonjs，宿主只支持 ESM（把 type 改成 module，或用 .mjs）'
   }
   return ''

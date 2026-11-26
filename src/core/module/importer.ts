@@ -60,6 +60,9 @@ export function createImporter(root: string) {
             writeFileSync(to, stripTypeScriptTypes(readFileSync(from, 'utf8'), { mode: 'transform' }))
           } else copyFileSync(from, to)
         }
+        const pkgFile = join(stage, 'package.json')
+        const pkg = existsSync(pkgFile) ? JSON.parse(readFileSync(pkgFile, 'utf8')) : {}
+        if (!pkg.type) writeFileSync(pkgFile, JSON.stringify({ ...pkg, type: 'module' }))
         renameSync(stage, target)
       } finally {
         if (existsSync(stage)) rmSync(stage, { recursive: true, force: true })
@@ -81,7 +84,11 @@ export function createImporter(root: string) {
       if (closed) throw new Error('插件加载器已关闭')
       pending++
       try { return await importSource(source) }
-      finally { pending--; cleanup() }
+      catch (error) {
+        if (error instanceof ReferenceError && /(?:^|\s)(module|exports|require) is not defined/.test(error.message))
+          throw new Error('插件只支持 ESM；请使用 import 与具名 export', { cause: error })
+        throw error
+      } finally { pending--; cleanup() }
     },
     dispose() { closed = true; cleanup() },
   }

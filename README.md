@@ -38,7 +38,7 @@
 ```bash
 npm install
 npm run build        # src → lib，client → dist
-npm run dev          # 开发期：保存即编 lib 与 dist，DSH 自动热重载
+npm run dev          # 开发期：DSH 直接加载后端 TypeScript，面板增量构建
 ```
 
 在 DSH 里启用本插件后打开面板。**没有设置向导**：进来就是主界面。
@@ -66,29 +66,20 @@ index.mjs            插件入口，只加载 lib/packages/app/index.js
 
 ## 自己写插件
 
-两种形态，都支持热重载（保存即生效，发行版里也一样）：
-
-| 形态 | 放哪 | 适合 |
-| --- | --- | --- |
-| 单文件 | 数据目录 `modules/<id>.mjs` | 关键词回复、链接解析 |
-| 文件夹 | `modules/<id>/index.ts` 或 `index.mjs` | 多文件、npm 依赖、面板页 |
-
-写法只有一种：
+在数据目录的 `modules/hello/index.ts` 写一个插件。用户在当前会话输入 `/hello`，就能收到 Schema 配置的问候语。
 
 ```ts
-export default {
-  name: '打招呼',
-  apply(ctx, config) {
-    ctx.middleware(async (session, next) => {
-      if (session.content.trim() !== '你好') return next()
-      await session.send('你好呀～')
-    }, { name: 'hello' })
-  },
+import { Schema, type Ctx } from '@aurabot/plugin-api'
+
+export const name = 'hello'
+export const config = Schema.object({ greeting: Schema.string().default('你好呀') })
+
+export function apply(ctx: Ctx) {
+  ctx.command('hello').action(({ session }) => session.send(ctx.config.greeting))
 }
 ```
 
-完整接口、`ctx` 能力表、元素树与适配器写法见数据目录里的 `API.md`；
-类型提示在旁边的 `aurabot.d.ts`。仓库内模板见 `packages/_template/`。
+保存同包的 TypeScript 源文件时，宿主会释放旧实例并重新加载。单文件 ESM 小工具可以放在 `modules/<id>.mjs`。市场发行包带有 `package.json`、JS 入口和平台声明。开发接口与示例见 [插件 SDK](packages/sdk/API.md)。
 
 ## 开发
 

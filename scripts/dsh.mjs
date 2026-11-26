@@ -6,9 +6,10 @@
 //
 // DSH 可执行文件按这个顺序找：DSH_BIN → 环境变量 DSH_HOME 下的 @deepseek-ai/dsh → PATH 里的 dsh。
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { homedir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
+import { pathToFileURL } from 'node:url'
 
 const mode = process.argv[2] === 'start' ? 'start' : 'dev'
 const port = process.env.DSH_PORT || '8787'
@@ -35,7 +36,16 @@ const run = (args) => {
 }
 
 if (dev) run([join(import.meta.dirname, 'dev.mjs')]) // 前端增量编译
-const dsh = run([bin, 'web', '--no-open', '--port', port])
+const args = [bin, '--profile', 'web']
+if (dev) {
+  const dir = mkdtempSync(join(tmpdir(), 'aurabot-hmr-'))
+  const patch = join(dir, 'hmr.yml')
+  const base = pathToFileURL(join(import.meta.dirname, '..') + '/').href
+  writeFileSync(patch, JSON.stringify([{ id: 'hmr', disabled: false, config: { base, root: ['src', 'packages', 'dev.mjs'] } }]))
+  args.push('--patch', patch)
+  process.once('exit', () => { try { unlinkSync(patch); rmdirSync(dir) } catch {} })
+}
+const dsh = run([...args, '--no-open', '--port', port])
 
 console.log(`[dsh] ${dev ? '开发' : '生产'}模式 → 插件入口 ${dev ? 'packages/app/index.ts' : 'lib/'} ，端口 ${port}`)
 
