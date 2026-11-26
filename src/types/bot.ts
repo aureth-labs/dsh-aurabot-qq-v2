@@ -1,13 +1,15 @@
 /**
  * Bot 契约：一个已上线的机器人实例。
  *
- * 生命周期固定为「注册 → 连接 → 上线事件 → 可用 → 断开 → 下线事件」，
- * 未上线时调用发送一律抛错，不要静默丢消息。
+ * 发送与平台资源查询都在 bot 上，适配器只负责把调用翻译成平台 API。
+ * 资源方法对齐 Satori：user / guild / channel / message / friend / reaction。
+ * 平台不支持的接口由基类抛 UnsupportedApiError，不静默返回空。
  */
+
+import type { Element } from './element.ts'
 
 export type BotStatus = 'registered' | 'connecting' | 'online' | 'offline' | 'error'
 
-/** 适配器要如实声明自己能渲染哪些元素，核心据此决定是否降级。 */
 export type Capability =
   | 'text'
   | 'at'
@@ -24,21 +26,91 @@ export type Capability =
   | 'reaction'
 
 export interface SendOptions {
-  /** 引用回复哪条消息（平台原生的 reply / quote）。 */
   replyTo?: string
   timeoutMs?: number
 }
 
+export interface User {
+  id: string
+  name?: string
+  nick?: string
+  avatar?: string
+  isBot?: boolean
+  raw?: unknown
+}
+
+export interface Guild {
+  id: string
+  name?: string
+  avatar?: string
+  raw?: unknown
+}
+
+export type ChannelType = 'text' | 'voice' | 'category' | 'direct'
+
+export interface Channel {
+  id: string
+  type: ChannelType
+  name?: string
+  guildId?: string
+  parentId?: string
+  raw?: unknown
+}
+
+export interface GuildMember {
+  user: User
+  nick?: string
+  roles?: string[]
+  joinedAt?: number
+  raw?: unknown
+}
+
+export interface Message {
+  id: string
+  channelId: string
+  userId: string
+  content: string
+  elements?: Element[]
+  createdAt?: number
+  raw?: unknown
+}
+
+export interface MessageQuery {
+  limit?: number
+  /** 平台分页游标；不传取最近一页。 */
+  next?: string
+  order?: 'asc' | 'desc'
+}
+
 export interface BotLike {
-  /** 实例 id，注册表按它索引；同一个平台多开时不能重。 */
   readonly id: string
   readonly platform: string
-  /** 平台侧自己的账号，用来判断「是不是我发的」。 */
   readonly selfId: string
   readonly status: BotStatus
+  supports(capability: Capability): boolean
+
   sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown>
   sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown>
-  supports(capability: Capability): boolean
+
+  getSelfId(): string
+  getSelf(): Promise<User>
+  getUser(userId: string): Promise<User>
+  getFriendList(): Promise<User[]>
+
+  getGuild(guildId: string): Promise<Guild>
+  getGuildList(): Promise<Guild[]>
+  getUserList(guildId: string): Promise<GuildMember[]>
+
+  getChannel(channelId: string): Promise<Channel>
+  getChannelList(guildId: string): Promise<Channel[]>
+
+  getMessage(channelId: string, messageId: string): Promise<Message>
+  getMessageList(channelId: string, query?: MessageQuery): Promise<Message[]>
+  deleteMessage(channelId: string, messageId: string): Promise<void>
+  updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message>
+
+  createReaction(channelId: string, messageId: string, emoji: string): Promise<void>
+  deleteReaction(channelId: string, messageId: string, emoji: string): Promise<void>
 }
 
 export interface BotEvents {
@@ -48,15 +120,13 @@ export interface BotEvents {
 }
 
 /**
- * `ctx.bots` 的取法（三种都支持）：
+ * `ctx.bots` 的取法：
  *
  * ```ts
- * ctx.bots[0]                 // 第一个
- * ctx.bots('1787850032')      // 按 id 取，取不到是 undefined
- * ctx.bots.list()             // 全部
+ * ctx.bots[0]
+ * ctx.bots('1787850032')
+ * ctx.bots.list()
  * ```
- *
- * 做成「数组 + 可调用」的混合体，是为了不用记 `get()`：写 `ctx.bots(id)` 最顺手。
  */
 export type BotsAccessor = BotLike[] & {
   (id: string): BotLike | undefined

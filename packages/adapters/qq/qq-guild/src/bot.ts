@@ -7,10 +7,18 @@
  * 这里只做「平台动作 → 频道 API」的翻译。
  */
 
-import type { BotLike, BotStatus, Capability, SendOptions } from '../../../../../src/types/bot.ts'
+import type {
+  BotStatus,
+  Capability,
+  Channel,
+  Guild,
+  GuildMember,
+  Message,
+  SendOptions,
+} from '../../../../../src/types/bot.ts'
 import type { QQGuildMessageParams } from '../../../../../src/types/adapter.ts'
 import type { QQOpenApi } from '../../common/src/openapi.ts'
-import { BotStateError } from '../../../../../src/core/bot/index.ts'
+import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
 import { renderQQText } from '../../common/src/render.ts'
 
 /** `PUT /users/@me/dms` 的入参：开一个私信频道。 */
@@ -38,7 +46,7 @@ export interface QQGuildBotInit {
 /** 频道消息能表达的东西：文本、@、markdown、引用、表情回应。 */
 const CAPABILITIES: Capability[] = ['text', 'at', 'markdown', 'quote', 'reaction']
 
-export class QQGuildBot implements BotLike {
+export class QQGuildBot extends Bot {
   readonly platform = 'qq'
   private readonly api: QQOpenApi
   private readonly key: string
@@ -51,6 +59,7 @@ export class QQGuildBot implements BotLike {
   private reason = ''
 
   constructor(init: QQGuildBotInit) {
+    super()
     this.api = init.api
     this.self = init.selfId ?? ''
     this.key = init.id ?? 'qq-guild'
@@ -146,10 +155,84 @@ export class QQGuildBot implements BotLike {
     return channelId
   }
 
+  async getGuild(guildId: string): Promise<Guild> {
+    const raw = await this.api.request<any>('GET', `/guilds/${encodeURIComponent(guildId)}`)
+    return { id: String(raw?.id ?? guildId), name: String(raw?.name ?? ''), avatar: raw?.icon, raw }
+  }
+
+  async getChannel(channelId: string): Promise<Channel> {
+    const raw = await this.api.request<any>('GET', `/channels/${encodeURIComponent(channelId)}`)
+    return {
+      id: String(raw?.id ?? channelId),
+      type: Number(raw?.type) === 2 ? 'voice' : 'text',
+      name: String(raw?.name ?? ''),
+      guildId: raw?.guild_id == null ? undefined : String(raw.guild_id),
+      parentId: raw?.parent_id == null ? undefined : String(raw.parent_id),
+      raw,
+    }
+  }
+
+  async getChannelList(guildId: string): Promise<Channel[]> {
+    const list = await this.api.request<any>('GET', `/guilds/${encodeURIComponent(guildId)}/channels`)
+    return (Array.isArray(list) ? list : []).map((item) => ({
+      id: String(item?.id ?? ''),
+      type: Number(item?.type) === 2 ? ('voice' as const) : ('text' as const),
+      name: String(item?.name ?? ''),
+      guildId: String(guildId),
+      parentId: item?.parent_id == null ? undefined : String(item.parent_id),
+      raw: item,
+    }))
+  }
+
+  async getUserList(guildId: string): Promise<GuildMember[]> {
+    const list = await this.api.request<any>('GET', `/guilds/${encodeURIComponent(guildId)}/members?limit=100`)
+    const rows = Array.isArray(list) ? list : Array.isArray(list?.data) ? list.data : []
+    return rows.map((item) => ({
+      user: {
+        id: String(item?.user?.id ?? ''),
+        name: String(item?.user?.username ?? ''),
+        nick: item?.nick,
+        avatar: item?.user?.avatar,
+        isBot: Boolean(item?.user?.bot),
+      },
+      nick: item?.nick,
+      roles: Array.isArray(item?.roles) ? item.roles.map(String) : [],
+      joinedAt: Date.parse(String(item?.joined_at ?? '')) || undefined,
+      raw: item,
+    }))
+  }
+
+  async getMessage(channelId: string, messageId: string): Promise<Message> {
+    const raw = await this.api.request<any>(
+      'GET',
+      `/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`,
+    )
+    return mapGuildMessage(raw, channelId)
+  }
+
+  async deleteMessage(channelId: string, messageId: string): Promise<void> {
+    await this.api.request(
+      'DELETE',
+      `/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`,
+    )
+  }
+
   private assertOnline(action: string): void {
     if (this.state !== 'online') {
       this.log?.warn(`频道机器人 ${this.id} 不在线，不能 ${action}`)
       throw new BotStateError(this, action)
     }
+  }
+}
+
+function mapGuildMessage(raw: any, channelId: string): Message {
+  const content = String(raw?.content ?? '')
+  return {
+    id: String(raw?.id ?? ''),
+    channelId: String(raw?.channel_id ?? channelId),
+    userId: String(raw?.author?.id ?? ''),
+    content,
+    createdAt: Date.parse(String(raw?.timestamp ?? '')) || undefined,
+    raw,
   }
 }

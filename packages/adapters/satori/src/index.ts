@@ -8,7 +8,20 @@
 // 业务插件对它是无感的：`ctx.command` / `ctx.middleware` / `session.send` 照旧。
 
 import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../src/types/adapter.ts'
-import type { BotLike, BotStatus, Capability, SendOptions } from '../../../../src/types/bot.ts'
+import type {
+  BotLike,
+  BotStatus,
+  Capability,
+  Channel,
+  ChannelType,
+  Guild,
+  GuildMember,
+  Message,
+  MessageQuery,
+  SendOptions,
+  User,
+} from '../../../../src/types/bot.ts'
+import { Bot } from '../../../../src/core/bot/index.ts'
 import { isElement, toText } from '../../../../src/core/message/element.ts'
 import { fromSatori, toSatoriBody } from '../../../../src/core/message/satori.ts'
 import { SatoriClient, type SatoriEvent, type SatoriLogin } from '../../../../src/core/message/satori-client.ts'
@@ -29,7 +42,7 @@ const CHANNEL_DIRECT = 1
 
 const CAPABILITIES: Capability[] = ['text', 'at', 'image', 'voice', 'video', 'file', 'forward', 'quote']
 
-class SatoriBot implements BotLike {
+class SatoriBot extends Bot {
   readonly platform: string
   private readonly client: SatoriClient
   private readonly log: (message: string) => void
@@ -40,6 +53,7 @@ class SatoriBot implements BotLike {
   private reason = ''
 
   constructor(platform: string, client: SatoriClient, log: (message: string) => void) {
+    super()
     this.platform = platform
     this.client = client
     this.log = log
@@ -100,6 +114,90 @@ class SatoriBot implements BotLike {
 
   private assertOnline(action: string): void {
     if (this.state !== 'online') throw new Error(`机器人 ${this.platform}/${this.id} 不在线，不能 ${action}（${this.reason || '未连接'}）`)
+  }
+
+  async getSelf(): Promise<User> {
+    return this.getUser(this.selfId)
+  }
+
+  async getUser(userId: string): Promise<User> {
+    return mapUser(await this.api('user.get', { user_id: String(userId) }), userId)
+  }
+
+  async getFriendList(): Promise<User[]> {
+    return rowsOf(await this.api('friend.list', {})).map((item) => mapUser(item))
+  }
+
+  async getGuild(guildId: string): Promise<Guild> {
+    const raw = await this.api('guild.get', { guild_id: String(guildId) })
+    return { id: String(raw?.id ?? guildId), name: String(raw?.name ?? ''), avatar: raw?.avatar, raw }
+  }
+
+  async getGuildList(): Promise<Guild[]> {
+    return rowsOf(await this.api('guild.list', {})).map((item) => ({
+      id: String(item?.id ?? ''),
+      name: String(item?.name ?? ''),
+      avatar: item?.avatar,
+      raw: item,
+    }))
+  }
+
+  async getUserList(guildId: string): Promise<GuildMember[]> {
+    return rowsOf(await this.api('guild.member.list', { guild_id: String(guildId) })).map((item) => ({
+      user: mapUser(item?.user ?? item),
+      nick: item?.nick,
+      roles: Array.isArray(item?.roles) ? item.roles.map(String) : [],
+      joinedAt: item?.joined_at ?? undefined,
+      raw: item,
+    }))
+  }
+
+  async getChannel(channelId: string): Promise<Channel> {
+    return mapChannel(await this.api('channel.get', { channel_id: String(channelId) }), channelId)
+  }
+
+  async getChannelList(guildId: string): Promise<Channel[]> {
+    return rowsOf(await this.api('channel.list', { guild_id: String(guildId) })).map((item) => mapChannel(item))
+  }
+
+  async getMessage(channelId: string, messageId: string): Promise<Message> {
+    const raw = await this.api('message.get', { channel_id: String(channelId), message_id: String(messageId) })
+    return mapMessage(raw, channelId)
+  }
+
+  async getMessageList(channelId: string, query: MessageQuery = {}): Promise<Message[]> {
+    const raw = await this.api('message.list', {
+      channel_id: String(channelId),
+      next: query.next,
+      limit: query.limit,
+    })
+    return rowsOf(raw).map((item) => mapMessage(item, channelId))
+  }
+
+  async deleteMessage(channelId: string, messageId: string): Promise<void> {
+    await this.api('message.delete', { channel_id: String(channelId), message_id: String(messageId) })
+  }
+
+  async updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message> {
+    const raw = await this.api('message.update', {
+      channel_id: String(channelId),
+      message_id: String(messageId),
+      content: render(content),
+    })
+    return mapMessage(raw, channelId)
+  }
+
+  async createReaction(channelId: string, messageId: string, emoji: string): Promise<void> {
+    await this.api('reaction.create', { channel_id: String(channelId), message_id: String(messageId), emoji })
+  }
+
+  async deleteReaction(channelId: string, messageId: string, emoji: string): Promise<void> {
+    await this.api('reaction.delete', { channel_id: String(channelId), message_id: String(messageId), emoji })
+  }
+
+  private async api(method: string, params: Record<string, unknown>): Promise<any> {
+    this.assertOnline(method)
+    return this.client.call(method, params)
   }
 }
 
@@ -194,3 +292,45 @@ export function satoriAdapter(): AdapterSpec {
 }
 
 const disconnectOf = new WeakMap<BotLike, () => void>()
+
+const CHANNEL_TYPES: Record<number, ChannelType> = { 0: 'text', 1: 'direct', 2: 'category', 3: 'voice' }
+
+function rowsOf(value: any): any[] {
+  if (Array.isArray(value)) return value
+  return Array.isArray(value?.data) ? value.data : []
+}
+
+function mapUser(raw: any, fallbackId = ''): User {
+  return {
+    id: String(raw?.id ?? fallbackId),
+    name: raw?.name,
+    nick: raw?.nick,
+    avatar: raw?.avatar,
+    isBot: Boolean(raw?.is_bot),
+    raw,
+  }
+}
+
+function mapChannel(raw: any, fallbackId = ''): Channel {
+  return {
+    id: String(raw?.id ?? fallbackId),
+    type: CHANNEL_TYPES[Number(raw?.type)] ?? 'text',
+    name: raw?.name,
+    guildId: raw?.guild_id == null ? undefined : String(raw.guild_id),
+    parentId: raw?.parent_id == null ? undefined : String(raw.parent_id),
+    raw,
+  }
+}
+
+function mapMessage(raw: any, channelId: string): Message {
+  const elements = fromSatori(String(raw?.content ?? ''))
+  return {
+    id: String(raw?.id ?? ''),
+    channelId: String(raw?.channel?.id ?? channelId),
+    userId: String(raw?.user?.id ?? ''),
+    content: toText(elements),
+    elements,
+    createdAt: Number(raw?.created_at) || undefined,
+    raw,
+  }
+}

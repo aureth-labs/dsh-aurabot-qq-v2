@@ -62,21 +62,24 @@ export function wrapAdapterBot(bot: BotLike, options: WrapAdapterBotOptions): Bo
       : bot.sendPrivateMessage(targetId, prepared, sendOptions)
   }
 
-  return {
-    get id() {
-      return bot.id
-    },
-    get platform() {
-      return bot.platform
-    },
-    get selfId() {
-      return bot.selfId
-    },
-    get status() {
-      return bot.status
-    },
+  const overrides = {
     supports,
-    sendMessage: (channelId, content, sendOptions) => send('sendMessage', channelId, content, sendOptions),
-    sendPrivateMessage: (userId, content, sendOptions) => send('sendPrivateMessage', userId, content, sendOptions),
+    sendMessage: (channelId: string, content: unknown, sendOptions?: SendOptions) =>
+      send('sendMessage', channelId, content, sendOptions),
+    sendPrivateMessage: (userId: string, content: unknown, sendOptions?: SendOptions) =>
+      send('sendPrivateMessage', userId, content, sendOptions),
   }
+
+  // 资源 API（getUser / getChannel / getMessage……）不逐个转发：
+  // 代理把一切未覆盖的成员绑回原实例，适配器以后新增接口不会在这里漏掉。
+  return new Proxy(bot, {
+    get(target, prop) {
+      if (prop in overrides) return (overrides as Record<string | symbol, unknown>)[prop]
+      const value = Reflect.get(target, prop, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+    set(target, prop, value) {
+      return Reflect.set(target, prop, value, target)
+    },
+  }) as BotLike
 }

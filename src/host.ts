@@ -42,6 +42,7 @@ import { dataDir, ensureDir } from './core/config/store.ts'
 import { createUsageFx } from './core/llm/usage-fx.ts'
 import { initUsage, usageReport, closeUsage } from './core/llm/usage.ts'
 import { BotRegistry, createBotsAccessor } from './core/bot/bot-registry.ts'
+import { botApiStubs } from './core/bot/index.ts'
 import { AdapterRegistry } from './core/bot/adapter-registry.ts'
 import { wrapAdapterBot } from './core/bot/adapter-bot.ts'
 import type { BotLike } from './types/bot.ts'
@@ -1819,6 +1820,7 @@ export function apply(ctx) {
     const platform = String(body.platform || 'satori')
     const sent: Array<{ method: string; target: string; content: unknown }> = []
     const stub: BotLike = {
+      ...botApiStubs(`${platform}:debug`),
       id: `${platform}:debug`,
       platform,
       selfId: 'debug',

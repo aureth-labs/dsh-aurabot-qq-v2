@@ -7,7 +7,21 @@
 
 export type { Target, TargetType } from './target.ts'
 export type { Element, ElementSource, ElementFactory, OneBotSegment, Selector } from './element.ts'
-export type { BotLike, BotStatus, BotEvents, BotsAccessor, Capability, SendOptions } from './bot.ts'
+export type {
+  BotLike,
+  BotStatus,
+  BotEvents,
+  BotsAccessor,
+  Capability,
+  Channel,
+  ChannelType,
+  Guild,
+  GuildMember,
+  Message,
+  MessageQuery,
+  SendOptions,
+  User,
+} from './bot.ts'
 export type { SessionInit, SessionLike } from './session.ts'
 export type {
   StageName,
