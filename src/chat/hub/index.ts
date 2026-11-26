@@ -25,7 +25,7 @@ import { applyForwardBodies, forwardBody, readForward } from '../inbound/forward
 import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../core/message/media/img.ts'
 import { redact } from '../../core/support/log/redact.ts'
 import { defaultModel, pickReasoningEffort, canSeeImages, modelVision } from '../../core/llm/index.ts'
-import { resolveChatModel } from './model/chat-model.ts'
+import { resolveChatModel } from './chat-model.ts'
 import { chatEffortFor } from '../commands/effort-command.ts'
 import { createFaces } from '../media/face/index.ts'
 import { cleanContent, cleanText } from '../../core/support/text.ts'
@@ -157,7 +157,7 @@ type RunSubagentTurnOptions = Partial<Record<'timeoutMs' | 'moduleId' | 'source'
 
 export * from './context/context.ts'
 
-import { createChatLog } from './log/chatlog.ts'
+import { createChatLog } from './chatlog.ts'
 import { createOutbound } from './delivery/outbound.ts'
 import { createDeliver } from './delivery/deliver.ts'
 import { createTurnState } from './turn/turn-state.ts'

@@ -3,6 +3,6 @@
 // 这里导出的就是模块的 exports，宿主读 apply / inject。
 
 export { inject } from './core/api/constants.ts'
-export { apply } from './boot/apply.ts'
+export { apply } from './boot.ts'
 export { AurabotPage } from './shell/panel.ts'
 export { WhaleIcon } from './core/ui/icons.ts'

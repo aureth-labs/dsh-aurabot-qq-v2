@@ -26,7 +26,7 @@ import { createOneBotClient } from '../../packages/adapters/qq/onebot-v11/src/cl
 import { createOutbox } from '../../packages/adapters/qq/onebot-v11/src/outbox.ts'
 import { createHub, workspaceDirOf } from '../chat/hub/index.ts'
 import { createPersonaMemoryRuntime } from '../core/support/persona-memory-bridge.ts'
-import { normalizeSelection } from '../chat/hub/model/chat-model.ts'
+import { normalizeSelection } from '../chat/hub/chat-model.ts'
 import { grantOwner, moveWorkspace, realWorkspace } from '../core/runtime/workspace-move.ts'
 import { createLocal, fileOf, toImageBuffer } from '../local/index.ts'
 
