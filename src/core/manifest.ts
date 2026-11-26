@@ -20,6 +20,8 @@ export interface ModuleManifest {
   api: number
   requires: string[]
   panel: string
+  /** 面板保存设置后要不要重载这个模块（apply 里的 config 才会是新的）。默认 false。 */
+  reloadOnConfig: boolean
   /** 入口绝对路径；找不到就是 '' */
   entry: string
   dir: string
@@ -112,6 +114,7 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
       api: Number(aurabot.api ?? 2) || 2,
       requires: strings(aurabot.requires),
       panel: str(aurabot.panel, str(pkg.dsh?.client?.panel, DEFAULT_PANEL)),
+      reloadOnConfig: aurabot.reloadOnConfig === true,
       entry,
       dir,
       source: 'package',
@@ -139,6 +142,7 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
     api: Number(legacy.api ?? 1) || 1,
     requires: strings(legacy.requires),
     panel: str(legacy.panel, 'panel.js'),
+    reloadOnConfig: legacy.reloadOnConfig === true,
     entry,
     dir,
     source: 'module.json',

@@ -86,6 +86,12 @@ const VERSION = PKG.version
 const STARTED_AT = Date.now()
 const PREFIX = '/aurabot/api'
 
+/** 是不是跑在 `node --test` 里（Node 会给子进程设 NODE_TEST_CONTEXT）。 */
+function underTest() {
+  if (process.env.NODE_TEST_CONTEXT) return true
+  return process.argv.some((arg) => arg === '--test')
+}
+
 /**
  * 开发期自动编译：只编前端。
  *
@@ -99,6 +105,9 @@ const PREFIX = '/aurabot/api'
  */
 function ensureDevBuild(log) {
   if (process.env.AURABOT_DEV_WATCH === '0') return
+  // 测试会并行 import 本模块：每个进程都去起一个 tsc -w，跑一轮就攒下几十个常驻编译器。
+  // 后台编译只服务于「真在开面板写前端」，测试里一律不起。
+  if (underTest()) return
   try {
     const devScript = join(ROOT, 'scripts', 'dev.mjs')
     const tscBin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc')
@@ -273,6 +282,8 @@ export function apply(ctx) {
     if (bridge && (before.bridge.dshTools !== cfg.bridge.dshTools || before.persona.current !== cfg.persona.current)) bridge.refresh()
     if (mods && (JSON.stringify(before.modules) !== JSON.stringify(cfg.modules) || before.safeMode !== cfg.safeMode)) mods.sync().catch(() => {})
     mods?.emit('config', cfg, before)
+    // 声明了 reloadOnConfig 的模块：设置一改就重载，apply 里的 config 才是新的。
+    mods?.reloadOnConfigChange(before?.ext, cfg.ext).catch(() => {})
     if (JSON.stringify(before.backup?.remote) !== JSON.stringify(cfg.backup?.remote)) scheduleRemoteBackup()
     return cfg
   }

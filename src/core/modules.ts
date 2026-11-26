@@ -1111,6 +1111,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           panel: def.panel || (panelFile && existsSync(panelFile) ? manifest.panel : undefined),
           capabilities: def.capabilities || manifest.capabilities,
           api: Math.max(Number(def.api || 1) || 1, manifest.api),
+          reloadOnConfig: def.reloadOnConfig ?? manifest.reloadOnConfig,
         }
       }
       if (disposed || (revisions.get(u.id) || 0) !== revision) return null
@@ -1259,6 +1260,23 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     userSeen.delete(id)
     await sync()
     return status().find((m) => m.id === id) || null
+  }
+
+  /**
+   * 面板保存设置后的收尾。
+   *
+   * 默认什么都不做：内置模块和多数插件用的是 `ctx.settings()`，每次读都是新值，重载反而丢内存态。
+   * 清单里写了 `aurabot.reloadOnConfig: true` 的模块才重载 —— 那些在 `apply(ctx, config)` 里
+   * 直接把 config 存进闭包的插件，重载一次最省心。
+   */
+  async function reloadOnConfigChange(beforeExt: Record<string, unknown> = {}, nextExt: Record<string, unknown> = {}) {
+    const ids = new Set([...Object.keys(beforeExt || {}), ...Object.keys(nextExt || {})])
+    for (const id of ids) {
+      const changed = JSON.stringify((beforeExt || {})[id]) !== JSON.stringify((nextExt || {})[id])
+      if (!changed) continue
+      if (live.get(id)?.def?.reloadOnConfig !== true) continue
+      await reload(id).catch(() => {})
+    }
   }
 
   function dispose() {
@@ -1648,7 +1666,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const publicHandle = { use: exportsOf, has: (id) => live.has(id), list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
-    boot, sync, reload, stop, dispose, status, create, fork, remove: removeModule, promptFor, panelSource,
+    boot, sync, reload, stop, dispose, status, create, fork, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
     use: exportsOf, has: (id) => live.has(id), running: (id) => live.get(id)?.source || null, generation: () => generation,
     capabilitiesOf,
     // 面板首屏提速：导航摘要（纯内存）与导航版本号（安装/启停/失败/重载时递增）

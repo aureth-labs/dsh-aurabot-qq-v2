@@ -91,6 +91,19 @@ before(async () => {
   writeMod('switchy', flagCode('switchy', "settings: [{ key: 'enabled', label: '开' }],"))
   writeMod('plain', flagCode('plain', "settings: [{ key: 'city', label: '城市' }],"))
   writeMod('sender', senderCode)
+  // 清单里声明 reloadOnConfig 的模块：保存设置后要重载，apply 才能拿到新 config
+  mkdirSync(modDir('reloady'), { recursive: true })
+  writeFileSync(join(modDir('reloady'), 'package.json'), JSON.stringify({
+    name: 'reloady', version: '1.0.0', type: 'module', main: 'index.mjs',
+    aurabot: { displayName: '重载测试', api: 2, reloadOnConfig: true },
+  }))
+  writeFileSync(join(modDir('reloady'), 'index.mjs'), `
+export const name = 'reloady'
+export function apply(_ctx, config) {
+  globalThis.__reloadyStarts = (globalThis.__reloadyStarts || 0) + 1
+  globalThis.__reloadyGreet = (config && config.greet) || null
+}
+`)
   // 替换内置的空间日记
   writeMod('diary', `export default { id: 'diary', name: '我的日记', api: 1, setup(api) {
     api.route('/diary/history', async () => ({ ok: true, items: [], next: 0, mine: true }))
@@ -128,6 +141,26 @@ test('自己写的模块加载了；同名的替换了内置的；关掉的内�
   assert.equal(off.moduleOff, true)
   // 自己写的模块的接口在 /ext/模块id/ 下面，设置有默认值
   assert.equal((await fake.call('/ext/echo/hi')).json().hi, '你好')
+})
+
+test('清单写了 reloadOnConfig：保存设置后重载，apply 拿到新 config', async () => {
+  await until(async () => (await mod('reloady'))?.running)
+  const starts = globalThis.__reloadyStarts
+  assert.ok(starts >= 1, '模块要先跑起来')
+
+  const saved = await fake.call('/save', { ext: { reloady: { greet: '新招呼' } } })
+  assert.equal(saved.json().ok, true)
+
+  await until(() => globalThis.__reloadyGreet === '新招呼')
+  assert.ok(globalThis.__reloadyStarts > starts, '启动次数要增加，说明重载过')
+})
+
+test('没写 reloadOnConfig：保存设置不重载，内存态保持', async () => {
+  const before = await mod('plain')
+  await fake.call('/save', { ext: { plain: { city: '杭州' } } })
+  await sleep(400)
+  const after = await mod('plain')
+  assert.equal(after.startedAt, before.startedAt)
 })
 
 test('模块接管消息、改写回复、加命令；她的规则里有模块补的话，没有关掉模块的本事', async () => {

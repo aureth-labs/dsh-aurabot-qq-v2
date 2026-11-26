@@ -553,3 +553,31 @@ export const config = ctx.Schema.object({
   greeting: ctx.Schema.string().default('你好'),
 })
 ```
+
+**`apply(ctx, config)` 的 `config` 是启动那一刻的快照。** 面板保存设置后宿主只发 `config` 事件、
+不会重载插件，所以别把快照塞进闭包用一辈子。要实时生效，用下面任意一种：
+
+```js
+export default function apply(ctx, config) {
+  let greeting = config.greeting
+
+  // ① 监听事件：配置一变就重建缓存，不重载插件、不断线
+  ctx.on('config', (next) => {
+    greeting = next.ext?.['weather']?.greeting ?? greeting
+  })
+
+  // ② 每次要用时现问（面板默认值 + 保存过的值）
+  ctx.command('weather', async (session) => {
+    const current = ctx.settings()?.greeting ?? greeting
+    await session.send(current)
+  })
+}
+```
+
+`ctx.settings()` 每次调用都是最新的，别在 `apply` 里读一次就存着；
+`ctx.on('config', ...)` 的参数是 `(新配置, 旧配置)`，只改自己那段就够，不用整份对比。
+
+**不想改写法**：清单里写 `"aurabot": { "reloadOnConfig": true }`，面板一保存设置宿主就重载这个模块，
+`apply(ctx, config)` 里的 `config` 自然是最新的。代价是模块内存态（缓存、连接、定时器之外的变量）会被重置，
+所以只适合「apply 里读一遍配置就够」的简单插件。默认是 `false`。
+
