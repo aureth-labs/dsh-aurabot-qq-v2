@@ -19,6 +19,7 @@ import type {
 } from '../../../types/plugin/ctx.ts'
 import type { Middleware, MiddlewareOptions, SessionFilter } from '../../../types/plugin/pipeline.ts'
 import type { Target } from '../../../types/core/target.ts'
+import { findBot } from '../../bot/instance/registry.ts'
 
 export type {
   LlmFacade,
@@ -68,6 +69,7 @@ interface KernelApi {
   thinkCooldown: (key?: string) => { retryAt: number; message?: string } | null
   chatLog: ChatLogFacade
   http: HttpHelpers
+  media: PluginContext['media']
   turnFromOwner: (sessionId: string) => boolean
   text: TextHelpers
   route: (path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' }) => () => void
@@ -149,6 +151,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('thinkCooldown', (key?: string) => api.thinkCooldown(key))
   value('chatLog', api.chatLog)
   value('http', api.http)
+  value('media', api.media)
   value('turnFromOwner', (sessionId: string) => api.turnFromOwner(sessionId))
   value('text', api.text)
   value('dataDir', (...parts: string[]) => api.dataDir(...parts))
@@ -315,12 +318,12 @@ function faceOf(value: any): SessionFace {
 /** `ctx.bot()`：不传 id 取第一个上线的；传 id 精确取。 */
 function makeBotAccessor(bots?: BotsAccessor, fallback?: BotLike): BotAccessor {
   const list = (): BotLike[] => (bots ? bots.list() : fallback ? [fallback] : [])
-  const accessor = ((id?: string) => {
-    const all = list()
+  const accessor = ((id?: string, platform?: string) => {
+    const all = platform === undefined ? list() : list().filter(bot => bot.platform === platform)
     if (id === undefined || id === null || id === '') {
       return all.find((bot) => bot.status === 'online') ?? all[0]
     }
-    return all.find((bot) => bot.id === String(id))
+    return findBot(all, String(id))
   }) as BotAccessor
   Object.defineProperty(accessor, 'list', { value: list })
   return accessor
@@ -329,9 +332,10 @@ function makeBotAccessor(bots?: BotsAccessor, fallback?: BotLike): BotAccessor {
 /** 只保留满足条件的机器人；取法（下标 / 调用 / list）保持一致。 */
 function filterBots(source: BotsAccessor, keep: (bot: BotLike) => boolean): BotsAccessor {
   const list = (): BotLike[] => source.list().filter(keep)
-  const accessor = ((id: string) => list().find((bot) => bot.id === String(id))) as BotsAccessor
+  const lookup = (id: string, platform?: string) => findBot(list(), String(id), platform)
+  const accessor = lookup as BotsAccessor
   Object.defineProperties(accessor, {
-    get: { value: (id: string) => list().find((bot) => bot.id === String(id)) },
+    get: { value: lookup },
     list: { value: list },
   })
   return new Proxy(accessor, {
@@ -350,13 +354,9 @@ async function broadcast(
   content: unknown,
   options: { timeoutMs?: number } = {},
 ): Promise<BroadcastResult[]> {
-  const all = ctx.bots ? ctx.bots.list() : []
   const results: BroadcastResult[] = []
   for (const target of Array.isArray(targets) ? targets : []) {
-    const bot =
-      all.find((item) => item.id === target.botId) ??
-      all.find((item) => item.platform === target.platform && item.status === 'online') ??
-      all.find((item) => item.platform === target.platform)
+    const bot = ctx.bots?.get(target.botId, target.platform)
     if (!bot) {
       results.push({ target, ok: false, error: `没有可用的「${target.platform}」机器人` })
       continue
@@ -415,15 +415,9 @@ function installScopes(ctx: PluginContext): PluginContext {
     }
 
     if (ctx.bots) view.bots = filterBots(ctx.bots, (bot) => rules.platform(bot.platform))
-    if (ctx.bot) {
-      const source = ctx.bot
-      const narrowed = ((id?: string) => {
-        const bot = source(id)
-        return bot && rules.platform(bot.platform) ? bot : undefined
-      }) as BotAccessor
-      Object.defineProperty(narrowed, 'list', { value: () => source.list().filter((bot) => rules.platform(bot.platform)) })
-      view.bot = narrowed
-    }
+    const fallback = view.bots ? undefined : ctx.bot?.()
+    view.bot = makeBotAccessor(view.bots, fallback && rules.platform(fallback.platform) ? fallback : undefined)
+    view.broadcast = (targets, content, options) => broadcast(view, targets, content, options)
 
     view.platform = (name: string) => scoped({
       session: (session) => rules.session(session) && session.platform === String(name),

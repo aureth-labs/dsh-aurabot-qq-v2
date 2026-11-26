@@ -7,6 +7,18 @@ export type { BotsAccessor } from '../../../types/adapter/bot.ts'
 
 type Listener<K extends keyof BotEvents> = BotEvents[K]
 
+export const botKey = (platform: string, id: string) => JSON.stringify([platform, id])
+
+export function findBot(bots: Iterable<BotLike>, id: string, platform?: string): BotLike | undefined {
+  let match: BotLike | undefined
+  for (const bot of bots) {
+    if (bot.id !== id || (platform !== undefined && bot.platform !== platform)) continue
+    if (match) return undefined
+    match = bot
+  }
+  return match
+}
+
 export class BotRegistry {
   private readonly bots = new Map<string, BotLike>()
   private readonly listeners: { [K in keyof BotEvents]: Set<Listener<K>> } = {
@@ -16,15 +28,18 @@ export class BotRegistry {
   }
 
   add(bot: BotLike): void {
-    this.bots.set(bot.id, bot)
+    this.bots.set(botKey(bot.platform, bot.id), bot)
   }
 
-  remove(id: string): void {
-    this.bots.delete(id)
+  remove(target: BotLike | string): boolean {
+    const bot = typeof target === 'string' ? this.get(target) : target
+    if (!bot) return false
+    const key = botKey(bot.platform, bot.id)
+    return this.bots.get(key) === bot && this.bots.delete(key)
   }
 
-  get(id: string): BotLike | undefined {
-    return this.bots.get(id)
+  get(id: string, platform?: string): BotLike | undefined {
+    return platform === undefined ? findBot(this.bots.values(), id) : this.bots.get(botKey(platform, id))
   }
 
   list(): BotLike[] {
@@ -50,9 +65,10 @@ export class BotRegistry {
 const arrayTrap = Symbol('bots-array')
 
 export function createBotsAccessor(registry: BotRegistry): BotsAccessor {
-  const accessor = ((id: string) => registry.get(id)) as BotsAccessor
+  const lookup = (id: string, platform?: string) => registry.get(id, platform)
+  const accessor = lookup as BotsAccessor
   Object.defineProperties(accessor, {
-    get: { value: (id: string) => registry.get(id) },
+    get: { value: lookup },
     list: { value: () => registry.list() },
   })
   return new Proxy(accessor, {

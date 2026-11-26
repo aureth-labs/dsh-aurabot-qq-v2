@@ -16,6 +16,7 @@ import { h } from '../../message/element/element.ts'
 
 // 和 Koishi 一样把 h 挂到全局：插件里直接写 `h('text', { content })`，不用 import。
 ;(globalThis as { h?: typeof h }).h ??= h
+;(globalThis as { Schema?: typeof Schema }).Schema ??= Schema
 import { readManifest, entryOf as entryOfManifest } from '../manifest.ts'
 import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -420,6 +421,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           version: def.version || manifest.version,
           panel: def.panel || (panelFile && existsSync(panelFile) ? manifest.panel : undefined),
           capabilities: def.capabilities || manifest.capabilities,
+          platforms: def.platforms ?? manifest.platforms,
           api: Math.max(Number(def.api || 1) || 1, manifest.api),
           kind: def.kind || manifest.kind,
           reusable: def.reusable ?? manifest.reusable,

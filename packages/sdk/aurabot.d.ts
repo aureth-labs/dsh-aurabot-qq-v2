@@ -1,7 +1,7 @@
 // Aurabot 插件类型（v2）。插件每次启动会把这份文件同步到 modules/ 下，别改它。
 //
 // 写法只有一种：
-//   export default { name: '…', apply(ctx, config) { … } }
+//   export const name = '…'; export function apply(ctx, config) { … }
 //
 // VS Code 里把入口写成 .ts，或在 .mjs 顶上写
 //   /** @type {import('./aurabot').AurabotModule} */
@@ -124,8 +124,8 @@ export interface Bot {
 
 /** 三种取法：ctx.bots[0] / ctx.bots('号') / ctx.bots.list()。 */
 export type BotsAccessor = Bot[] & {
-  (id: string): Bot | undefined
-  get(id: string): Bot | undefined
+  (id: string, platform?: string): Bot | undefined
+  get(id: string, platform?: string): Bot | undefined
   list(): Bot[]
 }
 
@@ -301,7 +301,7 @@ export interface Ctx {
   readonly llm: LlmFacade
   readonly tts: TtsFacade
   readonly bot: {
-    (id?: string): Bot | undefined
+    (id?: string, platform?: string): Bot | undefined
     list(): Bot[]
   }
   readonly bots: BotsAccessor
@@ -334,6 +334,7 @@ export interface Ctx {
     query(req: any): Record<string, string>
     send(res: any, status: number, body: unknown, type?: string): void
   }
+  readonly media: { download(url: string, maxBytes: number): Promise<Buffer>; inspect(bytes: Buffer): { width: number; height: number; mime: string } }
   isOwner(userId: string | number): boolean
   /** 本插件的数据目录（已建好）。 */
   dataDir(...parts: string[]): string
@@ -353,7 +354,26 @@ export interface PluginModule<C = any> {
   apply(ctx: Ctx, config: C): unknown
 }
 
+interface SchemaField<T> {
+  default(value: T): this
+  description(value: string): this
+  min(value: number): this
+  max(value: number): this
+  role(value: string): this
+  required(value?: boolean): this
+}
+
 declare global {
+  const Schema: {
+    string(): SchemaField<string>
+    boolean(): SchemaField<boolean>
+    number(): SchemaField<number>
+    natural(): SchemaField<number>
+    percent(): SchemaField<number>
+    union<T>(values: readonly T[]): SchemaField<T>
+    array<T>(item: SchemaField<T>): SchemaField<T[]>
+    object(shape: Record<string, SchemaField<unknown>>): SchemaField<Record<string, unknown>>
+  }
   /** 宿主注入的消息元素工厂，和 Koishi 一样不用 import。 */
   const h: ElementFactory
 }

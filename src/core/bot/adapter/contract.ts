@@ -10,6 +10,7 @@ import type { BotRegistry } from '../instance/registry.ts'
 export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '../../../types/adapter/adapter.ts'
 
 export interface StartAdapterOptions {
+  active?: () => boolean
   /**
    * 已经解析好的平台名。
    *
@@ -44,14 +45,18 @@ export async function startAdapter(
   if (!platform) throw new Error('适配器要声明 platform')
 
   const connected = await spec.connect(config, { ...runtime, platform })
-  if (!connected || typeof connected.id !== 'string' || !connected.id) {
-    throw new Error(`适配器 ${platform} 的 connect 要返回带 id 的 bot 实例`)
+  let bot: BotLike
+  try {
+    if (options.active && !options.active()) throw new Error(`适配器 ${platform} 已停止`)
+    if (!connected || typeof connected.id !== 'string' || !connected.id) {
+      throw new Error(`适配器 ${platform} 的 connect 要返回带 id 的 bot 实例`)
+    }
+    if (connected.platform !== platform) throw new Error(`适配器 ${platform} 返回的 bot.platform 是「${connected.platform}」，两边要一致`)
+    bot = options.wrapBot ? options.wrapBot(connected, { ...spec, platform }) : connected
+  } catch (error) {
+    if (connected) await spec.disconnect?.(connected, config)
+    throw error
   }
-  if (connected.platform !== platform) {
-    // 平台名对不上会让 Target 与能力表错位，早点拦下来
-    throw new Error(`适配器 ${platform} 返回的 bot.platform 是「${connected.platform}」，两边要一致`)
-  }
-  const bot = options.wrapBot ? options.wrapBot(connected, { ...spec, platform }) : connected
 
   registry.add(bot)
   registry.emit('online', bot)
@@ -62,14 +67,13 @@ export async function startAdapter(
     async dispose() {
       if (closed) return
       closed = true
+      if (registry.remove(bot)) registry.emit('offline', bot, 'disconnected')
       try {
         // 用适配器自己的实例断开：包装层只是发送闸门，不是它认识的 bot
         await spec.disconnect?.(connected, config)
       } catch (error) {
         runtime.log(`适配器 ${platform} 断开时出错：${String((error as Error)?.message ?? error)}`)
       }
-      registry.remove(bot.id)
-      registry.emit('offline', bot, 'disconnected')
     },
   }
 }

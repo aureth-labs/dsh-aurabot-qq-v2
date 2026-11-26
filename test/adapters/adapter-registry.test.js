@@ -91,6 +91,38 @@ test('所有插件适配器都能被 stopAll 收掉', async () => {
   assert.deepEqual(registry.list(), [])
 })
 
+test('两个平台同 ID 独立寻址，替换与注销只影响本平台的旧实例', async () => {
+  const { bots, registry } = makeRegistry()
+  const first = await registry.start(fakeSpec('telegram', '42').spec)
+  const other = await registry.start(fakeSpec('discord', '42').spec)
+  assert.equal(bots.get('42'), undefined)
+  assert.equal(registry.get('42'), undefined)
+  const next = await registry.start(fakeSpec('telegram', '42').spec)
+  await first.dispose()
+  assert.equal(bots.get('42', 'telegram'), next.bot)
+  assert.equal(registry.get('42', 'discord'), other.bot)
+  await next.dispose()
+  assert.equal(bots.get('42'), other.bot)
+  await registry.stopAll()
+})
+
+test('宿主停止后才完成的连接被释放，早到事件不再投递', async () => {
+  const { bots, registry } = makeRegistry()
+  const spec = fakeSpec('discord', '42')
+  const ready = Promise.withResolvers()
+  const pending = registry.start({ ...spec.spec, async connect(config, runtime) {
+    runtime.emitMessage({ content: 'hello' })
+    await ready.promise
+    return spec.bot
+  } })
+  await registry.stopAll()
+  ready.resolve()
+  await assert.rejects(pending, /已停止/)
+  assert.equal(spec.state.disconnected, 1)
+  assert.deepEqual(bots.list(), [])
+  assert.deepEqual(registry.list(), [])
+})
+
 test('每次增删都通知监听者', async () => {
   const { registry } = makeRegistry()
   let calls = 0

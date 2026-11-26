@@ -13,6 +13,8 @@ import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridg
 import { isOwnerOf } from '../../config/global.ts'
 import { cleanOutboundText, isSilence, stripMarkdown } from '../../../chat/reply/index.ts'
 import { reallySent } from '../../../chat/hub/context/context.ts'
+import { fetchImage } from '../../net/index.ts'
+import { imageSize, mimeOf } from '../../../chat/inbound/index.ts'
 
 /** 路由选项。 */
 export type RouteOptions = Partial<Record<'access', any>>
@@ -100,7 +102,6 @@ export function createApi(deps: ApiDeps) {
     const setModuleConfig = writable('setConfig', (patch) => setConfig(typeof patch === 'function' ? patch(getConfig()) : deepMerge(getConfig(), patch)))
     // 兼容在同步收尾里恢复设置的模块；迟到的回调和旧实例不能再写。
     const setCoreConfig = writable('core.setConfig', (patch) => {
-      console.error('[dbg] setCoreConfig called', JSON.stringify(patch), active(), rec.key, live.has(rec.key))
       if (!isObj(patch)) throw new TypeError('core.setConfig 需要配置对象')
       return setConfig(deepMerge(getConfig(), patch))
     }, () => active() || (rec.cleaning && !live.has(rec.key)))
@@ -235,6 +236,13 @@ export function createApi(deps: ApiDeps) {
         append: (chatId, who, text, uid = '') => core.hub.logChat?.(chatId, who, text, uid),
       },
       http: core.http,
+      media: {
+        download: (url: string, maxBytes: number) => {
+          if (!/^https?:\/\//i.test(url)) throw new Error('图片需要 HTTP 地址')
+          return fetchImage(url, { maxBytes, allowLocal: false })
+        },
+        inspect: (bytes: Buffer) => ({ ...imageSize(bytes), mime: mimeOf(bytes) }),
+      },
       turnFromOwner: (sessionId) => Boolean(core.hub.turnSendersAllOwner?.(String(sessionId || ''))),
       text: {
         clean: (value, label = id) => stripMarkdown(cleanOutboundText(value, { warn: (message) => mlog.warn(`${label}：${message}`) })).trim(),

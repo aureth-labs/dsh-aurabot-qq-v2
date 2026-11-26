@@ -21,7 +21,7 @@ import type { Target } from '../core/target.ts'
  * ```
  */
 export interface BotAccessor {
-  (id?: string): BotLike | undefined
+  (id?: string, platform?: string): BotLike | undefined
   list(): BotLike[]
 }
 
@@ -294,6 +294,7 @@ export interface PluginContext extends ScopeFactory {
   thinkCooldown: (key?: string) => { retryAt: number; message?: string } | null
   chatLog: ChatLogFacade
   http: HttpHelpers
+  media: { download(url: string, maxBytes: number): Promise<Buffer>; inspect(bytes: Buffer): { width: number; height: number; mime: string } }
   /** 工具执行时：这一轮说话的人是不是全是主人。 */
   turnFromOwner: (sessionId: string) => boolean
   text: TextHelpers

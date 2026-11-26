@@ -132,7 +132,7 @@ export interface BotEvents {
  * ```
  */
 export type BotsAccessor = BotLike[] & {
-  (id: string): BotLike | undefined
-  get(id: string): BotLike | undefined
+  (id: string, platform?: string): BotLike | undefined
+  get(id: string, platform?: string): BotLike | undefined
   list(): BotLike[]
 }

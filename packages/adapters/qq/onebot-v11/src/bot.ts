@@ -48,13 +48,13 @@ export class OneBotBot extends Bot {
     this.call = init.call
     this.connected = init.isConnected
     this.self = init.selfId ?? ''
-    this.key = init.id ?? 'onebot'
+    this.key = init.id || init.selfId || 'onebot'
     this.speak = init.speak
     this.log = init.log
   }
 
   get id(): string {
-    return this.self || this.key
+    return this.key
   }
 
   get selfId(): string {

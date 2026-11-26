@@ -307,5 +307,5 @@ export function apply(ctx, config) {
       return out
     },
   }) : []))
-  return gen
+  return { ...gen, listPaintings, paintingPath }
 }

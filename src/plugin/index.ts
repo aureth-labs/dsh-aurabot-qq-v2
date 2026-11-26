@@ -244,8 +244,6 @@ export function apply(ctx) {
         wrongAccount = ''
         // S0：登录核对通过才算上线，插件这时才能拿到可用的 bot 实例
         onebotBot.setSelfId(uin)
-        botRegistry.remove('onebot')
-        botRegistry.add(onebotBot)
         onebotBot.markOnline()
         if (!wasOnline) botRegistry.emit('online', onebotBot)
         // 把核对期间攒下的补上（按到达顺序）
@@ -440,7 +438,7 @@ export function apply(ctx) {
     const session = new Session({
       bot: onebotBot,
       type,
-      channelId: type === 'private' ? `private:${ev.user_id}` : String(ev.group_id),
+      channelId: String(type === 'private' ? ev.user_id : ev.group_id),
       userId: String(ev.user_id),
       userName: String(ev.sender?.card || ev.sender?.nickname || ev.user_id),
       content,
@@ -1445,12 +1443,12 @@ export function apply(ctx) {
         return { ok: true, message_id: `debug-${sent.length}` }
       },
     }
-    const bot = adapterRegistry.get(String(body.botId || '')) ?? stub
+    const bot = adapterRegistry.get(String(body.botId || ''), platform) ?? stub
     const type = body.type === 'channel' ? 'channel' : body.type === 'private' ? 'private' : 'group'
     const userId = String(body.userId || 'debug-user')
     const result = await dispatchInbound(bot, {
       type,
-      channelId: String(body.channelId || (type === 'private' ? `private:${userId}` : 'debug-channel')),
+      channelId: String(body.channelId || (type === 'private' ? userId : 'debug-channel')),
       userId,
       userName: String(body.userName || '调试用户'),
       content: text,
@@ -1459,7 +1457,7 @@ export function apply(ctx) {
       ok: true,
       platform,
       order: pipeline.order(),
-      bot: { id: bot.id, platform: bot.platform, registered: Boolean(adapterRegistry.get(bot.id)) },
+      bot: { id: bot.id, platform: bot.platform, registered: bot !== stub },
       sent,
       result: result
         ? { handled: result.handled, by: result.by, error: result.error ?? null }

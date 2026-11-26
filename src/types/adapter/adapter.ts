@@ -37,8 +37,7 @@ export interface AdapterRuntime {
   /**
    * 收到消息就投进来。宿主负责建 Session、跑 `command → middleware → llm`。
    *
-   * `connect()` 返回之前投递的消息会被丢掉（还没有 bot 实例可挂），
-   * 所以适配器要先把自己的 bot 准备好，再开始把消息往外送。
+   * 连接握手中最多暂存 100 条消息与事件，注册后按到达顺序投递。
    */
   emitMessage(message: InboundMessage): void
   /** 非消息事件（加群、撤回、上线/下线……）原样转给模块。 */

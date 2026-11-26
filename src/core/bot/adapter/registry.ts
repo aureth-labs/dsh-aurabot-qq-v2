@@ -10,6 +10,7 @@ import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMe
 import type { BotLike } from '../../../types/adapter/bot.ts'
 import { startAdapter } from './contract.ts'
 import type { BotRegistry } from '../instance/registry.ts'
+import { botKey, findBot } from '../instance/registry.ts'
 
 export interface AdapterRegistryDeps {
   bots: BotRegistry
@@ -42,6 +43,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 export class AdapterRegistry {
   private readonly deps: AdapterRegistryDeps
   private readonly entries = new Map<string, Entry>()
+  private generation = 0
   private readonly listeners = new Set<() => void>()
 
   constructor(deps: AdapterRegistryDeps) {
@@ -55,61 +57,59 @@ export class AdapterRegistry {
     const platform = String(resolved || spec?.platform || '').trim()
     if (!platform) throw new Error('适配器要声明 platform')
 
-    // runtime 要在 connect() 之前交出去，但消息只能挂在 connect() 返回的 bot 上。
-    // 用一个可变槽位接住：连上之前投进来的消息先压着，connect() 返回后再补投，
-    // 免得握手那一小段时间里的消息凭空消失。
-    let bound: BotLike | null = null
-    let self: AdapterHandle | null = null
-    const early: InboundMessage[] = []
+    const generation = this.generation
+    const pending: Array<(bot: BotLike) => void> = []
+    let entry: Entry | undefined
+    let closed = false
+    const deliver = (action: (bot: BotLike) => void) => {
+      if (closed || generation !== this.generation) return
+      if (!entry) {
+        if (pending.length < 100) pending.push(action)
+        return
+      }
+      if (this.entries.get(botKey(platform, entry.bot.id)) === entry) action(entry.bot)
+    }
     const runtime: AdapterRuntime = {
       platform,
       log: this.deps.log,
-      emitMessage: (message) => {
-        if (!bound) {
-          if (early.length < 100) early.push(message)
-          return
-        }
-        // 被顶替 / 已下线的旧实例还会从断线重连里收到事件：只让当前这条记录投递，免得重复进管线。
-        if (self && this.entries.get(self.bot.id)?.handle !== self) return
-        this.deps.onMessage?.(bound, message)
-      },
-      emitEvent: (event, payload) => this.deps.onEvent?.(platform, event, payload),
       speak: this.deps.speak,
-      supports: (capability) => {
-        if (!bound) return false
-        return bound.supports(capability)
+      supports: capability => entry?.bot.supports(capability) ?? false,
+      emitMessage: message => deliver(bot => this.deps.onMessage?.(bot, message)),
+      emitEvent: (event, payload) => deliver(() => this.deps.onEvent?.(platform, event, payload)),
+    }
+    const connection = await startAdapter(this.deps.bots, spec, config, runtime, {
+      platform, wrapBot: this.deps.wrapBot,
+      active: () => generation === this.generation,
+    })
+    const bot = connection.bot
+    if (generation !== this.generation) {
+      await connection.dispose()
+      throw new Error(`适配器 ${platform} 已停止`)
+    }
+    const key = botKey(platform, bot.id)
+    const previous = this.entries.get(key)
+    const handle: AdapterHandle = {
+      bot,
+      dispose: async () => {
+        if (closed) return
+        closed = true
+        if (this.entries.get(key) === entry) {
+          this.entries.delete(key)
+          this.changed()
+        }
+        await connection.dispose()
       },
     }
-    const handle = await startAdapter(this.deps.bots, spec, config, runtime, {
-      platform,
-      wrapBot: this.deps.wrapBot,
-    })
-    bound = handle.bot
-    self = handle
-    if (early.length) {
-      const pending = early.splice(0)
-      for (const message of pending) this.deps.onMessage?.(handle.bot, message)
-    }
-    const key = handle.bot.id
-    const existing = this.entries.get(key)
-    if (existing?.handle) {
-      // 同一个 id 被两个适配器抢：先让新的生效，旧的断开，别留一个收不到消息的幽灵
-      await existing.handle.dispose().catch(() => {})
-    }
-    this.entries.set(key, {
-      platform,
-      name: String(spec.name || PLATFORM_LABELS[platform] || platform),
-      bot: handle.bot,
-      startedAt: Date.now(),
-      handle,
-    })
+    entry = { platform, bot, handle, name: spec.name || PLATFORM_LABELS[platform] || platform, startedAt: Date.now() }
+    this.entries.set(key, entry)
     this.changed()
-    const dispose = handle.dispose.bind(handle)
-    handle.dispose = async () => {
-      await dispose()
-      // 只有「当前这条记录还是它」才删，避免重连时把新实例记的条目抹掉
-      if (this.entries.get(key)?.handle === handle) this.entries.delete(key)
-      this.changed()
+    try {
+      for (const action of pending.splice(0)) deliver(action)
+    } catch (error) {
+      await handle.dispose()
+      throw error
+    } finally {
+      await previous?.handle?.dispose()
     }
     return handle
   }
@@ -117,7 +117,7 @@ export class AdapterRegistry {
   /** 内置适配器（QQ）登记进来，让面板里也看得见它。 */
   adopt(bot: BotLike, meta: { platform?: string; name?: string } = {}): void {
     const platform = meta.platform || bot.platform
-    this.entries.set(bot.id, {
+    this.entries.set(botKey(platform, bot.id), {
       platform,
       name: meta.name || PLATFORM_LABELS[platform] || platform,
       bot,
@@ -137,8 +137,9 @@ export class AdapterRegistry {
     }))
   }
 
-  get(id: string): BotLike | undefined {
-    return this.entries.get(String(id))?.bot
+  get(id: string, platform?: string): BotLike | undefined {
+    if (platform !== undefined) return this.entries.get(botKey(platform, id))?.bot
+    return findBot(Array.from(this.entries.values(), entry => entry.bot), id)
   }
 
   /** 有增删 / 状态可能变化时通知（面板轮询之外的第二条路）。 */
@@ -148,6 +149,7 @@ export class AdapterRegistry {
   }
 
   async stopAll(): Promise<void> {
+    this.generation++
     const handles = [...this.entries.values()].map((entry) => entry.handle).filter(Boolean) as AdapterHandle[]
     for (const handle of handles) await handle.dispose().catch(() => {})
   }

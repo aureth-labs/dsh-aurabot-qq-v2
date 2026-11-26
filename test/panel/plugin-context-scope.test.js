@@ -82,6 +82,23 @@ test('ctx.platform 只收本平台的消息，指令不匹配时继续往下走'
   assert.equal(discord.by, 'llm')
 })
 
+test('同 ID 的 Bot 按平台定位，指定实例缺失时广播不会改投其他号', async () => {
+  const registry = new BotRegistry()
+  const telegram = fakeBot('42', 'telegram')
+  const discord = fakeBot('42', 'discord')
+  registry.add(telegram)
+  registry.add(discord)
+  const { ctx } = contextWith(createBotsAccessor(registry))
+  const target = { platform: 'discord', botId: '42', type: 'channel', id: 'channel' }
+  assert.equal(ctx.bot('42'), undefined)
+  assert.equal(ctx.bot('42', 'discord'), discord)
+  assert.equal(ctx.platform('telegram').bots('42'), telegram)
+  assert.deepEqual((await ctx.broadcast([target, { ...target, botId: 'missing' }], 'hello')).map(result => result.ok), [true, false])
+  assert.equal((await ctx.platform('telegram').broadcast([target], 'hello'))[0].ok, false)
+  assert.equal(telegram.sends.length, 0)
+  assert.equal(discord.sends.length, 1)
+})
+
 test('ctx.guild / ctx.private 收窄会话类型，中间件不放行时直接 next', async () => {
   const { ctx, pipeline } = contextWith(undefined)
   const hits = []

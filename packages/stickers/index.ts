@@ -257,5 +257,5 @@ export function apply(ctx, config) {
 
   // 导出的就是 store：模块停下 / 重载时宿主会调 store.dispose()，
   // 后台批量起名跟着停（不然旧实例会接着调模型、写库，和新实例互相覆盖）。
-  return store
+  return { ...store, stickerPath }
 }

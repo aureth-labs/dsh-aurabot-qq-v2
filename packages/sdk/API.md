@@ -61,7 +61,7 @@ export function apply(ctx: Ctx, config: { reply: string }) {
 | `ctx.page({ path, name })` | 侧栏页面 |
 | `ctx.on / ctx.emit` | 事件 |
 | `ctx.provide(name, impl)` / `ctx.require(name)` / `ctx.get(id)` | 服务 |
-| `ctx.bots` / `ctx.bot(id?)` | 机器人 |
+| `ctx.bots` / `ctx.bot(id?, platform?)` | 省略 ID 取默认实例。多个平台共用一个 ID 时，传入平台才能定位实例。 |
 | `ctx.isOwner(userId)` | 是否主人 |
 | `ctx.dataDir(...parts)` | 本插件数据目录 |
 | `ctx.platform('qq') / ctx.guild() / ctx.private()` | 作用域视图 |
