@@ -1,339 +1,32 @@
-// ---------------------------------------------------------------------------
-// 出站策略源：主动发言的「门闸判定」与「额度账本」（B 线）
-//
-// 来源：
-//   · 接口契约 —— 见 docs/OUTBOUND-POLICY-DESIGN.md §4「策略源接口」；
-//     tick 里的 `awake && idleOk && count < maxPerDay && Date.now() >= nextAt`；
-//     reserve 复用同一判定，commit 成功才 `count++` 并重排 nextAt；
-//   · 「目的引擎」判定口径 —— `src/purpose/engine.js` 的 evaluatePurposeTick（L324-348，只判不扣）
-//     与 markPurposeDelivered（L351-359，投递即占「生成尝试额度」，沉默/失败也计入）。
-//
-// 作用：
-//   给宿主出站策略服务（A 线 `src/chat/outbound-policy.js`）提供两个可注册的策略源：
-//     · purpose —— 目的引擎（src/purpose/module.js 的主动找人）；
-//   二者竞争**同一份**按 ownerQQ 的逻辑发言预算域（createSharedBudget），
-//   同一时刻最多一个逻辑发言获授权；一次逻辑发言的多条气泡不重复扣额度。
-//
-// 契约（CONTRACT §2，逐条对应）：
-//   policy = {
-//     name: 'purpose' | 'speakup',
-//     state(): 'configured' | 'running' | 'ready' | 'error',
-//     ready(): boolean,                                  // = state() === 'ready'
-//     reserve({ to, sourceModule, itemId, at })          // 同步返回，内部状态同步变更
-//       → { ok: true, reserveId } | { ok: false, reason: 'quiet'|'budget'|'cooldown'|'busy'|'error' },
-//     commit(reserveId, { deliveryId, outcome }),        // outcome: sent|queued|uncertain|failed
-//     release(reserveId, { reason }),                    // 未发送释放；uncertain 不退款
-//     reasonText?(reason) → string,                      // 中文原因（面板/日志用）
-//   }
-//   · reserve 必须同步返回；落盘只写 dataDir，小文件同步写（<2KB），不影响返回语义；
-//   · 同一 reserveId 只允许 commit 或 release 一次，重复调用 → { ok:false, reason:'settled' }，不抛错；
-//   · 策略源只回答「能不能发」，**自己不发送任何消息**（发送仍由 hub/A 线完成）。
-//
-// 独立性：
-//   本文件除零依赖的 src/core/time-window.js（跨天窗口判定）外不 import `src/` 内任何模块——
-//   判定逻辑自带实现（每日额度 / 间隔冷却 / 读状态 / 写盘），便于单测、便于移植，
-//   也避免与 companion.js / engine.js 形成环。
-//
-// 落盘（只写 dataDir）：
-//   <dataDir>/purpose-policy.json   目的引擎逻辑发言 + 生成尝试账本
-//   <dataDir>/speakup-policy.json   主动搭话每日次数与 nextAt
-//   <dataDir>/shared-budget.json    两个策略源共享的按 ownerQQ 预算域
-//   没给 dataDir（或给空）时全部退化为内存，不碰磁盘。
-// ---------------------------------------------------------------------------
+// 目的引擎策略源：清醒窗口、每日生成尝试额度与逻辑发言额度。
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { inHourWindow, nextWindowStart } from '../../core/support/time/time-window.ts'
+import { join } from 'node:path'
+import { inHourWindow, nextWindowStart } from '../../../core/support/time/time-window.ts'
+import { clampInt, clockOf, isPlainObject, localDateKey, makeReserveId, normalizeOutcome, readJsonFile, resolveDir, unlimitedIfZero, writeJsonFile, REASONS, REASON_TEXT, OUTCOMES, VERSION, MINUTE } from './helpers.ts'
+import { createSharedBudget } from './budget.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CreateSharedBudgetOptions = Partial<Record<'ownerQQ' | 'dataDir' | 'now' | 'log' | 'dailyMax' | 'minGapMs', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type SetLimitsOptions = Partial<Record<'source' | 'dailyMax' | 'minGapMs' | 'sharedDailyMax', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type TryAcquireOptions = Partial<Record<'reserveId' | 'source' | 'at', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type SettleOptions = Partial<Record<'refund' | 'at', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CreatePurposePolicyOptions = Partial<Record<'getConfig' | 'engine' | 'state' | 'now' | 'dataDir' | 'log' | 'budget', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type EvaluateOptions = Partial<Record<'at', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ReserveOptions = Partial<Record<'to' | 'sourceModule' | 'itemId' | 'at', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CommitOptions = Partial<Record<'deliveryId' | 'outcome', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ReleaseOptions = Partial<Record<'reason', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type NoteAttemptOptions = Partial<Record<'at' | 'planned' | 'text', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ReserveReviewOptions = Partial<Record<'to' | 'itemId' | 'at', any>>
-
-const MINUTE = 60_000
-const VERSION = 1
-
-// reserve 的 reason 全集（契约 §2），reasonText 只翻译这几个 + 'settled'
-const REASONS = ['quiet', 'budget', 'cooldown', 'busy', 'error', 'settled']
-const OUTCOMES = ['sent', 'queued', 'uncertain', 'failed']
-
-const REASON_TEXT = {
-  quiet: '当前不宜开口（未启用 / 不在清醒时段 / 已被禁言）',
-  budget: '今日额度已用完（生成尝试额度或逻辑发言额度）',
-  cooldown: '还没到下次可开口的时间（间隔未到，或主人刚说完话）',
-  busy: '另一次主动发言正在流程中',
-  error: '策略源内部错误（读配置或读状态失败）',
-  settled: '这次预占已经结算过了',
-  'out-of-scope': '不是主人私聊（白名单朋友等各有各的额度，不归这套策略管）',
+export interface PolicyLog {
+  (message?: unknown, ...rest: unknown[]): void
+  warn?(...args: unknown[]): void
+  info?(...args: unknown[]): void
 }
 
-// ---------------- 小工具（自带实现，不依赖 src/core） ----------------
-
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+export interface CreatePurposePolicyOptions {
+  getConfig?: (() => Record<string, any>) | Record<string, any>
+  engine?: Record<string, any>
+  state?: Record<string, any>
+  now?: () => number
+  dataDir?: string
+  log?: PolicyLog
+  budget?: Record<string, any>
 }
 
-function clampInt(value, fallback, min, max) {
-  const n = Number(value)
-  if (!Number.isFinite(n)) return fallback
-  return Math.min(max, Math.max(min, Math.round(n)))
-}
-
-/** 本地日期键（跨天重置次数用；与 purpose/engine.js 的 localDateKey 同口径）。 */
-function localDateKey(at) {
-  const d = new Date(at)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-/** dataDir 允许传字符串或函数（模块 api.dataDir 是函数），空值 → 内存模式。 */
-function resolveDir(dataDir) {
-  if (!dataDir) return ''
-  try {
-    const v = typeof dataDir === 'function' ? dataDir() : dataDir
-    return v ? String(v) : ''
-  } catch {
-    return ''
-  }
-}
-
-/** now 允许传数字（冻结时间，测试友好）、函数（生产）或省略（Date.now）。 */
-function clockOf(now) {
-  if (typeof now === 'function') {
-    return () => {
-      const t = Number(now())
-      return Number.isFinite(t) ? t : Date.now()
-    }
-  }
-  if (Number.isFinite(Number(now))) return () => Number(now)
-  return () => Date.now()
-}
-
-function readJsonFile(file, fallback) {
-  if (!file) return fallback
-  try {
-    let text = readFileSync(file, 'utf8')
-    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1)
-    return JSON.parse(text)
-  } catch {
-    return fallback
-  }
-}
-
-/** 先写临时文件再改名：断电/并发下不会留下半截 JSON；写失败只记日志，不影响内存态。 */
-function writeJsonFile(file, value, log) {
-  if (!file) return
-  try {
-    mkdirSync(dirname(file), { recursive: true })
-    const tmp = `${file}.tmp-${process.pid}-${Date.now().toString(36)}`
-    writeFileSync(tmp, JSON.stringify(value), 'utf8')
-    renameSync(tmp, file)
-  } catch (error) {
-    log?.warn?.(`策略源落盘失败（不影响内存态）：${error?.message || error}`)
-  }
-}
-
-let idSeq = 0
-function makeReserveId(name, at) {
-  idSeq = (idSeq + 1) % 1e9
-  return `${name}-${at.toString(36)}-${idSeq.toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
-function normalizeOutcome(outcome) {
-  const v = String(outcome ?? 'sent')
-  return OUTCOMES.includes(v) ? v : 'sent'
-}
-
-/** 上限语义：0 / 负数 / 非法值 = 不限（Infinity）。purpose 的 dailyMax 就是这层语义。 */
-function unlimitedIfZero(value) {
-  const n = Number(value)
-  if (!Number.isFinite(n) || n <= 0) return Infinity
-  return Math.round(n)
-}
-
-// ---------------- 共享预算域（按 ownerQQ 唯一） ----------------
-
-const BUDGET_REGISTRY = new Map()
-
-function normalizeBudgetState(raw, at, ownerQQ) {
-  const src = isPlainObject(raw) ? raw : {}
-  const s = {
-    version: VERSION,
-    ownerQQ: String(ownerQQ ?? ''),
-    day: typeof src.day === 'string' ? src.day : localDateKey(at),
-    used: clampInt(src.used, 0, 0, 99999),
-    lastSettledAt: Number(src.lastSettledAt) || 0,
-    // 全局共享硬上限（默认不限）；各策略源自己的日额度仍在策略源内判，避免互相削额度
-    dailyMax: Number(src.dailyMax) > 0 ? Math.round(Number(src.dailyMax)) : 0,
-    minGapMs: clampInt(src.minGapMs, 0, 0, 24 * 60 * MINUTE),
-    sourceLimits: {},
-    inFlight: [], // 预占中；**不落盘生效**——重启一律视为未结算，见 persist()
-  }
-  const limits = isPlainObject(src.sourceLimits) ? src.sourceLimits : {}
-  for (const [name, lim] of Object.entries(limits)) {
-    if (!isPlainObject(lim)) continue
-    s.sourceLimits[name] = {
-      dailyMax: clampInt((lim as any).dailyMax, 0, 0, 999),
-      minGapMs: clampInt((lim as any).minGapMs, 0, 0, 24 * 60 * MINUTE),
-    }
-  }
-  return s
-}
-
-/**
- * 共享预算域：两个策略源抢同一份「按 ownerQQ 的逻辑发言额度」。
- *
- * 语义：
- *   · 占用口径 = `used`（已结算的逻辑发言数）+ `inFlight`（已预占未结算）；
- *   · 硬上限 `dailyMax` 默认不限（0），只由显式配置打开（config.ext.outboundPolicy.sharedDailyMax
- *     或构造参数 dailyMax）；各策略源自己的日额度由策略源自己判——否则一个源设得严就会
- *     把另一个源的额度一起削掉；
- *   · 同一时刻最多一个逻辑发言获授权（inFlight ≤ 1）→ 两个引擎不会同时开口；
- *   · 结算：`settle(id, {refund:false})` 记一次占用；`settle(id, {refund:true})` 只退还预占；
- *   · 重启：`used` 保留（额度不被重复授予），`inFlight` 丢弃（在途结果未知，不额外扣也不补发）。
- *
- * 单例：同进程内 `${dataDir}|${ownerQQ}` 唯一，两个策略源各建一次拿到的仍是同一份域。
- */
-export function createSharedBudget({ ownerQQ, dataDir, now, log, dailyMax, minGapMs } : CreateSharedBudgetOptions = {}) {
-  const clock = clockOf(now)
-  const dir = resolveDir(dataDir)
-  const owner = String(ownerQQ ?? '')
-  const regKey = `${dir || '<memory>'}|${owner}`
-  if (BUDGET_REGISTRY.has(regKey)) return BUDGET_REGISTRY.get(regKey)
-
-  const file = () => (dir ? join(dir, 'shared-budget.json') : '')
-  const t0 = clock()
-  const state = normalizeBudgetState(readJsonFile(file(), null), t0, owner)
-  if (Number(dailyMax) > 0) state.dailyMax = Math.round(Number(dailyMax))
-  if (Number(minGapMs) > 0) state.minGapMs = Math.round(Number(minGapMs))
-
-  const persist = () => writeJsonFile(file(), { ...state, inFlight: [] }, log)
-
-  function rollDay(at) {
-    const day = localDateKey(at)
-    if (state.day !== day) {
-      state.day = day
-      state.used = 0
-      state.lastSettledAt = 0
-    }
-  }
-
-  /** 硬上限快照：globalDailyMax = 共享域自己的上限；minGapMs = 全局最小间隔。 */
-  function limits() {
-    return {
-      dailyMax: state.dailyMax > 0 ? state.dailyMax : Infinity,
-      minGapMs: Math.max(0, Number(state.minGapMs) || 0),
-    }
-  }
-
-  /**
-   * 记录/更新某个策略源的自报额度（只做记账与面板展示，不参与共享硬上限判定）。
-   * sharedDailyMax：显式给共享域设上限（传 0 表示恢复不限）。
-   */
-  function setLimits({ source, dailyMax: srcDailyMax, minGapMs: srcMinGap, sharedDailyMax } : SetLimitsOptions = {}) {
-    const name = String(source ?? '').trim() || 'unknown'
-    state.sourceLimits[name] = {
-      dailyMax: clampInt(srcDailyMax, 0, 0, 999),
-      minGapMs: clampInt(srcMinGap, 0, 0, 24 * 60 * MINUTE),
-    }
-    if (sharedDailyMax !== undefined && sharedDailyMax !== null) {
-      const n = Number(sharedDailyMax)
-      state.dailyMax = Number.isFinite(n) && n > 0 ? Math.round(n) : 0
-    }
-    return limits()
-  }
-
-  /**
-   * 原子预占一份共享逻辑发言额度（同步）。
-   * 判定顺序：日额度 → 冷却 → 并发（最多一个在途）。额度先于并发检查，
-   * 这样「抢最后一个额度」失败的一方拿到的是 budget 而不是笼统的 busy。
-   */
-  function tryAcquire({ reserveId, source, at } : TryAcquireOptions = {}) {
-    const t = Number(at) || clock()
-    rollDay(t)
-    const lim = limits()
-    const usedTotal = state.used + state.inFlight.length
-    if (usedTotal >= lim.dailyMax) {
-      return { ok: false, reason: 'budget', detail: `shared:${usedTotal}/${lim.dailyMax}`, source: String(source ?? '') }
-    }
-    if (lim.minGapMs > 0 && state.lastSettledAt > 0 && t - state.lastSettledAt < lim.minGapMs) {
-      return { ok: false, reason: 'cooldown', detail: 'shared:min-gap', source: String(source ?? '') }
-    }
-    if (state.inFlight.length >= 1) {
-      return { ok: false, reason: 'busy', detail: 'shared:in-flight', source: String(source ?? '') }
-    }
-    state.inFlight.push({ reserveId: String(reserveId ?? ''), source: String(source ?? ''), at: t })
-    persist()
-    return { ok: true, day: state.day, used: state.used }
-  }
-
-  /**
-   * 结算一份预占。
-   * refund=true  → 退还预占（未发送释放；不计占用）
-   * refund=false → 计入一次逻辑发言占用（sent/queued/uncertain/策略源自定的失败口径）
-   */
-  function settle(reserveId, { refund = false, at } : SettleOptions = {}) {
-    const t = Number(at) || clock()
-    rollDay(t)
-    const idx = state.inFlight.findIndex((x) => x.reserveId === String(reserveId ?? ''))
-    if (idx < 0) return { ok: false, reason: 'settled', detail: 'unknown-reserve' }
-    state.inFlight.splice(idx, 1)
-    if (!refund) {
-      state.used += 1
-      state.lastSettledAt = t
-    }
-    persist()
-    return { ok: true, used: state.used, refund: Boolean(refund) }
-  }
-
-  function snapshot() {
-    const lim = limits()
-    return {
-      ownerQQ: owner,
-      day: state.day,
-      used: state.used,
-      inFlight: state.inFlight.map((x) => ({ ...x })),
-      remaining: Math.max(0, lim.dailyMax - (state.used + state.inFlight.length)),
-      limits: lim,
-      sourceLimits: JSON.parse(JSON.stringify(state.sourceLimits)),
-      file: file(),
-    }
-  }
-
-  const budget = {
-    ownerQQ: owner,
-    kind: 'shared-budget',
-    limits,
-    setLimits,
-    tryAcquire,
-    settle,
-    snapshot,
-  }
-  BUDGET_REGISTRY.set(regKey, budget)
-  return budget
-}
-
-/** 重启/测试用：清掉进程内共享预算单例（不影响已落盘文件）。 */
-export function resetSharedBudgets() {
-  BUDGET_REGISTRY.clear()
-}
+export interface EvaluateOptions { at?: number }
+export interface ReserveOptions { to?: string; sourceModule?: string; itemId?: string; at?: number }
+export interface CommitOptions { deliveryId?: string; outcome?: string }
+export interface ReleaseOptions { reason?: string }
+export interface NoteAttemptOptions { at?: number; planned?: number; text?: string }
+export interface ReserveReviewOptions { to?: string; itemId?: string; at?: number }
 
 // ---------------- 目的引擎策略源 ----------------
 
@@ -775,6 +468,3 @@ export function createPurposePolicy({ getConfig, engine, state, now, dataDir, lo
     budget,
   }
 }
-
-
-export { REASON_TEXT, REASONS, OUTCOMES }
