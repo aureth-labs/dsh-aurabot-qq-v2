@@ -74,13 +74,13 @@ test("on('dispose') 归到卸载队列，其它事件照旧", () => {
   assert.deepEqual(calls[1], { kind: 'on', event: 'module/start' })
 })
 
-test('入口校验：只认 apply(ctx, config)，裸函数按文件夹 id', () => {
+test('入口校验：具名 apply 导出，包名从目录解析', () => {
   assert.equal(checkDef({ id: 'demo', apply() {} }, 'demo'), '')
-  assert.equal(checkDef(function apply() {}, 'demo'), '')
+  assert.match(checkDef(function apply() {}, 'demo'), /具名导出/)
   assert.match(checkDef({ id: 'demo' }, 'demo'), /apply\(ctx, config\)/)
   assert.match(checkDef({ id: 'demo', setup() {} }, 'demo'), /apply\(ctx, config\)/)
-  assert.match(checkDef(function apply() {}, 'Bad_ID'), /模块 id/)
-  assert.equal(checkDef(null, 'demo'), '入口文件要 export default 一个对象或 apply 函数（看 API.md）')
+  assert.match(checkDef({ apply() {} }, 'Bad_ID'), /模块 id/)
+  assert.match(checkDef(null, 'demo'), /具名导出/)
 })
 
 test('ctx.command / ctx.middleware 挂到管线，卸载时一起摘掉', async () => {

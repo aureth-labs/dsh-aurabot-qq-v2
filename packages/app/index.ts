@@ -21,6 +21,8 @@ import { grantOwner, moveWorkspace, realWorkspace } from '../../src/core/runtime
 import { createLocal, fileOf, toImageBuffer } from '../../src/local/index.ts'
 
 import { defaultModel, askModel, modelReasoning, modelVision, clearReasoningCache, clearVisionCache } from '../../src/core/llm/index.ts'
+import { isOwnerOf } from '../../src/core/config/owners.ts'
+import { createDialogue } from '../../src/core/llm/session-turn.ts'
 import { createLlmFacade } from '../../src/core/llm/facade.ts'
 import { browserStatus } from '../../src/core/runtime/browser.ts'
 import { mimeOf } from '../../src/chat/inbound/index.ts'
@@ -575,7 +577,13 @@ export function apply(ctx) {
     autotelicAudit: undefined as unknown,
     autotelicAuditOn: false,
   }
-  mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION, builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime })
+  const dialogue = createDialogue({
+    isOwner: session => isOwnerOf(getConfig(), session),
+    tools: where => mods.buildTools(where, true),
+    generate: (prompt, turn) => askModel(ctx, { ...prompt, cfg: getConfig(), module: 'chat-bridge', turn }),
+  })
+  mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION,
+    builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue } })
   bridge = createBridge({ ctx, getConfig, setConfig, hub, mods, log: logger.child('bridge'), version: String(VERSION), apiVersion: API_VERSION, overview: () => overview() })
   core.bridge = bridge
   core.modules = mods

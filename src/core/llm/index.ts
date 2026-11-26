@@ -1,5 +1,6 @@
 // 直接问一次宿主模型（不进会话）：给表情起备注、心情判断、记忆提炼等后台小任务用。
 
+import { runToolTurn, type ToolTurn } from './tool-turn.ts'
 import { randomUUID } from 'node:crypto'
 import { cleanText } from '../support/util/text.ts'
 import { recordUsage, moduleLabel } from './usage/usage.ts'
@@ -206,6 +207,7 @@ export interface LlmParams {
 
 /** askModel 的入参。 */
 export interface AskModelOptions {
+  turn?: ToolTurn
   system?: string
   text: string
   images?: Array<{ data: string; mediaType: string }>
@@ -253,6 +255,13 @@ export async function askModel (dsh, o: AskModelOptions): Promise<string> {
   let temperatureTried = false
   // 记用量：模块名由调用方给（模块 API 会自动带上自己的 id），没给就算后台任务
   const onUsage = (usage) => recordUsage({ module: moduleLabel(o.module || 'background'), task: o.usageTask, provider: t.provider, model: t.model, usage })
+  if (o.turn?.available().length) {
+    return runToolTurn(llm, {
+      ...base,
+      ...(temperature !== undefined && !temperatureUnsupported(t.provider, t.model) && { temperature }),
+      ...(effort && { reasoningEffort: effort }),
+    }, o.turn, onUsage)
+  }
   for (let attempt = 0; ; attempt++) {
     const params = { ...base }
     if (temperature !== undefined && !temperatureUnsupported(t.provider, t.model)) params.temperature = temperature

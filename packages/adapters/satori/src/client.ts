@@ -259,6 +259,7 @@ export class SatoriClient {
     this.clearTimers()
     const interval = Math.max(3000, Number(this.options.heartbeatMs) || 10_000)
     this.lastPongAt = Date.now()
+    // lifecycle-safe: 连接关闭和实例停用均调用 clearTimers。
     this.pingTimer = setInterval(() => {
       const socket = this.socket
       if (!socket || socket.readyState !== this.WebSocketImpl.OPEN) return

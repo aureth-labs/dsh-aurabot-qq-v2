@@ -10,6 +10,7 @@ import { dataDir } from '../../store/index.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { personaScope, personaNow } from '../../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
+import { sessionOwner } from '../../llm/session-turn.ts'
 import { isOwnerOf } from '../../config/owners.ts'
 import { cleanOutboundText, isSilence, stripMarkdown } from '../../../chat/reply/index.ts'
 import { reallySent } from '../../../chat/hub/context/context.ts'
@@ -243,7 +244,7 @@ export function createApi(deps: ApiDeps) {
         },
         inspect: (bytes: Buffer) => ({ ...imageSize(bytes), mime: mimeOf(bytes) }),
       },
-      turnFromOwner: (sessionId) => Boolean(core.hub.turnSendersAllOwner?.(String(sessionId || ''))),
+      turnFromOwner: (sessionId) => sessionOwner(sessionId) ?? Boolean(core.hub.turnSendersAllOwner?.(String(sessionId || ''))),
       text: {
         clean: (value, label = id) => stripMarkdown(cleanOutboundText(value, { warn: (message) => mlog.warn(`${label}：${message}`) })).trim(),
         isSilence,

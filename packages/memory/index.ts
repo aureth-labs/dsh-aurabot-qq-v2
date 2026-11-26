@@ -2,6 +2,7 @@
 // 导出 createMemoryStore 的返回值：add / addEvent / recall / list / contextFor / topicScore / consolidate ……
 // 别的模块（空间日记、B 站、翻唱）会往这里记她的经历；记忆模块关着时它们自己跳过。
 
+import { roomMemory } from './rooms.ts'
 import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, parseMemoryCommand, NATIVE_MEMORY_VIEW } from '../../src/features/memory/index.ts'
 export { looksLikeRuleMemory } from '../../src/features/memory/index.ts'
 import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../src/features/memory/store/graph.ts'
@@ -42,6 +43,9 @@ export const tab = 'memory'
 
 export function apply(ctx, config) {
   const fetchImpl = undefined
+  const rooms = roomMemory(() => ctx.dataDir('rooms.sqlite'), () => ctx.root.config.memory?.enabled !== false)
+  ctx.provide('room-memory', rooms)
+  ctx.effect(() => rooms.close())
   const registerNativePreview = ctx.nativePreview
   const { hub, http } = ctx.host
   const stores = new Map() // 目录 → 记忆库

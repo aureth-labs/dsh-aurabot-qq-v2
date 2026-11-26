@@ -1,3 +1,5 @@
+import type { RoomMemory } from '../memory/rooms.ts'
+import type { Dialogue } from '../../src/core/llm/session-turn.ts'
 import { createHash } from 'node:crypto'
 import { h, toText } from '../../src/core/message/element/element.ts'
 import { openConversations, type ConversationLine } from '../../src/core/store/conversations.ts'
@@ -52,9 +54,20 @@ export function apply(ctx: PluginContext) {
       owner ? '本条消息来自该平台登记的主人。' : '本条消息来自普通用户。',
     ].filter(Boolean).join('\n')
     const sessionId = createHash('sha256').update(JSON.stringify([room, persona.id])).digest('hex')
-    if (!ctx.llm) throw new Error('模型服务尚未就绪')
-    const answer = await ctx.llm.generate({ system, text: JSON.stringify([...history, current]), sessionId, maxTokens: 800 })
-    if (!active || !db.claim(room, session.messageId)) return
+    const identity = { room, persona: persona.id, user: session.userId }
+    const memory = () => ctx.get<RoomMemory>('room-memory')
+    const facts = memory()?.recall?.(identity, input, ctx.root.config.memory?.recallCount ?? 6) ?? []
+    const transcript = [...history, current]
+    const prompt = { system, text: JSON.stringify(facts.length ? { facts, transcript } : transcript), sessionId, maxTokens: 800 }
+    const dialogue = ctx.get<Dialogue>('dialogue')
+    let claimed = false
+    const claim = () => active && (claimed || (claimed = db.claim(room, session.messageId)))
+    const answer = dialogue?.respond
+      ? await dialogue.respond(session, prompt,
+        () => active && ctx.config.enabled !== false && (ctx.root.config.enabled || session.platform === 'sandbox'),
+        () => memory()?.tools?.(identity) ?? [], claim)
+      : await ctx.llm.generate(prompt)
+    if (!claim()) return
     mood?.observe(input, speaker, { direct: addressed, owner, chatId: room })
     const reply = h.parse(ctx.text.clean(h.stringify(h.parse(answer))))
     const lines = [current]

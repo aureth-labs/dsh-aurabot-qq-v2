@@ -55,7 +55,7 @@ import { createApi } from './api.ts'
 import { createDocs } from './docs.ts'
 import { ServiceRegistry } from '../../service/registry.ts'
 
-export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime }) {
+export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime, initialServices = {} }) {
   const log = logger.child('modules')
   const importer = createImporter(userDir())
   const builtinDefs = new Map<string, ModuleDef>((builtins as ModuleDef[]).map((d) => [d.id, d]))
@@ -65,6 +65,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const routes = new Map() // 完整路径 → { id, handler }
   const pages = new Map() // 完整路径 → { id, path, name, icon, order }
   const services = new ServiceRegistry()
+  for (const [name, service] of Object.entries(initialServices)) services.provide(name, service, '@core')
   const listeners = new Map() // 事件名 → [{ id, fn }]
   const revisions = new Map() // id → 停止次数，取消在途 import
   // 模块每次（重）启动都递增一次「代际」：hub 用它判断会话里挂的工具是不是旧模块实例的闭包。
@@ -638,10 +639,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   }
 
   // ---------- 汇总给插件其他部分用 ----------
-  function buildTools(where) {
+  function buildTools(where, sessionNative = false) {
     const out = []
     const names = new Set()
     for (const rec of live.values()) {
+      const platform = where.target?.platform
+      const platforms = Array.isArray(rec.def.platforms) ? rec.def.platforms : rec.source === 'user' ? ['*'] : sessionNative ? [] : ['qq']
+      if (platform && !platforms.includes('*') && !platforms.includes(platform)) continue
       for (const b of rec.tools) {
         let r
         try { r = typeof b === 'function' ? b(where) : b } catch (error) { note(rec.id, '生成工具', error); continue }
@@ -649,7 +653,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           if (!t || !t.name) continue
           if (names.has(t.name)) { log.debug(`工具 ${t.name} 重名，模块「${rec.id}」的没挂`); continue }
           names.add(t.name)
-          out.push(t)
+          out.push(t.output || typeof t.execute !== 'function' ? t : defineTool({ ...t, properties: t.parameters?.properties ?? t.properties, required: t.parameters?.required ?? t.required }))
         }
       }
     }

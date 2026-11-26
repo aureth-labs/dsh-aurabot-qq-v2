@@ -138,7 +138,6 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   getter('database', () => services?.get('database') ?? null)
   getter('ffmpeg', () => services?.get('ffmpeg') ?? null)
   value('defineTool', (spec: any) => api.defineTool(spec))
-  value('tool', (builder: any) => api.tool(builder))
   value('prompt', (fn: any) => api.context(fn))
   value('rule', (fn: any) => api.rule(fn))
 
@@ -245,26 +244,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
     return commandBuilder(text, filter)
   }) as PluginContext['command'])
 
-  /**
-   * 工具注册。三种写法都认：
-   * - `ctx.tool(fn)`：工厂函数，按 where 生成一批工具
-   * - `ctx.tool({ name, description, parameters, execute })`：JSON Schema 写法，转成 defineTool
-   * - 已经做好、带 output 的工具：原样收下
-   */
-  value('tool', (builder: any) => {
-    let tool: any = builder
-    if (builder && typeof builder === 'object' && typeof builder.execute === 'function' && typeof builder.name === 'string' && !builder.output) {
-      const params = builder.parameters && typeof builder.parameters === 'object' ? builder.parameters : {}
-      tool = api.defineTool({
-        name: builder.name,
-        description: builder.description || '',
-        properties: params.properties || {},
-        required: params.required || [],
-        execute: builder.execute,
-      })
-    }
-    return api.tool(tool)
-  })
+  value('tool', (builder: unknown) => api.tool(builder))
 
   const registerRoute = (
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
