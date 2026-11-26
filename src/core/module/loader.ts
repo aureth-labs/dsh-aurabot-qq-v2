@@ -246,7 +246,8 @@ export function namedModuleDef(mod) {
   if (!apply) return undefined
   const raw = {
     name: mod.name,
-    description: mod.description,
+    // 模板/社区口径把说明写在 `usage`，老插件写 `description`，两个都认。
+    description: mod.description ?? mod.usage,
     version: mod.version,
     // 插件类型与多实例：模板仓库用「具名导出」写法（export const kind/reusable），
     // 漏了这几个字段会让适配器在面板里变成普通插件、reusable 也永远起不来第二份配置。
@@ -257,7 +258,8 @@ export function namedModuleDef(mod) {
     tab: mod.tab,
     navGroup: mod.navGroup,
     platforms: mod.platforms,
-    config: mod.config,
+    // 模板/社区口径写 `export const Config = Schema.object(...)`，老插件写 `config`，两个都认。
+    config: mod.config ?? mod.Config,
     defaults: mod.defaults,
     settings: mod.settings,
     capabilities: mod.capabilities,

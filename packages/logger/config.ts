@@ -1,8 +1,5 @@
-export const config = {
-  defaults: {
-    pageSize: 300,
-  },
-  settings: [
-    { key: 'pageSize', type: 'number', label: '日志页一次显示多少条', min: 50, max: 500 },
-  ],
-}
+import { Schema } from '../../src/core/config/shape/schema.ts'
+
+export const Config = Schema.object({
+  pageSize: Schema.number().min(50).max(500).integer().default(300).description('日志页一次显示多少条'),
+})

@@ -15,3 +15,10 @@
 ## 验收
 
 所有 packages/*/index.ts 只导出 v2 字段；内核无 v1 分支；逐个在 8787 热加载为 ready。
+
+## 进度
+
+- 加载器已认具名导出：`export const name/version/description/Config` + `export function apply`，
+  `id` 取文件夹名；`Config` 是 Schema 时自动生成 `settings` 与 `defaults`。
+- 已转换：`logger`（3.0.0）、`chat-bridge`（2.0.0）。21 个内置模块全部解析成功，无缺 id / 缺 apply。
+- 剩 19 个仍是 `export default { id, ... }`。
