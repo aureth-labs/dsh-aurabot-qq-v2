@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 反馈回路（docs/design/autotelic-v5/00-v5-final.md §3.6）。
+// 自驱引擎 v5 · 反馈回路。
 //
 // 职责：主人纠偏（抑制表/偏好表）+ 无回应负反馈（观察窗/冷度/自动 park/恢复）+ 跑偏熔断。
 // 存储：feedback.json（dataDir 根，归 impl-execute 独家读写；技能库/决策层只读，lead 裁决 2026-11-17）；

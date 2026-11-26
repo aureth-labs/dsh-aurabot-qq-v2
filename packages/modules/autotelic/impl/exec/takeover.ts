@@ -9,7 +9,7 @@ type RestoreTakeoverOptions = Partial<Record<'getConfig' | 'setConfig' | 'backup
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type FindFlippedOptions = Partial<Record<'getConfig' | 'backup', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type RepressTakeoverOptions = Partial<Record<'getConfig' | 'setConfig' | 'backup', any>>// 自驱引擎 · 浏览模块接管（docs/AUTOTELIC-TAKEOVER.md）。
+type RepressTakeoverOptions = Partial<Record<'getConfig' | 'setConfig' | 'backup', any>>// 自驱引擎 · 浏览模块接管。
 
 /** 常见浏览型模块的自主循环键（探测式兜底清单；不在清单里但有 autoBrowse 的也会被扫到）。 */
 export const AUTONOMY_KEY = 'autoBrowse'

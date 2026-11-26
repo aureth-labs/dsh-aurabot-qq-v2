@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 三段式决策环（docs/design/autotelic-v5/00-v5-final.md §3.2/§3.3/§9.3）。
+// 自驱引擎 v5 · 三段式决策环。
 //
 // 职责（成员 B 决策环交付之一）：取代 engine.js/runtime.js 的决策部分（legacy 文件本体不动，
 // 集成步处理接线）：

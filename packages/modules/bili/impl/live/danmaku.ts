@@ -1,4 +1,4 @@
-// 弹幕用的分P / 番剧元数据与响应。接口参数参考 catbus 的网页端实现，见 docs/BILI-DANMAKU.md。
+// 弹幕用的分P / 番剧元数据与响应。接口参数参考 catbus 的网页端实现。
 import { randomInt } from 'node:crypto'
 
 export function bangumiEpisode(body, video, part) {

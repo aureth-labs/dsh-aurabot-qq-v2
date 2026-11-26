@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 行动单执行器（重构，docs/design/autotelic-v5/00-v5-final.md §3.5/§3.6）。
+// 自驱引擎 v5 · 行动单执行器（重构）。
 //
 // 契约（与成员 B 的行动单契约对齐，2026-11-17 派单口径）：
 //   ticket = { id, intent, tag, steps:[{desc, level, files?, text?}], budget:{maxSteps, timeoutMs},

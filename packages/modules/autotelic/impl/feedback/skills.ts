@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 三层技能体系（R7/R8，docs/design/autotelic-v5/00-v5-final.md §2.4/§3.4/§9.3）。
+// 自驱引擎 v5 · 三层技能体系（R7/R8）。
 //
 // 三层架构（裁决一：全链自主，安全靠快照回滚不靠审批闸）：
 //   memory/   记忆层——复盘片段顺手落下来（ingestReflection，零成本）；
@@ -23,7 +23,7 @@
 // （附加段用 HTML 注释成对标记，损坏可整体剥除，主卡正文不受影响）。
 //
 // 文件头旧接口：createSkills（P4.2 旧技能库）/ writeUserModule（P3.1 用户模块写入）
-// 原样保留在文件尾——模块壳（src/modules/autotelic/index.js）与 autotelic-p3.test.js 还在用，
+// 原样保留在文件尾——模块壳（packages/modules/autotelic/index.ts）与 autotelic-p3.test.js 还在用，
 // 迁移走 v5 接口是模块壳属主的事，这里不动它们的行为。
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, copyFileSync, unlinkSync } from 'node:fs'

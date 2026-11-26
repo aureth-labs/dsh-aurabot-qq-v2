@@ -1,4 +1,4 @@
-// 自驱引擎 · Python（P3，docs/AUTOTELIC-PLAN.md §1.2 / §3 P3.3~P3.7）。
+// 自驱引擎 · Python（P3.3~P3.7）。
 //
 // 铁律：不许写死解释器名。运行时探测，滤掉三类假货：
 //   ① Microsoft Store 0 字节占位别名（跑不出 Python 3.x 版本串）

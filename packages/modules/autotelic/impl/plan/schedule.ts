@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 双轨排程触发（R10/D4，docs/design/autotelic-v5/00-v5-final.md §2.2）。
+// 自驱引擎 v5 · 双轨排程触发（R10/D4）。
 //
 // 两轨并存（裁决三）：
 //   · 定时回味——生物钟：60s tick 心跳 + 醒着窗口（awakeFrom/awakeTo，安静时段=补集）

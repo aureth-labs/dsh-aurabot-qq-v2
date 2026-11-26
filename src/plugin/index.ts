@@ -7,7 +7,7 @@ import { registerOutboundPanelRoutes } from './outbound-panel.ts'
 // 面板在侧栏「自动化任务」下面（网页半边见 client/**/*.ts，打包成 dist/client.js），这里提供它要的 /aurabot/api/* 接口。
 //
 // 这个文件只管「核心」：配置、QQ 网关、聊天中枢、人格、面板接口、模块内核和联动。
-// 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（src/modules/），能单独关掉，也能用自己写的替换。
+// 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（packages/modules/），能单独关掉，也能用自己写的替换。
 //
 // ⚠ 安全默认：总开关关、试运行开。不手动打开，一句都不会真的发到 QQ。
 
@@ -132,7 +132,7 @@ export function apply(ctx) {
   let backupJob = null // { running, done, total, error, result }
   let pushJob = null // { running, ok, error, result, at }
   let pushTimer = null // 云备份每日定时
-  // 主动发言出站策略服务（docs/OUTBOUND-POLICY-DESIGN.md），装配在模块之前
+  // 主动发言出站策略服务，装配在模块之前
   let outbound = null
   // 已注册的策略源实例（name → policy），给 deliver 的 enginePolicy 解析用
   const enginePolicies = new Map()
@@ -658,7 +658,7 @@ export function apply(ctx) {
   })
   const http = createHttp({ ctx, getConfig, log, prefix: PREFIX, getMods: () => mods })
   const { send, readBody, readRaw, query, answer, route, panelBlocked, adminHostBlocked, csrfBlocked, isLoopbackAddr, panelNeedsLocal } = http
-  // ---------- 主动发言出站策略（docs/OUTBOUND-POLICY-DESIGN.md） ----------
+  // ---------- 主动发言出站策略 ----------
   // 宿主统一发送服务：模块快捷 API / scoped hub / pet 回落全部经它判定，识别「主动私聊主人」
   // 后交给当前活跃策略源做原子预算预占。档位默认 pass（旧行为直发），未启用时完全惰性。
   outbound = createOutboundPolicy({
@@ -951,7 +951,7 @@ export function apply(ctx) {
     return () => { try { if (typeof off === 'function') off() } catch (error) {} }
   }, 'aurabot: 危险命令确认')
 
-  // ---------- 自驱引擎审计（P0.5 地基，docs/AUTOTELIC-PLAN.md §4.1）----------
+  // ---------- 自驱引擎审计（P0.5 地基）----------
   // 「她可以骗主人，但不能骗账本」：她（system:autotelic* 会话）的工具调用全量机械落盘（哈希链）。
   // 三条硬规矩：只记录不放行（永远 return next()）；异步入队绝不同步写盘（pre-execute 是进程级
   // waterfall，同步写会拖住主人 GUI 里的工具调用）；失败静默（审计挂了不能影响正常聊天）。

@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 强制约束规则（docs/design/autotelic-v5/00-v5-final.md §3.7 / 裁决二 / D7）。
+// 自驱引擎 v5 · 强制约束规则。
 //
 // 职责（成员 B 决策环交付之二）：
 // 1. parseConstraintRules：constraintRules 多行文本解析——逐行一条，解析失败的行**静默跳过**；

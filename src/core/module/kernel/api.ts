@@ -221,7 +221,7 @@ export function createApi(deps: ApiDeps) {
       ask: writable('ask', (opts) => core.ask(typeof opts === 'string' ? { text: opts, module: id } : { ...opts, module: id })),
       think: writable('think', (prompt, opts : ThinkOptions = {}) => core.hub.runSystemTurn(`ext-${id}`, opts.title || def.name || id, String(prompt), opts)),
       onebot: writable('onebot', (action, params, opts) => core.onebot.call(action, params, opts)),
-      // 出站治理面（主动发言策略，见 docs/OUTBOUND-POLICY-DESIGN.md）。
+      // 出站治理面（主动发言策略）。
       // 宿主注入 core.outbound 才有；旧环境/纯测试下 available=false，模块据此降级，
       // 绝不因此抛错。moduleId 由宿主闭包绑定，模块无法伪造他人身份。
       proactive: {

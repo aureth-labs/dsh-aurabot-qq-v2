@@ -1,13 +1,13 @@
 // 目的机制（主动搭话引擎）的 Aurabot 接线层。
 //
-// 引擎本体在 ./engine.js（逻辑移植自 Mieksido/surfcore 的 purpose-engine，MIT，
+// 引擎本体在 ../engine/（逻辑移植自 Mieksido/surfcore 的 purpose-engine，MIT，
 // 署名见 THIRD-PARTY-NOTICES.md；零 import 零 I/O 的纯函数）。
 // 本文件负责副作用：状态文件、素材采集（记忆 + 聊天流水适配）、生成（hub.runSystemTurn）、
 // 投递（hub.deliver）、心情 nudge、追问、路由。
 //
-// 使用方式：独立的 purpose 内置模块（src/modules/purpose/index.js）。P1/Q1 拍板起默认开启
+// 使用方式：独立的 purpose 内置模块（packages/modules/purpose/index.ts）。P1/Q1 拍板起默认开启
 // （ext.purpose.enabled 缺省=开、显式 false 尊重）；旧的「主动搭话」模块（speakup）在迁移期
-// （P1~P3）仍在，companion 会见目的引擎开着而自动让位，迁移说明见 docs/PURPOSE_MODULE_API.md。
+// （P1~P3）仍在，companion 会见目的引擎开着而自动让位。
 
 import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 import { randomUUID } from 'node:crypto'

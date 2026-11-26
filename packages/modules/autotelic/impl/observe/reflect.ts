@@ -1,4 +1,4 @@
-// 自驱引擎 · 反思 / 每日一页 / 做梦（P2.4~P2.7，docs/AUTOTELIC-PLAN.md §3 P2、§10.1）。
+// 自驱引擎 · 反思 / 每日一页 / 做梦（P2.4~P2.7）。
 //
 // 反思（P2.4）：任务结束写「假设 / 证据 / 教训」进 memory.addEvent——这是她给自己攒本事的路。
 // 每日一页（P2.5）：dailyReviewHour 或攒够 minBatchForReview 件触发；强制含「今天没敢说的」

@@ -1,4 +1,4 @@
-// 自驱引擎 · 任务账本（P1.3，docs/AUTOTELIC-PLAN.md §3 P1）。
+// 自驱引擎 · 任务账本（P1.3）。
 // 「事办成没有」的结算口径（讨论笔记 §1）：主人不参与也成立。
 // 状态机：active → done / failed / blocked / abandoned；步数与预算有硬上限；重启恢复把在途改判 failed。
 // 落盘 ledger.json（writeJson 原子写）；纯数据 + 注入式依赖，可单测。

@@ -1,7 +1,7 @@
 
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ReconcileDayOptions = Partial<Record<'audit' | 'tasks' | 'dailyText' | 'chain', any>>// 自驱引擎 · 对账（场景 9，docs/AUTOTELIC-PLAN.md §5）。
+type ReconcileDayOptions = Partial<Record<'audit' | 'tasks' | 'dailyText' | 'chain', any>>// 自驱引擎 · 对账（场景 9）。
 
 /**
  * 对账一天的「自述 vs 账本」。

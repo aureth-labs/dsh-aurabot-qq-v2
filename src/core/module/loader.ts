@@ -382,7 +382,7 @@ export function rewriteImports(code, fromKey, keep = new Set()) {
  * @param {string} o.version     插件版本
  * @param {object[]} o.builtins  内置模块定义（按启动顺序）
  */
-// ── 出站治理（主动发言策略的模块侧接线，见 docs/OUTBOUND-POLICY-DESIGN.md / CONTRACT §5）──
+// ── 出站治理（主动发言策略的模块侧接线 / CONTRACT §5）──
 // 第一道判定放在**模块包装层**：模块的每次发送都带上宿主绑定的 moduleId 去问策略，
 // 放行才真的调 hub；hub 侧的 setOutboundGuard 是第二道保险（覆盖任何绕过包装层的直调）。
 // 未注入服务（core.outbound 缺失：旧环境 / 纯测试）时全部返回放行 —— 完全惰性、零开销。

@@ -472,7 +472,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return chat.userId === getConfig().ownerQQ ? `QQ · ${who}${owner}私聊` : `QQ 私聊 · ${who}${chat.nickname || chat.userId}`
   }
 
-  // 后台会话点名 preset（自驱引擎 P0.2，docs/AUTOTELIC-PLAN.md §3/§4.2）：
+  // 后台会话点名 preset（自驱引擎 P0.2）：
   // 只有主人明确开了 ext.autotelic.presetIdOverride 才接受 chat.presetId 覆盖（默认关，最坏情况也只是「她不会动」）；
   // noTools 永远压过 presetId——purpose/qzone 的纯文本回合不许借机拿到 preset 工具。
   // 注意：system 会话的 level 判定与 access.presetFor 都不改（改了 system 会话会拿到主人专属工具）。
