@@ -93,15 +93,15 @@ export interface Message {
 }
 
 /** 一个已上线的机器人。资源方法对齐 Satori；平台不支持的会抛 UnsupportedApiError。 */
-export interface Bot {
-  readonly id: string
-  readonly platform: string
-  readonly selfId: string
-  readonly status: BotStatus
-  supports(capability: Capability): boolean
+export declare abstract class Bot {
+  abstract readonly id: string
+  abstract readonly platform: string
+  abstract readonly selfId: string
+  abstract readonly status: BotStatus
+  abstract supports(capability: Capability): boolean
 
-  sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown>
-  sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown>
+  abstract sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown>
+  abstract sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown>
 
   getSelfId(): string
   getSelf(): Promise<User>
@@ -198,13 +198,20 @@ export interface CommandBuilder {
   dispose(): void
 }
 
+export interface ToolContext {
+  sessionId: string
+  level: string
+  target?: Target
+}
+
 export interface ToolSpec {
   name: string
   description: string
   /** JSON Schema 的 properties。 */
   properties?: Record<string, any>
   required?: string[]
-  execute(args: any, exec?: any): Promise<any>
+  parameters?: { type: 'object'; properties?: Record<string, unknown>; required?: string[] }
+  execute(args: any, exec?: any): unknown
 }
 
 export interface Logger {
@@ -244,6 +251,43 @@ export interface ServerFacade {
   delete(path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' | null }): () => void
 }
 
+export interface InboundMessage {
+  type: Target['type']
+  channelId: string
+  userId: string
+  userName?: string
+  content?: string
+  elements?: Element[]
+  messageId?: string
+  guildId?: string
+  timestamp?: number
+  raw?: unknown
+}
+
+export interface AdapterRuntime {
+  readonly signal?: AbortSignal
+  platform: string
+  log(message: string): void
+  emitMessage(message: InboundMessage): void
+  emitEvent?(event: string, payload: unknown): void
+  speak?(text: string): Promise<string>
+  supports?(capability: Capability): boolean
+}
+
+export interface AdapterSpec {
+  name?: string
+  platform: string
+  resolvePlatform?(config: unknown): string | undefined
+  capabilities?: Capability[]
+  connect(config: any, runtime: AdapterRuntime): Promise<Bot>
+  disconnect?(bot: Bot, config: any): Promise<void>
+}
+
+export declare class UnsupportedApiError extends Error {
+  constructor(bot: Pick<Bot, 'platform' | 'id'>, api: string)
+  readonly code: 'UNSUPPORTED_API'
+}
+
 export interface Services {
   get<T = any>(name: string): T | null
   has(name: string): boolean
@@ -279,7 +323,7 @@ export interface Ctx {
   command(signature: string): CommandBuilder
   command(signature: string, handler: (session: Session, args: string) => unknown): () => void
   /** 注册给 AI 调用的工具：用户不能直接触发，要模型自己决定调用并传参。 */
-  tool(builder: ToolSpec | ((where: any) => ToolSpec)): () => void
+  tool(builder: ToolSpec | ((where: ToolContext) => ToolSpec | ToolSpec[] | null)): () => void
   defineTool(spec: ToolSpec): any
 
   server: ServerFacade
@@ -308,7 +352,7 @@ export interface Ctx {
   }
   readonly bots: BotsAccessor
   broadcast(targets: Target[], content: unknown, options?: { timeoutMs?: number }): Promise<Array<{ target: Target; ok: boolean; error?: string }>>
-  adapter(spec: any, config?: unknown): Promise<{ dispose(): Promise<void>; [key: string]: any }>
+  adapter(spec: AdapterSpec, config?: unknown): Promise<{ bot: Bot; dispose(): Promise<void> }>
 
   sendTo(chatId: string, content: unknown, options?: any): Promise<any>
   sendImage(chatId: string, src: unknown): Promise<any>
@@ -353,6 +397,7 @@ export interface PluginModule<C = any> {
   /** 允许多份配置（适配器默认 true）。 */
   reusable?: boolean
   reloadOnConfig?: boolean
+  config?: unknown
   Config?: unknown
   apply(ctx: Ctx, config: C): unknown
 }
@@ -364,10 +409,18 @@ interface SchemaField<T> {
   max(value: number): this
   role(value: string): this
   required(value?: boolean): this
+  hidden(value?: boolean): this
+  deprecated(value?: boolean): this
+  experimental(value?: boolean): this
+  readonly kind: string
+  defaults(): Record<string, unknown>
+  validate(value: unknown): { ok: boolean; value?: T; error?: string }
 }
 
-declare global {
-  const Schema: {
+export declare const h: ElementFactory
+export declare const Schema: SchemaFactory
+
+export interface SchemaFactory {
     string(): SchemaField<string>
     boolean(): SchemaField<boolean>
     number(): SchemaField<number>
@@ -376,7 +429,10 @@ declare global {
     union<T>(values: readonly T[]): SchemaField<T>
     array<T>(item: SchemaField<T>): SchemaField<T[]>
     object(shape: Record<string, SchemaField<unknown>>): SchemaField<Record<string, unknown>>
-  }
+}
+
+declare global {
+  const Schema: SchemaFactory
   /** 宿主注入的消息元素工厂，和 Koishi 一样不用 import。 */
   const h: ElementFactory
 }

@@ -5,6 +5,7 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, readdirSync, statSync, wri
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { bundleClient } from './bundle-client.mjs'
+import { bundleSdk } from './bundle-sdk.mjs'
 import { bundleAdapters } from './bundle-adapters.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -52,6 +53,7 @@ tsc('tsconfig.json', STAGE.lib)
 tsc('tsconfig.types.json', STAGE.lib)
 await bundleClient(join(STAGE.dist, 'client.js'))
 await bundleAdapters(ROOT, join(STAGE.dist, 'adapters'))
+await bundleSdk(ROOT, join(STAGE.dist, 'sdk'))
 
 copyAssets(join(ROOT, 'src'), join(STAGE.lib, 'src'))
 copyAssets(join(ROOT, 'packages'), join(STAGE.lib, 'packages'))

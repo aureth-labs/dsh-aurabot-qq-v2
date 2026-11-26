@@ -1,16 +1,16 @@
 # Aurabot 插件接口（v2）
 
-写法和 Koishi 一样：具名导出 `name` / `Config` / `apply(ctx, config)`。没有默认导出。
+具名导出 name、config 和 apply(ctx, config)。开发依赖 @aurabot/plugin-api 提供 Schema、h、Bot 和类型，安装后的插件由宿主提供同一接口。
 能力全部从 `ctx` 取，注册的东西随插件卸载自动回收。这份文件随插件同步到数据目录 `modules/`，别改它。
 
 ## 最小例子
 
 ```ts
-import type { Ctx } from './aurabot'
+import { Schema, type Ctx } from '@aurabot/plugin-api'
 
 export const name = '打招呼'
 
-export const Config = Schema.object({
+export const config = Schema.object({
   reply: Schema.string().default('你好呀～').description('回复内容'),
 })
 

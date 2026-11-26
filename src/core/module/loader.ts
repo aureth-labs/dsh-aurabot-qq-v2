@@ -1,4 +1,4 @@
-// 模块的来源与定义：内置目录、用户目录、加载 lib、扫描定义、校验与 schema 默认值。
+// 插件发现、清单及入口契约。
 
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'

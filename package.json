@@ -1,7 +1,7 @@
 {
   "name": "dsh-aurabot-qq",
-  "version": "1.3.0-rc.1",
-  "description": "Aurabot：住在 QQ 里的 AI 伙伴「大肥鱼」—— DeepSeek Harness 插件（经 OneBot v11 接 QQ）",
+  "version": "2.0.0-beta.1",
+  "description": "基于 DeepSeek Harness 的跨平台 AI 伙伴框架，提供 TypeScript 插件、平台适配器与人格和记忆服务",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -70,9 +70,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aureth-labs/dsh-aurabot-qq.git"
+    "url": "https://github.com/aureth-labs/dsh-aurabot-qq-v2.git"
   },
-  "homepage": "https://github.com/aureth-labs/dsh-aurabot-qq",
+  "homepage": "https://github.com/aureth-labs/dsh-aurabot-qq-v2",
   "engines": {
     "node": ">=22.18.0"
   },

@@ -14,10 +14,15 @@ export function createImporter(root: string) {
   let closed = false
   let pending = 0
 
-  function enableNodeNext() {
+  function enableResolution() {
     hooks ??= registerHooks({
       resolve(specifier, context, next) {
-        if (context.parentURL?.startsWith(prefix) && context.parentURL.includes('/' + SNAP + '/')
+        if (!context.parentURL?.startsWith(prefix)) return next(specifier, context)
+        if (specifier === '@aurabot/plugin-api') {
+          const file = import.meta.url.endsWith('.ts') ? './public-api.ts' : './public-api.js'
+          return next(new URL(file, import.meta.url).href, context)
+        }
+        if (context.parentURL.includes('/' + SNAP + '/')
           && specifier.startsWith('.') && specifier.endsWith('.js')) {
           const js = new URL(specifier, context.parentURL)
           const ts = new URL(js.href.slice(0, -3) + '.ts')
@@ -29,6 +34,7 @@ export function createImporter(root: string) {
   }
 
   async function importSource(source: Source) {
+    enableResolution()
     const stamp = stampOfTarget(source)
     if (source.single) return { mod: await import(pathToFileURL(source.file).href + '?v=' + stamp), stamp }
 
@@ -42,7 +48,6 @@ export function createImporter(root: string) {
     const target = join(parent, stamp)
     const entry = relative(source.dir, source.file)
     const typescript = entry.endsWith('.ts')
-    if (typescript) enableNodeNext()
     if (!existsSync(target)) {
       const stage = join(parent, randomUUID())
       mkdirSync(stage, { recursive: true })
