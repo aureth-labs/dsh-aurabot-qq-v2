@@ -83,7 +83,8 @@ before(async () => {
     voice: { engine: 'windows', autoChance: 0 }, stickers: { autoChance: 0 },
     merge: { waitSec: 0.2, maxSec: 2 },
     bili: { enabled: true },
-    modules: { bili: { enabled: false } },
+    // 内置命令表默认关，这组用例要测 /help 与模拟里的 /off，显式打开
+    modules: { bili: { enabled: false }, commands: { enabled: true } },
     files: { enabled: true, maxMB: 5, dirs: [dataDir] },
   }))
   writeMod('echo', echoCode('pong'))

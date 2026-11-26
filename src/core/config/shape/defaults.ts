@@ -453,8 +453,9 @@ export const DEFAULTS = {
   tabs: {} as TabPrefs, // 面板记住的小偏好
   // 模块：内置的和数据目录 modules/ 里自己写的。{ 模块id: { enabled, useBuiltin } }，没写的算开着
   // useBuiltin：自己写了同名模块，但想先用回内置的
-  // 聊天沙盒会开一个本地端口，默认关着；要用的时候在面板模块列表里打开。
-  modules: { sandbox: { enabled: false } } as ModuleSwitchTable,
+  // 框架出厂不预设任何指令：内置命令表住在 commands 模块里，默认关着，要用自己在面板打开。
+  // 聊天沙盒会开一个本地端口，同样默认关着。
+  modules: { sandbox: { enabled: false }, commands: { enabled: false } } as ModuleSwitchTable,
   safeMode: false, // 安全模式：自己写的模块一个都不加载（排查问题用）
   ext: {} as ModuleSettings, // 自己写的模块的设置：{ 模块id: {...} }
   // 自定义渠道费率按渠道和完整模型名匹配，与内置的官方美元参考价分开。

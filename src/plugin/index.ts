@@ -2517,7 +2517,9 @@ export function apply(ctx) {
     const msg = { ...chat, nickname: owner ? cfg.ownerName || '主人' : '路人', role: '', messageId: 'sim', text, mentioned: Boolean(b.mentioned), replyId: '', images: [], stickers: [], records: [], forwards: [], raw: { simulated: true } }
     const { sent } = await hub.capture(async () => {
       if (text) {
-        const cmd = (owner || chat.kind === 'private') && /^\s*[/／]/.test(text) ? parseCommand(text, mods.commands()) : null
+        const parsed = (owner || chat.kind === 'private') && /^\s*[/／]/.test(text) ? parseCommand(text, mods.commands()) : null
+        // 内置命令表默认关（commands 模块）；插件自己注册的命令不受影响
+        const cmd = parsed && (parsed.ext || use('commands')) ? parsed : null
         if (cmd && !owner && !canUseDelegatedCommand(cfg, msg, delegatedCommandKey(cmd))) {
           steps.push('这个私聊对象没有使用该命令的权限')
         } else if (cmd && cmd.ext) {

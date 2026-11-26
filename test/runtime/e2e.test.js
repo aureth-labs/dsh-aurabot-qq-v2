@@ -143,6 +143,8 @@ before(async () => {
     qzoneSocial: { friendChance: 1, ownerChance: 1, intervalMin: 1440 },
     merge: { waitSec: 0.4, maxSec: 3, groupWaitSec: 0.4, groupMaxSec: 3 },
     files: { enabled: true, maxMB: 1, dirs: [] },
+    // 内置命令表默认关（框架出厂零指令），这组用例要测 /silent、/active，显式打开
+    modules: { commands: { enabled: true } },
   }))
   fake = createFakeDsh({ brain })
   const host = await import('../../src/plugin/index.ts')
