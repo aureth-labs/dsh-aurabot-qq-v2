@@ -57,9 +57,9 @@ test('半角/全角、空白和大小写的成对标签删除参数，前后正�
 test('正常聊天的符号、HTML、JSON、@ 和回复控制标签保留', () => {
   for (const text of [
     'a | b ｜ c || d，1 < 2，3 > 2，<3',
-    '我喜欢 snake_case 和 <div>内容</div>',
+    '我喜欢 snake_case 和 `<div>内容</div>`',
     'invoke、calls、parameter、function_calls、DSML 只是单词',
-    '{"name":"小明"}', '<invoker>普通标签</invoker>',
+    '{"name":"小明"}', '`<invoker>普通标签</invoker>`',
     '@苏眠眠 你好', '<reply:7><voice>你好</voice>|||<sticker:开心><poke>',
   ]) assert.equal(cleanOutboundText(text), text)
   const warnings = []
@@ -92,8 +92,7 @@ function setup(t, { hooks, voice = false, ttsFailure = false } = {}) {
     voice: { enabled: voice, autoChance: 0, emojiSeparate: true }, stickers: { enabled: false, faces: false } })
   const log = { info() {}, debug() {}, error() {}, warn: (...args) => warnings.push(args.join(' ')) }
   const hub = createHub({ dsh: {}, getConfig: () => cfg, log, hooks,
-    onebot: { async call(action, params) {
-      if (action === 'get_group_member_list') return [{ user_id: 22, nickname: '苏眠眠', card: '' }]
+    onebot: { bot: { async getUserList() { return [{ user: { id: '22', name: '苏眠眠' } }] } }, async call(action, params) {
       sent.push({ action, ...params })
       return { message_id: sent.length }
     } },

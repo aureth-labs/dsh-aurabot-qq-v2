@@ -3,7 +3,8 @@
 
 import { chatRecordRanges, contextInjectionRanges, currentPromptSources, imageHandleRanges, memoryTranscriptRanges, promptFingerprint, promptTextRanges } from '../../../security/leak-guard.ts'
 import { stripMarkers } from '../context/reply-marker.ts'
-import { stripHtmlFragments, fenceRanges } from './html-fragments.ts'
+import { fenceRanges } from './code-fences.ts'
+import { discardedElementRanges } from '../../../core/message/element/parse.ts'
 /** 迁移期选项对象：属性名固定，值由调用方传。 */
 export type ToolTextRangesOptions = Partial<Record<'ownerPrivate', any>>
 /** 迁移期选项对象：属性名固定，值由调用方传。 */
@@ -272,7 +273,6 @@ function pokeCloseTagRanges(text) {
 // 完整空标签 `<acp …></acp>`、属性尾巴 `="text" time="…">>`、截断残片 `6-11-22 17:26:55">`）。
 //
 // 为什么必须单独写一套规则：
-//   · html-fragments 的 TAG_RE 要求 `<` 开头，**删不掉没有 `<` 的半截尾巴**；
 //   · toolTag 的 PROTO_NAMES 是工具协议名白名单，语义是「删标签连中间内容」，与这里不同；
 //   · 整条只剩标记时必须能变成空串，交给 isSilence 判沉默（不能发一条空气泡）。
 //
@@ -679,13 +679,26 @@ function visibleContent(text) {
   return isSilence(content) ? '' : content.replace(/^[\s\p{P}]*|[\s\p{P}]*$/gu, '').trim()
 }
 
+function outboundMarkupRanges(raw: string, toolRanges) {
+  if (!raw.includes('<')) return []
+  const protectedRanges = [...codeRanges(raw), ...toolRanges]
+  // QQ 对话的旧模型指令由 parseReply 与 mentions 消费；遮蔽只影响语法检查的那份副本。
+  const controls = /<(?:at|reply|sticker|face)[:：][^<>]+>|<poke(?:\s+id\s*=\s*["']\d+["'])?\s*\/?>|<\/sticker\s*>/gi
+  for (const m of raw.matchAll(controls)) protectedRanges.push({ start: m.index, end: m.index + m[0].length })
+  const ranges = mergeRanges(protectedRanges)
+  let cursor = 0, masked = ''
+  for (const range of ranges) {
+    masked += raw.slice(cursor, range.start) + ' '.repeat(range.end - range.start)
+    cursor = range.end
+  }
+  return discardedElementRanges(masked + raw.slice(cursor))
+}
+
 /** 所有投递路径共用这一份清洗，区间也交给消息段出口使用。 */
 export function cleanOutboundText(text, { warn, promptSources, fingerprint, userText, ownerPrivate = false, allowPromptEcho = false, onPromptDecision, onRanges } : CleanOutboundTextOptions = {}) {
   const active = currentPromptSources()
   const sources = promptSources ?? [...(active?.system.values() || []), active?.context || '', ...(active?.memory || [])]
   const raw = String(text || '')
-  // 先剥 HTML 残片：它们和工具调用、提示词复读互不重叠，按原文坐标并进同一份区间表。
-  const { cuts: htmlCuts } = stripHtmlFragments(raw)
   // 假媒体动作（「（图片发出）」「（拍了一张新的）」）是纯文字描写，按原文坐标并进同一份区间表。
   const mediaCuts = fakeMediaActionRanges(raw)
   // time-context 注入不是提示词复读，主人私聊的复读豁免不该放过它，这里直接并进必删区间。
@@ -704,10 +717,11 @@ export function cleanOutboundText(text, { warn, promptSources, fingerprint, user
   const acpRanges = acpLeakRanges(raw)
   // 图片句柄与真实附件路径（#518）同样在这一层一次收干净。
   const imageRanges = imageHandleRanges(raw)
-  const noiseCount = toolRanges.length + contextRanges.length + htmlCuts.length + acpRanges.length + imageRanges.length
+  const markupCuts = outboundMarkupRanges(raw, toolRanges)
+  const noiseCount = toolRanges.length + contextRanges.length + markupCuts.length + acpRanges.length + imageRanges.length
   const tools = [...toolRanges, ...contextRanges, ...silence, ...stateRanges, ...recordRanges, ...pokeRanges, ...memoRanges, ...acpRanges, ...imageRanges]
     .sort((a, b) => a.start - b.start || b.end - a.end)
-  const baseRanges = mergeRanges([...tools, ...htmlCuts, ...mediaCuts])
+  const baseRanges = mergeRanges([...tools, ...markupCuts, ...mediaCuts])
   const toolClean = withoutToolRanges(raw, baseRanges)
   const prompts = (allowPromptEcho ? [] : promptTextRanges(toolClean, fingerprint || promptFingerprint(sources, userText ?? active?.userText ?? '')))
     .sort((a, b) => a.start - b.start || b.end - a.end)

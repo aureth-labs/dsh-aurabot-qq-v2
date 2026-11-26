@@ -3,6 +3,7 @@
 import { fileURLToPath } from 'node:url'
 import { readManifest } from '../src/core/module/manifest.ts'
 import { namedModuleDef, type ModuleDef } from '../src/core/module/loader.ts'
+import * as outboundFilter from './modules/outbound-filter/index.ts'
 import * as modelSwitch from './modules/model-switch/index.ts'
 import * as llm from './modules/llm/index.ts'
 import * as logger from './modules/logger/index.ts'
@@ -28,6 +29,7 @@ import * as sandbox from './modules/sandbox/index.ts'
 
 const entries: Array<[string, Record<string, any>]> = [
   ['logger', logger],
+  ['outbound-filter', outboundFilter],
   ['llm', llm],
   ['model-switch', modelSwitch],
   ['persona', persona],

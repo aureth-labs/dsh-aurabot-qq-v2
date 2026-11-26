@@ -18,7 +18,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { cleanOutboundText, cleanOutboundSegments, parseReply, stripAcpLeak, hasAcpResidue, hasSuspectTagShape } from '../../src/chat/reply/index.ts'
-import { stripHtmlFragments } from '../../src/chat/reply/format/html-fragments.ts'
 import { guardOutgoing } from '../../src/chat/inbound/hooks/guard.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
@@ -46,11 +45,11 @@ test('ACP 标记：剥截断的时间残片（实况③）', () => {
   assert.deepEqual(parseReply(SAMPLE_TIME_TAIL, {}), { silent: true, items: [] })
 })
 
-test('ACP 标记：带 m 编号的形态连编号一起剥（与 love-mode 既有契约一致）', () => {
-  // love-mode 的保险丝用例（mods-fork/modules/love-mode/test/love-mode.test.mjs:201）
-  // 认定的口径是「剥完剩正文」，这里保持一致。
-  assert.equal(cleanOutboundText('<acp tokens="15" type="text">m01990 刚吃完饭', {}), '刚吃完饭')
-  assert.deepEqual(parseReply('<acp tokens="15" type="text">m01990 刚吃完饭', {}).items.map((i) => [i.kind, i.value]), [['text', '刚吃完饭']])
+test('未闭合 ACP 区块连同其中的正文丢弃', () => {
+  const input = '<acp tokens="15" type="text">m01990 刚吃完饭'
+  assert.equal(cleanOutboundText(input), '')
+  assert.deepEqual(parseReply(input), { silent: true, items: [] })
+  assert.equal(cleanOutboundText('晚安' + input), '晚安')
 })
 
 test('ACP 标记：正文与标记混排时正文必须完整保留', () => {
@@ -82,14 +81,6 @@ test('ACP 标记：stripAcpLeak 幂等，剥完不再有残渣', () => {
   }
 })
 
-test('ACP 标记：html-fragments 也能认出 acp 标签（成对也不保留）', () => {
-  // html-fragments 只负责标签本身（它不懂 ACP 的 mNNNNN 编号）；
-  // 编号由第 1 层 cleanOutboundText 的 acpLeakRanges 连段删掉。这里锁两层各自的本职。
-  assert.equal(stripHtmlFragments(SAMPLE_FULL_TAG).value.trim(), '')
-  assert.equal(stripHtmlFragments('前\n<acp tokens="1">m1</acp>\n后').value, '前\nm1\n后')
-  // 两层合起来才是最终口径：标签、编号、以及标签独占的那一行空行都不留
-  assert.equal(cleanOutboundText('前\n<acp tokens="1">m1</acp>\n后', {}), '前\n后')
-})
 
 // ─────────────── 反向约束：不许误伤 ───────────────
 
@@ -110,11 +101,10 @@ test('ACP 标记：不误伤代码围栏内教人写标签', () => {
   assert.equal(cleanOutboundText(fenced, {}), fenced)
 })
 
-test('ACP 标记：不误伤成对的普通 HTML 标签与相似标签名', () => {
-  assert.equal(cleanOutboundText('我喜欢 <div>内容</div>', {}), '我喜欢 <div>内容</div>')
+test('已知元素保留，未知 XML 区块整块丢弃', () => {
+  assert.equal(cleanOutboundText('我喜欢 <div>内容</div>', {}), '我喜欢')
   assert.equal(cleanOutboundText('写 <p>段落</p> 这样就行', {}), '写 <p>段落</p> 这样就行')
-  // `acpx` 不是 `acp`：`(?=[\s/>])` 边界必须挡住
-  assert.equal(cleanOutboundText('<acpx>内容</acpx>', {}), '<acpx>内容</acpx>')
+  assert.equal(cleanOutboundText('<acpx>内容</acpx>', {}), '')
 })
 
 test('ACP 标记：不误伤正文里正常写的时间与 JSON 片段', () => {
@@ -173,9 +163,9 @@ test('ACP 标记：属性尾巴规则不许切进完好标签内部（不许切�
   // 把标签切成 `<future-mark </future-mark>` —— 比原样更脏。
   // 属性尾巴只处理「`<` 已经被截掉」的残片，完好标签交给 acp 标签规则或原样放行。
   const unknownWithAttrs = '行 那我先去弄饭 <future-mark tokens="9" type="text"></future-mark>'
-  assert.equal(cleanOutboundText(unknownWithAttrs, {}), unknownWithAttrs)
+  assert.equal(cleanOutboundText(unknownWithAttrs, {}), '行 那我先去弄饭')
   const otherUnknown = '行 那我先去弄饭 <x-a tokens="9"></x-a>'
-  assert.equal(cleanOutboundText(otherUnknown, {}), otherUnknown)
+  assert.equal(cleanOutboundText(otherUnknown, {}), '行 那我先去弄饭')
   // 同一个属性串，剥掉 `<` 之后才是我们的目标残片
   assert.equal(cleanOutboundText('="text" time="2026-11-22 17:26:47">>', {}), '')
 })
@@ -263,9 +253,7 @@ function makeHub (askImpl, patch) {
   return { hub, calls: () => calls, logs }
 }
 
-// 用「未知标签带属性」当探针输入：正则不认识它，所以一定会走到兜底判定；
-// 又因为它本身是完好的标签，正则不会把它切坏（见上面那条回归用例）。
-const SUSPECT_INPUT = '行 那我先去弄饭 <future-mark tokens="9" type="text"></future-mark>'
+const SUSPECT_INPUT = '行 那我先去弄饭 ="hint" x="2"'
 
 test('ACP 模型兜底：默认关闭时一次都不调模型', async () => {
   const s = makeHub(async () => '不该被调用')
