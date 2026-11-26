@@ -74,10 +74,26 @@ export interface ModuleError { message: string; at: number; source?: string; fal
 /** 磁盘上扫到的用户模块。 */
 export interface UserModule { id: string; dir: string; safe?: boolean; version?: string; [key: string]: unknown }
 
-export const SRC = fileURLToPath(new URL('../../', import.meta.url)) // 插件的 src/（发布态是 lib/src/）
-export const BUILTIN_DIR = join(SRC, 'modules')
+export const SRC = fileURLToPath(new URL('../../', import.meta.url)) // 内核 src/（发布态是 lib/src/）
+export const REPO = fileURLToPath(new URL('../../../', import.meta.url)) // 插件根（发布态是 lib/）
+export const PKG = join(REPO, 'packages') // 插件与适配器包（发布态是 lib/packages/）
+/** 内置模块目录：src 只放内核，内置插件全部住在 packages/modules。 */
+export const BUILTIN_DIR = join(PKG, 'modules')
 /** 内置模块目录（社区安装时判断会不会替换内置用）。 */
 export const builtinDir = () => BUILTIN_DIR
+
+/**
+ * 插件源码的根目录解析。key 是仓库相对路径：
+ * - `src/...`      → 内核源码（编译产物在 lib/src）
+ * - `packages/...` → 包源码（编译产物在 lib/packages）
+ * 老模块的 files 用裸键（如 `features/memory.js`），按内核 src 解析，保持兼容。
+ */
+export function sourceRootOf(key: string) {
+  const k = String(key || '').replace(/^\.?\//, '')
+  if (k.startsWith('packages/')) return { root: PKG, rel: k.slice('packages/'.length) }
+  if (k.startsWith('src/')) return { root: SRC, rel: k.slice('src/'.length) }
+  return { root: SRC, rel: k }
+}
 // 平铺 id（v1 老模块）或 owner/name（v2 带 scope 安装）
 export const ID_RE = /^[a-z][a-z0-9-]{1,39}(\/[a-z][a-z0-9-]{1,39})?$/
 export const DOC = 'API.md'
@@ -101,18 +117,20 @@ export const INSTANCE_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/i
 export const libCache = new Map()
 export async function loadLib() {
   if (libCache.size) return libCache
-  const files = []
-  const walk = (d) => {
+  const entries: Array<[string, string]> = []
+  const walk = (d, root, prefix) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const full = join(d, e.name)
-      if (e.isDirectory()) { if (!['templates', 'separator', '_template'].includes(e.name)) walk(full) }
-      else if (e.name.endsWith('.js') || e.name.endsWith('.ts')) files.push(full)
+      if (e.isDirectory()) { if (!['node_modules', '.aurabot-cache', 'templates', 'separator', '_template'].includes(e.name)) walk(full, root, prefix) }
+      else if (e.name.endsWith('.js') || e.name.endsWith('.ts')) entries.push([full, prefix + relative(root, full).split(sep).join('/').replace(/\.ts$/, '.js')])
     }
   }
-  walk(SRC)
-  for (const f of files) {
-    const key = relative(SRC, f).split(sep).join('/').replace(/\.ts$/, '.js')
-    try { libCache.set(key, await import(pathToFileURL(f).href)) } catch (error) {}
+  // 内核 src 按裸键索引（features/memory.js…）；packages 按 `packages/` 前缀索引，
+  // 让复制出去的内置插件能 __lib('packages/modules/...') 拿到自己的实现。
+  walk(SRC, SRC, '')
+  walk(PKG, PKG, 'packages/')
+  for (const [full, key] of entries) {
+    try { libCache.set(key, await import(pathToFileURL(full).href)) } catch (error) {}
   }
   return libCache
 }
@@ -347,7 +365,8 @@ export function rewriteImports(code, fromKey, keep = new Set()) {
   // 插件里带的数据文件（new URL('./x.py', import.meta.url)）：指回插件目录
   out = out.replace(/new URL\(\s*['"](\.\.?\/[^'"]*)['"]\s*,\s*import\.meta\.url\s*\)/g, (m, spec) => {
     const key = target(spec)
-    return key ? `new URL('${key}', globalThis.aurabot.src)` : m
+    // globalThis.aurabot.src 就是内核 src 根，所以 src/ 前缀要剥掉；packages/ 资源没有这种用法。
+    return key ? `new URL('${key.replace(/^src\//, '')}', globalThis.aurabot.src)` : m
   })
   if (out !== code) out = "const __lib = globalThis.aurabot.lib // 插件内部源码（复制出来后靠它找到插件里的文件）\n" + out
   return out

@@ -1,12 +1,12 @@
 // 聊天沙盒：服务端 + Satori 适配器 + 网页那一路的收发，全走真实实现。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createSandboxServer } from '../../src/modules/sandbox/server.ts'
+import { createSandboxServer } from '../../packages/modules/sandbox/server.ts'
 import { startAdapter } from '../../src/core/bot/adapter/contract.ts'
 import { BotRegistry } from '../../src/core/bot/instance/registry.ts'
 import { satoriAdapter } from '../../packages/adapters/satori/src/index.ts'
 
-const sandboxModule = (await import('../../src/modules/sandbox/index.ts')).default
+const sandboxModule = (await import('../../packages/modules/sandbox/index.ts')).default
 
 async function waitFor(check, timeoutMs = 3000) {
   const started = Date.now()

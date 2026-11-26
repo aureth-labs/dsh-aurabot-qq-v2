@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fetchOpenAIModels } from '../../src/features/media/generate/imagegen.ts'
 import { normalize, mergeFromPanel } from '../../src/core/config/index.ts'
-import imagegenModule from '../../src/modules/imagegen/index.ts'
+import imagegenModule from '../../packages/modules/imagegen/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })

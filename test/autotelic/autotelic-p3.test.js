@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { probeOne, probePython, runPython, cleanEnv, envUsable } from '../../src/autotelic/exec/python.ts'
 import { createSkills, writeUserModule } from '../../src/autotelic/feedback/skills.ts'
-import module from '../../src/modules/autotelic/index.ts'
+import module from '../../packages/modules/autotelic/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const runOf = (map) => async (bin) => {

@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createImageGen, customRequest, isUnsupportedReference } from '../../src/features/media/generate/imagegen.ts'
 import { createLocal } from '../../src/local/index.ts'
-import imagegenModule from '../../src/modules/imagegen/index.ts'
+import imagegenModule from '../../packages/modules/imagegen/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const PNG = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(64)])

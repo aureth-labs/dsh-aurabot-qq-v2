@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createImageGen, minimaxImageBody, minimaxBaseUrl, minimaxImageKey, MINIMAX_IMAGE_MODELS } from '../../src/features/media/generate/imagegen.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import imagegenModule from '../../src/modules/imagegen/index.ts'
+import imagegenModule from '../../packages/modules/imagegen/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }

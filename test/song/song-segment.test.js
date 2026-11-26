@@ -8,7 +8,7 @@ let module, normalize, commands, root
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'song-segment-'))
   root = mkdtempSync(join(tmpdir(), 'song-root-'))
-  module = await import('../../src/modules/song/index.ts')
+  module = await import('../../packages/modules/song/index.ts')
   ;({ normalize } = await import('../../src/core/config/index.ts'))
   commands = await import('../../src/chat/commands/index.ts')
 })

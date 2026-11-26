@@ -5,7 +5,7 @@ import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const MODULES = join(ROOT, 'src', 'modules')
+const MODULES = join(ROOT, 'packages', 'modules')
 // 宿主内核自己管生命周期，不在检查范围
 const SKIP = new Set(['API.md'])
 

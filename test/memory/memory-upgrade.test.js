@@ -11,7 +11,7 @@ import { normalize, DEFAULTS } from '../../src/core/config/index.ts'
 import { createMemoryStore, COMPRESS } from '../../src/features/memory/index.ts'
 import { createMemoryStorage, MEMORY_SCHEMA } from '../../src/features/memory/store/store.ts'
 import { createBackup, stageRestore, applyPendingRestore } from '../../src/core/runtime/backup/backup.ts'
-import memoryModule from '../../src/modules/memory/index.ts'
+import memoryModule from '../../packages/modules/memory/index.ts'
 
 let Database
 try { ({ DatabaseSync: Database } = await import('node:sqlite')) } catch {}
@@ -200,7 +200,7 @@ for (const broken of [false, true]) {
       context() {}, on() {}, every() {}, tool() {}, route() {},
     })
     assert.equal(mem.list('').length, original.items.length)
-    assert.ok(memoryModule.files.includes('features/memory/store/store.js'))
+    assert.ok(memoryModule.files.includes('src/features/memory/store/store.js'))
     assert.equal(migratedFiles(dir).length, broken ? 0 : 1)
     assert.equal(warnings.length, broken ? 1 : 0)
     assert.deepEqual(storage(t, dir).load(), original)

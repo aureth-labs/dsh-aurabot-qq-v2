@@ -42,7 +42,7 @@ type RemoveModuleOptions = Partial<Record<'purge', any>>
 export * from '../loader.ts'
 import { loadLib, lib } from '../loader.ts'
 export * from '../governance.ts'
-import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, filesOf, scanUser, namedModuleDef, checkDef, SRC, userDir, ID_RE, idDir, rewriteImports } from '../loader.ts'
+import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, filesOf, scanUser, namedModuleDef, checkDef, SRC, sourceRootOf, userDir, ID_RE, idDir, rewriteImports } from '../loader.ts'
 import type { ModuleDef, ModuleRecord, ModuleError } from '../loader.ts'
 import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from '../governance.ts'
 
@@ -907,9 +907,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
    * 复制出去的用户模块要能直接跑，不能依赖构建步骤。
    */
   function builtinSource(key) {
-    const direct = join(SRC, ...key.split('/'))
+    const { root, rel } = sourceRootOf(key)
+    const direct = join(root, ...rel.split('/'))
     if (existsSync(direct)) return readFileSync(direct, 'utf8')
-    const tsFile = join(SRC, ...key.replace(/\.js$/, '.ts').split('/'))
+    const tsFile = join(root, ...rel.replace(/\.js$/, '.ts').split('/'))
     return transpileToJs(readFileSync(tsFile, 'utf8'), tsFile)
   }
 
@@ -941,19 +942,21 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const base = parts.pop()
       return base === 'index.js' ? `${parts.pop() || 'index'}.js` : base
     }
-    own.set(`modules/${id}/index.js`, 'index.mjs')
+    // key 都是仓库相对路径（src/... 或 packages/...），按根的编译产物目录还原成绝对路径
+    const absOf = (key) => { const { root, rel } = sourceRootOf(key); return join(root, ...rel.split('/')) }
+    own.set(`packages/modules/${id}/index.js`, 'index.mjs')
     for (const f of b.files || []) own.set(f, flatName(f))
     mkdirSync(dir, { recursive: true })
     for (const [key, name] of own) {
       // 指向插件其他文件的改成走 lib()；一起复制过来的文件之间互相引用的，改成同目录
       let code = rewriteImports(builtinSource(key), key, new Set(own.keys()))
       for (const [k2, n2] of own) {
-        const relFrom = relative(dirname(join(SRC, ...key.split('/'))), join(SRC, ...k2.split('/'))).split(sep).join('/')
+        const relFrom = relative(dirname(absOf(key)), absOf(k2)).split(sep).join('/')
         const spec = relFrom.startsWith('.') ? relFrom : './' + relFrom
         code = code.split(`'${spec}'`).join(`'./${n2}'`)
       }
       const origin = key.replace(/\.js$/, '.ts')
-      writeFileSync(join(dir, name), `// 从 Aurabot v${version} 的内置模块「${b.name}」复制出来的，改了就替换内置的。\n// 原文件：src/${origin}\n` + code, 'utf8')
+      writeFileSync(join(dir, name), `// 从 Aurabot v${version} 的内置模块「${b.name}」复制出来的，改了就替换内置的。\n// 原文件：${origin}\n` + code, 'utf8')
     }
     setConfig({ ...getConfig(), modules: { ...getConfig().modules, [id]: { ...modCfg(id), useBuiltin: false, forkedFrom: b.version || version } } })
     installDocs()

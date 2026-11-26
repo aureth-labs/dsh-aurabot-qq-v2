@@ -10,7 +10,7 @@ import { clientBundleText } from '../helpers/client-bundle.js'
 import { readClientSource } from '../helpers/client-source.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { createMemoryStore, buildIndex, search, memoryLine, parseValidityDate, pastWindow, compressionClusters, shouldForget, SEEN_META_LIMITS, RELATED_LIMIT } from '../../src/features/memory/index.ts'
-import memoryModule from '../../src/modules/memory/index.ts'
+import memoryModule from '../../packages/modules/memory/index.ts'
 
 const OWNER = '10000001'
 const GUEST = '10000002'

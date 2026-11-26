@@ -282,7 +282,7 @@ test('自动截图：只发主人私聊、使用真实文件路径，试运行�
 
 test('B 站模块：截图库路由预览 / 删除、工具固定发当前会话、关闭后隐藏', async () => {
   freshDir()
-  const { default: module } = await import('../../src/modules/bili/index.ts')
+  const { default: module } = await import('../../packages/modules/bili/index.ts')
   const { cfg, sent } = makeBili()
   const routes = new Map(), builders = []
   const fake = {

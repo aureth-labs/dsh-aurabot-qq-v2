@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { groupSettingsTool, planGroupSettings } from '../../src/modules/contacts/group-settings.ts'
+import { groupSettingsTool, planGroupSettings } from '../../packages/modules/contacts/group-settings.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { decideGroupReply, policyFor } from '../../src/chat/policy/rules/group.ts'
 import { runCommand, parseCommand } from '../../src/chat/commands/index.ts'

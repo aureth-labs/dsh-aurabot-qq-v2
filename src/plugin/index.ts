@@ -58,7 +58,7 @@ import { changePermissions, changePrivateWhitelist, privatePermissionCatalog } f
 import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../chat/commands/delegated-commands.ts'
 import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow } from '../persona/personas.ts'
 import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook } from '../persona/persona-look.ts'
-import { createModules, API_VERSION } from '../core/module/index.ts'
+import { createModules, API_VERSION, BUILTIN_DIR } from '../core/module/index.ts'
 import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../core/module/market/community.ts'
 import { createApprovalRelay } from '../security/approval.ts'
 import { createNoticeRelay, normalizeWorkspace } from '../features/notices/index.ts'
@@ -71,7 +71,7 @@ import { createBridge } from '../core/runtime/bridge.ts'
 import { createDangerGuard, safeOwnedSession } from '../security/danger.ts'
 import { createAuditor } from '../autotelic/observe/audit.ts'
 import { setSsrpMode, assertPublicUrl, fetchGuarded } from '../core/net/index.ts'
-import { BUILTINS } from '../modules/index.ts'
+import { BUILTINS } from '../../packages/modules/index.ts'
 import { ensureDevBuild, runUpdate, tcpOpen, updateExec } from './support.ts'
 import { createHttp } from './http.ts'
 import { createOutboundPolicy } from '../chat/policy/outbound/index.ts'
@@ -2437,7 +2437,7 @@ export function apply(ctx) {
     try { return { ok: true, ...(await community.list({ force: query(req).force === '1' })) } } catch (error) { return { ok: false, message: error.message, list: [] } }
   })
   route('/modules/tutorial', async () => {
-    try { return { ok: true, text: readFileSync(join(ROOT, 'src', 'modules', 'API.md'), 'utf8') } } catch (error) { return { ok: false, message: '教程文件不见了' } }
+    try { return { ok: true, text: readFileSync(join(BUILTIN_DIR, 'sdk', 'API.md'), 'utf8') } } catch (error) { return { ok: false, message: '教程文件不见了' } }
   })
   route('/modules/community/progress', async () => ({ ok: true, progress: community.progress() }))
   route('/modules/community/install', async (req) => {

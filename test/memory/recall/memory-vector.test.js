@@ -8,7 +8,7 @@ import { normalize, publicConfig, mergeFromPanel, saveConfig, loadConfig } from 
 import { initUsage, closeUsage, usageReport } from '../../../src/core/llm/usage/usage.ts'
 import { createVectorIndex } from '../../../src/features/memory/vector/index.ts'
 import { buildIndex, createMemoryStore, memoryLine, search } from '../../../src/features/memory/index.ts'
-import memoryModule from '../../../src/modules/memory/index.ts'
+import memoryModule from '../../../packages/modules/memory/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 
 const OWNER = '10000001'

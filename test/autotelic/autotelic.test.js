@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../../src/autotelic/observe/audit.ts'
-import module from '../../src/modules/autotelic/index.ts'
+import module from '../../packages/modules/autotelic/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 function tmpDir(t, name) {

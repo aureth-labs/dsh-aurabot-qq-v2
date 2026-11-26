@@ -1,7 +1,7 @@
 // B站头像的 last 由 B站模块解析；不依赖 QQ 画作别名，也不访问真实账号。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import biliModule from '../../src/modules/bili/index.ts'
+import biliModule from '../../packages/modules/bili/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { dataDir } from '../../src/core/store/index.ts'
 

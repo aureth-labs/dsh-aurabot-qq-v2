@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { createMood } from '../../src/features/mood/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { moodReason } from '../../src/features/mood/context.ts'
-import moodModule from '../../src/modules/mood/index.ts'
+import moodModule from '../../packages/modules/mood/index.ts'
 
 const HOUR = 3600_000
 const now = new Date(2026, 10, 4, 14, 0).getTime()

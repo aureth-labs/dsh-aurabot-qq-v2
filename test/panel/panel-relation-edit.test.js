@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { readClientSource } from '../helpers/client-source.js'
 
 const client = readClientSource()
-const mod = readFileSync(new URL('../../src/modules/memory/index.ts', import.meta.url), 'utf8')
+const mod = readFileSync(new URL('../../packages/modules/memory/index.ts', import.meta.url), 'utf8')
 
 test('人物关系卡片有「改」入口，保存走 /memory/relations/save', () => {
   assert.match(client, /relationEdit/)
