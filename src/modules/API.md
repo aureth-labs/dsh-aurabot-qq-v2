@@ -530,6 +530,35 @@ export default function apply(ctx, config) {
 | `ctx.llm` | 模型能力：`polish` 润色、`rewrite` 改写、`summarize` 摘要。后台调用，不进聊天上下文；失败退回原文 |
 | `ctx.tts` | 文字转语音：`await ctx.tts.speak('你好')` 返回音频地址，可以直接塞进 `<voice url="…"/>` |
 
+中间件或指令先 `await session.send(…)`、再 `return next()` 时，这句已经发出去的话会在进模型前
+回写进当前聊天——模型这一轮看得到自己说过什么，不会同一句再说一遍。回写只带最近 5 条、每条 300 字。
+
+### 一份代码多份配置（reusable）
+
+清单里写 `"reusable": true`（适配器默认就是 true），同一个模块就能跑多份配置。
+典型场景是一个平台接两个账号：
+
+```json
+{
+  "ext": {
+    "weather": {
+      "city": "杭州",
+      "instances": [
+        { "id": "second", "config": { "city": "北京" } }
+      ]
+    }
+  }
+}
+```
+
+- 不写 `instances` 就只有主实例（注册表键就是模块 id，老路径全不变）
+- `id` 是实例名（字母或数字开头，可用 `-` / `_`）；每个实例各调一次 `apply(ctx, config)`
+- `config` 只写和主配置不同的值：宿主按「主配置 + 实例覆盖」合并后传进去
+- 每个实例有自己的 `ctx.settings()`、`ctx.dataDir()`、路由前缀 `/ext/<id>/i/<实例名>`
+- 面板「扩展」页给 `reusable` 的模块自动出实例卡片
+
+写适配器时不用为多实例加特例：`connect(config)` 用传进来的 `config` 就行。
+
 消息里可以直接写元素标签，能不能发出去由适配器决定（不支持就降级成文字或占位符）：
 
 ```js
