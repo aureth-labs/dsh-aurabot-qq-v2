@@ -1,3 +1,5 @@
+import { reconcileOwnerEdit } from '../owners.ts'
+import { constants, copyFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { dataDir, readJson, writeJson } from '../../store/index.ts'
 import { normalize } from './normalize.ts'
@@ -9,7 +11,12 @@ const FILE = () => dataDir('config.json')
 export const OPT_IN_ON_UPDATE = ['qzoneSocial', 'bili', 'douyin']
 
 export function loadConfig() {
-  const raw = readJson(FILE(), {})
+  const file = FILE()
+  const raw = readJson(file, {})
+  if (raw && !Object.hasOwn(raw, 'owners') && (raw.ownerQQ || raw.ownerIds?.length)) {
+    try { copyFileSync(file, file + '.before-platform-owners', constants.COPYFILE_EXCL) }
+    catch (error) { if (error.code !== 'EEXIST') throw error }
+  }
   // 更新插件后新增的、会公开发东西的功能：老用户先关着，等他们自己在面板里打开（新安装照常默认开）
   if (raw && raw.ownerQQ) for (const k of OPT_IN_ON_UPDATE) if (raw[k] === undefined) raw[k] = { enabled: false }
   return normalize(raw)
@@ -40,7 +47,7 @@ export function saveConfig(cfg, previous = loadConfig()) {
     if (hasMode || !prevMode || previous?.memory?.vector?.modeExplicit !== true) return cfg
     return { ...(cfg || {}), memory: { ...(cfg?.memory || {}), vector: { ...(cfg?.memory?.vector || {}), mode: prevMode } } }
   })()
-  const c = normalize(input)
+  const c = normalize(reconcileOwnerEdit(input, previous))
   // Only the previous authoritative configuration can carry an authorization forward.
   if (c.ownerQQ) {
     const revision = c.ownerQQ === previous.ownerQQ ? ownerAuthorizationRevision(previous) : ''

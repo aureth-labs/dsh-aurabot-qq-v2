@@ -280,6 +280,11 @@ export function schemaDefaults(schema) {
  * 宿主自己的 Schema 有 toSettings()；外部插件带的是精简版，不认它的话
  * 适配器的 endpoint / token 这类字段在面板里一个都不显示。
  */
+function hasSecretMeta(meta): boolean {
+  if (!meta || typeof meta !== 'object') return false
+  return Boolean(meta.flags?.includes('role:secret') || Object.values(meta.dict || {}).some(node => hasSecretMeta(node?.['meta'])) || hasSecretMeta(meta.items?.meta))
+}
+
 export function settingsFromMeta(schema) {
   const meta = schema && typeof schema === 'object' ? (schema as { meta?: any }).meta : undefined
   if (!meta || meta.type !== 'object' || !meta.dict || typeof meta.dict !== 'object') return []
@@ -291,7 +296,7 @@ export function settingsFromMeta(schema) {
     const field: Record<string, unknown> = {
       key,
       label: sub.description || key,
-      type: flags.includes('role:secret') ? 'password'
+      type: hasSecretMeta(sub) ? 'password'
         : sub.type === 'boolean' ? 'switch'
           : sub.type === 'number' ? 'number'
             : sub.type === 'union' ? 'select'

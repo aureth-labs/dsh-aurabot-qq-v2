@@ -22,7 +22,7 @@ import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
 import { dataDir } from '../../store/index.ts'
-import { registerSecretField } from '../../config/index.ts'
+import type { SettingsField } from '../../config/shape/schema.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { selfName, personaScope, personaNow } from '../../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
@@ -59,6 +59,7 @@ import { ServiceRegistry } from '../../service/registry.ts'
 export function createModules({ ctx, core, getConfig, setConfig, logger, version, builtins, personaMemoryRuntime }) {
   const log = logger.child('modules')
   const builtinDefs = new Map<string, ModuleDef>((builtins as ModuleDef[]).map((d) => [d.id, d]))
+  const fields = new Map<string, SettingsField[]>()
   const live = new Map<string, ModuleRecord>() // id → 运行中的模块（见 start）
   const errors = new Map<string, ModuleError>() // id → { message, at }  启动失败 / 加载失败
   const routes = new Map() // 完整路径 → { id, handler }
@@ -214,8 +215,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       ...extra,
       instance: instance || undefined,
     }
-    // 设置里的密码字段不回传给面板
-    for (const f of def.settings || []) if (f && f.type === 'password' && f.key) registerSecretField(['ext', id, f.key])
+    fields.set(id, def.settings || [])
     // 设置的默认值补进配置（面板表单直接有值可改；已经填过的不动）。
     // 只有主实例落盘：额外实例的默认值由 api.settings() 在读取时合并，不往共享配置里写。
     if (source === 'user' && !instance && def.defaults && typeof def.defaults === 'object') {
@@ -790,8 +790,9 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         tools: rec ? toolNames(rec) : [],
         commands: rec ? rec.commands.map((c) => c.name) : [],
         routes: [...routes].filter(([, r]) => r.id === id).map(([p]) => p.replace('/aurabot/api', '')),
-        settings: def.settings || [],
-        defaults: def.defaults || {},
+        settings: (def.settings || []).map(field => field.type === 'password' ? { ...field, default: '' } : field),
+        defaults: Object.fromEntries(Object.entries(def.defaults || {}).map(([key, value]) => [key,
+          def.settings?.some(field => field.key === key && field.type === 'password') ? '' : value])),
         // 内置模块也能带面板：内置和用户模块走同一条加载链路，面板只按「定义里有没有声明 panel」判断。
         // 不再要求 rec.source === 'user'，否则内置模块写了 panel.js 也永远显示不出来。
         // 仍然要求模块在跑（rec 存在），没跑起来的模块没有面板代码可读。
@@ -990,7 +991,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const publicHandle = { use: exportsOf, has: hasModule, list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
-    boot, sync, reload, dispose, status, create, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
+    fields, boot, sync, reload, dispose, status, create, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
     // 对外按模块 id 停 —— 一起停掉它的额外实例
     stop: (id, options) => stopModule(id, options),
     use: exportsOf, has: hasModule, running: (id) => live.get(id)?.source || null, generation: () => generation,

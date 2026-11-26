@@ -336,7 +336,8 @@ export interface Ctx {
     send(res: any, status: number, body: unknown, type?: string): void
   }
   readonly media: { download(url: string, maxBytes: number): Promise<Buffer>; inspect(bytes: Buffer): { width: number; height: number; mime: string } }
-  isOwner(userId: string | number): boolean
+  isOwner(session: Session): boolean
+  isOwner(userId: string | number, platform: string, botId?: string): boolean
   /** 本插件的数据目录（已建好）。 */
   dataDir(...parts: string[]): string
 }

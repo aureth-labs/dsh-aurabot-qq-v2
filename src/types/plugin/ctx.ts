@@ -9,6 +9,7 @@ import type { BotsAccessor, BotLike } from '../adapter/bot.ts'
 import type { AdapterHandle, AdapterSpec } from '../adapter/adapter.ts'
 import type { ElementFactory } from '../core/element.ts'
 import type { CommandOptions, Middleware, MiddlewareOptions, SessionFilter } from './pipeline.ts'
+import type { SessionLike } from '../core/session.ts'
 import type { Target } from '../core/target.ts'
 
 /**
@@ -270,7 +271,8 @@ export interface PluginContext extends ScopeFactory {
   /** 另一个模块是否在跑。 */
   has: (id: string) => boolean
   /** 这个 ID 是不是主人（支持多个主人 ID）。 */
-  isOwner: (userId: string | number) => boolean
+  isOwner(session: SessionLike): boolean
+  isOwner(userId: string | number, platform: string, botId?: string): boolean
   /** 每轮回复前追加一段上下文。 */
   prompt: (fn: (args: any) => unknown) => () => void
   /** 追加到系统提示的规则行。 */

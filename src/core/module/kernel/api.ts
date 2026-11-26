@@ -10,7 +10,7 @@ import { dataDir } from '../../store/index.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { personaScope, personaNow } from '../../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
-import { isOwnerOf } from '../../config/global.ts'
+import { isOwnerOf } from '../../config/owners.ts'
 import { cleanOutboundText, isSilence, stripMarkdown } from '../../../chat/reply/index.ts'
 import { reallySent } from '../../../chat/hub/context/context.ts'
 import { fetchImage } from '../../net/index.ts'
@@ -96,6 +96,7 @@ export function createApi(deps: ApiDeps) {
       const base = { ...(getConfig().ext?.[id] || {}) }
       delete base.instances
       if (!rec.instance) return base
+      for (const field of def.settings || []) if (field.type === 'password') delete base[field.key]
       const own = instancesOf(id).find((item) => item.id === rec.instance)
       return deepMerge(base, own?.config || {})
     }
@@ -220,7 +221,7 @@ export function createApi(deps: ApiDeps) {
       sendText: writable('sendText', (chatId, text, opts) => governedSend(core, id, { chatId: String(chatId), text: String(text ?? '') }, (extra) => core.hub.sendText(String(chatId), String(text ?? ''), undefined, undefined, undefined, logAsModuleSpeech(extra, opts, id)), obLog)),
       // 回某一条消息：群里以「引用回复」发出，私聊直接发
       reply: writable('reply', (msg, text) => core.hub.sendText(String(msg.chatId), String(text ?? ''), msg.kind === 'group' ? msg.messageId : undefined)),
-      isOwner: (userId) => isOwnerOf(getConfig(), userId),
+      isOwner: (source, platform?, botId?) => isOwnerOf(getConfig(), source, platform, botId),
       sendImage: writable('sendImage', (chatId, src) => governedSend(core, id, { chatId: String(chatId) }, (extra) => core.hub.sendImage(String(chatId), src, undefined, undefined, extra), obLog)),
       // sendSegments(chatId, segs, note, opts)：opts 同上，供带 @ / 引用 / 图片段的发送声明留痕。
       sendSegments: writable('sendSegments', (chatId, segs, note, opts) => governedSend(core, id, { chatId: String(chatId) }, (extra) => core.hub.sendSegments(String(chatId), segs, note || `[${id}]`, logAsModuleSpeech(extra, opts, id)), obLog)),

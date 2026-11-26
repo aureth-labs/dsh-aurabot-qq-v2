@@ -75,12 +75,14 @@ test('内置适配器与独立包共用异步启动、实例配置及卸载', as
   const stopped = []
   const plugin = {
     id: 'transport', name: 'Transport', kind: 'adapter', reusable: true,
+    settings: [{ key: 'token', type: 'password' }],
     async apply(ctx, config) {
       await Promise.resolve()
+      assert.equal(config.token, ctx.instanceId === 'transport' ? 'main-fixture' : undefined)
       return { tag: config.tag, dispose: () => stopped.push(ctx.instanceId) }
     },
   }
-  const f = fixture(t, { transport: { tag: 'main', instances: [{ id: 'other', config: { tag: 'other' } }] } }, [plugin])
+  const f = fixture(t, { transport: { tag: 'main', token: 'main-fixture', instances: [{ id: 'other', config: { tag: 'other' } }] } }, [plugin])
   await f.modules.boot()
   assert.equal(f.modules.use('transport').tag, 'main')
   assert.deepEqual(f.modules.instances('transport'), ['other'])

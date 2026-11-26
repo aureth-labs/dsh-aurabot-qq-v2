@@ -1,3 +1,5 @@
+import { publicPluginSettings, restorePluginSettings, type PluginFields } from './plugin-settings.ts'
+import { reconcileOwnerEdit } from './owners.ts'
 import { maskPools, restorePoolKeys } from './state/key-pool.ts'
 import type { RawPools } from './state/key-pool.ts'
 import { normalize } from './state/normalize.ts'
@@ -7,13 +9,14 @@ import type { AurabotConfig, ImageFallback } from './shape/defaults.ts'
 import type { RawConfig } from './state/shared.ts'
 
 /** 给面板看的版本：密码 / token 不回传原文，只告诉有没有填。 */
-export function publicConfig(cfg) {
+export function publicConfig(cfg, schemas: PluginFields = new Map()) {
   const c = structuredClone(cfg)
   maskPools(c.voice?.keyPools)
   // vector.mode 回传面板（#520）：面板切到「在线服务」后重载又回退「本地模型」。
   // 现在 mode 是 normalize 里直接赋值的常规字段，structuredClone 已能带上；这行留着兜住
   // 旧配置里从派生值过来的情形，不额外造字段。
   if (c.memory?.vector && cfg?.memory?.vector?.mode) c.memory.vector.mode = cfg.memory.vector.mode
+  c.ext = publicPluginSettings(c.ext || {}, schemas)
   delete c.ownerAuthorization
   // 面板要能显示/修改「单个聊天的思考档位」（chatEfforts），所以回传这份配置；
   // 它本来就不含敏感内容，只是「聊天 → 模型 → 档位」的映射。
@@ -30,8 +33,9 @@ export function publicConfig(cfg) {
 }
 
 /** 面板保存时：没改的密码字段（空串）保留原值。 */
-export function mergeFromPanel (current: AurabotConfig, incoming: RawConfig | null | undefined): AurabotConfig {
+export function mergeFromPanel (current: AurabotConfig, incoming: RawConfig | null | undefined, schemas: PluginFields = new Map()): AurabotConfig {
   const next = deepMerge<AurabotConfig>(current, incoming || {})
+  restorePluginSettings(next.ext, current.ext, incoming?.ext, schemas)
   const incomingVoice = isObj(incoming?.voice) ? incoming.voice : {} as RawConfig
   if (incomingVoice.keyPools) {
     next.voice.keyPools = { ...next.voice.keyPools }
@@ -85,5 +89,5 @@ export function mergeFromPanel (current: AurabotConfig, incoming: RawConfig | nu
   if (incomingChatModels.privates) next.chatModels.privates = incomingChatModels.privates as AurabotConfig['chatModels']['privates']
   if (incomingChatModels.groups) next.chatModels.groups = incomingChatModels.groups as AurabotConfig['chatModels']['groups']
   if (isObj(incoming?.allow)) next.allow = { ...current.allow, ...incoming.allow }
-  return normalize(next)
+  return normalize(reconcileOwnerEdit(next, current, Object.hasOwn(incoming || {}, 'owners')))
 }

@@ -236,8 +236,12 @@ export class SchemaNode<T = unknown> {
     return field
   }
 
+  private containsSecret(): boolean {
+    return this.isSecret || Boolean(this.item?.containsSecret()) || Object.values(this.shape || {}).some(node => node.containsSecret())
+  }
+
   private fieldType(): FieldType {
-    if (this.isSecret) return 'password'
+    if (this.containsSecret()) return 'password'
     if (this.kind === 'boolean') return 'boolean'
     if (this.kind === 'number') return 'number'
     if (this.kind === 'union') return 'select'

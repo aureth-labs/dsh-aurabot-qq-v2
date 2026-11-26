@@ -653,7 +653,7 @@ export function apply(ctx) {
   route('/panel/config', async (req, res) => {
     if (bootstrapping(res)) return
     // 面板草稿唯一的初始化/刷新来源：现有 publicConfig 的脱敏结果（密码/token 不回传原文）。
-    return { ok: true, bootId, configRevision: configRevision(), config: publicConfig(cfg) }
+    return { ok: true, bootId, configRevision: configRevision(), config: publicConfig(cfg, mods?.fields) }
   })
   // 配置已加载、上述路由已注册：之后轻量读接口直接回 200（503 只覆盖装配早期）。
   panelCoreReady = true
@@ -1018,7 +1018,7 @@ export function apply(ctx) {
       version: VERSION,
       startedAt: STARTED_AT,
       apiVersion: API_VERSION,
-      config: publicConfig(cfg),
+      config: publicConfig(cfg, mods?.fields),
       onebot: { state: onebot.state, login, endpoint: { httpUrl: endpoint().httpUrl, wsUrl: endpoint().wsUrl }, problem: onebot.state === 'connected' && onebot.verified ? '' : await connectionProblem(), warmup: gatewayWarmSince ? { since: gatewayWarmSince, seconds: Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)), phase: warmupPhase.phase || '', label: warmupPhase.label || '' } : null },
       outbox: outbox.status(),
       stats: hub.stats(),
@@ -1139,7 +1139,7 @@ export function apply(ctx) {
     // ---- 保存回执（方案 §2.2）：按提交前后（归一化后）的实际结果逐字段确认。 ----
     // 提交字段路径先收集，分类在下面 setConfig 之后做（提交前 cfg===before，分类会全落 unchanged）。
     const submittedPaths = pointerPaths(body)
-    setConfig(mergeFromPanel(cfg, body))
+    setConfig(mergeFromPanel(cfg, body, mods?.fields))
     // committed/unchanged 分类必须在提交之后：commitConfig 返回新的归一化对象（变化时），
     // 逐字段对比 before（提交前）与 cfg（提交后）——真写了的进 committedPaths，
     // 显式提交但值相同（含 mergeFromPanel 归一化后等值）的进 unchangedPaths（草稿别一直标脏）。
@@ -1267,7 +1267,7 @@ export function apply(ctx) {
     for (const k of ['awakeFrom', 'awakeTo', 'maxPerDay']) if (Number.isFinite(b[k])) spPatch[k] = Math.max(0, Math.floor(b[k]))
     if (Object.keys(spPatch).length) patch.speakUp = spPatch
     if (!Object.keys(patch).length) return { ok: false, message: '没有可保存的字段' }
-    setConfig(mergeFromPanel(cfg, patch))
+    setConfig(mergeFromPanel(cfg, patch, mods?.fields))
     log.info(`面板已保存目的引擎设置｜${Object.keys(extPatch).map((k) => k + '=' + extPatch[k]).concat(Object.keys(spPatch).map((k) => k + '=' + spPatch[k])).join(' ')}`)
     return { ok: true, purpose: purposeOverview() }
   })

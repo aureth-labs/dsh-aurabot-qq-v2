@@ -143,7 +143,7 @@ test('/panel/config 走 publicConfig 脱敏：密钥不回原文，只回 *Set �
   assert.equal(Object.hasOwn(config, 'ownerAuthorization'), false, '主人授权内部记录不能回面板')
   // 脱敏结果与直接调 publicConfig 一致（面板草稿的唯一来源就是它）
   const { publicConfig } = await import('../../src/core/config/index.ts')
-  assert.deepEqual(config, publicConfig(api.getConfig()))
+  assert.deepEqual(config, publicConfig(api.getConfig(), api.modules.fields))
 })
 
 test('三条 GET 都带 no-store（首屏轮询绝不能被缓存）', async () => {

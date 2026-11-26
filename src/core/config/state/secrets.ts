@@ -5,10 +5,7 @@ export type SplitBiliCookieOptions = Partial<Record<'sessdata' | 'biliJct' | 'co
 
 // 面板里不回传原文的字段：路径（几层都行）
 const SECRETS = [['voice', 'fishApiKey'], ['onebot', 'httpToken'], ['onebot', 'wsToken'], ['imageGen', 'apiKey'], ['imageGen', 'minimax', 'apiKey'], ['voice', 'asrApi', 'apiKey'], ['memory', 'vector', 'apiKey'], ['memory', 'rerank', 'apiKey'], ['song', 'neteaseCookie'], ['bili', 'cookie'], ['bili', 'sessdata'], ['bili', 'biliJct'], ['heybox', 'cookie'], ['bridge', 'token'], ['video', 'minimax', 'apiKey'], ['video', 'custom', 'headers'], ['voice', 'volcano', 'apiKey'], ['voice', 'breeze', 'key'], ['voice', 'breeze', 'password'], ['voice', 'minimax', 'apiKey'], ['backup', 'remote', 'token'], ['backup', 'remote', 'webdav', 'password']]
-// 扩展模块设置里的密码类字段（模块加载时登记）：['ext', 模块id, 字段]
-const extraSecrets = new Map()
-export function registerSecretField(path) { extraSecrets.set(path.join('\u0000'), path) }
-export const allSecrets = () => [...SECRETS, ...extraSecrets.values()]
+export const allSecrets = () => SECRETS
 export const parentOf = (obj, path, create) => {
   let cur = obj
   for (const k of path.slice(0, -1)) {
