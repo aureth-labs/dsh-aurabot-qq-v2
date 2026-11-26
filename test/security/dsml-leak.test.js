@@ -9,7 +9,7 @@ import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { createBiliApi } from '../../packages/bili/impl/api.ts'
 import { createQzone } from '../../src/features/qzone/index.ts'
-import { cleanComment } from '../../src/features/qzone/social.ts'
+import { cleanComment } from '../../packages/qzone-social/src/social.ts'
 import { cleanReply } from '../../packages/purpose/impl/module/index.ts'
 
 const screenshot = ['@苏眠眠 </ | | DSML | | invoke>', '</ | | DSML | | calls>']

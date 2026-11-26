@@ -6,9 +6,9 @@
 
 import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../../src/types/adapter/adapter.ts'
 import type { BotLike } from '../../../../../src/types/adapter/bot.ts'
-import { AccessTokenProvider } from '../../common/src/access-token.ts'
-import { QQGateway, type GatewaySocket } from '../../common/src/gateway.ts'
-import { QQOpenApi } from '../../common/src/openapi.ts'
+import { AccessTokenProvider } from './common/access-token.ts'
+import { QQGateway, type GatewaySocket } from './common/gateway.ts'
+import { QQOpenApi } from './common/openapi.ts'
 import { QQOfficialBot } from './bot.ts'
 
 export { QQOfficialBot }

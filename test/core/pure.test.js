@@ -280,7 +280,7 @@ test('规则：画画、唱歌只在功能真的能用时告诉她', async () =>
 })
 
 test('空间互动：评论清洗、好友动态筛选', async () => {
-  const { cleanComment, pickFeeds } = await import('../../src/features/qzone/social.ts')
+  const { cleanComment, pickFeeds } = await import('../../packages/qzone-social/src/social.ts')
   assert.equal(cleanComment('**好看**\n第二句\n第三句'), '好看 第二句')
   assert.equal(cleanComment('[沉默]'), '')
   assert.equal(cleanComment('x'.repeat(100)).length, 60)
@@ -295,7 +295,7 @@ test('空间互动：评论清洗、好友动态筛选', async () => {
 })
 
 test('空间互动：一串评论里没回的新消息', async () => {
-  const { pendingInThread } = await import('../../src/features/qzone/social.ts')
+  const { pendingInThread } = await import('../../packages/qzone-social/src/social.ts')
   const me = '9'
   assert.deepEqual(pendingInThread({ uin: 1, time: 1, comment_id: 'c1', replies: [] }, me).pending.map((x) => x.id), ['c1'])
   // 她自己的评论下面别人接着回她
@@ -344,7 +344,7 @@ test('更新后：会公开发东西的新功能，老用户先关着，新安�
 })
 
 test('空间互动：说说下的评论整理成上下文', async () => {
-  const { summarizeComments } = await import('../../src/features/qzone/social.ts')
+  const { summarizeComments } = await import('../../packages/qzone-social/src/social.ts')
   const comments = [
     { uin: 1, name: 'A', content: '好看', comment_id: 'c1', replies: [{ uin: 9, name: '大肥鱼', content: '谢谢' }] },
     { uin: 2, name: '小明', content: '在哪拍的', comment_id: 'c2', replies: [] },

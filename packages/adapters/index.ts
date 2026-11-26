@@ -25,12 +25,12 @@ export type {
   QQOfficialMessageParams,
 } from './qq/qq-official/src/index.ts'
 
-export { AccessTokenProvider } from './qq/common/src/access-token.ts'
-export type { AccessTokenOptions } from './qq/common/src/access-token.ts'
-export { QQGateway, QQ_OP } from './qq/common/src/gateway.ts'
-export type { GatewaySocket, GatewaySocketFactory, QQGatewayOptions } from './qq/common/src/gateway.ts'
-export { QQOpenApi } from './qq/common/src/openapi.ts'
-export type { QQOpenApiOptions } from './qq/common/src/openapi.ts'
+export { AccessTokenProvider } from './qq/qq-official/src/common/access-token.ts'
+export type { AccessTokenOptions } from './qq/qq-official/src/common/access-token.ts'
+export { QQGateway, QQ_OP } from './qq/qq-official/src/common/gateway.ts'
+export type { GatewaySocket, GatewaySocketFactory, QQGatewayOptions } from './qq/qq-official/src/common/gateway.ts'
+export { QQOpenApi } from './qq/qq-official/src/common/openapi.ts'
+export type { QQOpenApiOptions } from './qq/qq-official/src/common/openapi.ts'
 
 export { satoriAdapter, inboundOf as satoriInboundOf } from './satori/src/index.ts'
 export type { SatoriAdapterConfig } from './satori/src/index.ts'

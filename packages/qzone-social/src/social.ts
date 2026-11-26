@@ -1,9 +1,9 @@
 // QQ 空间互动：回复自己说说下的新评论；逛好友动态，偶尔点个赞、评一句。
 // 评论在专用的后台会话里按她的人格写；调试模式时只记日志不发。
 
-import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
-import { inHourWindow } from '../../core/support/time/time-window.ts'
-import { isSilence, stripMarkdown, cleanOutboundText } from '../../chat/reply/index.ts'
+import { dataDir, readJson, writeJson } from '../../../src/core/store/index.ts'
+import { inHourWindow } from '../../../src/core/support/time/time-window.ts'
+import { isSilence, stripMarkdown, cleanOutboundText } from '../../../src/chat/reply/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type SummarizeCommentsOptions = Partial<Record<'selfId' | 'ownerQQ' | 'ownerName' | 'exclude' | 'max', any>>

@@ -1,8 +1,8 @@
 // 只读查询机器人自身的 QQ 资料；头像按需交给视觉模型描述。
-import { fetchImage } from '../../../core/net/index.ts'
-import { askModel, canSeeImages } from '../../../core/llm/index.ts'
-import { mimeOf } from '../../../chat/inbound/index.ts'
-import { imageToolBlock } from '../../../core/message/media/img.ts'
+import { fetchImage } from '../../../src/core/net/index.ts'
+import { askModel, canSeeImages } from '../../../src/core/llm/index.ts'
+import { mimeOf } from '../../../src/chat/inbound/index.ts'
+import { imageToolBlock } from '../../../src/core/message/media/img.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ReadOptions = Partial<Record<'viewAvatar' | 'model', any>>

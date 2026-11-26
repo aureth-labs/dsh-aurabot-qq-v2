@@ -1,6 +1,6 @@
 // 内置模块：空间互动。逛好友动态点赞评论，回复自己说说下的新评论。
 
-import { createQzoneSocial } from '../../src/features/qzone/social.ts'
+import { createQzoneSocial } from './src/social.ts'
 
 export default {
   id: 'qzone-social',
