@@ -128,7 +128,7 @@ test('cutFirst：注入假 readPcm，成功用副歌入口、失败回退 30%', 
 })
 
 test('readPcm 会消费 stderr（改动后的源码契约）', () => {
-  const src = readFileSync(new URL('../../src/song/studio/index.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../../src/song/studio/studio.ts', import.meta.url), 'utf8')
   const start = src.indexOf('async function readPcm')
   const end = src.indexOf('async function meanVolume', start)
   assert.ok(start >= 0 && end > start)
