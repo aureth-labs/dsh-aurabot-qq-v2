@@ -7,7 +7,7 @@ export function registerLocalRoutes({ http, local, openFolder, getConfig }) {
   route('/local/status', async () => ({ ok: true, dir: local.dir(), list: local.status() }))
   route('/local/template', async (req) => {
     const slot = String((await readBody(req)).slot || '')
-    if (!local.pathOf || !['tts', 'image', 'song', 'asr'].includes(slot))
+    if (!local.has(slot))
       return { ok: false, message: '没有这一项' }
     return local.template(slot)
   })

@@ -15,6 +15,7 @@ interface Fact {
 }
 export interface RoomMemory {
   recall(where: Where, query: string, limit: number): Fact[]
+  remember(where: Where, text: string): { ok: boolean; id: string }
   tools(where: Where): TurnTool[]
 }
 export function roomMemory(file: () => string, enabled: () => boolean) {
@@ -49,6 +50,19 @@ export function roomMemory(file: () => string, enabled: () => boolean) {
       .slice(0, Math.min(16, limit))
       .map((x) => x.fact)
   }
+  function remember(w: Where, text: unknown) {
+    const value = typeof text === 'string' ? text.trim() : ''
+    if (!value || [...value].length > 360) throw Error('记忆须为 1 到 360 字')
+    const id = createHash('sha256').update(value).digest('hex').slice(0, 24)
+    const db = store()
+    db.prepare(
+      'INSERT INTO facts VALUES (?,?,?,?,?,?) ON CONFLICT(room,persona,user,id) DO UPDATE SET changed=excluded.changed',
+    ).run(w.room, w.persona, w.user, id, value, Date.now())
+    db.prepare(
+      'DELETE FROM facts WHERE room=? AND persona=? AND user=? AND id IN (SELECT id FROM facts WHERE room=? AND persona=? AND user=? ORDER BY changed DESC LIMIT -1 OFFSET 250)',
+    ).run(w.room, w.persona, w.user, w.room, w.persona, w.user)
+    return { ok: true, id }
+  }
   function tools(w: Where): TurnTool[] {
     if (closed || !enabled()) return []
     return [
@@ -56,19 +70,7 @@ export function roomMemory(file: () => string, enabled: () => boolean) {
         name: 'memory_remember',
         description: '在当前人物和聊天中记住用户明确表达的长期事实或偏好。不要存密码、猜测和临时请求。',
         parameters: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
-        execute({ text }) {
-          const value = typeof text === 'string' ? text.trim() : ''
-          if (!value || [...value].length > 360) throw Error('记忆须为 1 到 360 字')
-          const id = createHash('sha256').update(value).digest('hex').slice(0, 24)
-          const db = store()
-          db.prepare(
-            'INSERT INTO facts VALUES (?,?,?,?,?,?) ON CONFLICT(room,persona,user,id) DO UPDATE SET changed=excluded.changed',
-          ).run(w.room, w.persona, w.user, id, value, Date.now())
-          db.prepare(
-            'DELETE FROM facts WHERE room=? AND persona=? AND user=? AND id IN (SELECT id FROM facts WHERE room=? AND persona=? AND user=? ORDER BY changed DESC LIMIT -1 OFFSET 250)',
-          ).run(w.room, w.persona, w.user, w.room, w.persona, w.user)
-          return { ok: true, id }
-        },
+        execute: ({ text }) => remember(w, text),
       },
       {
         name: 'memory_recall',
@@ -90,7 +92,7 @@ export function roomMemory(file: () => string, enabled: () => boolean) {
     ]
   }
   return {
-    recall,
+    recall, remember,
     tools,
     close() {
       closed = true

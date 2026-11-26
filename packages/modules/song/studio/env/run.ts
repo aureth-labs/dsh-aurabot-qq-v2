@@ -2,11 +2,11 @@ import { spawn } from 'node:child_process'
 import { join, basename } from 'node:path'
 
 
-type RunOptions = Partial<Record<'cwd' | 'env' | 'log' | 'onLine' | 'timeoutMs', any>>
+type RunOptions = Partial<Record<'cwd' | 'env' | 'log' | 'onLine' | 'timeoutMs' | 'signal', any>>
 
-export function run(cmd, args, { cwd, env, log, onLine, timeoutMs = 30 * 60_000 } : RunOptions = {}) {
+export function run(cmd, args, { cwd, env, log, onLine, signal, timeoutMs = 30 * 60_000 } : RunOptions = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { cwd, env: { ...process.env, ...env }, windowsHide: true })
+    const child = spawn(cmd, args, { cwd, signal, env: { ...process.env, ...env }, windowsHide: true })
     let tail = ''
     const feed = (buf) => {
       const s = String(buf)

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 export async function bundleSdk(root, target) {
   await mkdir(target, { recursive: true })
   await build({
-    entryPoints: [join(root, 'src/core/module/public-api.ts')],
+    entryPoints: [join(root, 'packages/sdk/index.ts')],
     outfile: join(target, 'index.mjs'),
     bundle: true, platform: 'node', target: 'node22', format: 'esm', legalComments: 'none',
   })

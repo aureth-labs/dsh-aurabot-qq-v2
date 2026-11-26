@@ -63,7 +63,7 @@ Schema 的 `title('字段名')` 与 `description('填写说明')` 分别用于�
 | `ctx.llm.polish / rewrite / summarize` | 文本小任务 |
 | `ctx.sendTo(target, content)` / `ctx.broadcast(targets, content)` | 目标指定 platform、botId、type、id，内容为文本或 Satori 元素树 |
 | `ctx.chatLog.read(target, day)` / `append(target, who, text, userId?)` | 读取指定会话可见的日流水，或追加一条记录 |
-| `ctx.server.get/post/...` + `ctx.http.body/query/send` | 面板接口 |
+| `ctx.server.get/post/...` + `ctx.http.body/raw/query/send` | 面板接口 |
 | `ctx.page({ path, name })` | 侧栏页面 |
 | `ctx.on / ctx.emit` | 事件 |
 | `ctx.provide(name, impl)` / `ctx.require(name)` / `ctx.get(id)` | 服务 |
@@ -163,3 +163,5 @@ export async function apply(ctx, config) {
 视频插件提供 `await ctx.generateVideo(prompt, { seconds, firstFrame })`，返回一个 MP4 视频元素。`firstFrame` 接收图片字节。服务只生成媒体。插件决定是否发送，例如 `await session.send(await ctx.generateVideo('海边日落'))`。提供者在生成过程中下线时，调用会抛出异常。
 
 在聊天中，模型通过工具发起生成。视频默认需要在原会话确认。生成和投递分别检查接收账号与权限。适配器支持文件时，明确拒收视频后可以改发文件。
+
+翻唱插件允许通过 `ctx.provide('song-renderer', { render })` 替换制作环节。异步 `render({ song, songId, file, pitch, voice, clip, acapella }, { signal })` 返回 `{ file }`，指向完成的本地音频。制作服务响应取消信号，投递与回执由翻唱插件处理。

@@ -52,8 +52,8 @@ const FETCH_SCRIPT = fileURLToPath(new URL('./fetch_file.py', import.meta.url))
  * 下载一个预训练文件：已经有了就跳过。用翻唱环境里的 Python 下（会走系统代理），
  * 断了从断点接着下，卡住 30 秒就换下一个源，几轮都不行才算失败。
  */
-export async function downloadWithMirror(python, rel, dest, note, log, onProgress, sha256 = '') {
-  return fetchFile(python, dest, HF_HOSTS.map((host) => `${host}/IAHispano/Applio/resolve/main/Resources/${rel}`), note, log, onProgress, rel, sha256)
+export async function downloadWithMirror(python, rel, dest, note, log, onProgress, sha256 = '', signal?: AbortSignal) {
+  return fetchFile(python, dest, HF_HOSTS.map((host) => `${host}/IAHispano/Applio/resolve/main/Resources/${rel}`), note, log, onProgress, rel, sha256, signal)
 }
 
 // uv 的下载源：PyPI 上的 uv 安装包（固定版本，里面带 uv.exe）走国内镜像，最后才试 GitHub。
@@ -88,7 +88,7 @@ export function separatorReady(dir, model) {
 }
 
 /** 下载一个文件：已经有了就跳过；地址按顺序轮流试，断了接着下，走系统代理。 */
-export async function fetchFile(python, dest, urls, note, log, onProgress, label = basename(dest), sha256 = '') {
+export async function fetchFile(python, dest, urls, note, log, onProgress, label = basename(dest), sha256 = '', signal?: AbortSignal) {
   const rel = label
   if (existsSync(dest) && statSync(dest).size > 0) return
   // 上次没下完的（.download）会接着下
@@ -97,7 +97,7 @@ export async function fetchFile(python, dest, urls, note, log, onProgress, label
   let lastPct = -1
   await run(python, [FETCH_SCRIPT, ...(sha256 ? ['--sha256', sha256] : []), dest, ...urls], {
     log,
-    env: { PYTHONIOENCODING: 'utf-8' },
+    env: { PYTHONIOENCODING: 'utf-8' }, signal,
     timeoutMs: 2 * 3600_000,
     onLine: (line) => {
       const m = line.match(/^progress (\d+) (\d+)/)
@@ -170,7 +170,7 @@ export const INSTALL_STEPS = ['创建 Python 环境', '下载 Applio（RVC 推�
 
 // 默认人声分离模型要的文件：[文件名, 下载地址（按顺序试）, sha256]。提前下好，免得第一次点歌时卡着不动。
 // 模型 640 MB，GitHub 在国内经常下不动：先走 HuggingFace 镜像（有人转存了同一个文件，校验值一样），再试官方。
-// 下完核对 sha256，哪个源给的文件不对就换下一个；配置文件很小，随插件带着（src/song/separator/）。
+// 下载后校验权重，模型配置随包分发。
 const GH_UVR = 'https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models'
 const GH_AS = 'https://github.com/nomadkaraoke/python-audio-separator/releases/download/model-configs'
 const HF_SEP = ['Politrees/UVR_resources/resolve/main/models/Roformer/BandSplit', 'datasets/SayanoAI/RVC-Studio/resolve/main/UVR']

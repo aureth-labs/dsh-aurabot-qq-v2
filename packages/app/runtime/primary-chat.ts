@@ -5,6 +5,7 @@ import {
   delegatedCommandKey,
 } from '../../../src/chat/policy/rules/delegation.ts'
 import { defaultModel, modelReasoning } from '../../../src/core/llm/index.ts'
+import { privateCapabilityAllowed } from '../../../src/chat/policy/rules/access.ts'
 import { defaultOneBotId } from '../onebot.ts'
 
 export function createPrimaryChat({
@@ -30,7 +31,11 @@ export function createPrimaryChat({
     const chat = where.chat
     const id = chat?.kind === 'private' ? chat.userId : chat?.kind === 'group' ? chat.groupId : ''
     const target = id ? { platform: 'qq', botId: defaultOneBotId, type: chat.kind, id: String(id) } : undefined
-    return { ...where, target, primaryChat: true }
+    return {
+      ...where, target, primaryChat: true,
+      actors: () => hub.turnSenders(where.sessionId),
+      delegated: capability => privateCapabilityAllowed(getConfig(), chat, capability),
+    }
   }
   const hub = createHub({
     localApi: local,

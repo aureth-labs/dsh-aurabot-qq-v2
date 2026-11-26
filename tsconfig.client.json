@@ -16,6 +16,6 @@
     "removeComments": true,
     "declaration": false
   },
-  "include": ["client/**/*.ts", "packages/modules/sandbox/web/**/*.ts"],
+  "include": ["client/**/*.ts", "packages/modules/*/web/**/*.ts"],
   "exclude": ["node_modules", "lib", "dist"]
 }

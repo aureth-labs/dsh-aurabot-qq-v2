@@ -477,6 +477,7 @@ export interface Ctx {
   }
   readonly http: {
     body(req: any): Promise<Record<string, any>>
+    raw(req: any, maxBytes: number): Promise<Buffer>
     query(req: any): Record<string, string>
     send(res: any, status: number, body: unknown, type?: string): void
   }

@@ -1,6 +1,5 @@
 // QQ 里的主人命令：/silent /active 之类，直接在 QQ 上管她。只认主人；在总开关关着时也能用（所以 /on 才有用）。
 
-import { parseSingRequest } from './sing-parse.ts'
 import { runEffortCommand } from './effort-command.ts'
 import { policyFor } from '../../../src/chat/policy/rules/group.ts'
 import { dataDir, readJson, writeJson } from '../../../src/core/store/index.ts'
@@ -40,7 +39,6 @@ const ALIASES = {
   多说: 'chatty', 话多: 'chatty',
   正常: 'normal',
   思考: 'effort', 思考强度: 'effort',
-  唱: 'sing', 点歌: 'sing', 翻唱: 'sing',
   状态: 'status', 心情: 'mood', 记住: 'remember', 记一下: 'remember',
   搭话: 'speak', 主动搭话: 'speak',
   重开: 'reset', 开机: 'on', 关机: 'off', 帮助: 'help', 命令: 'help', h: 'help',

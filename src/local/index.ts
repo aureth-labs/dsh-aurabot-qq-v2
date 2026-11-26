@@ -3,7 +3,7 @@
 // 面板里每项单独开关；文件不存在、开关关着或者出错，调用方退回内置方式。
 
 import { existsSync, mkdirSync, copyFileSync, statSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dataDir } from '../core/store/index.ts'
 import { selfName } from '../persona/personas.ts'
@@ -14,7 +14,6 @@ const README = 'README-本地接口.md'
 export const SLOTS = {
   tts: { file: 'tts.mjs', source: 'audio/tts.mjs', title: '语音合成', timeoutMs: 60_000, example: 'GPT-SoVITS（http://127.0.0.1:9880，参考音频在 D:/voices/ref.wav）' },
   image: { file: 'image.mjs', source: 'media/image.mjs', title: '生图', timeoutMs: 300_000, example: 'SD WebUI（http://127.0.0.1:7860）或 ComfyUI（http://127.0.0.1:8188）' },
-  song: { file: 'song-convert.mjs', source: 'song/song-convert.mjs', title: '翻唱换声', timeoutMs: 20 * 60_000, example: '我自己训练的 so-vits-svc 模型（项目在 D:/so-vits-svc，模型 logs/44k/G_10000.pth）' },
   asr: { file: 'asr.mjs', source: 'audio/asr.mjs', title: '语音识别', timeoutMs: 60_000, example: 'FunASR / faster-whisper 的本地服务（http://127.0.0.1:8000）' },
   video: { file: 'video.mjs', source: 'media/video.mjs', title: '生视频', timeoutMs: 20 * 60_000, example: 'ComfyUI（http://127.0.0.1:8188）跑的视频工作流' },
 }
@@ -38,9 +37,16 @@ export async function toImageBuffer(r) {
 export const fileOf = (r) => (typeof r === 'string' ? r : r?.file || r?.output || '')
 
 export function createLocal({ getConfig, log }) {
+  type Slot = typeof SLOTS.tts
+  const definitions = new Map<string, Slot>(Object.entries(SLOTS))
+  function register(id: string, spec: Slot) {
+    if (definitions.has(id)) throw Error('本地接口已注册：' + id)
+    definitions.set(id, spec)
+    return () => { if (definitions.get(id) === spec) definitions.delete(id) }
+  }
   const dir = () => dataDir('local')
   const outDir = () => dataDir('local', 'out')
-  const pathOf = (slot) => join(dir(), SLOTS[slot].file)
+  const pathOf = (slot) => join(dir(), definitions.get(slot).file)
   const last: Record<string, any> = {} // slot → { ok, at, message }
 
   /** 这一项现在由本地脚本接管吗。 */
@@ -63,7 +69,7 @@ export function createLocal({ getConfig, log }) {
   const supportsImage = async () => await referenceLimit() > 0
 
   async function call(slot, args) {
-    const spec = SLOTS[slot]
+    const spec = definitions.get(slot)
     const t = Date.now()
     // 生视频比别的慢得多，超时可以在面板单独调
     const timeoutMs = slot === 'video' ? (Number(getConfig().local?.videoTimeoutMin) || 20) * 60_000 : spec.timeoutMs
@@ -99,13 +105,13 @@ export function createLocal({ getConfig, log }) {
     if (!existsSync(join(dir(), README))) copyFileSync(join(TEMPLATES, README), join(dir(), README))
     const dest = pathOf(slot)
     if (existsSync(dest)) return { ok: true, created: false, path: dest, message: '文件已经有了，没覆盖' }
-    copyFileSync(join(TEMPLATES, SLOTS[slot].source), dest)
+    copyFileSync(resolve(TEMPLATES, definitions.get(slot).source), dest)
     return { ok: true, created: true, path: dest, message: '模板放好了，照里面的注释改，或者让 DSH 帮你改' }
   }
 
   /** 复制给 DSH 的话：让它读说明、改脚本。 */
   function promptFor(slot) {
-    const s = SLOTS[slot]
+    const s = definitions.get(slot)
     return `帮我修改 Aurabot（${selfName(getConfig())} QQ 插件）的本地接口脚本：${pathOf(slot)}\n`
       + `先读同一个文件夹里的「${README}」了解参数和返回值的约定，再把这个脚本改成调用我电脑上的${s.title}：\n`
       + `【这里写你用的是什么、地址、模型和关键参数，例如：${s.example}】\n`
@@ -113,12 +119,12 @@ export function createLocal({ getConfig, log }) {
   }
 
   function status() {
-    return Object.entries(SLOTS).map(([slot, s]) => ({
+    return [...definitions].map(([slot, s]) => ({
       slot, title: s.title, file: s.file, path: pathOf(slot),
       exists: existsSync(pathOf(slot)), enabled: Boolean(getConfig().local?.[slot]), active: active(slot),
       last: last[slot] || null, prompt: promptFor(slot),
     }))
   }
 
-  return { active, call, supportsImage, referenceLimit, template, status, dir, pathOf }
+  return { register, has: id => definitions.has(id), active, call, supportsImage, referenceLimit, template, status, dir, pathOf }
 }

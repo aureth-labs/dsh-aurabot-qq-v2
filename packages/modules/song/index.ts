@@ -1,140 +1,101 @@
-// 内置模块：翻唱。点歌 → 网易云下载 → 分离人声 → RVC 换成她的音色 → 混音 → 发语音条。
-// 换声这一步可以在「本地接口」里接你自己的推理（so-vits-svc、自己训练的 RVC……）；整个模块也可以替换掉。
-
 import { createHash } from 'node:crypto'
+import { songSlot } from './local.ts'
 import { createSongStudio } from './studio/studio.ts'
-import { checkRoot, listDrives } from './studio/env/install.ts'
-import { privateCapabilityAllowed } from '../../../src/chat/policy/rules/access.ts'
-import { defineTool, str, int, bool } from '../../../src/tools/index.ts'
+import { destination, type SongDestination } from './destination.ts'
+import { installSongPanel } from './panel.ts'
+import { cleanFailLine, failPrompt } from './feedback.ts'
+import { parseSingRequest } from './audio/command.ts'
 
-/** 翻唱完成后的心情变化：原因记到这次唱歌所在的聊天，别成为全局原因。 */
-export function nudgeMoodAfterSong(mood, title, chatId) {
-  mood?.nudge?.(8, `唱完了「${title}」`, chatId)
-}
-
+export { config } from './config.ts'
+export { cleanFailLine, failPrompt }
 export const name = '翻唱'
-
-export const version = '1.0.0'
-
-export const description = '用她的声音翻唱一首歌，做好发语音条（qq_song_cover、/sing）'
-
+export const version = '2.0.0'
+export const description = '点歌、制作翻唱并将语音发送到发起会话'
 export const tab = 'song'
 
-export function apply(ctx, config) {
-  const { hub, local, http } = ctx.host
-  const mood = ctx.lazy('mood')
-  const memory = ctx.lazy('memory')
-  ctx.prompt(({ chat }) => {
-    if (!ctx.root.config.song.enabled || !privateCapabilityAllowed(ctx.root.config, chat, 'song')) return ''
-    return '当前私聊对象已经获得主人的点歌授权。对方请求唱歌时可以使用 qq_song_cover，以当前授权为准。'
-  })
-  const song = createSongStudio({
-    local,
-    getConfig: ctx.root.read,
-    log: ctx.logger,
-    sendVoiceFile: (chatId, file, note) => hub.sendVoiceFile(chatId, file, note),
-    sendText: (chatId, text) => hub.sendText(chatId, text),
-    // 翻唱失败那句话不写死：把歌名和可公开的失败原因给她，让她自己挑一句口语说。
-    // 回合失败 / 超时 / 空输出直接抛，由 studio 那边发一句兜底短话（不会一声不吭）。
-    say: async ({ chatId, title, why }) => {
-      // 按聊天分会话：不同的群同时失败时互不排队，也不会把别人的失败混进同一段上下文
-      const key = 'fail:' + createHash('md5').update(String(chatId)).digest('hex').slice(0, 8)
-      const raw = await hub.runSystemTurn('song-fail', 'QQ · 翻唱失败', failPrompt(title, why), { noTools: true, timeoutMs: 30_000, key })
-      const line = cleanFailLine(raw)
-      if (!line) throw new Error('模型没说话（[沉默] 或空输出）')
-      await hub.sendText(chatId, line)
-    },
-    onSung: (title, chatId) => {
-      const cfg = ctx.root.config
-      nudgeMoodAfterSong(mood, title, chatId)
-      // 唱过的歌记成她的经历：私聊记到对方头上
-      const uid = String(chatId).startsWith('private:') ? String(chatId).slice(8) : ''
-      const who = uid === String(cfg.ownerQQ) ? cfg.ownerName || '主人' : uid ? '对方' : '群里'
-      memory.addEvent?.({ text: `给${who}唱了《${title}》`, about: uid, tags: ['唱歌'], importance: 0.5 })
-      ctx.emit('song/sung', { title, chatId })
-    },
-  })
+export function nudgeMoodAfterSong(mood, title, chatId) {
+  mood?.nudge?.(8, '唱完了「' + title + '」', chatId)
+}
 
-  // 面板里打开了才给她（没开就别让她答应唱歌）
-  ctx.tool(({ chat, sessionId }) => (ctx.root.config.song.enabled && chat.kind !== 'system' ? defineTool({
-    name: 'qq_song_cover',
-    description: '仅在对方点歌、邀唱或要求续唱时使用。普通说话、朗读和语音回复使用 <voice>正文</voice>。用你自己的声音翻唱一首歌，做好后自动以语音条发到当前聊天（耗时取决于长度和电脑性能，成功排队后再说已开始准备）。song 只写歌名和用户指定的歌手，比如「小幸运 田馥甄」；没指定歌手就按歌名搜索，不臆造指定版本。pitch 一般不填：会听原唱人声自动判断男声女声、按你的声线定变调；只有别人明确要求升调降调时才填半音数。别人说清唱、不要伴奏时 acapella 填 true。只唱一段时用 start_sec 指定从第几秒开始，duration_sec 指定唱多少秒；只填时长则从头唱，两项都不填沿用面板截取设置，不能超过面板的最长时长。例如「红日，李克勤的，从第30秒开始，翻唱8秒」应填 song="红日 李克勤", start_sec=30, duration_sec=8。权限限制是限制谁能点歌，不是限制只能发到私聊；被拒时未开始制作。',
-    properties: { song: str('歌名（可以带歌手）'), pitch: int('变调半音：一般不填，自动按原唱定；别人明确要求升降调时才填'), acapella: bool('清唱：只留人声，不要伴奏'), start_sec: int('开始位置，整数秒，0 表示从头'), duration_sec: int('唱多少秒，正整数；不能超过面板最长时长') },
-    required: ['song'],
-    slow: '好，我这就去弄，稍等一会儿（做好了发你）。',
-    execute: async ({ song: name, pitch, acapella, start_sec, duration_sec }) => {
-      if (ctx.root.config.song.ownerOnly && !hub.turnSendersAllOwner(sessionId) && !privateCapabilityAllowed(ctx.root.config, chat, 'song')) return { ok: false, message: chat.kind === 'group' ? '本轮未通过点歌权限检查，未开始制作（合并了其他人的请求也会被拦）。主人可在本群直接发 /sing 歌名，或私聊点歌。' : '你还没有获得点歌权限' }
-      return song.request({ song: name, pitch, acapella, startSec: start_sec, durationSec: duration_sec, chatId: chat.chatId })
+export function apply(ctx) {
+  let active = true
+  const local = ctx.get('local-scripts')
+  if (local) ctx.effect(local.register('song', songSlot))
+  function settings() {
+    const root = ctx.root.config
+    const overrides = root.ext?.song || {}
+    const values = ctx.config || {}
+    const explicit = Object.keys(overrides).filter(key => Object.hasOwn(values, key))
+    return { ...root.song, ...Object.fromEntries(explicit.map(key => [key, values[key]])) }
+  }
+  const studio = createSongStudio({
+    getConfig: () => ({ song: settings() }), log: ctx.logger, workDir: ctx.dataDir('songs'),
+    local, renderer: () => ctx.get('song-renderer'),
+    async say({ destination: delivery, chatId, title, why }) {
+      if (!delivery.current()) return
+      const key = 'fail:' + createHash('sha256').update(chatId).digest('hex').slice(0, 16)
+      const line = cleanFailLine(await ctx.think(failPrompt(title, why), { title: '翻唱失败', key, noTools: true, timeoutMs: 30_000 }))
+      if (!line) throw Error('模型未生成失败提示')
+      await delivery.text(line)
     },
-  }) : []))
-
-  ctx.server.get('/song/status', async () => ({ ok: true, ...song.status() }))
-  ctx.server.post('/song/install', async () => song.install())
-  ctx.server.get('/song/root/check', async (req) => ({ ok: true, ...checkRoot(http.query(req).path || '') }))
-  ctx.server.get('/song/drives', async () => ({ ok: true, list: listDrives() }))
-  ctx.server.get('/song/search', async (req) => {
-    try { return { ok: true, list: await song.search(http.query(req).q || '') } } catch (error) { return { ok: false, message: error.message, list: [] } }
+    onSung(title, chatId, delivery: SongDestination) {
+      const target = delivery.target
+      const text = '应邀唱了《' + title + '》'
+      const room = delivery.scope || chatId
+      nudgeMoodAfterSong(ctx.get('mood'), title, room)
+      if (delivery.primary) ctx.get('memory')?.addEvent?.({ text, tags: ['唱歌'], about: target.type === 'private' ? target.id : '', chatId: room, importance: 0.5 })
+      else if (delivery.scope && delivery.actor && ctx.root.config.memory?.enabled !== false) {
+        ctx.get('room-memory')?.remember({ room, persona: delivery.persona, user: delivery.actor }, text)
+      }
+      ctx.emit('song/sung', { target, title, chatId })
+    },
   })
-  ctx.server.get('/song/account', async () => song.account())
-  // 导入音色：面板把文件原样传上来（.zip / .pth / .index），文件名放在 ?name= 里
-  ctx.server.post('/song/import', async (req) => {
-    const name = http.query(req).name || ''
-    try {
-      const buf = await http.raw(req, 1024 * 1024 * 1024)
-      if (!buf.length) return { ok: false, message: '文件是空的' }
-      const r = song.importModels(name, buf)
-      if (r.ok) ctx.logger.info('导入音色：' + r.message)
-      return r
-    } catch (error) {
-      return { ok: false, message: '导入失败：' + error.message }
+  ctx.effect(() => { active = false; studio.dispose() })
+  const request = (options, target, permitted, actor = target?.type === 'private' ? target.id : '', primaryRoom = '') => {
+    if (!target) return { ok: false, message: '缺少接收会话' }
+    const delivery = destination(ctx, target, () => active && settings().enabled && permitted())
+    if (delivery) {
+      const timeline = ctx.get('room-timeline')
+      delivery.actor = actor
+      delivery.primary = Boolean(primaryRoom)
+      delivery.persona = ctx.get('persona')?.current()?.id || ''
+      delivery.scope = primaryRoom || (timeline?.enabled() ? timeline.read(target, ctx.bots.get(target.botId, target.platform).selfId, delivery.persona).room : '')
     }
-  })
-  ctx.server.post('/song/voice/delete', async (req) => song.deleteVoice(String((await http.body(req)).id || '')))
-  // 面板里试唱：发到主人私聊
-  ctx.server.post('/song/request', async (req) => {
-    const b = await http.body(req)
-    return song.request({ song: b.song, songId: b.songId, pitch: b.pitch, voice: b.voice, startSec: b.startSec, durationSec: b.durationSec, chatId: b.chatId || `private:${ctx.root.config.ownerQQ}` })
-  })
-  ctx.provide('sing', song)
-  return song
-}
-// 翻唱失败时给她的提示词：歌名 + 已整理过的失败原因，要一句口语。
-// 原因写进来是让她知道「为什么没成」，不是让她复述——所以明说不许念技术细节。
-export function failPrompt(title, why) {
-  return [
-    `有人点了一首《${title}》，但这次没唱成。`,
-    `内部原因（只给你看，不要念出来，也不要提技术细节、额度、报错原文）：${why || '没说清'}`,
-    '',
-    '在 QQ 里跟对方说一句话：',
-    '- 一句话，口语，像你自己在说话；别用客服腔（「抱歉给您带来不便」那种）',
-    '- 可以说得含糊、可以撒个娇、可以说回头再试；别编一个具体的技术理由',
-    '- 不要出现路径、英文报错、错误码、额度数字',
-    '- 只输出这一句话，别加引号，别解释你在做什么',
-    '- 实在不想说，就只输出 [沉默]',
-  ].join('\n')
-}
+    return delivery ? studio.request({ ...options, destination: delivery, chatId: delivery.room })
+      : { ok: false, message: '当前会话未开放点歌、尚未上线或不支持语音' }
+  }
 
-const SILENT = /^[\[【(（]\s*沉默\s*[\]】)）]$/
-// 模型万一把内部信息念出来了（报错原文、路径、额度），这句就不能发，交给兜底
-const LEAK = /error|enoent|traceback|http:\/\/|https:\/\/|api[ _-]?key|token|额度|字节|\d+\s*(?:mb|gb)\b/i
+  ctx.tool(({ target, chat, primaryChat, sessionId, actors, delegated }) => {
+    if (!target || !settings().enabled || !ctx.bots.get(target.botId, target.platform)?.supports('voice')) return []
+    return ctx.defineTool({
+      name: primaryChat ? 'qq_song_cover' : 'song_cover',
+      description: '仅在对方点歌或邀唱时制作翻唱，做好后发到当前会话。歌名可带指定的歌手，清唱可选 acapella。指定片段时填写起点和时长。成功排队后才能答应已开始制作。',
+      properties: {
+        song: { type: 'string', description: '歌名和指定歌手' },
+        pitch: { type: 'integer', description: '明确要求升降调时填写半音数' },
+        acapella: { type: 'boolean', description: '仅保留人声' },
+        start_sec: { type: 'integer', description: '开始秒数' }, duration_sec: { type: 'integer', description: '片段时长（秒）' },
+      },
+      required: ['song'],
+      execute({ song, pitch, acapella, start_sec, duration_sec }) {
+        const allowedTurn = !primaryChat || ctx.turnFromOwner(sessionId)
+        const senders = actors?.() || []
+        const users = senders.length ? senders : [chat?.userId || (primaryChat && allowedTurn && ctx.root.config.ownerQQ)]
+        const permitted = () => !settings().ownerOnly || Boolean(delegated?.('song')) ||
+          (allowedTurn && users.every(user => ctx.isOwner(user, target.platform, target.botId)))
+        return request({ song, pitch, acapella, startSec: start_sec, durationSec: duration_sec }, target, permitted, chat?.userId, primaryChat ? chat?.chatId : '')
+      },
+    })
+  })
 
-/** 把她那一轮说的话洗成一句能直接发出去的：去引号/前缀/多余行，[沉默] 或念了内部信息就当没说话。 */
-export function cleanFailLine(text) {
-  const first = String(text || '')
-    .replace(/```[\s\S]*?```/g, ' ')
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^[\s>*#-]+/, '').trim())
-    .find(Boolean) || ''
-  if (!first || SILENT.test(first)) return ''
-  const line = first
-    .replace(/^(?:大肥鱼|小鲸鱼|鲸鱼娘|我)\s*[：:]\s*/, '')
-    .replace(/^[「"'“”『』]+|[」"'“”『』]+$/g, '')
-    .replace(/\*\*/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  if (!line || SILENT.test(line) || LEAK.test(line) || /[A-Za-z]:[\\/]|\\\\[^\\\s]+\\|\/[^\s/]+\//.test(line)) return ''
-  if (line.length <= 60) return line
-  // 太长就截到第一个句末；实在没有句末就硬截
-  const cut = line.search(/[。！？!?~～]/)
-  return cut >= 4 ? line.slice(0, cut + 1) : line.slice(0, 60)
+  ctx.command('sing <song:text>').alias('唱', '点歌', '翻唱').action(async ({ session, args }) => {
+    const input = parseSingRequest(args)
+    if (input.error || !input.song) return session.send(input.error || '请输入歌名')
+    const result = request(input, session.target, () => !settings().ownerOnly || ctx.isOwner(session), session.userId)
+    return session.send(result.message)
+  })
+  installSongPanel(ctx, studio, request)
+  const service = { ...studio, request: ({ target, ...options }) => request(options, target, () => true) }
+  ctx.provide('sing', service)
+  return service
 }

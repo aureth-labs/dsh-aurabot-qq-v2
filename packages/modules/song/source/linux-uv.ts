@@ -5,7 +5,7 @@ import { dirname } from 'node:path'
 import { readZip } from '../audio/zip.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type InstallLinuxUvOptions = Partial<Record<'arch' | 'fetcher' | 'note', any>>
+type InstallLinuxUvOptions = Partial<Record<'arch' | 'fetcher' | 'note' | 'signal', any>>
 
 const WHEELS = {
   x64: {
@@ -19,14 +19,15 @@ const WHEELS = {
 }
 
 /** 下载并安装对应 CPU 架构的 uv。 */
-export async function installLinuxUv(dest, { arch = process.arch, fetcher = fetch, note } : InstallLinuxUvOptions = {}) {
+export async function installLinuxUv(dest, { arch = process.arch, fetcher = fetch, note, signal } : InstallLinuxUvOptions = {}) {
   const wheel = WHEELS[arch]
   if (!wheel) throw new Error('这个 Linux 架构没有内置 uv 下载源，请先安装 uv 或设置 AURABOT_UV')
   const stage = dest + '.' + randomUUID() + '.download'
   let lastError
   for (const base of ['https://mirrors.aliyun.com/pypi/', 'https://files.pythonhosted.org/']) {
     try {
-      const response = await fetcher(base + wheel.path, { signal: AbortSignal.timeout(120_000) })
+      const timeout = AbortSignal.timeout(120_000)
+      const response = await fetcher(base + wheel.path, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout })
       if (!response.ok) throw new Error('HTTP ' + response.status)
       const bytes = Buffer.from(await response.arrayBuffer())
       if (createHash('sha256').update(bytes).digest('hex') !== wheel.sha256) throw new Error('下载的 uv 校验不通过')
@@ -41,6 +42,7 @@ export async function installLinuxUv(dest, { arch = process.arch, fetcher = fetc
       }
       return dest
     } catch (error) {
+      signal?.throwIfAborted()
       lastError = error
       note?.('  从 ' + new URL(base).host + ' 下载 uv 失败：' + error.message)
     }

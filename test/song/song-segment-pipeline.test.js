@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path'
 
 test('片段无人声不封禁整首；越界不发语音；失败后下一首照常运行并按片段缓存', {skip:process.platform==='win32'}, async()=>{
   const data=mkdtempSync(join(tmpdir(),'song-flow-'));process.env.AURABOT_DATA_DIR=data
-  const {createSongStudio}=await import('../../src/song/studio/index.ts')
+  const {createSongStudio}=await import('../../packages/modules/song/studio/index.ts')
   const {normalize}=await import('../../src/core/config/index.ts')
   const root=join(data,'engine'),calls=join(root,'calls.jsonl'),mode=join(root,'volume')
   function put(file,text,executable=false){mkdirSync(dirname(file),{recursive:true});writeFileSync(file,text);if(executable)chmodSync(file,0o755)}
@@ -18,7 +18,7 @@ test('片段无人声不封禁整首；越界不发语音；失败后下一首�
   put(join(root,'bin/ffmpeg.exe'),script(`if(a.includes('volumedetect')){console.error('mean_volume: '+fs.readFileSync(${JSON.stringify(mode)},'utf8'));}else if(a.length===3){console.error('Duration: 00:01:40.00');}else{fs.writeFileSync(a.at(-1),'audio');}`),true)
   put(mode,'-100');const input=join(data,'song.wav');put(input,'input')
   const cfg=normalize({song:{enabled:true,root,separatorModel:'test.onnx',keepWork:false}}),sent=[],notices=[],spoken=[];let conversions=0,failConversion=false,delivery,sung=0
-  const s=createSongStudio({getConfig:()=>cfg,log:{info(){},warn(){}},local:{active:()=>true,call:async(_n,o)=>{conversions++;if(failConversion)throw Error('ENOENT /home/private/secret.py at internalFn()');put(o.output,'converted');return o.output}},say:async o=>spoken.push(o),onSung:()=>sung++,sendVoiceFile:async(_c,f)=>{if(delivery===undefined)sent.push(f);return delivery},sendText:async(_c,t)=>notices.push(t)})
+  const s=createSongStudio({workDir:join(data,'songs'),getConfig:()=>cfg,log:{info(){},warn(){}},local:{active:()=>true,call:async(_n,o)=>{conversions++;if(failConversion)throw Error('ENOENT /home/private/secret.py at internalFn()');put(o.output,'converted');return o.output}},say:async o=>spoken.push(o),onSung:()=>sung++,sendVoiceFile:async(_c,f)=>{if(delivery===undefined)sent.push(f);return delivery},sendText:async(_c,t)=>notices.push(t)})
   async function request(o){assert.equal(s.request({song:'测试',file:input,chatId:'private:'+Date.now(),...o}).ok,true);for(let i=0;i<500;i++){if(!s.status().current)return;await new Promise(r=>setTimeout(r,10))}throw Error('queue timeout')}
   await request({startSec:20,durationSec:8});assert.equal(sent.length,0);assert.match(notices.at(-1),/这段没有检测到人声/)
   assert.equal(existsSync(join(data,'songs/no-vocals.json')),false);assert.equal(readFileSync(calls,'utf8').trim().split('\n').length,1,'no retry of a different track')

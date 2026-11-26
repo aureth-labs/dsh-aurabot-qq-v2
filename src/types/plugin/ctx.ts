@@ -176,6 +176,7 @@ export interface ChatLogFacade {
 /** `ctx.http`：面板路由里读请求、回响应的小工具。 */
 export interface HttpHelpers {
   body(req: any): Promise<Record<string, any>>
+  raw(req: any, maxBytes: number): Promise<Buffer>
   query(req: any): Record<string, string>
   send(res: any, status: number, body: unknown, type?: string): void
 }

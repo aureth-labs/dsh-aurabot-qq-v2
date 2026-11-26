@@ -9,14 +9,14 @@ import { cleanupDir } from '../helpers/cleanup.js'
 
 let studio
 let netease
-let commands
+let parseSingRequest
 let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-song-'))
-  studio = await import('../../src/song/studio/index.ts')
-  netease = await import('../../src/song/source/netease.ts')
-  commands = await import('../../packages/modules/commands/dispatch.ts')
+  studio = await import('../../packages/modules/song/studio/index.ts')
+  netease = await import('../../packages/modules/song/source/netease.ts')
+  ;({ parseSingRequest } = await import('../../packages/modules/song/audio/command.ts'))
   ;({ normalize } = await import('../../src/core/config/index.ts'))
 })
 
@@ -128,7 +128,7 @@ test('cutFirst：注入假 readPcm，成功用副歌入口、失败回退 30%', 
 })
 
 test('readPcm 会消费 stderr（改动后的源码契约）', () => {
-  const src = readFileSync(new URL('../../src/song/studio/studio.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../../packages/modules/song/studio/studio.ts', import.meta.url), 'utf8')
   const start = src.indexOf('async function readPcm')
   const end = src.indexOf('async function meanVolume', start)
   assert.ok(start >= 0 && end > start)
@@ -276,15 +276,10 @@ test('Linux 一键安装从 uv 到 ffmpeg 走原生路径，保留残留的手�
   assert.equal(readFileSync(p.ffmpeg, 'utf8'), 'fixture')
 })
 
-test('/sing：歌名和变调', async () => {
-  const calls = []
-  const deps = { getConfig: () => normalize({}), setConfig() {}, song: { request: (o) => { calls.push(o); return { ok: true, message: '开始准备' } } } }
-  const msg = { kind: 'private', chatId: 'private:1', userId: '1' }
-  assert.equal(await commands.runCommand(commands.parseCommand('/sing 小幸运 田馥甄 +12'), msg, deps), '开始准备')
-  assert.deepEqual(calls[0], { song: '小幸运 田馥甄', pitch: 12, chatId: 'private:1' })
-  await commands.runCommand(commands.parseCommand('/唱 晴天'), msg, deps)
-  assert.deepEqual(calls[1], { song: '晴天', pitch: undefined, chatId: 'private:1' })
-  assert.match(await commands.runCommand(commands.parseCommand('/sing'), msg, deps), /唱哪首/)
+test('/sing：歌名和变调', () => {
+  assert.deepEqual(parseSingRequest('小幸运 田馥甄 +12'), { song: '小幸运 田馥甄', pitch: 12 })
+  assert.deepEqual(parseSingRequest('晴天'), { song: '晴天', pitch: undefined })
+  assert.ok(!parseSingRequest('').song)
 })
 
 // 测试用的小 zip 打包器：deflate 压缩；name 可以传 Buffer（模拟 Windows 上 GBK 编码的中文文件名）
