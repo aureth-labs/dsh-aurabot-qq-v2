@@ -33,6 +33,7 @@ export type {
 
 /** 内核内部的注册器；插件作者看不到这个对象，只看到它投出来的 ctx。 */
 interface KernelApi {
+  assertActive?: () => void
   id: string
   instanceId?: string
   version: string
@@ -173,7 +174,6 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
 
   if (extras.bots) value('bots', extras.bots)
   value('bot', makeBotAccessor(extras.bots, extras.bot))
-  value('broadcast', (targets: Target[], content: unknown, options?: { timeoutMs?: number }) => broadcast(ctx, targets, content, options))
   value('emit', (event: string, ...args: any[]) => { api.emit(event, ...args) })
   if (extras.Schema) value('Schema', extras.Schema)
   if (extras.h) value('h', extras.h)
@@ -272,7 +272,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
     return extras.registerPage(page)
   })
 
-  return installScopes(ctx)
+  return installScopes(ctx, api.assertActive)
 }
 
 /** 会话形状的判断只认这几个字段：平台、类型、群/频道号。 */
@@ -345,9 +345,11 @@ async function broadcast(
   targets: Target[],
   content: unknown,
   options: { timeoutMs?: number } = {},
+  assertActive?: () => void,
 ): Promise<BroadcastResult[]> {
   const results: BroadcastResult[] = []
   for (const target of Array.isArray(targets) ? targets : []) {
+    assertActive?.()
     const bot = ctx.bots?.get(target.botId, target.platform)
     if (!bot) {
       results.push({ target, ok: false, error: `没有可用的「${target.platform}」机器人` })
@@ -377,7 +379,7 @@ interface ScopeRules {
 const ROOT_RULES: ScopeRules = { session: () => true, platform: () => true }
 
 /** 给 ctx 装上 `platform() / guild() / private()`：每次调用返回一层更窄的视图。 */
-function installScopes(ctx: PluginContext): PluginContext {
+function installScopes(ctx: PluginContext, assertActive?: () => void): PluginContext {
   const scoped = (rules: ScopeRules): PluginContext => {
     // 用属性描述符复制，不走 spread：`root` 是取值器，spread 会把它固化成快照
     const view = Object.create(
@@ -409,7 +411,7 @@ function installScopes(ctx: PluginContext): PluginContext {
     if (ctx.bots) view.bots = filterBots(ctx.bots, (bot) => rules.platform(bot.platform))
     const fallback = view.bots ? undefined : ctx.bot?.()
     view.bot = makeBotAccessor(view.bots, fallback && rules.platform(fallback.platform) ? fallback : undefined)
-    view.broadcast = (targets, content, options) => broadcast(view, targets, content, options)
+    view.broadcast = (targets, content, options) => broadcast(view, targets, content, options, assertActive)
 
     view.platform = (name: string) => scoped({
       session: (session) => rules.session(session) && session.platform === String(name),

@@ -8,9 +8,9 @@ let module, normalize, commands, root
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'song-segment-'))
   root = mkdtempSync(join(tmpdir(), 'song-root-'))
-  module = await import('../../packages/song/index.ts')
+  module = await import('../../packages/modules/song/index.ts')
   ;({ normalize } = await import('../../src/core/config/index.ts'))
-  commands = await import('../../packages/commands/dispatch.ts')
+  commands = await import('../../packages/modules/commands/dispatch.ts')
 })
 test('片段不改旧默认；时长单独填写从头，开始单独填写用上限', () => {
   assert.deepEqual(validateSongClip({}, 120), { ok: true, clip: null })

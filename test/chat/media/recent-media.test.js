@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../../../src/chat/hub/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
-import stickersModule from '../../../packages/stickers/index.ts'
+import stickersModule from '../../../packages/modules/stickers/index.ts'
 
 const OWNER = '10000001'
 const BOT = '20000002'

@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { groupSettingsTool, planGroupSettings } from '../../packages/contacts/group-settings.ts'
+import { groupSettingsTool, planGroupSettings } from '../../packages/modules/contacts/group-settings.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { decideGroupReply, policyFor } from '../../src/chat/policy/rules/group.ts'
-import { runCommand, parseCommand } from '../../packages/commands/dispatch.ts'
+import { runCommand, parseCommand } from '../../packages/modules/commands/dispatch.ts'
 
 const OWNER = '10000001', OTHER = '10000002', G = '30000003', H = '40000004'
 const chat = { kind: 'private', userId: OWNER, chatId: `private:${OWNER}` }

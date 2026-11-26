@@ -2,7 +2,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { API_VERSION, BUILTIN_DIR, DOC, DOC_SRC, TYPES, TYPES_SRC } from '../loader.ts'
+import { API_VERSION, PKG, DOC, DOC_SRC, TYPES, TYPES_SRC } from '../loader.ts'
 
 export interface CreateDocsOptions {
   userDir: () => string
@@ -14,13 +14,13 @@ export function createDocs({ userDir, version }: CreateDocsOptions) {
   function installDocs(): void {
     try {
       mkdirSync(userDir(), { recursive: true })
-      const doc = readFileSync(join(BUILTIN_DIR, DOC_SRC), 'utf8')
+      const doc = readFileSync(join(PKG, DOC_SRC), 'utf8')
         .replaceAll('{{VERSION}}', version)
         .replaceAll('{{API}}', String(API_VERSION))
       const dest = join(userDir(), DOC)
       if (!existsSync(dest) || readFileSync(dest, 'utf8') !== doc) writeFileSync(dest, doc, 'utf8')
       // 类型提示：模块开头写 /** @type {import('../../aurabot').AurabotModule} */，编辑器就有补全
-      const types = readFileSync(join(BUILTIN_DIR, TYPES_SRC), 'utf8')
+      const types = readFileSync(join(PKG, TYPES_SRC), 'utf8')
       const tdest = join(userDir(), TYPES)
       if (!existsSync(tdest) || readFileSync(tdest, 'utf8') !== types) writeFileSync(tdest, types, 'utf8')
     } catch (error) {}

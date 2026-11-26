@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseCommand, runCommand } from '../../packages/commands/dispatch.ts'
-import { runPermissionsCommand } from '../../packages/commands/permissions-command.ts'
+import { parseCommand, runCommand } from '../../packages/modules/commands/dispatch.ts'
+import { runPermissionsCommand } from '../../packages/modules/commands/permissions-command.ts'
 
 const owner = { kind: 'private', userId: '123456' }
 const guest = { kind: 'private', userId: '10000002' }

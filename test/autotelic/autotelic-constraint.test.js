@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseConstraintRules, check, ruleKeywords, createConstraintWatcher } from '../../packages/autotelic/impl/exec/constraint.ts'
+import { parseConstraintRules, check, ruleKeywords, createConstraintWatcher } from '../../packages/modules/autotelic/impl/exec/constraint.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 // —— 解析：逐行一条，解析失败静默跳过 ——

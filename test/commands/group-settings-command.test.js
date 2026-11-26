@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize } from '../../src/core/config/index.ts'
-import { parseCommand, runCommand } from '../../packages/commands/dispatch.ts'
-import { parseGroupSettingsCommand, runGroupSettingsCommand } from '../../packages/commands/group-settings-command.ts'
+import { parseCommand, runCommand } from '../../packages/modules/commands/dispatch.ts'
+import { parseGroupSettingsCommand, runGroupSettingsCommand } from '../../packages/modules/commands/group-settings-command.ts'
 import { canUseDelegatedCommand, delegatedCommandKey } from '../../src/chat/commands/delegated-commands.ts'
 const OWNER = '10000001', G = '30000003', H = '40000004', OTHER = '10000002'
 const owner = { kind: 'private', userId: OWNER }

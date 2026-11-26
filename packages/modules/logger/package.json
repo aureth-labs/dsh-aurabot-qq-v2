@@ -1,0 +1,15 @@
+{
+  "name": "logger",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "aurabot": {
+    "api": 2,
+    "displayName": "日志",
+    "platforms": [
+      "*"
+    ]
+  }
+}

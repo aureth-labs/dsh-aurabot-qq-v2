@@ -1,0 +1,15 @@
+{
+  "name": "video",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "aurabot": {
+    "api": 2,
+    "displayName": "生视频",
+    "platforms": [
+      "*"
+    ]
+  }
+}

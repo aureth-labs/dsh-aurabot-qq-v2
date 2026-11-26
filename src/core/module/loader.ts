@@ -19,6 +19,7 @@ export interface ModuleDef {
   version?: string
   api?: number
   /** 插件类型：`plugin` 普通插件 / `adapter` 适配器插件。 */
+  packageDir?: string
   kind?: 'plugin' | 'adapter'
   /** 允许多份配置；适配器默认 true。 */
   reusable?: boolean
@@ -73,8 +74,7 @@ export interface UserModule { id: string; dir: string; safe?: boolean; version?:
 
 export const REPO = fileURLToPath(new URL('../../..', import.meta.url)) // 插件根（发布态是 lib/）
 export const PKG = join(REPO, 'packages') // 插件与适配器包（发布态是 lib/packages/）
-/** 内置插件目录：src 只放内核，插件直接住在 packages/<插件名>，适配器在 packages/adapters。 */
-export const BUILTIN_DIR = PKG
+export const BUILTIN_DIR = join(PKG, 'modules')
 /** 内置模块目录（社区安装时判断会不会替换内置用）。 */
 export const builtinDir = () => BUILTIN_DIR
 

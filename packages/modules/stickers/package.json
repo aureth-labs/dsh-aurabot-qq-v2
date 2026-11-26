@@ -1,0 +1,15 @@
+{
+  "name": "stickers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "aurabot": {
+    "api": 2,
+    "displayName": "表情包",
+    "platforms": [
+      "*"
+    ]
+  }
+}

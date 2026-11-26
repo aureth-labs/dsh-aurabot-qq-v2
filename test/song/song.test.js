@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { nudgeMoodAfterSong } from '../../packages/song/index.ts'
+import { nudgeMoodAfterSong } from '../../packages/modules/song/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 let studio
@@ -16,7 +16,7 @@ before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-song-'))
   studio = await import('../../src/song/studio/index.ts')
   netease = await import('../../src/song/source/netease.ts')
-  commands = await import('../../packages/commands/dispatch.ts')
+  commands = await import('../../packages/modules/commands/dispatch.ts')
   ;({ normalize } = await import('../../src/core/config/index.ts'))
 })
 
@@ -417,7 +417,7 @@ test('检查更新：Release Atom 连不上就走 GitHub API', async () => {
 })
 
 test('翻唱失败那句话：让她自己说，提示词带上歌名和真实原因、明说别念内部信息', async () => {
-  const { failPrompt } = await import('../../packages/song/index.ts')
+  const { failPrompt } = await import('../../packages/modules/song/index.ts')
   const p = failPrompt('雨爱', '翻唱环境不完整，在面板里点「重新检查」')
   assert.ok(p.includes('《雨爱》'))
   assert.ok(p.includes('翻唱环境不完整'))
@@ -426,7 +426,7 @@ test('翻唱失败那句话：让她自己说，提示词带上歌名和真实�
 })
 
 test('翻唱失败那句话：清洗只留一句口语，[沉默] 和念了内部信息的都当没说话', async () => {
-  const { cleanFailLine } = await import('../../packages/song/index.ts')
+  const { cleanFailLine } = await import('../../packages/modules/song/index.ts')
   assert.equal(cleanFailLine('  「这次嗓子有点哑，等我润润再来～」\n后面还有废话'), '这次嗓子有点哑，等我润润再来～')
   assert.equal(cleanFailLine('大肥鱼：刚没唱成，回头再试试？'), '刚没唱成，回头再试试？')
   assert.equal(cleanFailLine('**好，我记下了。**'), '好，我记下了。')

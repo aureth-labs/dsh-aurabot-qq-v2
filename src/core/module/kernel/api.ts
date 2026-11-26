@@ -114,6 +114,7 @@ export function createApi(deps: ApiDeps) {
     // 出站治理的日志口（模块快捷发送层的判定/结算都往这里记；未注入服务时不会用到）
     const obLog = outboundLogOf(core)
     const api = {
+      assertActive: writable('broadcast', () => {}),
       id,
       instanceId: rec.key,
       source,

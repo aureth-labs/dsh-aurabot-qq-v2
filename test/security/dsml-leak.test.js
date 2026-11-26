@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { cleanOutboundText, cleanOutboundSegments, stripToolText, parseReply } from '../../src/chat/reply/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { cleanReply } from '../../packages/purpose/impl/module/index.ts'
+import { cleanReply } from '../../packages/modules/purpose/impl/module/index.ts'
 
 const screenshot = ['@苏眠眠 </ | | DSML | | invoke>', '</ | | DSML | | calls>']
 const closing = '</ | | DSML | | invoke>'

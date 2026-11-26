@@ -6,10 +6,10 @@ import { join } from 'node:path'
 import { parseMessageEvent, cardText } from '../../src/chat/inbound/index.ts'
 import { decideGroupReply } from '../../src/chat/policy/rules/group.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import contacts from '../../packages/contacts/index.ts'
-import qqTools from '../../packages/qq-tools/index.ts'
-import { QQ_API, paramsOf } from '../../packages/qq-api/actions.ts'
-import qqApi, { refusal, pickParams } from '../../packages/qq-api/index.ts'
+import contacts from '../../packages/modules/contacts/index.ts'
+import qqTools from '../../packages/modules/qq-tools/index.ts'
+import { QQ_API, paramsOf } from '../../packages/modules/qq-api/actions.ts'
+import qqApi, { refusal, pickParams } from '../../packages/modules/qq-api/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { startMockOneBot } from '../helpers/mock-onebot.js'
 
@@ -360,7 +360,7 @@ test('账号离线只记 warn，不走聊天通知或发送 QQ 消息', { timeou
 })
 
 test('卡片里的地址只认网址，本机路径发不出去', async () => {
-  const { default: mod } = await import('../../packages/qq-tools/index.ts')
+  const { default: mod } = await import('../../packages/modules/qq-tools/index.ts')
   const sent = []
   let build
   mod.setup({
@@ -378,7 +378,7 @@ test('卡片里的地址只认网址，本机路径发不出去', async () => {
 })
 
 test('跨聊天发消息：群里只有主人那一轮能发，别人私聊没有这个工具', async () => {
-  const { default: mod } = await import('../../packages/qq-tools/index.ts')
+  const { default: mod } = await import('../../packages/modules/qq-tools/index.ts')
   const sent = []
   let owner = false
   let build

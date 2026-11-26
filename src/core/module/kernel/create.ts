@@ -190,6 +190,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       id,
       def,
       source,
+      dir: source === 'builtin' ? def.packageDir || join(BUILTIN_DIR, id) : undefined,
       exports: null,
       offs: [],
       tools: [],
@@ -559,8 +560,12 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function capabilitiesOf(id) {
     const key = String(id || '')
     if (!ID_RE.test(key)) return []
-    for (const dir of [idDir(key), join(BUILTIN_DIR, String(key).split('/').pop())]) {
-      if (!existsSync(dir)) continue
+    const builtin = builtinDefs.get(key)
+    const bundled = builtin && (builtin.packageDir || join(BUILTIN_DIR, key))
+    const running = live.get(key)
+    const locations = running?.dir ? [running.dir] : modCfg(key).useBuiltin ? [bundled] : [idDir(key), bundled]
+    for (const dir of locations) {
+      if (!dir || !existsSync(dir)) continue
       const { manifest } = readManifest(dir, { id: key })
       if (manifest) return manifest.capabilities
     }
@@ -576,18 +581,14 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   /**
    * 模块的面板代码（panel.js），面板拿去执行。
    * 内置模块也允许带面板：两者本来就是同一条加载链路，面板只需要「定义里声明了 panel」。
-   * 面板文件从模块自己的文件夹读：用户模块在数据目录 modules/<id>，内置模块在 packages/<id>；
+   * 面板文件从模块自己的文件夹读：用户模块在数据目录 modules/<id>，内置模块由装配层指定包根；
    * 两边都要求落在各自的根目录里，防止 panel 写成 ../../xxx 去读根目录外面的文件。
    */
   function panelSource(id) {
     // 主实例没跑、只有额外实例在跑时，面板代码也从同一个定义里取
     const rec = live.get(id) || [...live.values()].find((item) => item.moduleId === id && item.def.panel)
     if (!rec || !rec.def.panel) return null
-    // 内置模块的根目录是 packages/<id>；id 先按 ID_RE 校验，别让奇怪的名字把根目录带到外面去。
-    const builtin = rec.source !== 'user'
-    const root = builtin
-      ? (ID_RE.test(String(id)) ? join(BUILTIN_DIR, id) : '')
-      : (rec.dir || userSeen.get(id)?.dir || '')
+    const root = rec.dir || userSeen.get(rec.moduleId)?.dir
     if (!root) return null
     const file = resolve(root, typeof rec.def.panel === 'string' ? rec.def.panel : 'panel.js')
     if (!inside(root, file) || !existsSync(file)) return null

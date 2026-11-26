@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 反馈回路测试（packages/autotelic/impl/feedback.js）。
+// 自驱引擎 v5 · 反馈回路测试（packages/modules/autotelic/impl/feedback.js）。
 // 覆盖：纠偏进抑制/偏好表、无回应记账三档与冷度、半衰、自动 park 与三条件恢复、
 //       立项权重 0.6^chill、熔断（3 轮全灭 / 2 次叫停）、decisions.jsonl 追加。
 // 全部注入 now 与临时文件路径，不打真盘业务数据。
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createFeedback } from '../../packages/autotelic/impl/feedback/index.ts'
+import { createFeedback } from '../../packages/modules/autotelic/impl/feedback/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const HOUR = 3600_000

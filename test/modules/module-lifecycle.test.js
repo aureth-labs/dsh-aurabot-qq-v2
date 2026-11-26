@@ -70,12 +70,13 @@ test('boot 已完成后，在途用户模块 import 不会在卸载后启动', a
     const gate = ${g.source}
     gate.enter()
     await gate.ready
-    export default { id: 'slow-import', api: 1, setup(api) {
+    export const name = 'slow-import'
+      export function apply(api) {
       gate.setups++
-      api.later(0, () => gate.delayed++)
-      api.route('/late', () => ({ ok: true }))
+      api.setTimeout(0, () => gate.delayed++)
+      api.server.get('/late', () => ({ ok: true }))
       return {}
-    } }
+    }
   `)
   const syncing = f.modules.sync()
   t.after(async () => { g.release(); await syncing })
@@ -98,16 +99,17 @@ test('异步 setup 跨过停止或卸载后，迟到资源和 exports 都会被�
     const g = gate(t)
     f.write('slow-setup', `
       const gate = ${g.source}
-      export default { id: 'slow-setup', api: 1, async setup(api) {
+      export const name = 'slow-setup'
+      export async function apply(api) {
         gate.enter()
         await gate.ready
-        api.onDispose(() => gate.cleanups++)
-        api.later(0, () => gate.delayed++)
-        api.every(1000, () => gate.ticks++)
-        api.route('/late', () => ({ ok: true }))
+        api.effect(() => gate.cleanups++)
+        api.setTimeout(0, () => gate.delayed++)
+        api.setInterval(1000, () => gate.ticks++)
+        api.server.get('/late', () => ({ ok: true }))
         api.on('late-event', () => gate.events++)
         return { dispose() { gate.disposed++ } }
-      } }
+      }
     `)
     const interval = t.mock.method(globalThis, 'setInterval')
     const clear = t.mock.method(globalThis, 'clearInterval')
@@ -145,15 +147,16 @@ test('异步 setup 停止后，迟到的写操作不能发送消息或修改配�
     const g = gate(t)
     f.write('late-write', `
       const gate = ${g.source}
-      export default { id: 'late-write', async setup(api) {
+      export const name = 'late-write'
+      export async function apply(api) {
         gate.enter()
         await gate.ready
         const actions = [
-          () => api.send('private:1', 'a'), () => api.sendText('private:1', 'b'),
+          () => api.broadcast([{platform:'test',botId:'a',type:'private',id:'1'}], 'a'), () => api.sendTo('private:1', 'b'),
           () => api.reply({ chatId: 'private:1' }, 'c'), () => api.sendImage('private:1', 'image'),
-          () => api.sendSegments('private:1', []), () => api.sendFile('private:1', 'file'),
-          () => api.sendVoiceFile('private:1', 'voice'), () => api.setConfig({ ownerQQ: 'changed' }),
-          () => api.saveSettings({ secret: 'changed' }), () => api.onebot('send_private_msg', {}),
+          () => api.sendFile('private:1', 'file'),
+          () => api.sendVoiceFile('private:1', 'voice'), () => api.root.update({ ownerQQ: 'changed' }),
+          () => api.updateConfig({ secret: 'changed' }),
           () => api.ask('question'), () => api.think('prompt'), () => api.emit('probe'),
         ]
         gate.errors = []
@@ -161,7 +164,7 @@ test('异步 setup 停止后，迟到的写操作不能发送消息或修改配�
           try { await action() } catch (error) { gate.errors.push(error.message) }
         }
         return { dispose() { gate.disposed++ } }
-      } }
+      }
     `)
     const syncing = f.modules.sync()
     t.after(async () => { g.release(); await syncing })
@@ -171,9 +174,9 @@ test('异步 setup 停止后，迟到的写操作不能发送消息或修改配�
     else f.modules.dispose()
     g.release()
     await bounded(syncing)
-    assert.equal(g.state.errors.length, 13)
+    assert.equal(g.state.errors.length, 11)
     assert.ok(g.state.errors.every((message) => message.includes('已停止')))
-    assert.equal(f.warnings.filter((message) => message.includes('已停止')).length, 13)
+    assert.equal(f.warnings.filter((message) => message.includes('已停止')).length, 11)
     assert.deepEqual(writes, [])
     assert.deepEqual(f.config(), before)
     assert.equal(g.state.disposed, 1)
@@ -189,11 +192,12 @@ test('运行和同步收尾的 core.setConfig 合并配置，迟到的回调不�
   }
   f.setConfig(initial)
   f.write('config-writer', `
-    export default { id: 'config-writer', setup(api) {
-      api.core.setConfig({ voice: { enabled: false } })
-      api.onDispose(() => api.core.setConfig({ voice: { enabled: true } }))
-      return { write: () => api.core.setConfig({ voice: { speed: 0.5 } }) }
-    } }
+    export const name = 'config-writer'
+      export function apply(api) {
+      api.host.setConfig({ voice: { enabled: false } })
+      api.effect(() => api.host.setConfig({ voice: { enabled: true } }))
+      return { write: () => api.host.setConfig({ voice: { speed: 0.5 } }) }
+    }
   `)
   await f.modules.boot()
   const expected = { ...initial, voice: { ...initial.voice, enabled: false } }
@@ -215,7 +219,8 @@ test('导入途中关闭模块、开启安全模式或停止模块，导入结�
       const gate = ${g.source}
       gate.enter()
       await gate.ready
-      export default { id: 'slow-import', setup() { gate.setups++; return {} } }
+      export const name = 'slow-import'
+      export function apply() { gate.setups++; return {} }
     `)
     const syncing = f.modules.sync()
     t.after(async () => { g.release(); await syncing })
@@ -234,14 +239,15 @@ test('导入途中关闭模块、开启安全模式或停止模块，导入结�
 
 test('导入途中开启安全模式，恢复被替换的内置模块', async (t) => {
   let builtinStarts = 0
-  const f = fixture(t, { builtins: [{ id: 'slow-import', setup() { builtinStarts++; return {} } }] })
+  const f = fixture(t, { builtins: [{ id: 'slow-import', apply() { builtinStarts++; return {} } }] })
   await f.modules.boot()
   const g = gate(t)
   f.write('slow-import', `
     const gate = ${g.source}
     gate.enter()
     await gate.ready
-    export default { id: 'slow-import', setup() { gate.setups++; return {} } }
+    export const name = 'slow-import'
+      export function apply() { gate.setups++; return {} }
   `)
   const syncing = f.modules.sync()
   t.after(async () => { g.release(); await syncing })
@@ -257,13 +263,14 @@ test('导入途中开启安全模式，恢复被替换的内置模块', async (t
 
 test('记录替换版本时同步开启安全模式，不执行用户模块 setup', async (t) => {
   let builtinStarts = 0
-  const f = fixture(t, { builtins: [{ id: 'safe-replace', setup() { builtinStarts++; return {} } }],
+  const f = fixture(t, { builtins: [{ id: 'safe-replace', apply() { builtinStarts++; return {} } }],
     onSetConfig: (cfg) => cfg.modules?.['safe-replace']?.forkedFrom ? { ...cfg, safeMode: true } : cfg })
   await f.modules.boot()
   const g = gate(t)
   f.write('safe-replace', `
     const gate = ${g.source}
-    export default { id: 'safe-replace', setup() { gate.setups++; return {} } }
+    export const name = 'safe-replace'
+      export function apply() { gate.setups++; return {} }
   `)
   await f.modules.sync()
   assert.equal(g.state.setups, 0)
@@ -273,14 +280,15 @@ test('记录替换版本时同步开启安全模式，不执行用户模块 setu
 
 test('导入途中配置变化，不按旧快照关闭后面的内置模块', async (t) => {
   const state = { setups: 0 }
-  const f = fixture(t, { builtins: [{ id: 'builtin-late', setup() { state.setups++; return {} } }] })
+  const f = fixture(t, { builtins: [{ id: 'builtin-late', apply() { state.setups++; return {} } }] })
   await f.modules.boot()
   const g = gate(t)
   f.write('slow-import', `
     const gate = ${g.source}
     gate.enter()
     await gate.ready
-    export default { id: 'slow-import', setup() { return {} } }
+    export const name = 'slow-import'
+      export function apply() { return {} }
   `)
   f.setConfig({ ...f.config(), modules: { 'builtin-late': { enabled: false } } })
   const syncing = f.modules.sync()
@@ -298,11 +306,11 @@ test('旧实例清理时启动同名新实例，路由和监听器仍属于新�
   let f
   let starts = 0
   const events = []
-  const builtin = { id: 'same-id', setup(api) {
+  const builtin = { id: 'same-id', apply(api) {
     const instance = ++starts
-    api.route('/probe', () => ({ instance }))
+    api.server.get('/probe', () => ({ instance }))
     api.on('probe', () => events.push(instance))
-    if (instance === 1) api.onDispose(() => { f.modules.sync() })
+    if (instance === 1) api.effect(() => { f.modules.sync() })
     return {}
   } }
   f = fixture(t, { builtins: [builtin] })
@@ -333,7 +341,8 @@ test('boot 等待用户 import 时卸载，完成后不启动 watcher、不覆�
     const gate = ${g.source}
     gate.enter()
     await gate.ready
-    export default { id: 'slow-boot', api: 1, setup() { gate.setups++; return {} } }
+    export const name = 'slow-boot'
+      export function apply() { gate.setups++; return {} }
   `)
   const interval = t.mock.method(globalThis, 'setInterval')
   const booting = f.modules.boot()
@@ -361,21 +370,22 @@ test('异步清理拒绝被处理，正常和迟到清理均不影响其他资�
     t.after(() => process.off('unhandledRejection', onUnhandled))
     f.write('async-cleanup', `
       const gate = ${g.source}
-      export default { id: 'async-cleanup', api: 1, async setup(api) {
+      export const name = 'async-cleanup'
+      export async function apply(api) {
         ${late ? 'gate.enter(); await gate.ready' : ''}
-        api.onDispose(() => gate.events++)
-        api.onDispose(async () => {
+        api.effect(() => gate.events++)
+        api.effect(async () => {
           gate.cleanups++
           await Promise.resolve()
           throw new Error('expected async callback rejection')
         })
-        api.route('/cleanup', () => ({ ok: true }))
+        api.server.get('/cleanup', () => ({ ok: true }))
         return { async dispose() {
           gate.disposed++
           await Promise.resolve()
           throw new Error('expected async cleanup rejection')
         } }
-      } }
+      }
     `)
     const syncing = f.modules.sync()
     t.after(async () => { g.release(); await syncing })
@@ -405,27 +415,21 @@ test('模块声明 proactive 时把留痕标记透给 hub，不声明就不加�
   const f = fixture(t, { core: { hub } })
   await f.modules.boot()
   f.write('say-log', `
-    export default { id: 'say-log', api: 1, async setup(api) {
-      await api.sendText('group:1', '没声明')
-      await api.sendText('group:1', '声明了', { proactive: true, proactiveCause: 'qq_say_in_group' })
-      await api.sendText('group:1', '默认 cause')
-      await api.sendText('group:1', '默认 cause', { proactive: true })
-      await api.sendSegments('group:1', [{ type: 'text', data: { text: 'seg' } }], 'note', { proactive: true })
-      await api.sendSegments('group:1', [{ type: 'text', data: { text: 'seg2' } }])
+    export const name = 'say-log'
+      export async function apply(api) {
+      await api.sendTo('group:1', '没声明')
+      await api.sendTo('group:1', '声明了', { proactive: true, proactiveCause: 'qq_say_in_group' })
+      await api.sendTo('group:1', '默认 cause')
+      await api.sendTo('group:1', '默认 cause', { proactive: true })
       return {}
-    } }
+    }
   `)
   await f.modules.sync()
-  assert.equal(calls.length, 6)
+  assert.equal(calls.length, 4)
   // hub.sendText(chatId, text, replyId, missed, userId, opts)：模块快捷 API 一律传 5 个占位 + opts
   assert.equal(calls[0][1][5].proactive, undefined, '不声明时不能凭空造 proactive')
   assert.equal(calls[1][1][5].proactive, true)
   assert.equal(calls[1][1][5].proactiveCause, 'qq_say_in_group')
   assert.equal(calls[3][1][5].proactiveCause, 'module:say-log', '没给 cause 时用 module:<id> 兜底')
   assert.equal(calls[2][1][5].proactive, undefined)
-  // hub.sendSegments(chatId, segs, note, opts)
-  assert.equal(calls[4][1][3].proactive, true)
-  assert.equal(calls[4][1][3].proactiveCause, 'module:say-log')
-  assert.equal(calls[4][1][2], 'note', 'note 原样传下去')
-  assert.equal(calls[5][1][3].proactive, undefined)
 })

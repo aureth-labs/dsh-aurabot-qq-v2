@@ -3,8 +3,8 @@
 // 集成裁决 2026-11-17：plan.js 的词表从 tags.js 解析，不许两份名单漂移）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_TAGS, mergeTags, isValidTag } from '../../packages/autotelic/impl/feedback/tags.ts'
-import { TAG_VOCAB, TAG_SET, makeTagVocab, parseIntents, buildTicket } from '../../packages/autotelic/impl/plan/index.ts'
+import { DEFAULT_TAGS, mergeTags, isValidTag } from '../../packages/modules/autotelic/impl/feedback/tags.ts'
+import { TAG_VOCAB, TAG_SET, makeTagVocab, parseIntents, buildTicket } from '../../packages/modules/autotelic/impl/plan/index.ts'
 
 const OBS = [
   { id: 'obs:1', at: 1000, source: 'chat', text: '主人提过想整理相册' },

@@ -10,8 +10,8 @@ import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createSkillStore } from '../../packages/autotelic/impl/feedback/skills.ts'
-import { buildPrefix, hashPrefix, createPrefixCache } from '../../packages/autotelic/impl/feedback/prefix.ts'
+import { createSkillStore } from '../../packages/modules/autotelic/impl/feedback/skills.ts'
+import { buildPrefix, hashPrefix, createPrefixCache } from '../../packages/modules/autotelic/impl/feedback/prefix.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 let root
@@ -31,7 +31,7 @@ const mkStore = (opts = {}) => createSkillStore(join(root, 'skills'), {
 })
 
 test('#523：异步提炼拒绝时记录原因、模板晋升，宿主进程继续运行', () => {
-  const moduleUrl = new URL('../../packages/autotelic/impl/feedback/skills.ts', import.meta.url).href
+  const moduleUrl = new URL('../../packages/modules/autotelic/impl/feedback/skills.ts', import.meta.url).href
   const child = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import assert from 'node:assert/strict'
     import { setImmediate } from 'node:timers/promises'

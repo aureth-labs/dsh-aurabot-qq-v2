@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import * as adapter from '../adapters/qq/onebot-v11/src/plugin.ts'
 import type { createOneBotConnection } from '../adapters/qq/onebot-v11/src/connection.ts'
 import type { PluginContext } from '../../src/types/plugin/ctx.ts'
@@ -10,6 +11,7 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
   return {
     ...adapter,
     id: defaultOneBotId,
+    packageDir: fileURLToPath(new URL('../adapters/qq/onebot-v11/', import.meta.url)),
     version: '0.1.0',
     platforms: ['qq'],
     apply(ctx: PluginContext, settings: adapter.Config) {

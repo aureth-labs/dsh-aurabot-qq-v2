@@ -1,0 +1,15 @@
+{
+  "name": "autotelic",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "aurabot": {
+    "api": 2,
+    "displayName": "自驱引擎（实验性）",
+    "platforms": [
+      "*"
+    ]
+  }
+}

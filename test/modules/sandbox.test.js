@@ -1,12 +1,12 @@
 // 聊天沙盒：服务端 + Satori 适配器 + 网页那一路的收发，全走真实实现。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createSandboxServer } from '../../packages/sandbox/server.ts'
+import { createSandboxServer } from '../../packages/modules/sandbox/server.ts'
 import { startAdapter } from '../../src/core/bot/adapter/contract.ts'
 import { BotRegistry } from '../../src/core/bot/instance/registry.ts'
 import { satoriAdapter } from '../../packages/adapters/satori/src/index.ts'
 
-const sandboxModule = (await import('../../packages/sandbox/index.ts')).default
+import * as sandboxModule from '../../packages/modules/sandbox/index.ts'
 
 async function waitFor(check, timeoutMs = 3000) {
   const started = Date.now()
@@ -86,9 +86,9 @@ test('聊天沙盒：令牌不对就连不上', async (t) => {
 })
 
 test('聊天沙盒：网页能拿到状态', async (t) => {
-  assert.equal(sandboxModule.id, 'sandbox')
-  assert.equal(sandboxModule.defaults.sandbox, undefined)
-  assert.equal(sandboxModule.defaults.port, 5140)
+  assert.equal(sandboxModule.name, '聊天沙盒')
+  assert.equal(sandboxModule.Config.defaults().sandbox, undefined)
+  assert.equal(sandboxModule.Config.defaults().port, 5140)
   const server = createSandboxServer({ port: 0 })
   await server.start()
   t.after(() => server.close())

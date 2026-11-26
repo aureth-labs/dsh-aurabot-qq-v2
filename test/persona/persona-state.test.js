@@ -5,8 +5,8 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { createBook } from '../../packages/autotelic/impl/plan/book.ts'
-import { createJournal } from '../../packages/autotelic/impl/observe/reflect.ts'
+import { createBook } from '../../packages/modules/autotelic/impl/plan/book.ts'
+import { createJournal } from '../../packages/modules/autotelic/impl/observe/reflect.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'

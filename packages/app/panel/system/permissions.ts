@@ -1,4 +1,4 @@
-import { commandList } from '../../../commands/dispatch.ts'
+import { commandList } from '../../../modules/commands/dispatch.ts'
 import {
   privatePermissionCatalog,
   changePermissions,

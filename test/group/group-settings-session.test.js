@@ -36,7 +36,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
   assert.deepEqual(app.getConfig().group.overrides, current.group.overrides)
   await app.hub.pushToSession(ownerChat, [{ type: 'text', text: '不是主人尝试修改' }], '10000002')
   assert.deepEqual(app.getConfig().group.overrides, current.group.overrides)
-  const { createMutes } = await import('../../packages/commands/dispatch.ts')
+  const { createMutes } = await import('../../packages/modules/commands/dispatch.ts')
   createMutes().set(`group:${G}`, 0)
   const pausedFile = readFileSync(join(root, 'mutes.json'), 'utf8')
   const read = (await fake.call('/modules/tool', { as: 'owner', kind: 'private', name: 'qq_group_settings', args: { action: 'get', group_id: G } })).json()

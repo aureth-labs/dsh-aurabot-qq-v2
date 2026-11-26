@@ -1,5 +1,5 @@
 import { createHub } from '../../../src/chat/hub/index.ts'
-import { commandList, parseCommand, runCommand } from '../../commands/dispatch.ts'
+import { commandList, parseCommand, runCommand } from '../../modules/commands/dispatch.ts'
 import {
   canUseDelegatedCommand,
   delegatedCommandKey,

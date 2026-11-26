@@ -2,7 +2,7 @@
 // 纯逻辑单测：输入假数据，不碰文件系统。哈希链校验复用 verifyAuditChain，这里只测对账规则本身。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { reconcileDay, problemsText } from '../../packages/autotelic/impl/feedback/reconcile.ts'
+import { reconcileDay, problemsText } from '../../packages/modules/autotelic/impl/feedback/reconcile.ts'
 
 const entry = (kind, extra = {}) => ({ kind, at: '2026-11-05T05:00:00Z', chatId: 'system:autotelic', ...extra })
 

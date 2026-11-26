@@ -1,9 +1,9 @@
-import { API_VERSION, BUILTIN_DIR } from '../../../../src/core/module/index.ts'
+import { API_VERSION, PKG } from '../../../../src/core/module/index.ts'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { mergeFromPanel } from '../../../../src/core/config/index.ts'
 import { REGISTRY_URL, PAGES_URL } from '../../../../src/core/module/market/community.ts'
-import { parseCommand } from '../../../commands/dispatch.ts'
+import { parseCommand } from '../../../modules/commands/dispatch.ts'
 import {
   canUseDelegatedCommand,
   delegatedCommandKey,
@@ -40,7 +40,7 @@ export function registerModuleRoutes({
   })
   route('/modules/tutorial', async () => {
     try {
-      return { ok: true, text: readFileSync(join(BUILTIN_DIR, 'sdk', 'API.md'), 'utf8') }
+      return { ok: true, text: readFileSync(join(PKG, 'sdk', 'API.md'), 'utf8') }
     } catch (error) {
       return { ok: false, message: '教程文件不见了' }
     }

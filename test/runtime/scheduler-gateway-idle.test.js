@@ -17,7 +17,7 @@ for (const id of MODULES) {
 // purpose 的守卫看「有没有在线的 bot」：适配器插件化之后平台不止 QQ，
 // 单看 onebot.state 会把「只接了别的平台」误判成离线。
 test('purpose：守卫看在线 bot 列表，不再绑死 onebot', () => {
-  const src = readFileSync(new URL('../../packages/purpose/index.ts', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../../packages/modules/purpose/index.ts', import.meta.url), 'utf8')
   assert.match(src, /api\.core\.bots\?\.list\?\.\(\)/)
   assert.match(src, /status === 'online'/)
   assert.ok(!src.includes('api.core.onebot?.state'), 'purpose 不该再直接读 onebot.state')

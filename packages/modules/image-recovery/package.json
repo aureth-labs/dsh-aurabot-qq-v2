@@ -1,0 +1,15 @@
+{
+  "name": "image-recovery",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "main": "./index.js",
+  "aurabot": {
+    "api": 2,
+    "displayName": "image-recovery",
+    "platforms": [
+      "*"
+    ]
+  }
+}

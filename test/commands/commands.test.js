@@ -12,7 +12,7 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-cmd-'))
-  ;({ parseCommand, runCommand, createMutes } = await import('../../packages/commands/dispatch.ts'))
+  ;({ parseCommand, runCommand, createMutes } = await import('../../packages/modules/commands/dispatch.ts'))
   ;({ normalize } = await import('../../src/core/config/index.ts'))
 })
 

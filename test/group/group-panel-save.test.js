@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { runCommand, parseCommand } from '../../packages/commands/dispatch.ts'
+import { runCommand, parseCommand } from '../../packages/modules/commands/dispatch.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 let fake, app, dir

@@ -1,6 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { BUILTIN_DIR, ID_RE, TYPES_SRC, idDir } from './loader.ts'
+import { PKG, ID_RE, TYPES_SRC, idDir } from './loader.ts'
 
 export function createPlugin(id: string, displayName: string) {
   if (!ID_RE.test(id)) return { ok: false, message: '请输入小写插件名，例如 weather 或 team/weather' }
@@ -15,7 +15,7 @@ export function createPlugin(id: string, displayName: string) {
     const manifest = { name, version: '0.1.0', type: 'module', main: './index.ts',
       aurabot: { api: 2, displayName: title, platforms: ['*'], capabilities: [], reloadOnConfig: true } }
     writeFileSync(join(stage, 'package.json'), JSON.stringify(manifest, null, 2) + '\n')
-    copyFileSync(join(BUILTIN_DIR, TYPES_SRC), join(stage, 'aurabot.d.ts'))
+    copyFileSync(join(PKG, TYPES_SRC), join(stage, 'aurabot.d.ts'))
     const entry = [
       "import type { Ctx } from './aurabot.js'",
       '',

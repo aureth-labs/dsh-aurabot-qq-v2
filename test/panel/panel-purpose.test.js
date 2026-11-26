@@ -137,7 +137,7 @@ test('追问开关写 ext.purpose.nudge（P1 翻键），读侧双层兼容', as
   assert.equal(saved.ext.purpose.nudge, false, '追问写入口在 ext.purpose.nudge')
   assert.equal(saved.speakUp.nudge, true, 'speakUp.nudge 键不被动')
   // 读侧 fallback：ext 覆写位优先，老用户 speakUp.nudge 仍生效，缺省默认开
-  const { purposeConfig } = await import('../../packages/purpose/impl/module/index.ts')
+  const { purposeConfig } = await import('../../packages/modules/purpose/impl/module/index.ts')
   assert.equal(purposeConfig({ speakUp: { nudge: true }, ext: { purpose: { nudge: false } } }).nudge, false, '覆写位优先')
   assert.equal(purposeConfig({ speakUp: { nudge: false } }).nudge, false, '老用户 speakUp.nudge=false 仍生效')
   assert.equal(purposeConfig({ speakUp: { nudge: false }, ext: { purpose: { nudge: true } } }).nudge, true, '显式 ext 覆写可重新打开')

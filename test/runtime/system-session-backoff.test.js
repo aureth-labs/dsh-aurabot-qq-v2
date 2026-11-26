@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { isSessionBackoff } from '../../src/chat/hub/turn/session-backoff.ts'
-import { createPurpose } from '../../packages/purpose/impl/module/index.ts'
+import { createPurpose } from '../../packages/modules/purpose/impl/module/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { cleanupDir } from '../helpers/cleanup.js'
 

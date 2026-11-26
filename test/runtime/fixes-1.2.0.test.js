@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import qqTools from '../../packages/qq-tools/index.ts'
+import qqTools from '../../packages/modules/qq-tools/index.ts'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 import { matchSticker, pickForReply } from '../../src/features/stickers/index.ts'
 import { createImageGen } from '../../src/features/media/generate/imagegen.ts'
