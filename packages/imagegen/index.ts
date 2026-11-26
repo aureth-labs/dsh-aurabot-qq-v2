@@ -298,7 +298,7 @@ export default {
         if (animated) { out.format = 'gif'; out.frames = gifFrameCount(bufs[0]); out.message += `\n这是 GIF 动图（${out.frames} 帧）；若给了你预览，它只含第一帧，不代表完整动作。` }
         if (img) out.image = img
         if (indexes.length && saved.length) out.message += `\n画作编号 ${indexes.filter(Boolean).map((n) => '#' + n).join('、')}（想换头像、收成表情时用这个编号）`
-        if (simulated) out.message += '\n（调试模式/调试：这些图没真发到 QQ，只在本地存下了）'
+        if (simulated) out.message += '\n（总开关关着：这些图没真发出去，只在本地存下了）'
         // 只有**图真的交给模型了**才把本地路径告诉她（#59）：收录表情包 / 存素材 / qq_add_sticker 用；
         // 看不了图或开关关着时不给路径，免得她知道路径就去读图，绕开「不给看」的判断。
         if (shown && saved.length) out.message += `\n已保存到本机：${saved.join('、')}（要收录表情包、存素材时可以用这个路径）`

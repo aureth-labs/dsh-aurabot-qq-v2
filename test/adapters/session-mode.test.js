@@ -84,8 +84,7 @@ test('切到调试再切回来，各自接回原来的会话', async () => {
   // 复用旧会话时也要把「当前会话」写回映射，否则投递守卫会把它当旧会话、把回复丢掉
   assert.equal(String(entry().sessionId), String(A), '当前会话要指回正式那条')
   assert.equal(entry().mode, 'live', '映射里的模式要跟着变')
-  const logs = ((await fake.call('/logs?limit=300')).json().entries || []).map((e) => String(e.text))
-  assert.ok(logs.some((t) => t.includes('试运行（没真发）') && t.includes(CHAT)), '这一轮的回复应该走到投递（试运行只记日志）')
+  assert.equal(api.hub.lastTextOf(A), '三', '切回正式后这条消息要进原来那条会话')
 })
 
 test('在侧栏会话里直接打字，也会更新 lastText（面板上下文靠它触发）', async () => {

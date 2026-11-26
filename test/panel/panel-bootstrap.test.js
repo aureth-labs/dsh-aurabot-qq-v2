@@ -45,7 +45,7 @@ before(async () => {
   // 一个 setup 必炸的用户模块：导航摘要里应出现 availability=error
   const broken = join(dataDir, 'modules', 'broken-mod')
   mkdirSync(broken, { recursive: true })
-  writeFileSync(join(broken, 'index.mjs'), "export default { id: 'broken-mod', name: '坏模块', setup() { throw new Error('boom-测试炸') } }\n")
+  writeFileSync(join(broken, 'index.mjs'), "export default { id: 'broken-mod', name: '坏模块', apply() { throw new Error('boom-测试炸') } }\n")
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.webServer.port = 5123
   const host = await import('../../src/plugin/index.ts')
@@ -113,9 +113,9 @@ test('bootstrap：字段齐全，bootId 是 UUID，三条 GET 同一 bootId', as
   assert.equal(p.navigationRevision, b.navigationRevision)
 })
 
-test('bootstrap：controls 是四个开关的显示值（试运行口径：debug 开时 dryRun 显示为关）', async () => {
+test('bootstrap：controls 只有总开关 / 调试 / 安全模式', async () => {
   const { controls } = await jsonOf('/panel/bootstrap')
-  assert.deepEqual(controls, { enabled: true, dryRun: true, debug: false, safeMode: false })
+  assert.deepEqual(controls, { enabled: true, debug: false, safeMode: false })
 })
 
 test('connections：只读快照，网关没配时 stage=unconfigured，不连接', async () => {
@@ -290,7 +290,7 @@ test('summarizeModules：字段齐全、内置模块 ready、坏模块 error、�
   assert.equal(mood.running, 'builtin')
   assert.equal(mood.enabled, true)
   assert.equal(mood.error, '')
-  // setup 必炸的用户模块：error 态
+  // apply 必炸的用户模块：error 态
   const broken = byId.get('broken-mod')
   assert.ok(broken, '摘要要含坏的用户模块')
   assert.equal(broken.availability, 'error')

@@ -14,6 +14,6 @@ test('人物关系卡片有「改」入口，保存走 /memory/relations/save', 
 })
 
 test('后端注册关系保存路由并校验主语/关系/宾语', () => {
-  assert.match(mod, /api\.route\('\/memory\/relations\/save'/)
+  assert.match(mod, /ctx\.server\.(?:get|post)\('\/memory\/relations\/save'/)
   assert.match(mod, /关系要写全主语、关系、宾语/)
 })

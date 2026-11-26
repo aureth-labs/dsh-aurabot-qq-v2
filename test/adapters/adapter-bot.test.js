@@ -31,7 +31,7 @@ test('试运行：一条都不发，只记日志', async () => {
   const result = await wrapped.sendMessage('c1', '不该发出去')
   assert.deepEqual(result, { ok: false, simulated: true })
   assert.deepEqual(sent, [])
-  assert.match(logs[0], /试运行（demo 适配器没真发）/)
+  assert.match(logs[0], /总开关关着（demo 适配器没真发）/)
 })
 
 test('能力降级：纯文本平台上的文件与图片变成人话，路径不丢', async () => {

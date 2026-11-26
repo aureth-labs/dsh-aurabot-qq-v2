@@ -192,7 +192,7 @@ test('AurabotPage 关键页签逐个渲染：概览/连接/人格/聊天/模型/
 test('TABS 每个 id 都在 body 映射里有落点（防「映射到不存在组件」回归）', () => {
   const src = CLIENT()
   const p = loadPanel()
-  const m = src.match(/const body = curTab\.ext \? ExtPage : \{[\s\S]*?\n *\}\[curTab\.id\]/)
+  const m = src.match(/const body = curTab\.page \? PluginPageFrame : curTab\.ext \? ExtPage : \{[\s\S]*?\n *\}\[curTab\.id\]/)
   assert.ok(m, 'body 映射对象结构变了，测试要跟着改')
   const mapBody = m[0]
   for (const t of p.panelTest.TABS) {
