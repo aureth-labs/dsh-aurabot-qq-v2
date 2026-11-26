@@ -43,7 +43,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 export class AdapterRegistry {
   private readonly deps: AdapterRegistryDeps
   private readonly entries = new Map<string, Entry>()
-  private generation = 0
+  private lifetime = new AbortController()
   private readonly listeners = new Set<() => void>()
 
   constructor(deps: AdapterRegistryDeps) {
@@ -51,18 +51,19 @@ export class AdapterRegistry {
   }
 
   /** 插件入口：`ctx.adapter(spec, config)` 最终走这里。 */
-  async start(spec: AdapterSpec, config?: unknown): Promise<AdapterHandle> {
+  async start(spec: AdapterSpec, config?: unknown, owner?: AbortSignal): Promise<AdapterHandle> {
     // 平台名可能是运行期才知道的（Satori 这种协议层适配器）
     const resolved = spec?.resolvePlatform?.(config)
     const platform = String(resolved || spec?.platform || '').trim()
     if (!platform) throw new Error('适配器要声明 platform')
 
-    const generation = this.generation
+    const signal = owner ? AbortSignal.any([owner, this.lifetime.signal]) : this.lifetime.signal
+    signal.throwIfAborted()
     const pending: Array<(bot: BotLike) => void> = []
     let entry: Entry | undefined
     let closed = false
     const deliver = (action: (bot: BotLike) => void) => {
-      if (closed || generation !== this.generation) return
+      if (closed || signal.aborted) return
       if (!entry) {
         if (pending.length < 100) pending.push(action)
         return
@@ -70,6 +71,7 @@ export class AdapterRegistry {
       if (this.entries.get(botKey(platform, entry.bot.id)) === entry) action(entry.bot)
     }
     const runtime: AdapterRuntime = {
+      signal,
       platform,
       log: this.deps.log,
       speak: this.deps.speak,
@@ -79,10 +81,10 @@ export class AdapterRegistry {
     }
     const connection = await startAdapter(this.deps.bots, spec, config, runtime, {
       platform, wrapBot: this.deps.wrapBot,
-      active: () => generation === this.generation,
+      active: () => !signal.aborted,
     })
     const bot = connection.bot
-    if (generation !== this.generation) {
+    if (signal.aborted) {
       await connection.dispose()
       throw new Error(`适配器 ${platform} 已停止`)
     }
@@ -149,7 +151,8 @@ export class AdapterRegistry {
   }
 
   async stopAll(): Promise<void> {
-    this.generation++
+    this.lifetime.abort()
+    this.lifetime = new AbortController()
     const handles = [...this.entries.values()].map((entry) => entry.handle).filter(Boolean) as AdapterHandle[]
     for (const handle of handles) await handle.dispose().catch(() => {})
   }

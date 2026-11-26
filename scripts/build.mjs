@@ -5,6 +5,7 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, readdirSync, statSync, wri
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { bundleClient } from './bundle-client.mjs'
+import { bundleAdapters } from './bundle-adapters.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 // 运行时资产：编译产物里也要有一份（内置模块模板 .mjs、翻唱下载脚本 .py、类型声明 .d.ts）。
@@ -50,6 +51,7 @@ tsc('tsconfig.json', STAGE.lib)
 // 插件作者要的类型声明：只出 src/types 这一层（见 tsconfig.types.json）
 tsc('tsconfig.types.json', STAGE.lib)
 await bundleClient(join(STAGE.dist, 'client.js'))
+await bundleAdapters(ROOT, join(STAGE.dist, 'adapters'))
 
 copyAssets(join(ROOT, 'src'), join(STAGE.lib, 'src'))
 copyAssets(join(ROOT, 'packages'), join(STAGE.lib, 'packages'))

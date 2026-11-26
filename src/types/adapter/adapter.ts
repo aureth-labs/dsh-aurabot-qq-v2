@@ -32,6 +32,7 @@ export interface InboundMessage {
 }
 
 export interface AdapterRuntime {
+  signal?: AbortSignal
   platform: string
   log: (message: string) => void
   /**

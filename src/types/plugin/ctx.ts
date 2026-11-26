@@ -191,7 +191,7 @@ export interface PluginContextExtras {
   pipeline?: PipelineLike
   llm?: LlmFacade
   tts?: TtsFacade
-  startAdapter?: (spec: AdapterSpec, config: unknown) => Promise<AdapterHandle>
+  startAdapter?: (spec: AdapterSpec, config: unknown, signal?: AbortSignal) => Promise<AdapterHandle>
   /** 注册面板页面（内核把页面表交给前端侧栏）。 */
   registerPage?: (page: PluginPage) => () => void
   /** 记忆模块的本地预览入口（内核注入，只有 memory 用）。 */
@@ -220,6 +220,7 @@ export interface PluginPage {
  * `ctx.root.config` 是全局配置。两者都是活对象，改配置后读到的就是最新值。
  */
 export interface PluginContext extends ScopeFactory {
+  readonly instanceId: string
   readonly id: string
   readonly version: string
   readonly apiVersion: number

@@ -1,12 +1,22 @@
 {
-  "name": "@aurabot/adapter-satori",
+  "name": "adapter-satori",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Satori 协议适配器：任意 Satori 服务端接入为一个平台",
-  "main": "src/index.ts",
+  "main": "./src/plugin.ts",
   "aurabot": {
     "kind": "adapter",
-    "platform": "satori"
-  }
+    "category": "platform",
+    "platforms": [
+      "*"
+    ],
+    "capabilities": [
+      "network"
+    ],
+    "api": 2,
+    "reloadOnConfig": true,
+    "minPluginVersion": "1.3.0"
+  },
+  "license": "MIT"
 }

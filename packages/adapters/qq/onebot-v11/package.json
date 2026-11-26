@@ -1,12 +1,22 @@
 {
-  "name": "@aurabot/adapter-qq-onebot-v11",
+  "name": "adapter-qq-onebot-v11",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "QQ · OneBot v11 适配器（外置协议端：SnowLuma / LLOneBot / NapCat）",
-  "main": "src/index.ts",
+  "main": "./src/plugin.ts",
   "aurabot": {
     "kind": "adapter",
-    "platform": "qq"
-  }
+    "category": "platform",
+    "platforms": [
+      "qq"
+    ],
+    "capabilities": [
+      "network"
+    ],
+    "api": 2,
+    "reloadOnConfig": true,
+    "minPluginVersion": "1.3.0"
+  },
+  "license": "MIT"
 }

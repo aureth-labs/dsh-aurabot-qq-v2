@@ -113,6 +113,8 @@ export class SatoriClient {
   private lastSn: number | undefined
   private lastPongAt = 0
   private logins: SatoriLogin[] = []
+  private login?: SatoriLogin
+  private cancelHandshake?: () => void
   private readonly WebSocketImpl: typeof WebSocket
 
   constructor(options: SatoriClientOptions) {
@@ -134,6 +136,7 @@ export class SatoriClient {
 
   /** 主动断开，不再重连。 */
   close(): void {
+    this.cancelHandshake?.()
     this.closed = true
     this.clearTimers()
     const socket = this.socket
@@ -151,13 +154,19 @@ export class SatoriClient {
     }
   }
 
+  bindLogin(login: SatoriLogin): void {
+    this.login = login
+  }
+
   /** 调一个 Satori API。返回值是协议里的 `data`，出错抛错。 */
   async call<T = unknown>(route: string, params: Record<string, unknown> = {}): Promise<T> {
     const headers: Record<string, string> = { 'content-type': 'application/json' }
     if (this.options.token) headers.authorization = `Bearer ${this.options.token}`
-    const platform = this.options.platform || this.logins[0]?.platform
+    const login = this.login ?? (this.logins.length === 1 ? this.logins[0] : undefined)
+    const platform = login?.platform || this.options.platform
+    const selfId = login?.user?.id || this.options.selfId
     if (platform) headers['satori-platform'] = platform
-    if (this.options.selfId) headers['satori-user-id'] = this.options.selfId
+    if (selfId) headers['satori-user-id'] = selfId
 
     const response = await fetch(`${this.endpoints.http}/v1/${route}`, {
       method: 'POST',
@@ -182,11 +191,13 @@ export class SatoriClient {
       const finish = (error: Error | null, logins?: SatoriLogin[]) => {
         if (settled) return
         settled = true
+        this.cancelHandshake = undefined
         error ? reject(error) : resolve(logins ?? [])
       }
 
       const socket = new this.WebSocketImpl(this.endpoints.ws)
       this.socket = socket
+      this.cancelHandshake = () => finish(new Error('Satori 连接已关闭'))
 
       socket.onopen = () => {
         this.options.log.debug(`Satori 已连上 ${this.endpoints.ws}，发送 IDENTIFY`)

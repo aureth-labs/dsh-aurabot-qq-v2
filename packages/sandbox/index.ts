@@ -37,8 +37,7 @@ export function apply(ctx, config) {
   const ready = server.start()
     .then(() => {
       if (stopped || settings.autoConnect === false) return
-      return ctx.host.adapters
-        .start(satoriAdapter(), { endpoint: server.url, token: String(settings.token || ''), platform: String(settings.platform || 'sandbox') })
+      return ctx.adapter(satoriAdapter(), { endpoint: server.url, token: String(settings.token || ''), platform: String(settings.platform || 'sandbox') })
         .then((started) => {
           if (stopped) {
             started.dispose?.().catch?.(() => {})

@@ -121,6 +121,7 @@ export function createApi(deps: ApiDeps) {
     const obLog = outboundLogOf(core)
     const api = {
       id,
+      instanceId: rec.key,
       source,
       // 模块自己的文件夹（读自己带的数据文件用这个；import.meta.url 指向的是加载快照）
       dir: rec.dir || join(BUILTIN_DIR, id),

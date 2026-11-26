@@ -34,6 +34,7 @@ export type {
 /** 内核内部的注册器；插件作者看不到这个对象，只看到它投出来的 ctx。 */
 interface KernelApi {
   id: string
+  instanceId?: string
   version: string
   apiVersion: number
   dir?: string
@@ -81,6 +82,7 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   const getter = (key: string, get: () => unknown) => Object.defineProperty(ctx, key, { enumerable: true, configurable: true, get })
 
   value('id', api.id)
+  value('instanceId', api.instanceId ?? api.id)
   value('version', api.version)
   value('apiVersion', api.apiVersion)
   value('baseDir', api.dir || '')
@@ -182,8 +184,18 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
 
   value('adapter', async (spec: AdapterSpec, config?: unknown) => {
     if (!extras.startAdapter) throw new Error('宿主没有提供适配器注册表')
-    const handle = await extras.startAdapter(spec, config)
-    api.onDispose(() => handle.dispose())
+    const controller = new AbortController()
+    let handle: AdapterHandle | undefined
+    api.onDispose(() => {
+      controller.abort()
+      return handle?.dispose()
+    })
+    controller.signal.throwIfAborted()
+    handle = await extras.startAdapter(spec, config, controller.signal)
+    if (controller.signal.aborted) {
+      await handle.dispose()
+      controller.signal.throwIfAborted()
+    }
     return handle
   })
 

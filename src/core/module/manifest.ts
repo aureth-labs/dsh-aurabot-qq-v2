@@ -112,7 +112,7 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
       category: str(aurabot.category, 'other'),
       kind: str(aurabot.kind) === 'adapter' ? 'adapter' : 'plugin',
       reusable: aurabot.reusable === undefined ? str(aurabot.kind) === 'adapter' : aurabot.reusable === true,
-      platforms: strings(aurabot.platforms, ['qq']),
+      platforms: strings(aurabot.platforms, Number(aurabot.api ?? 2) >= 2 ? ['*'] : ['qq']),
       capabilities: strings(aurabot.capabilities),
       minPluginVersion: str(aurabot.minPluginVersion),
       api: Number(aurabot.api ?? 2) || 2,

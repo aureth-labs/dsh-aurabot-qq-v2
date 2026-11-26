@@ -560,7 +560,7 @@ export function apply(ctx) {
     pipeline,
     // S8：适配器插件化。插件调 ctx.adapter(spec, config) 就能挂一个平台上来
     adapters: {
-      start: (spec, config) => adapterRegistry.start(spec, config),
+      start: (spec, config, signal?: AbortSignal) => adapterRegistry.start(spec, config, signal),
       list: () => adapterRegistry.list(),
     },
     root: ROOT,

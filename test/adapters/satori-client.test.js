@@ -1,7 +1,7 @@
 // S7：Satori Client 的连接/鉴权/重连，以及事件 → InboundMessage 的翻译。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { SatoriClient, satoriEndpoints } from '../../src/core/message/satori/satori-client.ts'
+import { SatoriClient, satoriEndpoints } from '../../packages/adapters/satori/src/client.ts'
 import { inboundOf } from '../../packages/adapters/satori/src/index.ts'
 
 const silentLog = { debug() {}, info() {}, warn() {}, error() {} }

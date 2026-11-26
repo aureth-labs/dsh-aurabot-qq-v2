@@ -196,6 +196,7 @@ test('Satori 适配器：真连服务端、收事件、发消息、断开', asyn
   assert.deepEqual(online, ['42'])
   assert.equal(registry.get('42'), handle.bot)
 
+  server.pushEvent({ type: 'message-created', login: { platform: 'discord', user: { id: 'other' } }, channel: { id: 'foreign' }, user: { id: 'u' }, message: { id: 'wrong', content: '不可投递' } })
   server.pushEvent({
     sn: 1,
     type: 'message-created',
@@ -215,6 +216,7 @@ test('Satori 适配器：真连服务端、收事件、发消息、断开', asyn
   const post = await waitFor(() => server.state.posts[0])
   assert.equal(post.headers.authorization, 'Bearer secret-token')
   assert.equal(post.headers['satori-platform'], 'discord')
+  assert.equal(post.headers['satori-user-id'], '42')
   assert.equal(post.body.channel_id, 'chan-1')
   assert.match(post.body.content, /<text>收到啦<\/text>/)
 

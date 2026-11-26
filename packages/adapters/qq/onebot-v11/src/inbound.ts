@@ -12,6 +12,14 @@ interface MessageEvent {
   sender?: { card?: string; nickname?: string }
 }
 
+export function isMessageEvent(event: unknown): event is MessageEvent {
+  if (!event || typeof event !== 'object') return false
+  const value = event as Record<string, unknown>
+  return value.post_type === 'message' && value.user_id != null && (
+    value.message_type === 'private' || (value.message_type === 'group' && value.group_id != null)
+  )
+}
+
 export function inboundOf(event: MessageEvent): InboundMessage {
   const userId = String(event.user_id)
   const groupId = event.message_type === 'group' ? String(event.group_id) : undefined

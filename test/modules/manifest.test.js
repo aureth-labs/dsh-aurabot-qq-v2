@@ -45,22 +45,18 @@ test('v2：从 package.json.aurabot 读清单', () => {
   assert.equal(manifest.api, 2)
   assert.deepEqual(manifest.capabilities, ['network'])
   assert.equal(manifest.entry, join(dir, 'lib/index.js'))
-  assert.equal(manifest.source, 'package')
+  assert.deepEqual(manifest.platforms, ['qq'])
   cleanupDir(dir)
 })
 
-test('v1：没有 package.json 时回退 module.json', () => {
+test('仅有 V1 module.json 时明确报告缺少 V2 清单', () => {
   const dir = tempModule({
     'module.json': { id: 'weather', name: '天气', version: '0.9.0', capabilities: ['plugin-internals'] },
     'index.mjs': 'export default {}\n',
   })
   const { manifest, error } = readManifest(dir, { id: 'weather' })
-  assert.equal(error, '')
-  assert.equal(manifest.id, 'weather')
-  assert.equal(manifest.api, 1)
-  assert.deepEqual(manifest.capabilities, ['plugin-internals'])
-  assert.equal(manifest.source, 'module.json')
-  assert.equal(manifest.entry, join(dir, 'index.mjs'))
+  assert.equal(manifest, null)
+  assert.match(error, /package\.json\.aurabot/)
   cleanupDir(dir)
 })
 

@@ -3,20 +3,22 @@ import { createOneBotClient } from './client.ts'
 import type { VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
 
 interface ConnectionOptions {
+  id?: string
   endpoint(): { httpUrl: string; wsUrl: string; httpToken: string; wsToken: string }
-  expectedAccount(): string
+  expectedAccount(): string | undefined
   enabled(): boolean
-  speak: VoiceResolver
+  speak?: VoiceResolver
   log: { info(message: string): void; warn(message: string, detail?: unknown): void; debug(message: string): void }
   onState(state: string, detail?: string): void
   onOnline(bot: OneBotBot): void
   onOffline(bot: OneBotBot, reason: string): void
   onEvent(event: unknown): void
-  onReady(): Promise<void>
+  onReady?(): Promise<void>
 }
 
 export function createOneBotConnection(options: ConnectionOptions) {
   let generation = 0
+  let boundAccount: string | undefined
   let verified = false
   let wrongAccount = ''
   let login = { uin: '', nickname: '', at: 0 }
@@ -47,6 +49,7 @@ export function createOneBotConnection(options: ConnectionOptions) {
     },
   })
   const bot = new OneBotBot({
+    id: options.id,
     isConnected: () => client.isConnected(),
     speak: options.speak,
     log: options.log,
@@ -68,11 +71,13 @@ export function createOneBotConnection(options: ConnectionOptions) {
     }
     if (current !== generation) return
     const uin = String(info?.user_id ?? '')
-    if (!uin || uin !== String(options.expectedAccount())) {
+    const expected = options.expectedAccount() ?? boundAccount
+    if (!uin || (expected !== undefined && uin !== expected)) {
       wrongAccount = uin
       client.stop()
       return
     }
+    boundAccount = uin
     login = { uin, nickname: info.nickname || '', at: Date.now() }
     wrongAccount = ''
     verified = true
@@ -83,7 +88,7 @@ export function createOneBotConnection(options: ConnectionOptions) {
       if (current !== generation) return
       options.onEvent(event)
     }
-    if (current === generation) await options.onReady()
+    if (current === generation) await options.onReady?.()
   }
 
   return {

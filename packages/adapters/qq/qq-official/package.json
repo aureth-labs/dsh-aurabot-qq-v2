@@ -1,12 +1,22 @@
 {
-  "name": "@aurabot/adapter-qq-official",
+  "name": "adapter-qq-official",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "QQ 官方机器人适配器（QQ 开放平台 · 群 / 单聊）",
-  "main": "src/index.ts",
+  "main": "./src/plugin.ts",
   "aurabot": {
     "kind": "adapter",
-    "platform": "qq"
-  }
+    "category": "platform",
+    "platforms": [
+      "qq"
+    ],
+    "capabilities": [
+      "network"
+    ],
+    "api": 2,
+    "reloadOnConfig": true,
+    "minPluginVersion": "1.3.0"
+  },
+  "license": "MIT"
 }

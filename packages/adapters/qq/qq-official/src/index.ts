@@ -83,11 +83,16 @@ export function createQQOfficialBotSpec(defaults: QQOfficialBotSpecOptions = {})
         },
       })
 
+      const cancel = () => gateway.close()
+      runtime.signal?.throwIfAborted()
+      runtime.signal?.addEventListener('abort', cancel, { once: true })
       try {
         await gateway.connect()
       } catch (error) {
         gateway.close()
         throw error
+      } finally {
+        runtime.signal?.removeEventListener('abort', cancel)
       }
       if (!bot.selfId) {
         gateway.close()

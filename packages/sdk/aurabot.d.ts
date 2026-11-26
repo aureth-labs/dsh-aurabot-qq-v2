@@ -255,6 +255,7 @@ export interface Services {
  * 定时器、中间件、指令、工具、路由、页面、服务、机器人，一个都不用自己清。
  */
 export interface Ctx {
+  readonly instanceId: string
   readonly id: string
   readonly version: string
   readonly apiVersion: number

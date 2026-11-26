@@ -24,12 +24,13 @@ import type {
 import { Bot } from '../../../../src/core/bot/index.ts'
 import { isElement, toText } from '../../../../src/core/message/element/element.ts'
 import { fromSatori, toSatoriBody } from '../../../../src/core/message/satori/satori.ts'
-import { SatoriClient, type SatoriEvent, type SatoriLogin } from '../../../../src/core/message/satori/satori-client.ts'
+import { SatoriClient, type SatoriEvent, type SatoriLogin } from './client.ts'
 
 export interface SatoriAdapterConfig {
   /** Satori 服务地址，`http://127.0.0.1:5140` / `ws://…` 都行。 */
   endpoint: string
   token?: string
+  selfId?: string
   /**
    * 真实平台名，进 `Target.platform`（discord / telegram / qq……）。
    * 不写就用 `satori`——插件里 `ctx.platform('discord')` 要能对上，所以建议写上。
@@ -245,6 +246,8 @@ export function satoriAdapter(): AdapterSpec {
       if (!cfg.endpoint) throw new Error('Satori 适配器要填 endpoint')
       const platform = runtime.platform
 
+      let selected: SatoriLogin | undefined
+      let singleLogin = false
       let bot: SatoriBot | null = null
       const client = new SatoriClient({
         endpoint: cfg.endpoint,
@@ -256,8 +259,23 @@ export function satoriAdapter(): AdapterSpec {
           warn: (...args) => runtime.log(args.map(String).join(' ')),
           error: (...args) => runtime.log(args.map(String).join(' ')),
         },
+        onReady: logins => {
+          singleLogin = logins.length === 1
+          const platform = selected?.platform || cfg.platform
+          const selfId = selected?.user?.id || cfg.selfId
+          const matches = logins.filter(login => login.user?.id && (!platform || login.platform === platform) && (!selfId || login.user.id === selfId))
+          if (matches.length !== 1) {
+            bot.markOffline('登录账号缺失或有多个匹配，请检查平台和账号 ID')
+            return
+          }
+          selected = matches[0]
+          client.bindLogin(selected)
+          bot.setLogin(selected)
+          bot.markOnline()
+        },
         onEvent: (event) => {
-          if (!bot) return
+          if (bot?.status !== 'online') return
+          if (event.login ? event.login.platform !== selected?.platform || event.login.user?.id !== selected?.user?.id : !singleLogin) return
           const message = inboundOf(event, bot)
           if (message) {
             runtime.emitMessage(message)
@@ -269,17 +287,22 @@ export function satoriAdapter(): AdapterSpec {
       })
 
       bot = new SatoriBot(platform, client, runtime.log)
-      const logins = await client.connect()
-      bot.setLogin(logins[0])
-      if (!bot.selfId) {
-        client.close()
-        throw new Error('Satori 没有返回任何登录账号（READY.logins 为空）')
+      const cancel = () => client.close()
+      runtime.signal?.throwIfAborted()
+      runtime.signal?.addEventListener('abort', cancel, { once: true })
+      try {
+        await client.connect()
+        if (bot.status !== 'online') throw new Error(bot.lastError || 'Satori 没有可用的登录账号')
+      } catch (error) {
+        cancel()
+        throw error
+      } finally {
+        runtime.signal?.removeEventListener('abort', cancel)
       }
-      bot.markOnline()
-      runtime.log(`Satori 适配器上线：${platform}/${bot.selfId}`)
-
-      // disconnect 收到的是适配器自己的实例，client 只能在闭包里
-      disconnectOf.set(bot, () => client.close())
+      disconnectOf.set(bot, () => {
+        client.close()
+        bot.markOffline('适配器断开')
+      })
       return bot
     },
 
