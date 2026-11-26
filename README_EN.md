@@ -11,7 +11,7 @@ A persona, a mood, and a memory of her own. She chats, sees images, sends voice 
 [![release](https://img.shields.io/github/v/release/aureth-labs/dsh-aurabot-qq?include_prereleases&label=release&color=4a7dff)](https://github.com/aureth-labs/dsh-aurabot-qq/releases)
 [![license](https://img.shields.io/github/license/aureth-labs/dsh-aurabot-qq?color=3fb950)](LICENSE)
 [![DSH plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-6a5acd)](https://github.com/deepseek-ai/deepseek-harness)
-[![QQ](https://img.shields.io/badge/QQ-SnowLuma%20%2F%20OneBot%20v11-12b7f5)](https://github.com/SnowLuma/SnowLuma)
+[![QQ](https://img.shields.io/badge/QQ-OneBot%20v11-12b7f5)](https://github.com/botuniverse/onebot-11)
 [![stars](https://img.shields.io/github/stars/aureth-labs/dsh-aurabot-qq?color=f5b301)](https://github.com/aureth-labs/dsh-aurabot-qq/stargazers)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](#-contributing)
 
@@ -22,7 +22,7 @@ A persona, a mood, and a memory of her own. She chats, sees images, sends voice 
 > This is not another keyword-reply bot: every reply, every decision to join a conversation, every model choice, and every outgoing message is a pluggable module. Everything is off by default — **not a single message reaches QQ until you turn it on.**
 
 ```
-QQ ⇄ SnowLuma (OneBot v11; or your existing bot) ⇄ Aurabot plugin ⇄ DSH sessions
+QQ ⇄ OneBot v11 implementation (NapCat / LLOneBot / Lagrange…) ⇄ Aurabot plugin ⇄ DSH sessions
                                                        ├─ persona + mood + memory
                                                        ├─ tools / hot-reloadable modules
                                                        └─ web panel (DSH Web)
@@ -58,11 +58,11 @@ QQ ⇄ SnowLuma (OneBot v11; or your existing bot) ⇄ Aurabot plugin ⇄ DSH se
 | 🧩 | **Module market** | One-click community modules (pet, Douyin, Heybox, group admin, phone automation, …), configs and logins kept |
 | 🔐 | **Permission page** | Every sensitive action is 关 / owner-DM only / everyone, re-checked at execution; dry run never performs side effects |
 
-> Deeper module, command and API docs live in [the user manual (Chinese)](docs/USER-MANUAL.md).
+> Deeper module and API docs live in [API.md (Chinese)](src/modules/sdk/API.md).
 
 ## 🚀 Quick start
 
-**Requirements:** a machine that runs DeepSeek Harness (Windows is easiest), a spare QQ account for the bot, and a QQ gateway (SnowLuma on Windows; any OneBot v11 implementation on Linux/Docker).
+**Requirements:** a machine that runs DeepSeek Harness, a spare QQ account for the bot, and an OneBot v11 implementation (NapCat, LLOneBot, Lagrange, a Dockerized one — anything speaking OneBot v11).
 
 ### 1. Install the plugin
 
@@ -84,8 +84,7 @@ Restart DSH; **Aurabot** appears in the sidebar under *Automation*.
 
 1. Enter the bot’s QQ number (a spare account) and your own QQ number
 2. Choose a gateway:
-   - **SnowLuma (Windows)**: download & extract [SnowLuma](https://github.com/SnowLuma/SnowLuma/releases) → start it → accept its EULA yourself in the panel (a console password is generated) → log in the bot account → click “attach bot account”
-   - **Existing OneBot bot**: NapCat, LLOneBot, Lagrange or Dockerized SnowLuma all work; paste the forward WebSocket URL (and token). The plugin only connects — it never starts or injects into anything
+   - **OneBot address**: log the bot account in on your implementation first, then paste its **forward WebSocket URL** (and token) into the wizard. The plugin only connects — it never starts or injects into anything — and verifies the logged-in account right after connecting
 3. Start in dry run (replies only, nothing sent) or go live
 
 > **Linux / Docker notes:** voice needs `python3-venv` or [uv](https://docs.astral.sh/uv/); RVC covers are Windows-only for now; when connecting to OneBot on the host or another container, use a reachable host/port instead of `127.0.0.1`.
@@ -101,7 +100,7 @@ Apart from the core (config, QQ gateway, chat hub, persona, permissions, panel),
 - Install/update/remove community modules from the panel’s **Module market** — registry: [dsh-aurabot-qq-mods](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
 - Your own modules live in the data directory `modules/` — never overwritten by upgrades, hot-reloaded on save (multi-file and npm deps supported)
 - The panel has a sandboxed “simulate” test that captures outgoing messages instead of sending them
-- Extension API: [API.md (Chinese)](src/modules/API.md) · types: [aurabot.d.ts](src/modules/aurabot.d.ts) · [module tutorial](docs/MODULE-TUTORIAL.md)
+- Extension API: [API.md (Chinese)](src/modules/sdk/API.md) · types: [aurabot.d.ts](src/modules/sdk/aurabot.d.ts)
 - Not a coder? Hand API.md to DSH and let it write the module for you
 
 > ⚠️ Modules run in the same process as the plugin and can access account config. Capabilities shown at install time are declarations, **not a sandbox**. Only install modules you trust.
@@ -127,24 +126,21 @@ Apart from the core (config, QQ gateway, chat hub, persona, permissions, panel),
 
 | Document | Contents |
 |---|---|
-| [User manual (Chinese)](docs/USER-MANUAL.md) | Every setting after installation, QQ commands, panel guide — **start here** |
-| [Module tutorial (Chinese)](docs/MODULE-TUTORIAL.md) | Write your first module; hot reload; rewrite hooks |
-| [Module API (Chinese)](src/modules/API.md) | Extension API, tools, context, commands, scheduled jobs |
+| [Module API (Chinese)](src/modules/sdk/API.md) | Extension API, tools, context, commands, scheduled jobs |
 | [Changelog](CHANGELOG.md) | What changed in each version |
-| [Design notes (Chinese)](docs/DESIGN.md) | Implementation trade-offs: persona injection, group context, memory, mood, Bilibili, covers |
 
 ## ❓ FAQ
 
 <details>
 <summary><b>Does it require Windows?</b></summary>
 
-No. The plugin runs on Linux/macOS/Windows; Windows is easiest because of the SnowLuma gateway and RVC cover support. On Linux/Docker, connect your own OneBot v11 bot; voice needs a Python venv.
+No. The plugin runs on Linux/macOS/Windows with any OneBot v11 implementation; the only platform-specific piece is RVC cover support (Windows only), and voice needs a Python venv.
 </details>
 
 <details>
 <summary><b>Will my QQ account get banned?</b></summary>
 
-It uses your own QQ account and your own gateway (SnowLuma/NapCat/…); the risk is the same as any QQ bot framework. Use a spare account, start in dry run, and don’t spam strangers.
+It uses your own QQ account and your own OneBot implementation (NapCat / LLOneBot / Lagrange / …); the risk is the same as any QQ bot framework. Use a spare account, start in dry run, and don’t spam strangers.
 </details>
 
 <details>
@@ -185,7 +181,6 @@ src/core/              kernel: config, module load/toggle/replace/hot reload, ct
 src/chat/              message hub, group policy, reply parsing, allow-list & permissions
 src/modules/           built-in modules; module API docs and types live in sdk/
 packages/adapters/     platform adapters: qq/{onebot-v11,qq-guild,qq-official}, satori
-src/snowluma/          SnowLuma management (detect, start/stop, inject only the bot account)
 src/features/          stickers, Qzone, mood, memory, proactive chat, image gen
 src/song/              cover pipeline (NetEase → separation → RVC → mixdown)
 src/voice/             TTS, WAV handling
@@ -203,7 +198,7 @@ Issues and PRs are welcome!
 
 - **Bug / feature request**: [open an issue](https://github.com/aureth-labs/dsh-aurabot-qq/issues) (please search first)
 - **Code**: [fork → PR](https://github.com/aureth-labs/dsh-aurabot-qq/pulls); include regression tests for fixes; modules belong in the [module repo](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
-- **Modules**: start with the [tutorial](docs/MODULE-TUTORIAL.md)
+- **Modules**: start with the [API reference](src/modules/sdk/API.md)
 - Contributors are credited in the changelog and PR history 💙
 
 ## 💬 Community

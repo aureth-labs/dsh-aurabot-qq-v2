@@ -11,7 +11,7 @@
 [![release](https://img.shields.io/github/v/release/aureth-labs/dsh-aurabot-qq?include_prereleases&label=release&color=4a7dff)](https://github.com/aureth-labs/dsh-aurabot-qq/releases)
 [![license](https://img.shields.io/github/license/aureth-labs/dsh-aurabot-qq?color=3fb950)](LICENSE)
 [![DSH plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-6a5acd)](https://github.com/deepseek-ai/deepseek-harness)
-[![QQ](https://img.shields.io/badge/QQ-SnowLuma%20%2F%20OneBot%20v11-12b7f5)](https://github.com/SnowLuma/SnowLuma)
+[![QQ](https://img.shields.io/badge/QQ-OneBot%20v11-12b7f5)](https://github.com/botuniverse/onebot-11)
 [![stars](https://img.shields.io/github/stars/aureth-labs/dsh-aurabot-qq?color=f5b301)](https://github.com/aureth-labs/dsh-aurabot-qq/stargazers)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](#-参与贡献)
 
@@ -22,7 +22,7 @@
 > 不是又一个「关键词回复机器人」——她的每一次回复、要不要接话、用什么模型、发出去什么，都是可插拔的模块；默认一切都是关着的，**不手动打开，一句话都不会发出去。**
 
 ```
-QQ ⇄ SnowLuma（OneBot v11，你自己安装/已有机器人也行）⇄ Aurabot 插件 ⇄ DSH 会话
+QQ ⇄ OneBot v11 协议端（NapCat / LLOneBot / Lagrange…）⇄ Aurabot 插件 ⇄ DSH 会话
                                                     ├─ 人格 + 心情 + 记忆
                                                     ├─ 工具 / 模块（可热插拔）
                                                     └─ 面板（DSH Web）
@@ -60,7 +60,7 @@ QQ ⇄ SnowLuma（OneBot v11，你自己安装/已有机器人也行）⇄ Aurab
 
 ## 🚀 快速开始
 
-**你需要：** 一台能跑 DeepSeek Harness 的电脑（Windows 最省事）、一个当机器人的 QQ 小号、一个让机器人号上线的 QQ 网关（Windows 用 SnowLuma 最方便，Linux/Docker 用任何 OneBot v11 实现）。
+**你需要：** 一台能跑 DeepSeek Harness 的电脑、一个当机器人的 QQ 小号、一个让机器人号上线的 OneBot v11 协议端（NapCat、LLOneBot、Lagrange、Docker 里的实现都行）。
 
 ### 1. 安装插件
 
@@ -81,9 +81,7 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 ### 2. 跟着设置向导走
 
 1. 填机器人 QQ 号（小号）和你的 QQ 号
-2. 选 QQ 网关：
-   - **用 SnowLuma（Windows）**：下载解压 [SnowLuma](https://github.com/SnowLuma/SnowLuma/releases) → 启动 → 面板里本人同意它的协议（控制台密码自动生成）→ 登录机器人号 → 点「接入机器人号」
-   - **接已有的 OneBot 机器人**：NapCat、LLOneBot、Lagrange、Docker 版 SnowLuma 都行；把正向 WebSocket 地址（和 token）填进向导即可，插件只连接、不启动
+2. 填 OneBot 地址：先让你的协议端登录机器人号，再把它的**正向 WebSocket 地址**（和 token）填进向导。插件只负责连接，不启动、不注入任何东西；连上后会先核对登录的是不是机器人号
 3. 先试运行（只回话不真发），或者直接上线
 
 > **Linux / Docker 注意：** 语音要 `python3-venv` 或 [uv](https://docs.astral.sh/uv/)；翻唱（RVC）目前只支持 Windows；容器连宿主机/别的容器上的 OneBot，地址用容器能访问到的主机名和端口，别填 `127.0.0.1`。
@@ -94,12 +92,12 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 
 ## 🧩 模块系统
 
-除了核心（配置、QQ 网关、聊天中枢、人格、权限、面板），**每一项本事都是模块**。
+除了核心（配置、OneBot 接入、聊天中枢、人格、权限、面板），**每一项本事都是模块**。
 
 - 面板「模块市场」一键安装/更新/卸载社区模块，仓库在 [dsh-aurabot-qq-mods](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
 - 你自己写的模块放在数据目录 `modules/`，升级不覆盖，保存即生效（多文件、npm 依赖都能热重载）
 - 面板「已安装」页有模拟测试：截获发送，不真发
-- 扩展接口：[API.md](src/modules/API.md) · 类型：[aurabot.d.ts](src/modules/aurabot.d.ts) · [写模块教程](docs/MODULE-TUTORIAL.md)
+- 扩展接口：[API.md](src/modules/sdk/API.md) · 类型：[aurabot.d.ts](src/modules/sdk/aurabot.d.ts)
 - 不会写？把 API.md 发给 DSH，让 DSH 照着帮你写
 
 > ⚠️ 模块和插件在同一进程运行，能接触账号配置；安装时显示的能力只是声明，**不是沙箱**。只装信得过的模块。
@@ -129,7 +127,7 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 
 | 文档 | 内容 |
 |---|---|
-| [模块 API](src/modules/API.md) | 扩展接口、工具、上下文、命令行、定时任务完整说明 |
+| [模块 API](src/modules/sdk/API.md) | 扩展接口、工具、上下文、命令行、定时任务完整说明 |
 | [更新记录](CHANGELOG.md) | 每个版本改了什么 |
 
 ## ❓ FAQ
@@ -137,13 +135,13 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 <details>
 <summary><b>一定要 Windows 吗？</b></summary>
 
-不。插件本体在 Linux / macOS / Windows 都能跑；Windows 最省事是因为 SnowLuma 网关和翻唱（RVC）支持最好。Linux/Docker 接自己的 OneBot v11 机器人即可，语音需要 Python 虚拟环境。
+不。插件本体在 Linux / macOS / Windows 都能跑，接任何 OneBot v11 协议端即可；区别只在翻唱（RVC）目前只有 Windows 实现，语音需要 Python 虚拟环境。
 </details>
 
 <details>
 <summary><b>会不会被腾讯封号？</b></summary>
 
-用的是你自己的 QQ 号和你自己选的网关（SnowLuma / NapCat 等），风险与使用其他 QQ 机器人框架相同。建议用小号、先试运行、别高频打扰陌生人。
+用的是你自己的 QQ 号和你自己选的协议端（NapCat / LLOneBot / Lagrange 等），风险与使用其他 QQ 机器人框架相同。建议用小号、先试运行、别高频打扰陌生人。
 </details>
 
 <details>
@@ -238,7 +236,7 @@ HMR 重载的是上次构建出来的 `lib/`。
 
 - **报 bug / 提需求**：[新建 issue](https://github.com/aureth-labs/dsh-aurabot-qq/issues)（先翻一下有没有重复）
 - **提代码**：[fork → PR](https://github.com/aureth-labs/dsh-aurabot-qq/pulls)；修 bug 尽量带回归测试；模块请提给 [模块仓库](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
-- **写模块**：接口与示例见 [模块 API](src/modules/API.md)
+- **写模块**：接口与示例见 [模块 API](src/modules/sdk/API.md)
 - 贡献者名单见版本说明和 PR 记录 💙
 
 ## 💬 交流
