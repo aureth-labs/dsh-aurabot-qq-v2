@@ -49,7 +49,7 @@ export function apply(ctx, config) {
     if (req?.method !== 'POST' || !/^application\/json(?:\s*;|$)/i.test(String(req.headers?.['content-type'] || ''))) return { ok: false, message: '账号操作需要 POST JSON 请求' }
     return fn(req)
   }
-  ctx.server.get('/image/models', accountAction(async (req) => {
+  ctx.server.post('/image/models', accountAction(async (req) => {
     const body = await ctx.host.http.body(req)
     if (!body?.imageGen || typeof body.imageGen !== 'object') return { ok: false, message: '缺少生图配置' }
     const config = mergeFromPanel(ctx.root.config, { imageGen: body.imageGen }); const c = config.imageGen
@@ -64,7 +64,7 @@ export function apply(ctx, config) {
       return { ok: false, message }
     }
   }))
-  ctx.server.get('/image/test', accountAction(async (req) => {
+  ctx.server.post('/image/test', accountAction(async (req) => {
     const body = await ctx.host.http.body(req)
     if (!body?.imageGen || typeof body.imageGen !== 'object') return { ok: false, message: '缺少生图配置' }
     const config = mergeFromPanel(ctx.root.config, { imageGen: body.imageGen }); const c = config.imageGen
@@ -81,17 +81,17 @@ export function apply(ctx, config) {
     catch (error) { let message = redact(error?.message || String(error)); for (const key of [c.apiKey, ...c.fallbacks.map(e => e.apiKey)]) if (key) message = message.split(key).join('***'); return { ok: false, message: `测试失败：${message}` } }
   }))
   ctx.server.get('/image/codex/status', async () => ({ ok: true, ...auth.status(), login: auth.loginStatus(), callback: { port: auth.callbackPort?.() || 1455, available: await auth.callbackPortUsable?.() } }))
-  ctx.server.get('/image/codex/login', accountAction(async () => ({ ok: true, ...(await auth.startLogin()), ...auth.loginStatus() })))
+  ctx.server.post('/image/codex/login', accountAction(async () => ({ ok: true, ...(await auth.startLogin()), ...auth.loginStatus() })))
   ctx.server.get('/image/codex/login/status', async () => ({ ok: true, ...auth.loginStatus(), ...auth.status() }))
-  ctx.server.get('/image/codex/complete', accountAction(async (req) => {
+  ctx.server.post('/image/codex/complete', accountAction(async (req) => {
     const body = await ctx.host.http.body(req)
     const credential = await auth.completeLogin(String(body?.input || ''))
     // 登录状态变了：已经挂好的会话要重挂一次，工具里才能立刻用（面板直输不经过 mount）
     try { hub.remountAll?.('ChatGPT 订阅已登录') } catch (error) { ctx.logger.debug('重挂工具失败：', error.message) }
     return { ok: true, email: credential.email || '', accountId: credential.accountId || '' }
   }))
-  ctx.server.get('/image/codex/cancel', accountAction(async () => ({ ok: true, ...auth.cancelLogin('已取消') })))
-  ctx.server.get('/image/codex/logout', accountAction(async () => {
+  ctx.server.post('/image/codex/cancel', accountAction(async () => ({ ok: true, ...auth.cancelLogin('已取消') })))
+  ctx.server.post('/image/codex/logout', accountAction(async () => {
     const r = auth.logout()
     try { hub.remountAll?.('ChatGPT 订阅已登出') } catch (error) { ctx.logger.debug('重挂工具失败：', error.message) }
     return { ok: true, ...r }
@@ -109,11 +109,11 @@ export function apply(ctx, config) {
     const buf = readFileSync(p)
     ctx.host.http.send(res, 200, buf, String(mimeOf(buf) || 'image/png'))
   })
-  ctx.server.get('/image/gallery/delete', async (req) => {
+  ctx.server.post('/image/gallery/delete', async (req) => {
     const b = await ctx.host.http.body(req).catch(() => ({}))
     return removePainting(String((b && b.file) || ''))
   })
-  ctx.server.get('/image/open-folder', async () => openPaintFolder())
+  ctx.server.post('/image/open-folder', async () => openPaintFolder())
 
   // 生图模块开着就把工具挂上；「没开启 / 没填地址 / Codex 没登录」在执行时再如实提示。
   // 不能按登录状态决定挂不挂：Codex 订阅常是「先开会话、后登录」，那样工具会缺失（unknown tool）。

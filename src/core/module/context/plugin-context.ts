@@ -1,3 +1,4 @@
+import type { HttpMethod, RouteOptions } from '../kernel/routes.ts'
 // 模块拿到的 ctx：只有 v2 能力，没有 v1 的 setup(api) 字段。
 
 import type { AdapterHandle, AdapterSpec } from '../../../types/adapter/adapter.ts'
@@ -74,7 +75,7 @@ interface KernelApi {
   media: PluginContext['media']
   turnFromOwner: (sessionId: string) => boolean
   text: TextHelpers
-  route: (path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' }) => () => void
+  route: (path: string, handler: (req: any, res: any) => unknown, options: RouteOptions) => () => void
 }
 
 export function createPluginContext(api: KernelApi, extras: PluginContextExtras = {}): PluginContext {
@@ -248,17 +249,13 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('tool', (builder: unknown) => api.tool(builder))
 
   const registerRoute = (
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+    method: HttpMethod,
     path: string,
     handler: (req: any, res: any) => unknown,
     options: { access?: 'panel' | null } = {},
   ) => {
     const access = options.access === undefined ? 'panel' : options.access
-    return api.route(path, (req: any, res: any) => {
-      const actual = String(req?.method || 'GET').toUpperCase()
-      if (actual !== method) return { ok: false, code: 'METHOD_NOT_ALLOWED', message: `这个接口只接受 ${method}` }
-      return handler(req, res)
-    }, access === null ? {} : { access })
+    return api.route(path, handler, { method, access })
   }
   value('server', {
     get: (path: string, handler: any, options?: any) => registerRoute('GET', path, handler, options),

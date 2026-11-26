@@ -7,7 +7,7 @@
 //     maxMinutes: Schema.natural().min(4).max(30).default(10),
 //   })
 
-export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'password' | 'object' | 'array'
+export type FieldType = 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'password' | 'object' | 'array'
 
 export interface SettingsField {
   key: string
@@ -40,6 +40,8 @@ export class SchemaNode<T = unknown> {
   private fallback: T | undefined
   private hasDefault = false
   private desc = ''
+  private label = ''
+  private multiline = false
   private isHidden = false
   private isDeprecated = false
   private isExperimental = false
@@ -59,6 +61,11 @@ export class SchemaNode<T = unknown> {
   default(value: NoInfer<T>): this {
     this.fallback = value as T
     this.hasDefault = true
+    return this
+  }
+
+  title(label: string): this {
+    this.label = label
     return this
   }
 
@@ -89,6 +96,7 @@ export class SchemaNode<T = unknown> {
 
   role(name: string): this {
     if (name === 'secret') this.isSecret = true
+    if (name === 'textarea' && this.kind === 'string') this.multiline = true
     return this
   }
 
@@ -218,7 +226,7 @@ export class SchemaNode<T = unknown> {
   toField(key: string): SettingsField {
     const field: SettingsField = {
       key,
-      label: this.desc || key,
+      label: this.label || this.desc || key,
       type: this.fieldType(),
     }
     if (this.hasDefault && !this.containsSecret()) field.default = this.fallback
@@ -254,6 +262,7 @@ export class SchemaNode<T = unknown> {
     if (this.kind === 'boolean') return 'boolean'
     if (this.kind === 'number') return 'number'
     if (this.kind === 'union') return 'select'
+    if (this.multiline) return 'textarea'
     return 'text'
   }
 }

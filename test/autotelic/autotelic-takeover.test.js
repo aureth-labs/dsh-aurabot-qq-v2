@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView,
+  probeTakeovers, changeTakeover, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView,
   AUTONOMY_KEY, EXCEPTIONS,
 } from '../../packages/modules/autotelic/impl/exec/takeover.ts'
 
@@ -128,4 +128,16 @@ test('主人手动补条目：不守约定的怪模块也能接管', () => {
   const hit = r.find((x) => x.id === 'weird')
   assert.ok(hit, '手动补的键要扫出来')
   assert.equal(hit.key, 'tourTimes')
+})
+
+test('接管与还原都在同一份配置中提交，清空旧备份', () => {
+  const targets = probeTakeovers({ getConfig: () => REAL_SHAPE, liveIds: ['douyin', 'tophub'] })
+  const active = changeTakeover(REAL_SHAPE, targets)
+  assert.equal(active.ext.autotelic.takeover, true)
+  assert.equal(active.douyin.autoBrowse, false)
+  const restored = changeTakeover(active, null)
+  assert.deepEqual(restored.ext.autotelic.takenOver, {})
+  assert.equal(restored.ext.autotelic.takeover, false)
+  assert.equal(restored.douyin.autoBrowse, true)
+  assert.equal(restored.ext.tophub.shareLimit, 2)
 })

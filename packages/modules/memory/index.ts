@@ -217,8 +217,7 @@ export function apply(ctx, config) {
       counts: { direct: rows.filter((r) => !r.hop).length, hop1: rows.filter((r) => r.hop === 1).length, hop2: rows.filter((r) => r.hop === 2).length, hop3: rows.filter((r) => r.hop === 3).length } }
   })
   // 面板「立即重建联想」：平时 tick 会自动建，这里给手动排查用
-  ctx.server.get('/memory/assoc/rebuild', async () => memory.buildAssoc())
-  ctx.server.get('/memory/add', async (req) => {
+  ctx.server.post('/memory/add', async (req) => {
     const b = await http.body(req)
     // tier 以前漏传了：面板/星图选「临时/长期/永久」加进来的记忆一律变成默认档。
     // 另外面板传的是字符串（short/long/core），而 memory.add 只认 0~3 的整数，
@@ -230,11 +229,11 @@ export function apply(ctx, config) {
       tier: toHostTier(b.tier) ?? undefined,
     })
   })
-  ctx.server.get('/memory/update', async (req) => {
+  ctx.server.post('/memory/update', async (req) => {
     const b = await http.body(req)
     return memory.update(b.id, b)
   })
-  ctx.server.get('/memory/delete', async (req) => {
+  ctx.server.post('/memory/delete', async (req) => {
     const b = await http.body(req)
     return memory.remove(b.id)
   })
@@ -246,7 +245,7 @@ export function apply(ctx, config) {
     return { ok: true, list: all.slice(0, limit), total: all.length, hasMore: all.length > limit }
   })
   // beta 侧的面板折叠状态持久化
-  ctx.server.get('/memory/ui', async (req) => {
+  ctx.server.post('/memory/ui', async (req) => {
     const b = await http.body(req)
     const key = String(b.key || '')
     const allowed = ['people', 'tiers', 'vector', 'rerank']
@@ -256,8 +255,8 @@ export function apply(ctx, config) {
     return { ok: true, message: b.collapsed ? '已收起' : '已展开' }
   })
   // 面板「立即重建联想」：平时 tick 会自动建，这里给手动排查用
-  ctx.server.get('/memory/assoc/rebuild', async () => memory.buildAssoc())
-  ctx.server.get('/memory/restore', async (req) => memory.restore((await http.body(req)).id))
+  ctx.server.post('/memory/assoc/rebuild', async () => memory.buildAssoc())
+  ctx.server.post('/memory/restore', async (req) => memory.restore((await http.body(req)).id))
   // ═══════════════════════════════════════════════════════════
   // 记忆星图（memory-graph.js）
   // 只做可视化与它的交互，**不接管自动回忆**、不搬中枢的 assoc/pipeline。
@@ -342,13 +341,14 @@ export function apply(ctx, config) {
       return { ok: true, version: out.version, radius: out.radius, layout, stats: stat, groups: out.groups, clusters: out.clusters, childOf: out.childOf, settle: out.settle, edges, stars }
     }
 
-    ctx.server.get('/memory/graph', async (req) => {
+    ctx.server.get('/memory/graph', () => buildGraph())
+    ctx.server.post('/memory/graph', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       return buildGraph(Number(body.day) || 0)
     })
     // 点击复习：真的改 hitDays/lastHit（用户要的「主动加深」，和被动联想加深并存）
-    ctx.server.get('/memory/graph/review', async (req) => {
+    ctx.server.post('/memory/graph/review', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const id = String(body.id || '')
@@ -363,7 +363,7 @@ export function apply(ctx, config) {
         return { ok: true, message: `已确认还记得（${STAR_TIER_LABEL[toStarTier(fresh.tier)] || '长期'}，清晰度 ${Math.round(b * 100)}%）` }
       } catch (error) { return { ok: false, message: '复习失败：' + error.message } }
     })
-    ctx.server.get('/memory/graph/restore', async (req) => {
+    ctx.server.post('/memory/graph/restore', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const id = String(body.id || '')
@@ -371,7 +371,7 @@ export function apply(ctx, config) {
       const r = memory.restore(id)
       return r?.ok ? { ok: true, message: '已恢复这条记忆' } : { ok: false, message: r?.message || '恢复失败' }
     })
-    ctx.server.get('/memory/graph/update', async (req) => {
+    ctx.server.post('/memory/graph/update', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const id = String(body.id || '')
@@ -385,7 +385,7 @@ export function apply(ctx, config) {
       }
       return memory.update(id, patch)
     })
-    ctx.server.get('/memory/graph/remove', async (req) => {
+    ctx.server.post('/memory/graph/remove', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const id = String(body.id || '')
@@ -397,7 +397,7 @@ export function apply(ctx, config) {
       const r: any = memory.remove(id)
       return r?.ok ? { ok: true, message: '已删除这条记忆' } : { ok: false, message: r?.message || '删除失败' }
     })
-    ctx.server.get('/memory/graph/add', async (req) => {
+    ctx.server.post('/memory/graph/add', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const text = String(body.text || '').trim().slice(0, 200)
@@ -415,7 +415,7 @@ export function apply(ctx, config) {
       const label = tier === undefined ? '未分档' : (STAR_TIER_LABEL[String(body.tier)] || '长期')
       return { ...r, message: r.updated ? '已更新一条相似的记忆' : `已新增到${label}记忆` }
     })
-    ctx.server.get('/memory/graph/tier', async (req) => {
+    ctx.server.post('/memory/graph/tier', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const t = toHostTier(body.tier)
@@ -441,7 +441,7 @@ export function apply(ctx, config) {
       return memory.setTier(id, t)
     })
     // 批量复习：右键「全部复习一次」。和单条一样真的涨 hitDays / 刷新 lastHit。
-    ctx.server.get('/memory/graph/review-many', async (req) => {
+    ctx.server.post('/memory/graph/review-many', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       const ids = Array.isArray(body.ids) ? body.ids.map((x) => String(x)).filter(Boolean).slice(0, 200) : []
@@ -454,8 +454,8 @@ export function apply(ctx, config) {
         return { ok: true, message: `已复习 ${hit.length} 条`, done: hit.length }
       } catch (error) { return { ok: false, message: '复习失败：' + error.message } }
     })
-    ctx.server.get('/memory/graph/sync', async () => buildGraph())
-    ctx.server.get('/memory/graph/optimize', async () => {
+    ctx.server.post('/memory/graph/sync', async () => buildGraph())
+    ctx.server.post('/memory/graph/optimize', async () => {
       const r = buildGraph()
       const moved = (r?.settle && r.settle.maxMove) || 0
       return { ...r, message: moved > 2 ? `已优化星团位置，最大移动 ${Math.round(moved)}` : '星团位置已经是最优的' }
@@ -496,7 +496,7 @@ export function apply(ctx, config) {
         },
       }
     })
-    ctx.server.get('/memory/graph/autorecall', async (req) => {
+    ctx.server.post('/memory/graph/autorecall', async (req) => {
       let body: Record<string, any> = {}
       try { body = (await http.body(req)) || {} } catch {}
       return memory.setAutoRecall(Boolean(body.on))
@@ -522,21 +522,21 @@ export function apply(ctx, config) {
     const detail = memory.personaNotes(q.qq || '', { limit, offset })
     return detail ? { ok: true, ...detail } : { ok: false, message: '没有找到这个人' }
   })
-  ctx.server.get('/persona/person/save', async (req) => {
+  ctx.server.post('/persona/person/save', async (req) => {
     const b = await http.body(req)
     return memory.savePersonaPerson(b.qq, b)
   })
-  ctx.server.get('/persona/person/delete', async (req) => memory.deletePerson((await http.body(req)).qq))
-  ctx.server.get('/persona/person/reset', async (req) => {
+  ctx.server.post('/persona/person/delete', async (req) => memory.deletePerson((await http.body(req)).qq))
+  ctx.server.post('/persona/person/reset', async (req) => {
     if (req.method !== 'POST' || !/^application\/json(?:\s*;|$)/i.test(String(req.headers?.['content-type'] || ''))) return { ok: false, message: '清理记忆需要 POST JSON 请求' }
     return memory.resetPerson((await http.body(req))?.qq)
   }, { access: 'panel' })
-  ctx.server.get('/persona/person/no-memory', async (req) => {
+  ctx.server.post('/persona/person/no-memory', async (req) => {
     const b = await http.body(req)
     return memory.setNoMemory(b.qq, b.enabled, { deleteExisting: b.deleteExisting === true })
   })
-  ctx.server.get('/memory/relations/delete', async (req) => memory.deleteRelation((await http.body(req)).id))
-  ctx.server.get('/memory/relations/save', async (req) => {
+  ctx.server.post('/memory/relations/delete', async (req) => memory.deleteRelation((await http.body(req)).id))
+  ctx.server.post('/memory/relations/save', async (req) => {
     const b = await http.body(req)
     if (!b || !String(b.id || '').trim() || !String(b.subj || '').trim() || !String(b.pred || '').trim() || !String(b.obj || '').trim()) return { ok: false, message: '关系要写全主语、关系、宾语' }
     memory.saveRelation({
@@ -546,7 +546,7 @@ export function apply(ctx, config) {
     return { ok: true, message: '关系已修改' }
   })
   ctx.server.get('/memory/chats', async () => ({ ok: true, list: memory.chats() }))
-  ctx.server.get('/memory/chats/save', async (req) => {
+  ctx.server.post('/memory/chats/save', async (req) => {
     const b = await http.body(req)
     return memory.saveChat(b.chatId, b)
   })
@@ -573,14 +573,14 @@ export function apply(ctx, config) {
       },
     }
   })
-  ctx.server.get('/memory/gists/delete', async (req) => memory.deleteGist((await http.body(req)).id))
+  ctx.server.post('/memory/gists/delete', async (req) => memory.deleteGist((await http.body(req)).id))
   ctx.server.get('/profiles', async () => ({ ok: true, list: memory.profiles() }))
-  ctx.server.get('/profiles/save', async (req) => {
+  ctx.server.post('/profiles/save', async (req) => {
     const b = await http.body(req)
     if (memory.setProfile(String(b.qq || ''), String(b.text || '')) === false) return { ok: false, message: '这个人尚未有直接互动，或已设置不再记住' }
     return { ok: true, message: b.text ? '小档案已保存' : '小档案已清空' }
   })
-  ctx.server.get('/profiles/rebuild', async (req) => {
+  ctx.server.post('/profiles/rebuild', async (req) => {
     const b = await http.body(req)
     try {
       return (await memory.buildProfile(String(b.qq || ''))) ? { ok: true, message: '按记忆重写好了' } : { ok: false, message: '关于 TA 的记忆还太少（至少 3 条）' }
@@ -588,11 +588,11 @@ export function apply(ctx, config) {
       return { ok: false, message: error.message }
     }
   })
-  ctx.server.get('/memory/import', async (req) => {
+  ctx.server.post('/memory/import', async (req) => {
     const b = await http.body(req)
     try { return { ok: true, list: await memory.importCandidates(String(b.text || '').slice(0, 30000)) } } catch (error) { return { ok: false, message: error.message, list: [] } }
   })
-  ctx.server.get('/memory/import/commit', async (req) => {
+  ctx.server.post('/memory/import/commit', async (req) => {
     const n = memory.importCommit((await http.body(req)).items || [])
     return { ok: true, message: `存进记忆库 ${n} 条` }
   })
@@ -615,7 +615,7 @@ export function apply(ctx, config) {
     const chars = asked.reduce((n, b) => n + b.records.reduce((m, r) => m + r.text.length + (r.note || '').length + 20, 0), 0)
     return { calls: asked.length, tokens: Math.round((chars * 2.5 + asked.length * 2500) * 0.7) } // 粗估：输入 + 输出（改后文字和理由），中文约 0.7 token / 字
   }
-  ctx.server.get('/memory/inherit/plan', async (req) => {
+  ctx.server.post('/memory/inherit/plan', async (req) => {
     const pair = inheritPair(await http.body(req))
     if (!pair.ok) return pair
     const batches = storeOf(pair.from).inheritPlan()
@@ -626,7 +626,7 @@ export function apply(ctx, config) {
       batches: batches.map(({ kind, label, part, parts, records }) => ({ kind, label, part, parts, count: records.length })),
     }
   })
-  ctx.server.get('/memory/inherit/batch', async (req) => {
+  ctx.server.post('/memory/inherit/batch', async (req) => {
     const b = await http.body(req)
     const pair = inheritPair(b)
     if (!pair.ok) return pair
@@ -637,41 +637,41 @@ export function apply(ctx, config) {
       return { ok: true, kind: batch.kind, label: batch.label, part: batch.part, parts: batch.parts, results }
     } catch (error) { return { ok: false, message: `${batch.label}这一批没整理成：${error.message}` } }
   })
-  ctx.server.get('/memory/inherit/commit', async (req) => {
+  ctx.server.post('/memory/inherit/commit', async (req) => {
     const b = await http.body(req)
     const pair = inheritPair(b)
     if (!pair.ok) return pair
     return storeOf(pair.to).inheritCommit(storeOf(pair.from).inheritState(), Array.isArray(b.items) ? b.items : [], pair.from)
   })
-  ctx.server.get('/style/save', async (req) => {
+  ctx.server.post('/style/save', async (req) => {
     const b = await http.body(req)
     if (memory.setStyle(String(b.key || ''), (b.list || []).map((t) => String(t).trim()).filter(Boolean)) === false) return { ok: false, message: '这个人尚未有直接互动，或已设置不再记住' }
     return { ok: true, message: '说话方式已保存' }
   })
-  ctx.server.get('/insights/save', async (req) => {
+  ctx.server.post('/insights/save', async (req) => {
     const b = await http.body(req)
     if (memory.setInsights(String(b.key || ''), (b.list || []).map((t) => String(t).trim()).filter(Boolean)) === false) return { ok: false, message: '这个人尚未有直接互动，或已设置不再记住' }
     return { ok: true, message: '相处经验已保存' }
   })
-  ctx.server.get('/memory/extract', async (req) => {
+  ctx.server.post('/memory/extract', async (req) => {
     const b = await http.body(req)
     // 立即整理一次：连今天的也提炼（今天的聊天流水不删，写日记还要用）
     return memory.consolidate({ includeToday: b.includeToday !== false })
   })
   // 语义检索（Embedding RAG）：状态 / 连通性测试 / 清空重建
   ctx.server.get('/memory/vector/status', async () => ({ ok: true, ...memory.vectorStatus() }))
-  ctx.server.get('/memory/vector/test', async (req) => {
+  ctx.server.post('/memory/vector/test', async (req) => {
     const b = await http.body(req)
     try { return { ok: true, ...(await memory.vectorTest(String(b.text || '今天想吃白米饭'))) } } catch (error) { return { ok: false, message: error.message } }
   })
-  ctx.server.get('/memory/vector/rebuild', async () => {
+  ctx.server.post('/memory/vector/rebuild', async () => {
     if (!memory.vectorReset()) return { ok: false, message: '先开启向量检索并填好服务地址、模型和 Key' }
     await memory.vectorSync()
     return { ok: true, message: '本机向量已清空，正在按当前记忆重新同步', ...memory.vectorStatus() }
   })
   // 重排（Reranker）：状态 / 连通性测试
   ctx.server.get('/memory/rerank/status', async () => ({ ok: true, ...memory.rerankStatus() }))
-  ctx.server.get('/memory/rerank/test', async (req) => {
+  ctx.server.post('/memory/rerank/test', async (req) => {
     const b = await http.body(req)
     try { return { ok: true, ...(await memory.rerankTest(String(b.text || '今天想吃白米饭'))) } } catch (error) { return { ok: false, message: error.message } }
   })

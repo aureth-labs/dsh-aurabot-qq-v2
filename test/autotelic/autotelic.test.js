@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../../packages/modules/autotelic/impl/observe/audit.ts'
-import module from '../../packages/modules/autotelic/index.ts'
+import { apply, config } from '../../packages/modules/autotelic/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 function tmpDir(t, name) {
@@ -259,25 +259,27 @@ test('跨天续链：重启后新一天首条要接昨天文件的链尾（2026-
   assert.equal(chain.total, 2)
 })
 
+function contextFor(root, routes, enabled = false) {
+  const rootConfig = { ownerQQ: '' }
+  const route = (path, handler) => { routes[path] = handler }
+  return {
+    dataDir: (...parts) => join(root, 'modules-data', 'autotelic', ...parts),
+    config: { ...config.defaults(), enabled, allowPython: false },
+    server: { get: route, post: route }, root: { config: rootConfig, read: () => rootConfig },
+    host: { autotelicAuditOn: enabled }, setInterval() {}, tool() {}, get() {},
+    logger: { debug() {}, info() {}, warn() {} },
+  }
+}
+
 test('模块壳：默认全关、状态路由返回审计链校验，enabled=false 不做任何 IO（场景 1）', async (t) => {
   const root = tmpDir(t, 'module')
   const routes = {}
-  const settingsStore = { ...module.defaults }
-  const api = {
-    dataDir: (...parts) => join(root, 'modules-data', 'autotelic', ...parts),
-    settings: () => settingsStore,
-    route: (path, fn) => { routes[path] = fn },
-    every: () => {},
-    tool: () => {}, // 心跳注册（P1）；测试里不需要真跑
-    config: () => ({ ownerQQ: '' }),
-    log: { debug: () => {}, info: () => {}, warn: () => {} },
-    core: {}, // host 没接线 → audit.wired = false
-  }
-  const exported = module.setup(api)
+  const ctx = contextFor(root, routes)
+  const exported = apply(ctx, ctx.config)
   assert.equal(typeof exported.auditDir, 'function')
   assert.equal(typeof exported.schedule.tick, 'function', 'v5：模块导出排程器（双轨触发）')
   assert.equal(typeof exported.runRound, 'function', 'v5：模块导出一轮回味（决策环入口）')
-  assert.equal(api.dataDir('audit').includes(join('modules-data', 'autotelic', 'audit')), true, '审计目录在 modules-data/autotelic/audit，不多一层')
+  assert.equal(ctx.dataDir('audit').includes(join('modules-data', 'autotelic', 'audit')), true, '审计目录在 modules-data/autotelic/audit，不多一层')
   const status = await routes['/autotelic/status']()
   assert.equal(status.ok, true)
   assert.equal(status.enabled, false)
@@ -292,18 +294,8 @@ test('模块壳：默认全关、状态路由返回审计链校验，enabled=fal
 test('模块壳：host 接线后状态路由显示「审计已开启」与当日条数', async (t) => {
   const root = tmpDir(t, 'module-wired')
   const routes = {}
-  const settingsStore = { ...module.defaults, enabled: true }
-  const api = {
-    dataDir: (...parts) => join(root, 'modules-data', 'autotelic', ...parts),
-    settings: () => settingsStore,
-    route: (path, fn) => { routes[path] = fn },
-    every: () => {},
-    tool: () => {},
-    config: () => ({ ownerQQ: '' }),
-    log: { debug: () => {} },
-    core: { autotelicAuditOn: true },
-  }
-  module.setup(api)
+  const ctx = contextFor(root, routes, true)
+  apply(ctx, ctx.config)
   // host 侧的审计器往同一目录写了一条
   const auditDir = join(root, 'modules-data', 'autotelic', 'audit')
   mkdirSync(auditDir, { recursive: true })
@@ -314,21 +306,21 @@ test('模块壳：host 接线后状态路由显示「审计已开启」与当日
 })
 
 test('声明式配置：settings 覆盖所有用户可见键，内部键不进面板', () => {
-  const keys = module.settings.map((s) => s.key)
+  const keys = config.toSettings().filter(field => !field.hidden).map((s) => s.key)
   // 内部状态键：不进 settings 数组，面板不展示表单，只在状态里只读展示
   // （takenOver = 接管原值备份；presetIdOverride = hub 的 presetId 覆盖总闸，hub.js 直读）
-  const INTERNAL = ['takenOver', 'presetIdOverride']
-  const visible = Object.keys(module.defaults).filter((k) => !INTERNAL.includes(k)).sort()
+  const INTERNAL = ['takenOver', 'takeoverExtra', 'presetIdOverride']
+  const visible = Object.keys(config.defaults()).filter((k) => !INTERNAL.includes(k)).sort()
   assert.deepEqual(keys.sort(), visible, 'settings 数组与 defaults 对齐（内部键除外；面板按数组生成）')
   for (const k of INTERNAL) assert.equal(keys.includes(k), false, `内部键 ${k} 不该出现在面板表单里`)
-  assert.equal(module.defaults.enabled, false, '总开关默认关')
-  assert.equal(module.defaults.presetIdOverride, false, 'presetId 覆盖开关默认关（§9）')
-  assert.equal(module.defaults.takeover, false, '接管默认关（主人手动点才生效，TAKEOVER §3）')
-  assert.equal(module.defaults.constraintRules, '', '强制约束规则默认空（主人没写约束=她只有代码层硬禁区）')
-  assert.equal(module.defaults.autoConfirmOwner, false, 'touch-owner 默认全要确认（§3.5）')
+  assert.equal(config.defaults().enabled, false, '总开关默认关')
+  assert.equal(config.defaults().presetIdOverride, false, 'presetId 覆盖开关默认关（§9）')
+  assert.equal(config.defaults().takeover, false, '接管默认关（主人手动点才生效，TAKEOVER §3）')
+  assert.equal(config.defaults().constraintRules, '', '强制约束规则默认空（主人没写约束=她只有代码层硬禁区）')
+  assert.equal(config.defaults().autoConfirmOwner, false, 'touch-owner 默认全要确认（§3.5）')
   // v3 退役键不许回魂（D1：打分器整层删除）
   for (const retired of ['minCuriosity', 'maxCandidates', 'allowFreeTasks', 'evalModel', 'allowAct']) {
     assert.equal(keys.includes(retired), false, `${retired} 已随 v3 决策管线退役`)
-    assert.equal(retired in module.defaults, false, `${retired} 不再有默认值`)
+    assert.equal(retired in config.defaults(), false, `${retired} 不再有默认值`)
   }
 })

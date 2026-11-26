@@ -30,6 +30,8 @@ export function apply(ctx: Ctx, config: { reply: string }) {
 文件夹名就是插件 id（小写字母开头，小写字母 / 数字 / `-`，2~40 字）。以 `_` 或 `.` 开头的不加载。
 `Schema` 与 `h` 由宿主注入到全局，不用 import。
 
+Schema 的 `title('字段名')` 与 `description('填写说明')` 分别用于表单标签与提示。多行文本可用 `Schema.string().role('textarea')`。
+
 ## 可选导出
 
 | 导出 | 说明 |

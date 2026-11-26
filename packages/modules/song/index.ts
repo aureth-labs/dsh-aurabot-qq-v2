@@ -69,7 +69,7 @@ export function apply(ctx, config) {
   }) : []))
 
   ctx.server.get('/song/status', async () => ({ ok: true, ...song.status() }))
-  ctx.server.get('/song/install', async () => song.install())
+  ctx.server.post('/song/install', async () => song.install())
   ctx.server.get('/song/root/check', async (req) => ({ ok: true, ...checkRoot(http.query(req).path || '') }))
   ctx.server.get('/song/drives', async () => ({ ok: true, list: listDrives() }))
   ctx.server.get('/song/search', async (req) => {
@@ -77,7 +77,7 @@ export function apply(ctx, config) {
   })
   ctx.server.get('/song/account', async () => song.account())
   // 导入音色：面板把文件原样传上来（.zip / .pth / .index），文件名放在 ?name= 里
-  ctx.server.get('/song/import', async (req) => {
+  ctx.server.post('/song/import', async (req) => {
     const name = http.query(req).name || ''
     try {
       const buf = await http.raw(req, 1024 * 1024 * 1024)
@@ -89,9 +89,9 @@ export function apply(ctx, config) {
       return { ok: false, message: '导入失败：' + error.message }
     }
   })
-  ctx.server.get('/song/voice/delete', async (req) => song.deleteVoice(String((await http.body(req)).id || '')))
+  ctx.server.post('/song/voice/delete', async (req) => song.deleteVoice(String((await http.body(req)).id || '')))
   // 面板里试唱：发到主人私聊
-  ctx.server.get('/song/request', async (req) => {
+  ctx.server.post('/song/request', async (req) => {
     const b = await http.body(req)
     return song.request({ song: b.song, songId: b.songId, pitch: b.pitch, voice: b.voice, startSec: b.startSec, durationSec: b.durationSec, chatId: b.chatId || `private:${ctx.root.config.ownerQQ}` })
   })

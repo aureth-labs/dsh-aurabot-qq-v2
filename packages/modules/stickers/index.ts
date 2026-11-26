@@ -223,30 +223,30 @@ export function apply(ctx, config) {
     const ext = it.file.split('.').pop()
     http.send(res, 200, readFileSync(stickerPath(it)), ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg')
   })
-  ctx.server.get('/sticker/rename', async (req) => {
+  ctx.server.post('/sticker/rename', async (req) => {
     const b = await http.body(req)
     return store.rename(b.md5, b.name, Array.isArray(b.tags) ? b.tags : undefined)
   })
-  ctx.server.get('/sticker/delete', async (req) => {
+  ctx.server.post('/sticker/delete', async (req) => {
     const b = await http.body(req)
     return store.remove(b.md5, { fromQQ: b.fromQQ !== false })
   })
   // 多选批量删除：面板上一次删几十张，不用一张张点、一张张确认
-  ctx.server.get('/sticker/delete-batch', async (req) => {
+  ctx.server.post('/sticker/delete-batch', async (req) => {
     const b = await http.body(req)
     const list = Array.isArray(b.md5s) ? b.md5s : b.md5 ? [b.md5] : []
     return store.removeMany(list, { fromQQ: b.fromQQ !== false })
   })
   // 批量补名字 / 标签：POST 立刻返回，后台一张张看图起名，进度用下面的 status 查
-  ctx.server.get('/sticker/caption-all', async (req) => {
+  ctx.server.post('/sticker/caption-all', async (req) => {
     const b = await http.body(req)
     return store.captionLibrary({ all: b.all === true, limit: Number(b.limit) || 0 })
   })
   ctx.server.get('/sticker/caption-status', async () => ({ ok: true, ...store.captionStatus() }))
-  ctx.server.get('/sticker/caption-stop', async () => ({ ok: true, ...store.captionCancel() }))
-  ctx.server.get('/sticker/import-qq', async () => store.importFromQQ())
+  ctx.server.post('/sticker/caption-stop', async () => ({ ok: true, ...store.captionCancel() }))
+  ctx.server.post('/sticker/import-qq', async () => store.importFromQQ())
   ctx.rule(() => '- 主人让你存某个表情（「存一下」「导入这个表情」）时用 qq_save_sticker；让你把 QQ 收藏里的表情导进来时用 qq_import_qq_stickers。别人让你存，不用理。')
-  ctx.server.get('/sticker/upload', async (req) => {
+  ctx.server.post('/sticker/upload', async (req) => {
     const b = await http.body(req)
     const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]+,/, ''), 'base64')
     if (!buf.length) return { ok: false, message: '图片是空的' }

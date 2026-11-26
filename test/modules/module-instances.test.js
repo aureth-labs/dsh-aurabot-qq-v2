@@ -52,7 +52,7 @@ function multiModuleSource(key, { reusable = true } = {}) {
     export const name = 'multi'
     export const reusable = ${reusable}
     export const kind = 'adapter'
-    export const settings = [{ key: 'tag', label: 'Tag' }]
+    export const config = Schema.object({ tag: Schema.string().title('Tag') })
     export function apply(ctx, config) {
       state.runs.push({ id: ctx.id, tag: ctx.config.tag, dir: ctx.dataDir() })
       ctx.server.get('/who', () => ({ tag: ctx.config.tag }))

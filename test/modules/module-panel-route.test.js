@@ -11,13 +11,12 @@ test('模块声明 panel 路由复用完整管理闸，普通客户端路由保�
   const old = { data: process.env.AURABOT_DATA_DIR, workspace: process.env.AURABOT_WORKSPACE }
   process.env.AURABOT_DATA_DIR = dir; process.env.AURABOT_WORKSPACE = join(dir, 'workspace')
   const moduleDir = join(dir, 'modules', 'route-probe'); mkdirSync(moduleDir, { recursive: true })
-  writeFileSync(join(moduleDir, 'index.mjs'), `export default {
-    id: 'route-probe', api: 1, setup(api) {
-      api.route('/manage', () => ({ ok: true, managed: true }), { access: 'panel' })
-      api.route('/client', () => ({ ok: true, client: true }))
-      return { }
-    }
-  }`)
+  writeFileSync(join(moduleDir, 'index.mjs'), `export const name = 'route-probe'
+    export function apply(ctx) {
+      ctx.server.get('/manage', () => ({ ok: true, managed: true }))
+      ctx.server.get('/client', () => ({ ok: true, client: true }), { access: null })
+      ctx.server.post('/client', () => ({ ok: true, edited: true }))
+    }`)
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: true, dryRun: true, setupDone: true, ownerQQ: '10001', botQQ: '20002', voice: { enabled: false }, onebot: {} }))
   const fake = createFakeDsh({ brain: async () => '' })
   t.after(async () => {
@@ -34,6 +33,10 @@ test('模块声明 panel 路由复用完整管理闸，普通客户端路由保�
   assert.equal((await fake.call(path, undefined, { host: 'evil.example' }, '127.0.0.1')).status, 403)
   assert.equal((await fake.call(path, {}, { origin: 'https://evil.example' }, '127.0.0.1')).status, 403)
   assert.equal((await fake.call('/ext/route-probe/client', undefined, {}, '203.0.113.7')).json().client, true)
+  const publicPath = '/ext/route-probe/client'
+  assert.equal((await fake.call(publicPath, {}, {}, '203.0.113.7')).status, 403)
+  assert.equal((await fake.call(publicPath, {}, {}, '127.0.0.1')).json().edited, true)
+  assert.equal((await fake.call(path, {}, {}, '127.0.0.1')).status, 405)
   const setSecurity = (patch) => app.setConfig({ ...app.getConfig(), security: { ...app.getConfig().security, ...patch } })
   setSecurity({ trustedProxy: '127.0.0.1' })
   assert.equal((await fake.call(path, undefined, { 'x-forwarded-for': '203.0.113.7' }, '127.0.0.1')).status, 403)

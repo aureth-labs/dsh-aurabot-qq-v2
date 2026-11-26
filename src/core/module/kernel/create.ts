@@ -1,3 +1,4 @@
+import { ModuleRoutes } from './routes.ts'
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, watch } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createPluginContext } from '../context/plugin-context.ts'
@@ -29,7 +30,7 @@ export * from '../loader.ts'
 import { createImporter } from '../importer.ts'
 import { createPlugin } from '../scaffold.ts'
 export * from '../governance.ts'
-import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, scanUser, userDir, ID_RE, idDir } from '../loader.ts'
+import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, stampOfTarget, SNAP, scanUser, userDir, ID_RE, idDir } from '../loader.ts'
 import type { ModuleDef, ModuleRecord, ModuleError } from '../loader.ts'
 
 export * from './util.ts'
@@ -53,7 +54,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const definitions = new Map<string, ModuleDef>()
   const live = new Map<string, ModuleRecord>() // id → 运行中的模块（见 start）
   const errors = new Map<string, ModuleError>() // id → { message, at }  启动失败 / 加载失败
-  const routes = new Map() // 完整路径 → { id, handler }
+  const routes = new ModuleRoutes()
   const pages = new Map() // 完整路径 → { id, path, name, icon, order }
   const services = new ServiceRegistry()
   for (const [name, service] of Object.entries(initialServices)) services.provide(name, service, '@core')
@@ -177,8 +178,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function prepareDef(def, source) {
     if (isSchema(def.config)) {
       def = { ...def, settings: def.config.toSettings(), defaults: def.config.defaults() }
-    } else if (def.config) {
-      def = { ...def, settings: def.settings?.length ? def.settings : settingsFromMeta(def.config), defaults: { ...schemaDefaults(def.config), ...def.defaults } }
     }
     if (source !== 'builtin' || def.settings?.some((f) => f?.key === 'registerCommands')) return def
     return {
@@ -556,12 +555,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   /** 内置模块里没在跑的（关掉的、被替换的）。 */
   const builtinOff = () => new Set([...builtinDefs.keys()].filter((id) => live.get(id)?.source !== 'builtin'))
 
-  async function handle(path, req, res) {
-    const r = routes.get(path)
-    // 路由的 id 是注册表键（主实例 = 模块 id，额外实例 = id@名字）
-    if (!r || !live.has(r.id)) return { ok: false, message: '这个功能所在的模块没开（面板「已安装」里看看）', moduleOff: true }
-    return r.handler(req, res)
-  }
 
   /**
    * 模块声明的能力（package.json.aurabot.capabilities）：
@@ -693,9 +686,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     summarizeModules, navigationRevision: () => navigationRevisionCounter,
     emit, emitAsync, claim, filter, filterSync, buildTools,
     // 插件核心自己听事件（不属于任何模块，不会被撤掉）
-    listen: (event, fn) => events.subscribe('@core', event, fn), contextFor, rules, commands, dshTools, builtinOff, handle,
+    listen: (event, fn) => events.subscribe('@core', event, fn), contextFor, rules, commands, dshTools, builtinOff,
+    handle: (path, req, res) => routes.handle(path, req, res),
     hasRoute: (path) => routes.has(path),
-    routeAccess: (path) => routes.get(path)?.access || null,
+    routeAccess: (path, method?: string) => routes.access(path, method),
     dir: userDir,
   }
 }

@@ -8,7 +8,7 @@ export interface HttpOptions {
   getConfig: () => any
   log: any
   prefix: string
-  getMods: () => { routeAccess: (path: string) => string; handle: (path: string, req: any, res: any) => unknown } | null
+  getMods: () => { routeAccess: (path: string, method?: string) => string | null; handle: (path: string, req: any, res: any) => unknown } | null
 }
 
 export type RouteOptions = Partial<Record<"skipHostCheck", any>>
@@ -54,7 +54,7 @@ export function createHttp ({ ctx, getConfig, log, prefix, getMods } : HttpOptio
   const answer = async (req, res, fn) => {
     try {
       const r = await fn()
-      if (r !== undefined) send(res, 200, r, 'application/json; charset=utf-8', req)
+      if (r !== undefined) send(res, res.statusCode || 200, r, 'application/json; charset=utf-8', req)
     } catch (error) {
       send(res, 200, { ok: false, message: redact(String(error && error.message ? error.message : error)) }, 'application/json; charset=utf-8', req)
     }
@@ -224,7 +224,7 @@ export function createHttp ({ ctx, getConfig, log, prefix, getMods } : HttpOptio
       // 模块路由有自己的 Host 闸与鉴权，但同样缺跨站防护；桌宠 native 客户端不带 Origin，
       // 不受影响；桌面面板的 fetch 是同源，也不受影响。
       if (csrfBlocked(req, res)) return undefined
-      if (getMods().routeAccess(path) === 'panel' && (panelBlocked(req, res, true) || adminHostBlocked(req, res))) return undefined
+      if (getMods().routeAccess(path, req.method) === 'panel' && (panelBlocked(req, res, true) || adminHostBlocked(req, res))) return undefined
       return getMods().handle(path, req, res)
     }),
   }), 'aurabot: 模块接口')

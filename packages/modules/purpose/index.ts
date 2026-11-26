@@ -1,13 +1,3 @@
-// 内置模块：目的引擎（主动搭话的新引擎，P1 起【默认开】）。
-// 像人一样定期主动找主人搭话：素材（记忆 + 聊天流水）→ 目标假设（带归属/置信度/风险）
-// → 选一个目的 → 生成一句话 → 投递私聊。
-//
-// 与「主动搭话」（speakup）的关系（P1 迁移期）：speakup 模块仍在跑，但目的引擎开着时
-// companion 会自动让位（既有软互斥），主动搭话实际由目的引擎承担；醒着窗口/白名单等
-// 共享键仍冻结在 speakUp.*（Q3/Q4 拍板），由目的引擎维护。迁移说明见 docs/PURPOSE_MODULE_API.md。
-//
-// 薄壳只做注册；引擎在 src/purpose/engine.js（纯函数），接线在 src/purpose/module.js。
-
 import { createPurpose } from './impl/module/index.ts'
 import { defineTool, str } from '../../../src/tools/index.ts'
 
@@ -19,20 +9,7 @@ export const description = '像人一样主动找主人搭话：攒素材 → �
 
 export const tab = 'speakup'
 
-export const defaults = {
-  enabled: true,
-  minMaterials: 2, // 素材少于这个数（也没有惦记的事/人格卡）就不硬找话
-  initialDelayMinutes: 15, // 启动后的第一枪延迟
-  maxCandidates: 6,
-  promptMaxChars: 16000,
-}
-
-export const settings = [
-  { key: 'enabled', label: '启用目的引擎', type: 'boolean', hint: '默认开（主动搭话已并入目的引擎）。关掉后她不会再主动找你；开着时旧的「主动搭话」会自动让位，不会两套同时打扰' },
-  { key: 'minMaterials', label: '最少素材数', type: 'number', min: 0, max: 20, hint: '低于这个数且没有惦记的事/人格卡时，这轮不硬找话' },
-  { key: 'initialDelayMinutes', label: '启动延迟（分钟）', type: 'number', min: 1, max: 720, hint: '插件启动后第一次主动搭话前先等多久' },
-  { key: 'maxCandidates', label: '候选方向数', type: 'number', min: 3, max: 10 },
-]
+export { config } from './config.ts'
 
 export function apply(ctx, config) {
   // ---------- P1 播种（方案 §3.1，只发生一次） ----------
@@ -96,11 +73,11 @@ export function apply(ctx, config) {
     if (!list.length) return ''
     return '【她的小闹钟】\n' + list.map((r) => `- ${r.id}｜${r.atText}｜${r.note}`).join('\n') + '\n要关闭某条用 qq_close_reminder。'
   })
-  ctx.server.get('/purpose/reminder/close', async (req) => {
-    const body = await ctx.host.http.body(req).catch(() => ({}))
+  ctx.server.post('/purpose/reminder/close', async (req) => {
+    const body = await ctx.http.body(req).catch(() => ({}))
     return purpose.closeReminder(body?.id)
   })
-  ctx.server.get('/purpose/fire', async () => {
+  ctx.server.post('/purpose/fire', async () => {
     if (!ctx.config.enabled) return { ok: false, message: '目的引擎没开（主动搭话页可以打开）' }
     const r = await purpose.fire('手动')
     if (!r) return { ok: false, message: '没有结果' }

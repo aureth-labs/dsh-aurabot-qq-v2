@@ -467,6 +467,7 @@ export interface PluginModule<C = any> {
 
 interface SchemaField<T> {
   default(value: T): this
+  title(value: string): this
   description(value: string): this
   min(value: number): this
   max(value: number): this

@@ -96,15 +96,15 @@ export function apply(ctx, config) {
 
   ctx.server.get('/voice/fish-balances', () => fishBalances(ctx.root.config.voice, () => ctx.harness?.get?.('credentials')))
 
-  ctx.server.get('/voice/test', async (req) => {
+  ctx.server.post('/voice/test', async (req) => {
     const b = await http.body(req)
     const voice = voiceFromBody(b)
     const { file, engine } = await speak(String(b.text || '你好呀，我是大肥鱼'), voice, { useLocal: false })
     const buf = readFileSync(file)
     return { ok: true, engine, mime: file.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg', data: buf.toString('base64') }
   })
-  ctx.server.get('/voice/install', async () => installEdge(ctx.logger))
-  ctx.server.get('/voice/asr-provider-test', async (req) => {
+  ctx.server.post('/voice/install', async () => installEdge(ctx.logger))
+  ctx.server.post('/voice/asr-provider-test', async (req) => {
     const b = await http.body(req)
     const voice = voiceFromBody(b)
     if (!asrConfigured(voice)) return { ok: false, message: '没配置云端识别（面板「语音 → 听语音」里选一个）' }
@@ -125,7 +125,7 @@ export function apply(ctx, config) {
     }
   })
 
-  ctx.server.get('/voice/volcano-preview', async (req) => {
+  ctx.server.post('/voice/volcano-preview', async (req) => {
     const b = await http.body(req)
     const saved = ctx.root.config.voice.volcano || {}
     const c = {
@@ -158,13 +158,13 @@ export function apply(ctx, config) {
     const p = s.providers.find((x) => x.id === s.selection.providerId) || s.providers[0]
     return { ok: true, enabled: true, provider: p?.id, phase: p?.preparation?.phase || 'ready', detail: p?.preparation }
   })
-  ctx.server.get('/voice/asr-prepare', async () => {
+  ctx.server.post('/voice/asr-prepare', async () => {
     const s0 = stt()
     if (!s0 || typeof s0.snapshot !== 'function') return { ok: false, message: 'DSH 里没有开启「语音输入」插件' }
     s0.prepare(s0.snapshot().selection.providerId)
     return { ok: true, message: '开始下载识别模型（约 200MB，下好后常驻本机）' }
   })
-  ctx.server.get('/voice/asr-last', async (req) => {
+  ctx.server.post('/voice/asr-last', async (req) => {
     const b = await http.body(req)
     const uid = Number(b.userId || ctx.root.config.ownerQQ)
     const h = await onebot.call('get_friend_msg_history', { user_id: uid, count: 30 })
@@ -175,7 +175,7 @@ export function apply(ctx, config) {
     const text = await hub.localTranscribe(last.seg)
     return { ok: Boolean(text), heard: text, at: new Date(last.time * 1000).toLocaleString(), ms: Date.now() - t }
   })
-  ctx.server.get('/voice/asr-test', async (req) => {
+  ctx.server.post('/voice/asr-test', async (req) => {
     const b = await http.body(req)
     const s0 = stt()
     if (!s0 || typeof s0.resolve !== 'function') return { ok: false, message: 'DSH 里没有开启语音识别（设置 → 插件 → 语音输入）' }
@@ -213,7 +213,7 @@ ctx.server.get('/voice/breeze-voices', async () => {
   if (b.mode === 'local') return { ok: false, message: '本地自建模式不用选云端音色' }
   return breezeVoices(b)
 })
-ctx.server.get('/voice/breeze-claim', async () => {
+ctx.server.post('/voice/breeze-claim', async () => {
   const b = ctx.root.config.voice?.breeze || {}
   const r = await breezeClaim(b, { log: ctx.logger })
   const bal = await breezeBalance(b)

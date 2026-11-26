@@ -1,21 +1,3 @@
-// 内置模块：自驱引擎 v5（彻底推翻 v3 决策管线）。
-// 【实验性】v5 是重写后的新架构，行为与配置面可能随版本调整；默认关闭，开了才参与她过日子。
-//
-// v5 生活叙事五环：感知 → 想要 → 行动 → 沉淀 → 分享。本模块是接线层（集成属主）：
-//   · 感知：ctx.setInterval(60s) → 聊天流水采集 + 情绪观察桥 → observations.jsonl（只积累不决策）
-//   · 想要：schedule 双轨触发（定时回味 + 心念点火）→ plan.decideRound 三段决策环
-//     （意图生成 → 自我把关 → 集成层 constraint.check 前置否决）→ buildTicket
-//   · 行动：exec.run（三级分级 + 硬禁区 + 预算 + touch-owner 确认闸）
-//   · 沉淀：exec 终态 → plan.reviewRound → skills.ingestReflection；score 只锚真实复用终态
-//   · 反馈：feedback.json（抑制/偏好/冷度/熔断）+ constraintRules 强制约束（主人缰绳）
-//
-// 旧 v3 的 engine.js / runtime.js（好奇判分→预审→立项）已删除：打分器整层退场是 D1 裁决。
-// 保留并继续使用的 legacy 件：audit.js（哈希链审计）、book.js（账本）、takeover.js（接管）、
-// python.js、reconcile.js、reflect.js（日志刊物）；skills.js 的旧接口（createSkills /
-// writeUserModule）供她的 Python 技能与用户模块工具继续用。
-//
-// 铁律（HANDOVER）：她可以骗主人但不能骗账本；enabled=false 时零 IO、零调用、行为同旧版。
-
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { readFile as readFileP, writeFile as writeFileP } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -31,7 +13,7 @@ import { createSkillStore, createSkills, writeUserModule } from './impl/feedback
 import { createPrefixCache } from './impl/feedback/prefix.ts'
 import { createBook } from './impl/plan/book.ts'
 import { probePython, loadEnvCache, saveEnvCache, envUsable, runPython } from './impl/exec/python.ts'
-import { probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView } from './impl/exec/takeover.ts'
+import { probeTakeovers, changeTakeover, findFlipped, repressTakeover, takeoverView } from './impl/exec/takeover.ts'
 import { reconcileDay, problemsText } from './impl/feedback/reconcile.ts'
 import { createJournal } from './impl/observe/reflect.ts'
 import { inQuietHours } from '../purpose/impl/engine/index.ts'
@@ -51,75 +33,7 @@ export const description = '实验性。v5：她自己的日子——观察积�
 
 export const tab = 'autotelic'
 
-export const defaults = {
-  // —— 总开关与生活节奏（裁决三：对齐目的引擎风格）——
-  enabled: false, // 总开关：默认关。关着时模块零 IO，验收场景 1
-  awakeFrom: 8, // 醒着窗口 从（点）；安静时段 = 补集
-  awakeTo: 23, // 醒着窗口 到（点）
-  minIntervalMinutes: 90, // 回味间隔下限（分钟）
-  maxIntervalMinutes: 240, // 回味间隔上限（分钟）
-  maxPerDay: 3, // 单日回味上限（0 = 不限，仍受安静时段约束）
-  igniteCooldownMinutes: 45, // 心念点火事件侧冷却（分钟，防事件风暴）
-  // —— 主人的缰绳（裁决二 / D7）——
-  constraintRules: '', // 强制约束规则（多行文本，逐行一条；把关前置否决 + 执行注入，最高优先级）
-  // —— touch-owner 硬闸（§3.5）——
-  autoConfirmOwner: false, // 豁免确认（默认全要确认）
-  confirmWindowMinutes: 720, // 确认等待时长（分钟），超时自动取消
-  // —— 无回应负反馈调参（§3.6）——
-  responseWindowHours: 48, // 投递后观察窗（小时）
-  chillHalfLifeDays: 14, // 冷度半衰（天）
-  chillParkThreshold: 3, // 冷度到多少自动 park 90 天
-  // —— §9.3 token 预算（四组；chat 组留给对话轮前缀段复用）——
-  chatMaxInputTokens: 4096, chatMaxOutputTokens: 1024,
-  intentMaxInputTokens: 8192, intentMaxOutputTokens: 1024,
-  gateMaxInputTokens: 4096, gateMaxOutputTokens: 512,
-  reviewMaxInputTokens: 4096, reviewMaxOutputTokens: 512,
-  // —— 账本预算（C5：上限她调不动）——
-  maxSteps: 8,
-  maxTasksActive: 8,
-  budgetActionsPerHour: 12,
-  // —— 能力（P3/P4 保留）——
-  allowUserModules: true,
-  allowPython: true,
-  pythonBin: '',
-  scriptTimeoutMs: 120000,
-  // —— 接管浏览模块（主人手动点，不自动）——
-  takeover: false,
-  takenOver: {}, // 内部键：接管原值备份（面板只读；重启据此重压）
-  presetIdOverride: false, // 内部键：hub 的 presetId 覆盖总闸（§9，默认关）
-}
-
-export const settings = [
-  { key: 'enabled', label: '启用自驱引擎（实验性）', type: 'switch', hint: '默认关，实验性功能。开着时她按「定时回味 + 心念点火」过日子：安静时刻回味经历长出念头，多数时候空手而归（这是健康态）' },
-  { key: 'awakeFrom', label: '醒着窗口 从（点）', type: 'number', min: 0, max: 24, hint: '回味只排在醒着窗口内；安静时段连点火都只攒不触发' },
-  { key: 'awakeTo', label: '醒着窗口 到（点）', type: 'number', min: 0, max: 24 },
-  { key: 'minIntervalMinutes', label: '回味间隔下限（分钟）', type: 'number', min: 5, max: 2880 },
-  { key: 'maxIntervalMinutes', label: '回味间隔上限（分钟）', type: 'number', min: 5, max: 2880, hint: '间隔在区间内随机，并向主人更常回话的小时轻推' },
-  { key: 'maxPerDay', label: '单日回味上限', type: 'number', min: 0, max: 20, hint: '0 = 不限。一个天天立项的 AI 不是活着，是焦虑' },
-  { key: 'igniteCooldownMinutes', label: '心念点火冷却（分钟）', type: 'number', min: 1, max: 720, hint: '技能沉淀/重要事件点燃回味的冷却，防事件风暴' },
-  { key: 'constraintRules', label: '强制约束规则（主人制定）', type: 'textarea', placeholder: '一行一条，例如：\n不许半夜给主人发消息\n[钱] 不许任何花钱的操作', hint: '她的物理边界：不是偏好，是「能不能」。触犯的念头直接打回、在路上的行动立刻停；改了她会知道' },
-  { key: 'autoConfirmOwner', label: '发言类行动免确认', type: 'switch', hint: '默认关：所有碰主人侧的行动先排队等确认。开了之后按自查与频控兜底' },
-  { key: 'confirmWindowMinutes', label: '确认等待时长（分钟）', type: 'number', min: 5, max: 10080 },
-  { key: 'responseWindowHours', label: '回应观察窗（小时）', type: 'number', min: 1, max: 168, hint: '主动投递后这么多小时内主人没回应 = ignored（最响亮的负反馈）' },
-  { key: 'chillHalfLifeDays', label: '冷度半衰（天）', type: 'number', min: 1, max: 90 },
-  { key: 'chillParkThreshold', label: '自动 park 冷度阈值', type: 'number', min: 1, max: 10, hint: '某个方向连续被冷落到这个冷度，90 天内不再主动触发（可恢复）' },
-  { key: 'intentMaxInputTokens', label: '意图生成输入预算（token）', type: 'number', min: 512, max: 65536 },
-  { key: 'intentMaxOutputTokens', label: '意图生成输出预算（token）', type: 'number', min: 128, max: 8192 },
-  { key: 'gateMaxInputTokens', label: '自我把关输入预算（token）', type: 'number', min: 512, max: 65536 },
-  { key: 'gateMaxOutputTokens', label: '自我把关输出预算（token）', type: 'number', min: 128, max: 8192 },
-  { key: 'reviewMaxInputTokens', label: '复盘输入预算（token）', type: 'number', min: 512, max: 65536 },
-  { key: 'reviewMaxOutputTokens', label: '复盘输出预算（token）', type: 'number', min: 128, max: 8192 },
-  { key: 'chatMaxInputTokens', label: '对话轮输入预算（token）', type: 'number', min: 512, max: 65536, hint: '§9.3 对话轮前缀段与情绪小段的预算（预留给对话侧拼装）' },
-  { key: 'chatMaxOutputTokens', label: '对话轮输出预算（token）', type: 'number', min: 128, max: 8192 },
-  { key: 'maxSteps', label: '单行动单步数上限', type: 'number', min: 1, max: 32 },
-  { key: 'maxTasksActive', label: '同时进行的行动单数', type: 'number', min: 1, max: 16 },
-  { key: 'budgetActionsPerHour', label: '动作数 / 小时', type: 'number', min: 1, max: 120 },
-  { key: 'allowUserModules', label: '允许写用户模块', type: 'switch', hint: '写不到框架（src/ 锁死），只能写自己数据目录的 modules/<id>/。⚠ 但用户模块是在插件进程内执行的 JS：开了等于允许她在这台机器上跑自己写的代码，沙箱不隔离运行时能力。拿不准就先关掉' },
-  { key: 'allowPython', label: '允许跑 Python 脚本', type: 'switch', hint: '子进程执行、超时击杀、不继承插件的敏感环境变量（白名单 env）' },
-  { key: 'pythonBin', label: 'Python 解释器路径', type: 'string', hint: '留空 = 自动探测（会滤掉商店占位别名）；探测不到时填全路径' },
-  { key: 'scriptTimeoutMs', label: '脚本超时（毫秒）', type: 'number', min: 1000, max: 600000 },
-  { key: 'takeover', label: '接管浏览模块', type: 'switch', hint: '手动点开才生效：压制抖音/B站的自主循环（不关模块总开关，她的手还在）。关掉自动还原原配置' },
-]
+export { config } from './config.ts'
 
 export function apply(ctx, config) {
   const auditDir = () => ctx.dataDir('audit')
@@ -554,8 +468,10 @@ export function apply(ctx, config) {
     } catch { return [] }
   }
   const takeoverProbe = () => probeTakeovers({ getConfig: ctx.root.read, liveIds: liveModuleIds(), extra: settings().takeoverExtra || [] })
-  const takeoverBackup = () => (settings().takenOver && typeof settings().takenOver === 'object') ? settings().takenOver : {}
-  const saveBackup = (backup) => ctx.updateConfig({ takenOver: backup })
+  const takeoverBackup = () => {
+    const current = settings()
+    return current.takeover ? current.takenOver : {}
+  }
   function repressIfNeeded() {
     const backup = takeoverBackup()
     if (!Object.keys(backup).length) return []
@@ -693,15 +609,15 @@ export function apply(ctx, config) {
     try { list = readdirSync(own('proposals')).filter((f) => f.endsWith('.md')).sort().reverse().slice(0, 20) } catch {}
     return { ok: true, list }
   })
-  ctx.server.get('/autotelic/env', async (req) => {
+  async function environment(req) {
     let probeOnly = false
     if (req && req.method === 'POST') {
-      const body = await ctx.host.http.body(req).catch(() => ({}))
+      const body = await ctx.http.body(req).catch(() => ({}))
       if (body && typeof body.pythonBin === 'string' && body.pythonBin.trim()) {
         const bin = body.pythonBin.trim()
         const hit = await probeFn({ configured: bin })
         if (!hit || hit.bin !== bin) return { ok: false, message: `这个路径跑不出 Python 3（${bin}）。检查一下是不是全路径、是不是真装了` }
-        ctx.root.update({ ext: { autotelic: { pythonBin: bin } } })
+        ctx.updateConfig({ pythonBin: bin })
         envCache = null
       }
       probeOnly = Boolean(body?.probe)
@@ -715,21 +631,18 @@ export function apply(ctx, config) {
       source: env?.source || '',
       hint: env?.pythonBin ? `${env.pythonBin}（${env.version}，${env.source === 'configured' ? '手填' : '自动探测'}，已持久化 env.json）` : '本机没有可用 Python（可以在这里手填解释器路径，会先验真再存）',
     }
-  })
-  // 手动入口（面板「现在想一轮」/「现在想想」）：schedule.fire——跳排程闸，不跳总开关与安静时段。
-  ctx.server.get('/autotelic/plan', async () => {
-    if (!settings().enabled) return { ok: false, message: '自驱引擎没开（本页可以打开）' }
-    const r = await schedule.fire('手动回味')
-    return { ok: r.outcome === 'run', message: roundMessage(r), ...r }
-  })
-  // 旧面板按钮的别名：同一入口。
-  ctx.server.get('/autotelic/run', async () => {
-    if (!settings().enabled) return { ok: false, message: '自驱引擎没开（本页可以打开）' }
-    const r = await schedule.fire('手动回味')
-    return { ok: r.outcome === 'run', message: roundMessage(r), ...r }
-  })
+  }
+  ctx.server.get('/autotelic/env', environment)
+  ctx.server.post('/autotelic/env', environment)
+  async function run() {
+    if (!settings().enabled) return { ok: false, message: '自驱引擎未启用' }
+    const result = await schedule.fire('手动回味')
+    return { ok: result.outcome === 'run', message: roundMessage(result), ...result }
+  }
+  ctx.server.post('/autotelic/plan', run)
+  ctx.server.post('/autotelic/run', run)
   // v5 没有单步推进（行动单整单跑），旧按钮给一句实话。
-  ctx.server.get('/autotelic/step', async () => ({ ok: false, message: 'v5 没有单步推进：行动单整单自动跑，用「现在想一轮」代替' }))
+  ctx.server.post('/autotelic/step', async () => ({ ok: false, message: 'v5 没有单步推进：行动单整单自动跑，用「现在想一轮」代替' }))
   // 零副作用预览（旧面板按钮兼容）：她最近的观察与想事过程，不写任何状态。
   ctx.server.get('/autotelic/preview', async () => {
     const c = ctxOf()
@@ -747,9 +660,9 @@ export function apply(ctx, config) {
     }
   })
   // touch-owner 确认闸：放行 / 待确认清单。
-  ctx.server.get('/autotelic/confirm', async (req) => {
+  ctx.server.post('/autotelic/confirm', async (req) => {
     if (!settings().enabled) return { ok: false, message: '自驱引擎没开' }
-    const body = await ctx.host.http.body(req).catch(() => ({}))
+    const body = await ctx.http.body(req).catch(() => ({}))
     const c = ctxOf()
     if (body?.list) return { ok: true, pending: exec.pendingList() }
     const ticketId = String(body?.ticketId || '')
@@ -768,10 +681,10 @@ export function apply(ctx, config) {
     return { ok: r.status === 'done' || r.status === 'failed', message: `行动单 ${ticketId}：${r.status}${r.why ? '（' + r.why + '）' : ''}`, ...r }
   })
   // 技能库面板口（GET 清单 + POST 回滚/归档——裁决一的安全兜底要能「按」不能只「看」，集成审查中危 5）。
-  ctx.server.get('/autotelic/skills', async (req) => {
-    const c = ctx?.skillsStore ? ctx : null
+  async function skills(req) {
+    const c = settings().enabled ? ctxOf() : null
     if (req && req.method === 'POST' && c) {
-      const body = await ctx.host.http.body(req).catch(() => ({}))
+      const body = await ctx.http.body(req).catch(() => ({}))
       if (body?.action === 'rollback' && body.stamp) {
         const r = c.skillsStore.rollback(String(body.stamp))
         note({ kind: 'autotelic/skill-rollback', args: { stamp: body.stamp, restored: r.restored || 0 }, outcome: r.ok ? '主人一键回滚技能库快照' : (r.why || '回滚失败') })
@@ -786,18 +699,22 @@ export function apply(ctx, config) {
       list: oldSkills.list(),
       v5: c ? { index: c.skillsStore.index(), stale: c.skillsStore.suggestStale(), snapshots: c.skillsStore.listSnapshots().slice(0, 20) } : null,
     }
-  })
+  }
+  ctx.server.get('/autotelic/skills', skills)
+  ctx.server.post('/autotelic/skills', skills)
   // 反馈回路面板：快照 / 恢复 / 检视完成。
-  ctx.server.get('/autotelic/feedback', async (req) => {
+  async function feedbackState(req) {
     const c = ctxOf()
     if (req && req.method === 'POST') {
-      const body = await ctx.host.http.body(req).catch(() => ({}))
+      const body = await ctx.http.body(req).catch(() => ({}))
       if (body?.action === 'resume' && body.tag) return { ok: true, ...c.feedback.resume(String(body.tag), ['mention', 'explicit', 'panel'].includes(body.source) ? body.source : 'panel'), snapshot: c.feedback.snapshot() }
       if (body?.action === 'clearReview') { c.feedback.clearReview(); return { ok: true, snapshot: c.feedback.snapshot() } }
       return { ok: false, message: '不认识的操作' }
     }
     return { ok: true, snapshot: c.feedback.snapshot() }
-  })
+  }
+  ctx.server.get('/autotelic/feedback', feedbackState)
+  ctx.server.post('/autotelic/feedback', feedbackState)
   // 决策审计面板：「她最近想事的过程」（decisions.jsonl 尾部 + 链校验）。
   ctx.server.get('/autotelic/decisions', async () => {
     const file = own('decisions.jsonl')
@@ -810,27 +727,26 @@ export function apply(ctx, config) {
     return { ok: true, chain, tail: tail.reverse() }
   })
   // 接管 / 还原（保留）。
-  ctx.server.get('/autotelic/takeover', async (req) => {
-    const body = await ctx.host.http.body?.(req).catch(() => ({})) || {}
+  ctx.server.post('/autotelic/takeover', async (req) => {
+    const body = await ctx.http.body?.(req).catch(() => ({})) || {}
     const want = body.on === undefined ? !settings().takeover : Boolean(body.on)
+    if (want === Boolean(settings().takeover)) return { ok: true, takeover: takeoverView(takeoverBackup()) }
     if (want) {
       const probe = takeoverProbe()
       if (!probe.length) {
         const live = liveModuleIds()
         return { ok: false, message: `没找到可接管的浏览模块${live.length ? `（在跑：${live.join('、')}）` : '（没有模块在跑？）'}。装了抖音/B站之类的模块再点`, takeover: takeoverView(takeoverBackup()) }
       }
-      const backup = applyTakeover({ getConfig: ctx.root.read, setConfig: ctx.root.update, probe })
-      saveBackup(backup)
-      ctx.updateConfig({ takeover: true })
+      ctx.root.update(cfg => changeTakeover(cfg, probe))
+      const backup = takeoverBackup()
       note({ kind: 'autotelic/takeover', args: { action: 'on', targets: Object.keys(backup) }, outcome: '主人手动点开接管' })
       log.info?.(`自驱：接管浏览模块 ${Object.keys(backup).join('、')}`)
       return { ok: true, message: `接管了 ${Object.keys(backup).join('、')}：自主循环已压制。刷什么由她的回味决定`, takeover: takeoverView(backup) }
     }
-    const done = restoreTakeover({ getConfig: ctx.root.read, setConfig: ctx.root.update, backup: takeoverBackup() })
-    saveBackup({})
-    ctx.updateConfig({ takeover: false })
-    note({ kind: 'autotelic/takeover', args: { action: 'off', targets: done.map((d) => d.id) }, outcome: '主人手动关掉接管，原值已还原' })
-    return { ok: true, message: done.length ? `已还原 ${done.map((d) => d.id).join('、')} 的原配置` : '没接管过，不用还原', takeover: takeoverView({}) }
+    const targets = Object.keys(takeoverBackup())
+    ctx.root.update(cfg => changeTakeover(cfg, null))
+    note({ kind: 'autotelic/takeover', args: { action: 'off', targets }, outcome: '主人手动关掉接管，原值已还原' })
+    return { ok: true, message: targets.length ? `已还原 ${targets.join('、')} 的原配置` : '没接管过，不用还原', takeover: takeoverView({}) }
   })
   ctx.server.get('/autotelic/takeover-status', async () => ({
     ok: true,
@@ -840,8 +756,8 @@ export function apply(ctx, config) {
     live: liveModuleIds(),
   }))
   // 调参（v5 收窄：只许动节奏键，其余主人面板改）。
-  ctx.server.get('/autotelic/tune', async (req) => {
-    const body = await ctx.host.http.body(req).catch(() => ({}))
+  ctx.server.post('/autotelic/tune', async (req) => {
+    const body = await ctx.http.body(req).catch(() => ({}))
     const patch = body && typeof body === 'object' ? body.patch || body : {}
     const ALLOWED = ['awakeFrom', 'awakeTo', 'minIntervalMinutes', 'maxIntervalMinutes', 'maxPerDay', 'igniteCooldownMinutes']
     const applied: Record<string, any> = {}
@@ -852,13 +768,13 @@ export function apply(ctx, config) {
       if (!Number.isFinite(n)) { rejected[k] = '要数字'; continue }
       applied[k] = n
     }
-    if (Object.keys(applied).length) ctx.root.update({ ext: { autotelic: applied } })
+    if (Object.keys(applied).length) ctx.updateConfig(applied)
     note({ kind: 'autotelic/tune', args: { patch: applied, rejected: Object.keys(rejected) }, outcome: '调参动作本身进审计（C5）' })
     return { ok: true, message: `调好了：${Object.entries(applied).map(([k, v]) => `${k}=${v}`).join('、')}${Object.keys(rejected).length ? `（拒了 ${Object.keys(rejected).length} 项）` : ''}`, applied, rejected }
   })
   ctx.server.get('/autotelic/journal', async () => ({ ok: true, daily: journal.list('daily'), dreams: journal.list('dreams') }))
   ctx.server.get('/autotelic/day', async (req) => {
-    const q = ctx.host.http.query(req)
+    const q = ctx.http.query(req)
     const date = String(q.date || '').trim()
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, message: '日期格式要 YYYY-MM-DD' }
     const audit = await readAuditDay(auditDir(), date)
@@ -897,7 +813,7 @@ export function apply(ctx, config) {
     const chain = await verifyAuditChain(auditDir())
     const book = getBook()
     const tasks = book.list()
-    const c = ctx
+    const c = cfg.enabled ? ctxOf() : null
     const scfg = scheduleConfig(cfg)
     const quiet = quietOf(scfg)
     let decisions = null

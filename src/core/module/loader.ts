@@ -1,7 +1,7 @@
 // 插件发现、清单及入口契约。
 
 import type { ServiceError } from '../service/registry.ts'
-import type { SettingsField } from '../config/shape/schema.ts'
+import { isSchema, type SettingsField } from '../config/shape/schema.ts'
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -187,6 +187,7 @@ export function checkDef(def, id) {
   // 带 scope 的安装目录是 modules/<owner>/<name>，入口里写 <name> 就行
   if (id && def.id && def.id !== id && def.id !== String(id).split('/').pop()) return `模块 id「${def.id}」要和文件夹名「${id}」一样`
   if (def.inject !== undefined && (!Array.isArray(def.inject) || def.inject.some(name => typeof name !== 'string' || !name.trim()))) return 'inject 应为服务名称数组'
+  if (def.config !== undefined && (!isSchema(def.config) || def.config.kind !== 'object')) return 'config 应使用 Schema.object() 声明'
   const want = Number(def.api ?? API_VERSION)
   if (want > API_VERSION) return `这个模块要扩展接口 v${want}，现在的插件只有 v${API_VERSION}，先更新插件`
   if (want < MIN_API_VERSION) return `这个模块是按扩展接口 v${want} 写的，现在最低支持 v${MIN_API_VERSION}，按更新说明改一下`
@@ -210,8 +211,6 @@ export function namedModuleDef(mod) {
     navGroup: mod.navGroup,
     platforms: mod.platforms,
     config: mod.config ?? mod.Config,
-    defaults: mod.defaults,
-    settings: mod.settings,
     capabilities: mod.capabilities,
     inject: mod.inject,
     api: mod.api,
@@ -219,69 +218,3 @@ export function namedModuleDef(mod) {
   }
   return Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== undefined))
 }
-
-/**
- * 从「别人家的 Schema」里捞默认值。
- *
- * 插件模板带的是自己实现的 Schema（`{ meta: { type, default, dict } }`），不是宿主的 Schema；
- * 不认它的话 `config.enabled` 会是 undefined，插件一上来就是关着的。
- * 这里只做一件保守的事：把 meta.default 一层层拼出来，面板存过的值仍然覆盖它。
- */
-export function schemaDefaults(schema) {
-  if (!schema || typeof schema !== 'object') return undefined
-  const meta = (schema as { meta?: any }).meta
-  if (!meta || typeof meta !== 'object') return undefined
-  if (meta.type === 'object' && meta.dict && typeof meta.dict === 'object') {
-    const out = {}
-    for (const [key, sub] of Object.entries(meta.dict)) out[key] = schemaDefaults(sub)
-    return out
-  }
-  return meta.default
-}
-
-/**
- * 把「别人家的 Schema」（模板仓库 plugin-api.js 里那份 `{ meta: { type, dict, flags } }`）
- * 翻成面板的 settings 字段。
- *
- * 宿主自己的 Schema 有 toSettings()；外部插件带的是精简版，不认它的话
- * 适配器的 endpoint / token 这类字段在面板里一个都不显示。
- */
-function hasSecretMeta(meta): boolean {
-  if (!meta || typeof meta !== 'object') return false
-  return Boolean(meta.flags?.includes('role:secret') || Object.values(meta.dict || {}).some(node => hasSecretMeta(node?.['meta'])) || hasSecretMeta(meta.items?.meta))
-}
-
-export function settingsFromMeta(schema) {
-  const meta = schema && typeof schema === 'object' ? (schema as { meta?: any }).meta : undefined
-  if (!meta || meta.type !== 'object' || !meta.dict || typeof meta.dict !== 'object') return []
-  const fields = []
-  for (const [key, node] of Object.entries(meta.dict)) {
-    const sub = node && typeof node === 'object' ? (node as { meta?: any }).meta : undefined
-    if (!sub) continue
-    const flags = Array.isArray(sub.flags) ? sub.flags.map(String) : []
-    const field: Record<string, unknown> = {
-      key,
-      label: sub.description || key,
-      type: hasSecretMeta(sub) ? 'password'
-        : sub.type === 'boolean' ? 'switch'
-          : sub.type === 'number' ? 'number'
-            : sub.type === 'union' ? 'select'
-              : 'text',
-    }
-    if (sub.description) field.hint = sub.description
-    if (sub.default !== undefined) field.default = sub.default
-    if (sub.min !== undefined) field.min = sub.min
-    if (sub.max !== undefined) field.max = sub.max
-    if (sub.type === 'union' && Array.isArray(sub.options)) {
-      field.options = sub.options.map((item) => (item && typeof item === 'object' && 'value' in item
-        ? { value: String(item.value), label: String(item.label ?? item.value) }
-        : { value: String(item), label: String(item) }))
-    }
-    if (flags.includes('hidden')) field.hidden = true
-    if (flags.includes('experimental')) field.experimental = true
-    if (flags.includes('deprecated')) field.deprecated = true
-    fields.push(field)
-  }
-  return fields
-}
-

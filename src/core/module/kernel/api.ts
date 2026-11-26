@@ -1,4 +1,5 @@
 import { pluginSettings } from './settings.ts'
+import type { ModuleRoutes, RouteOptions } from './routes.ts'
 // 内核给插件包的内部句柄：归属、停止、权限都在这里收口；插件看到的是 v2 的 ctx 视图。
 
 import { mkdirSync } from 'node:fs'
@@ -18,8 +19,6 @@ import { reallySent } from '../../message/receipt.ts'
 import { fetchImage } from '../../net/index.ts'
 import { imageSize, mimeOf } from '../../message/media/inspect.ts'
 
-/** 路由选项。 */
-export type RouteOptions = Partial<Record<'access', any>>
 /** 系统回合选项。 */
 export interface ThinkOptions {
   title?: string
@@ -39,7 +38,7 @@ export interface ApiDeps {
   setConfig: (patch: Record<string, any>) => unknown
   version: string
   live: Map<string, ModuleRecord>
-  routes: Map<string, { id: string; handler: (...args: any[]) => unknown; access?: string | null }>
+  routes: ModuleRoutes
   subscribe: (owner: string, event: string, listener: (...args: unknown[]) => unknown) => () => void
   builtinDefs: Map<string, ModuleDef>
   personaMemoryRuntime?: { forModule(active: () => boolean, track: (off: () => void) => unknown): unknown } | null
@@ -178,16 +177,13 @@ export function createApi(deps: ApiDeps) {
         t.unref?.()
         return track(() => clearTimeout(t))
       },
-      route: (path, handler, options : RouteOptions = {}) => {
+      route: (path, handler, options: RouteOptions) => {
         if (!active()) return () => {}
         if (options.access != null && options.access !== 'panel') throw new Error('路由 access 只支持 panel')
         const full = '/aurabot/api' + prefix + (String(path).startsWith('/') ? path : '/' + path)
-        const cur = routes.get(full)
-        if (cur && cur.id !== rec.key && live.has(cur.id)) throw new Error(`接口 ${full} 已经被模块「${cur.id}」占了`)
-        // 路由记注册表键：额外实例的同名接口各挂各的路径，停止时的存活判断也按实例算
-        const route = { id: rec.key, handler: guard(`接口 ${path}`, handler), access: options.access || null }
-        routes.set(full, route)
-        return track(() => { if (routes.get(full) === route) routes.delete(full) })
+        return track(routes.register(full, rec.key, options.method, {
+          handler: guard(`接口 ${path}`, handler), access: options.access ?? null,
+        }))
       },
       onDispose: (fn) => track(fn),
       // ---- 常用操作的捷径（都是 core 里的东西包了一层）----

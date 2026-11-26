@@ -195,7 +195,7 @@ export function createFakeDsh({ brain }) {
     // 模拟真实连接的来源地址：不传 = 进程内直调（无 socket，插件按本机处理）；
     // 传 '203.0.113.7' = 外网直连；传 '127.0.0.1' = 本机/反代接入。
     if (socket) req.socket = { remoteAddress: socket }
-    const res = { set statusCode(v) { status = v }, setHeader() {}, end(s) { out = s } }
+    const res = { get statusCode() { return status }, set statusCode(v) { status = v }, setHeader() {}, end(s) { out = s } }
     await r.handler(req, res)
     return { status, raw: () => out, json: () => JSON.parse(out) }
   }
