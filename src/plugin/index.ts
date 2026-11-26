@@ -7,7 +7,7 @@ import { registerOutboundPanelRoutes } from './outbound-panel.ts'
 // 面板在侧栏「自动化任务」下面（网页半边见 client/**/*.ts，打包成 dist/client.js），这里提供它要的 /aurabot/api/* 接口。
 //
 // 这个文件只管「核心」：配置、QQ 网关、聊天中枢、人格、面板接口、模块内核和联动。
-// 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（packages/modules/），能单独关掉，也能用自己写的替换。
+// 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（packages/），能单独关掉，也能用自己写的替换。
 //
 // ⚠ 安全默认：总开关关、试运行开。不手动打开，一句都不会真的发到 QQ。
 
@@ -69,9 +69,9 @@ import { cleanText } from '../core/support/util/text.ts'
 import { fromOneBot, normalize, toText } from '../core/message/element/element.ts'
 import { createBridge } from '../core/runtime/bridge.ts'
 import { createDangerGuard, safeOwnedSession } from '../security/danger.ts'
-import { createAuditor } from '../../packages/modules/autotelic/impl/observe/audit.ts'
+import { createAuditor } from '../../packages/autotelic/impl/observe/audit.ts'
 import { setSsrpMode, assertPublicUrl, fetchGuarded } from '../core/net/index.ts'
-import { BUILTINS } from '../../packages/modules/index.ts'
+import { BUILTINS } from '../../packages/index.ts'
 import { ensureDevBuild, runUpdate, tcpOpen, updateExec } from './support.ts'
 import { createHttp } from './http.ts'
 import { createOutboundPolicy } from '../chat/policy/outbound/index.ts'
@@ -2486,12 +2486,6 @@ export function apply(ctx) {
     const r = mods.create(String(b.id || '').trim(), String(b.name || '').trim())
     if (r.ok) await mods.sync()
     return { ...r, list: mods.status(), prompt: r.ok ? mods.promptFor(String(b.id).trim()) : '' }
-  })
-  route('/modules/fork', async (req) => {
-    const id = String((await readBody(req)).id || '')
-    const r = mods.fork(id)
-    if (r.ok) await mods.sync()
-    return { ...r, list: mods.status(), prompt: r.ok ? mods.promptFor(id) : '' }
   })
   route('/modules/prompt', async (req) => ({ ok: true, prompt: mods.promptFor(String(query(req).id || '')) }))
   route('/modules/open', async (req) => {

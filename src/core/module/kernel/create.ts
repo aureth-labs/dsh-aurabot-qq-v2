@@ -1,4 +1,4 @@
-// 模块内核：插件的功能都是模块，内置的在 packages/modules/，自己写的放数据目录 modules/（升级不会动）。
+// 模块内核：插件的功能都是模块，内置的在 packages/，自己写的放数据目录 modules/（升级不会动）。
 //
 // - 每个模块能单独开关；自己写的模块和内置的同名，就替换掉内置的
 // - 模块之间用 api.use('模块id') 拿对方导出的东西，用的时候再拿（对方被关了、换了也不会拿到旧的）
@@ -6,7 +6,7 @@
 // - 一个模块出错只影响它自己：启动失败记下原因，其他照常跑
 // - 自己写的模块保存就生效（按修改时间重新加载），不用重启 DSH
 //
-// 接口说明给写模块的人看：packages/modules/sdk/API.md（每次启动复制到数据目录 modules/ 里）。
+// 接口说明给写模块的人看：packages/sdk/API.md（每次启动复制到数据目录 modules/ 里）。
 
 import { existsSync, readdirSync, statSync, lstatSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, renameSync, rmSync, watch } from 'node:fs'
 import { randomUUID } from 'node:crypto'
@@ -871,14 +871,14 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   /**
    * 模块的面板代码（panel.js），面板拿去执行。
    * 内置模块也允许带面板：两者本来就是同一条加载链路，面板只需要「定义里声明了 panel」。
-   * 面板文件从模块自己的文件夹读：用户模块在数据目录 modules/<id>，内置模块在 packages/modules/<id>；
+   * 面板文件从模块自己的文件夹读：用户模块在数据目录 modules/<id>，内置模块在 packages/<id>；
    * 两边都要求落在各自的根目录里，防止 panel 写成 ../../xxx 去读根目录外面的文件。
    */
   function panelSource(id) {
     // 主实例没跑、只有额外实例在跑时，面板代码也从同一个定义里取
     const rec = live.get(id) || [...live.values()].find((item) => item.moduleId === id && item.def.panel)
     if (!rec || !rec.def.panel) return null
-    // 内置模块的根目录是 packages/modules/<id>；id 先按 ID_RE 校验，别让奇怪的名字把根目录带到外面去。
+    // 内置模块的根目录是 packages/<id>；id 先按 ID_RE 校验，别让奇怪的名字把根目录带到外面去。
     const builtin = rec.source !== 'user'
     const root = builtin
       ? (ID_RE.test(String(id)) ? join(BUILTIN_DIR, id) : '')
@@ -927,40 +927,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: true },
     })
     return out.outputText.replace(/(from\s*['"]|import\(\s*['"])(\.{1,2}\/[^'"]+)\.ts(['"])/g, '$1$2.js$3')
-  }
-
-  /** 把内置模块复制一份到 modules/ 里，改了就替换内置的。files 里列的实现文件一起复制。 */
-  function fork(id) {
-    const b = builtinDefs.get(id)
-    if (!b) return { ok: false, message: '没有这个内置模块' }
-    const dir = idDir(id)
-    if (existsSync(dir)) return { ok: false, message: `modules/${id} 已经有了，先挪走它` }
-    const own = new Map() // 源码 key → 复制后的文件名
-    // 目录入口（a/b/index.js）复制出来用目录名当文件名：studio.js 比 index.js 好认，也不会和入口 index.mjs 混。
-    const flatName = (key) => {
-      const parts = key.split('/')
-      const base = parts.pop()
-      return base === 'index.js' ? `${parts.pop() || 'index'}.js` : base
-    }
-    // key 都是仓库相对路径（src/... 或 packages/...），按根的编译产物目录还原成绝对路径
-    const absOf = (key) => { const { root, rel } = sourceRootOf(key); return join(root, ...rel.split('/')) }
-    own.set(`packages/modules/${id}/index.js`, 'index.mjs')
-    for (const f of b.files || []) own.set(f, flatName(f))
-    mkdirSync(dir, { recursive: true })
-    for (const [key, name] of own) {
-      // 指向插件其他文件的改成走 lib()；一起复制过来的文件之间互相引用的，改成同目录
-      let code = rewriteImports(builtinSource(key), key, new Set(own.keys()))
-      for (const [k2, n2] of own) {
-        const relFrom = relative(dirname(absOf(key)), absOf(k2)).split(sep).join('/')
-        const spec = relFrom.startsWith('.') ? relFrom : './' + relFrom
-        code = code.split(`'${spec}'`).join(`'./${n2}'`)
-      }
-      const origin = key.replace(/\.js$/, '.ts')
-      writeFileSync(join(dir, name), `// 从 Aurabot v${version} 的内置模块「${b.name}」复制出来的，改了就替换内置的。\n// 原文件：${origin}\n` + code, 'utf8')
-    }
-    setConfig({ ...getConfig(), modules: { ...getConfig().modules, [id]: { ...modCfg(id), useBuiltin: false, forkedFrom: b.version || version } } })
-    installDocs()
-    return { ok: true, dir, message: `复制好了：${dir}。改完保存，几秒内就会换成你的版本` }
   }
 
   /** 删除用户模块：先停掉，再把源码和本地改动归档到 modules/.trash；默认保留数据和设置，purge 才清掉。 */
@@ -1024,7 +990,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const publicHandle = { use: exportsOf, has: hasModule, list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
-    boot, sync, reload, dispose, status, create, fork, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
+    boot, sync, reload, dispose, status, create, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
     // 对外按模块 id 停 —— 一起停掉它的额外实例
     stop: (id, options) => stopModule(id, options),
     use: exportsOf, has: hasModule, running: (id) => live.get(id)?.source || null, generation: () => generation,

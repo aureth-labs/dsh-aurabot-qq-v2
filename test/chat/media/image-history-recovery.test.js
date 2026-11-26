@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import definition, { isImageRejection, lastImageRejection, imageTargets } from '../../../packages/modules/image-recovery/index.ts'
+import definition, { isImageRejection, lastImageRejection, imageTargets } from '../../../packages/image-recovery/index.ts'
 
 const image = (offloaded = false) => ({ type: 'image', attachment: { attachmentId: 'fixture' }, ...(offloaded ? { offloaded: true } : {}) })
 const text = { type: 'text', text: '保留的文字' }

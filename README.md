@@ -98,7 +98,7 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 - 面板「模块市场」一键安装/更新/卸载社区模块，仓库在 [dsh-aurabot-qq-mods](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
 - 你自己写的模块放在数据目录 `modules/`，升级不覆盖，保存即生效（多文件、npm 依赖都能热重载）
 - 面板「已安装」页有模拟测试：截获发送，不真发
-- 扩展接口：[API.md](packages/modules/sdk/API.md) · 类型：[aurabot.d.ts](packages/modules/sdk/aurabot.d.ts)
+- 扩展接口：[API.md](packages/sdk/API.md) · 类型：[aurabot.d.ts](packages/sdk/aurabot.d.ts)
 - 不会写？把 API.md 发给 DSH，让 DSH 照着帮你写
 
 > ⚠️ 模块和插件在同一进程运行，能接触账号配置；安装时显示的能力只是声明，**不是沙箱**。只装信得过的模块。
@@ -128,7 +128,7 @@ dsh plugin --profile <profile> add github:aureth-labs/dsh-aurabot-qq
 
 | 文档 | 内容 |
 |---|---|
-| [模块 API](packages/modules/sdk/API.md) | 扩展接口、工具、上下文、命令行、定时任务完整说明 |
+| [模块 API](packages/sdk/API.md) | 扩展接口、工具、上下文、命令行、定时任务完整说明 |
 | [更新记录](CHANGELOG.md) | 每个版本改了什么 |
 
 ## ❓ FAQ
@@ -188,7 +188,7 @@ src/core/                内核：配置、模块加载、ctx / session / bot、
 src/chat/                消息中枢、群聊策略、回复解析、白名单与权限
 src/features/            功能域：记忆、心情、空间、贴纸、生图、主动搭话
 src/autotelic 等域       自驱引擎、B 站、翻唱、语音
-packages/modules/             内置模块；扩展接口文档与类型在 sdk/
+packages/             内置模块；扩展接口文档与类型在 sdk/
 packages/adapters/       平台适配器：qq/{onebot-v11,qq-guild,qq-official}、satori
 client/**/*.ts           网页半边：侧栏入口 + 面板（打包成 dist/client.js）
 personas/dafeiyu.md      默认人格
@@ -250,7 +250,7 @@ HMR 重载的是上次构建出来的 `lib/`。
 
 - **报 bug / 提需求**：[新建 issue](https://github.com/aureth-labs/dsh-aurabot-qq/issues)（先翻一下有没有重复）
 - **提代码**：[fork → PR](https://github.com/aureth-labs/dsh-aurabot-qq/pulls)；修 bug 尽量带回归测试；模块请提给 [模块仓库](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
-- **写模块**：接口与示例见 [模块 API](packages/modules/sdk/API.md)
+- **写模块**：接口与示例见 [模块 API](packages/sdk/API.md)
 - 贡献者名单见版本说明和 PR 记录 💙
 
 ## 💬 交流

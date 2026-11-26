@@ -19,7 +19,7 @@ const OWNER = '10000001'
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-carrier-'))
-  ;({ createPurpose } = await import('../../packages/modules/purpose/impl/module/index.ts'))
+  ;({ createPurpose } = await import('../../packages/purpose/impl/module/index.ts'))
 })
 
 beforeEach(() => {
@@ -130,7 +130,7 @@ test('carrier=pet 桌宠离线 + petFallbackToQQ=true：回落走原 hub.deliver
   assert.equal(pet.calls.length, 0, '离线不调 dispatch（回落由 purpose 自己发，靠 userText 标记来源）')
   assert.equal(hub.delivered.length, 1)
   assert.equal(hub.delivered[0].chatId, `private:${OWNER}`)
-  // 本 PR 去掉了 own:true：桥接改由 hub 按「实际发出的文本」记 saidElsewhere（见 packages/modules/purpose/impl/module.js 注释）
+  // 本 PR 去掉了 own:true：桥接改由 hub 按「实际发出的文本」记 saidElsewhere（见 packages/purpose/impl/module.js 注释）
   assert.deepEqual(hub.deliveryOptions, [{ userText: '【系统提醒，不是主人说的话】（她主动找你）' }])
 })
 

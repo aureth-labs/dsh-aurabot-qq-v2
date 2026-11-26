@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
-import imagegenModule from '../../packages/modules/imagegen/index.ts'
+import imagegenModule from '../../packages/imagegen/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 
 const OWNER = '10000001', OTHER = '10000002', BOT = '20000002', GROUP = '30000003'

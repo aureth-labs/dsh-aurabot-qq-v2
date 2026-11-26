@@ -15,7 +15,7 @@ let fetchImage
 let formatBytes
 
 before(async () => {
-  stickersModule = (await import('../../packages/modules/stickers/index.ts')).default
+  stickersModule = (await import('../../packages/stickers/index.ts')).default
   ;({ MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } = await import('../../src/features/stickers/index.ts'))
   ;({ fetchImage, formatBytes } = await import('../../src/core/net/index.ts'))
 })

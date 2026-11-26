@@ -58,7 +58,7 @@ QQ ⇄ OneBot v11 implementation (NapCat / LLOneBot / Lagrange…) ⇄ Aurabot p
 | 🧩 | **Module market** | One-click community modules (pet, Douyin, Heybox, group admin, phone automation, …), configs and logins kept |
 | 🔐 | **Permission page** | Every sensitive action is 关 / owner-DM only / everyone, re-checked at execution; dry run never performs side effects |
 
-> Deeper module and API docs live in [API.md (Chinese)](packages/modules/sdk/API.md).
+> Deeper module and API docs live in [API.md (Chinese)](packages/sdk/API.md).
 
 ## 🚀 Quick start
 
@@ -100,7 +100,7 @@ Apart from the core (config, QQ gateway, chat hub, persona, permissions, panel),
 - Install/update/remove community modules from the panel’s **Module market** — registry: [dsh-aurabot-qq-mods](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
 - Your own modules live in the data directory `modules/` — never overwritten by upgrades, hot-reloaded on save (multi-file and npm deps supported)
 - The panel has a sandboxed “simulate” test that captures outgoing messages instead of sending them
-- Extension API: [API.md (Chinese)](packages/modules/sdk/API.md) · types: [aurabot.d.ts](packages/modules/sdk/aurabot.d.ts)
+- Extension API: [API.md (Chinese)](packages/sdk/API.md) · types: [aurabot.d.ts](packages/sdk/aurabot.d.ts)
 - Not a coder? Hand API.md to DSH and let it write the module for you
 
 > ⚠️ Modules run in the same process as the plugin and can access account config. Capabilities shown at install time are declarations, **not a sandbox**. Only install modules you trust.
@@ -126,7 +126,7 @@ Apart from the core (config, QQ gateway, chat hub, persona, permissions, panel),
 
 | Document | Contents |
 |---|---|
-| [Module API (Chinese)](packages/modules/sdk/API.md) | Extension API, tools, context, commands, scheduled jobs |
+| [Module API (Chinese)](packages/sdk/API.md) | Extension API, tools, context, commands, scheduled jobs |
 | [Changelog](CHANGELOG.md) | What changed in each version |
 
 ## ❓ FAQ
@@ -179,7 +179,7 @@ npm test        # unit tests + end-to-end tests with a fake DSH host and a mock 
 src/plugin/            plugin assembly (host half): core wiring + panel API /aurabot/api/*
 src/core/              kernel: config, module load/toggle/replace/hot reload, ctx/session/bot, pipeline, store
 src/chat/              message hub, group policy, reply parsing, allow-list & permissions
-packages/modules/           built-in modules; module API docs and types live in sdk/
+packages/           built-in modules; module API docs and types live in sdk/
 packages/adapters/     platform adapters: qq/{onebot-v11,qq-guild,qq-official}, satori
 src/features/          stickers, Qzone, mood, memory, proactive chat, image gen
 src/song/              cover pipeline (NetEase → separation → RVC → mixdown)
@@ -198,7 +198,7 @@ Issues and PRs are welcome!
 
 - **Bug / feature request**: [open an issue](https://github.com/aureth-labs/dsh-aurabot-qq/issues) (please search first)
 - **Code**: [fork → PR](https://github.com/aureth-labs/dsh-aurabot-qq/pulls); include regression tests for fixes; modules belong in the [module repo](https://github.com/aureth-labs/dsh-aurabot-qq-mods)
-- **Modules**: start with the [API reference](packages/modules/sdk/API.md)
+- **Modules**: start with the [API reference](packages/sdk/API.md)
 - Contributors are credited in the changelog and PR history 💙
 
 ## 💬 Community

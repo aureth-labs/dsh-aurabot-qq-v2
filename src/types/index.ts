@@ -46,7 +46,6 @@ export type {
   DiscordEmbed,
   InboundMessage,
   OneBotSendMessageParams,
-  QQGuildMessageParams,
   QQOfficialMessageParams,
   TelegramMessageEntity,
   TelegramSendMessageParams,

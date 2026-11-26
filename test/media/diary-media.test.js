@@ -11,9 +11,9 @@ after(() => cleanupDir(root))
 
 const { normalize } = await import('../../src/core/config/index.ts')
 const { createQzone } = await import('../../src/features/qzone/index.ts')
-const { collectSources, localPictures, clip } = await import('../../packages/modules/diary/source/sources.ts')
-const { createDiaryAssets, downloadImage } = await import('../../packages/modules/diary/source/assets.ts')
-const { createDiaryMedia, parseDraft, reselectPictures, withCredits } = await import('../../packages/modules/diary/source/media.ts')
+const { collectSources, localPictures, clip } = await import('../../packages/diary/source/sources.ts')
+const { createDiaryAssets, downloadImage } = await import('../../packages/diary/source/assets.ts')
+const { createDiaryMedia, parseDraft, reselectPictures, withCredits } = await import('../../packages/diary/source/media.ts')
 const { readJson, writeJson, dataDir } = await import('../../src/core/store/index.ts')
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=', 'base64')
 const log = { info() {}, warn() {} }
@@ -314,7 +314,7 @@ test('草稿生成后撤销配图授权，原生 post 最后一道检查也会�
 })
 
 test('原生日记的预览接口拒绝 GET 和表单请求，JSON POST 不发布', async () => {
-  const definition = (await import('../../packages/modules/diary/index.ts')).default
+  const definition = (await import('../../packages/diary/index.ts')).default
   const f = fixture()
   const routes = new Map()
   const disposers = []

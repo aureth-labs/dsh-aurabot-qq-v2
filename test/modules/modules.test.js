@@ -224,22 +224,7 @@ test('安全模式：自己写的一个都不加载，内置的回来', async ()
   assert.equal((await mod('diary')).running, 'user')
 })
 
-test('复制内置模块来改：复制出来的能直接跑（连翻唱这种带数据文件的）', async () => {
-  // P4：speakup 模块已退场（能力并入 purpose），fork 用例不再覆盖它
-  for (const id of ['song']) {
-    const r = (await fake.call('/modules/fork', { id })).json()
-    assert.equal(r.ok, true, r.message)
-    const code = readdirSync(modDir(id), { withFileTypes: true }).filter((e) => e.isFile()).map((e) => readFileSync(join(modDir(id), e.name), 'utf8')).join('\n')
-    assert.match(code, /globalThis\.aurabot\.lib/)
-    assert.doesNotMatch(code, /from '\.\.\//, '没有指回插件目录的相对路径')
-    assert.equal((await mod(id)).running, 'user', (await mod(id)).error)
-  }
-  assert.ok(existsSync(join(modDir('song'), 'studio.js')))
-  assert.match(readFileSync(join(modDir('song'), 'install.js'), 'utf8'), /new URL\('song\/studio\/env\/fetch_file\.py', globalThis\.aurabot\.src\)/)
-  assert.equal((await fake.call('/song/status')).json().ok, true)
-  // 说明文档放进了 modules/
-  assert.match(readFileSync(join(dataDir, 'modules', 'API.md'), 'utf8'), /api\.on\('message'/)
-})
+
 
 test('新建模块：从模板建，能直接跑', async () => {
   const r = (await fake.call('/modules/create', { id: 'my-ext', name: '我的扩展' })).json()
@@ -251,39 +236,7 @@ test('新建模块：从模板建，能直接跑', async () => {
   assert.equal((await fake.call('/modules/create', { id: 'Bad Id' })).json().ok, false)
 })
 
-test('复制 B 站模块：抽帧 / 截图库文件一起复制，用户模块能启动并提供图库路由', async () => {
-  await fake.call('/save', { modules: { bili: { enabled: true } } })
-  try {
-    const r = (await fake.call('/modules/fork', { id: 'bili' })).json()
-    assert.equal(r.ok, true, r.message)
-    assert.ok(existsSync(join(modDir('bili'), 'vision.js')))
-    assert.ok(existsSync(join(modDir('bili'), 'shots.js')))
-    const m = await mod('bili')
-    assert.equal(m.running, 'user', m.error)
-    assert.ok(m.tools.includes('qq_send_shot'))
-    assert.ok(m.tools.includes('qq_list_shots'))
-    const shots = (await fake.call('/bili/shots')).json()
-    assert.equal(shots.ok, true)
-    assert.deepEqual(shots.items, [])
-    // 旧用户模块和内置模块共用同一图库索引；切换来源不能删除旧源码或截图。
-    const shotDir = join(dataDir, 'bili-shots')
-    mkdirSync(shotDir, { recursive: true })
-    const legacyShot = { file: '0123456789ab.jpg', md5: '0123456789ab', at: Date.now(), sec: 12, title: '旧截图', bvid: 'BV1aaaaaaaaa', bytes: 3 }
-    writeFileSync(join(shotDir, legacyShot.file), 'old')
-    writeFileSync(join(shotDir, 'index.json'), JSON.stringify({ items: [legacyShot] }))
-    await fake.call('/save', { modules: { bili: { useBuiltin: true } } })
-    await until(async () => (await mod('bili')).running === 'builtin')
-    assert.equal(existsSync(join(modDir('bili'), 'index.mjs')), true, '旧用户模块保留为回退入口')
-    const migrated = (await fake.call('/bili/shots')).json()
-    assert.equal(migrated.items[0].file, legacyShot.file)
-    assert.equal(readFileSync(join(shotDir, legacyShot.file), 'utf8'), 'old')
-    const preview = await fake.call('/bili/shot/image?file=' + legacyShot.file)
-    assert.equal(preview.status, 200)
-    assert.equal(preview.raw().toString(), 'old')
-  } finally {
-    await fake.call('/save', { modules: { bili: { enabled: false } } })
-  }
-})
+
 
 test('模块设置里的密码不回传给面板', async () => {
   await fake.call('/save', { ext: { echo: { secret: 'abc123', greet: '嗨' } } })

@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../../src/core/config/index.ts'
-import memoryModule from '../../../packages/modules/memory/index.ts'
+import memoryModule from '../../../packages/memory/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 
 const OWNER = '10000001'

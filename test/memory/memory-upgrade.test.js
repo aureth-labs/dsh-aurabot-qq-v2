@@ -11,7 +11,7 @@ import { normalize, DEFAULTS } from '../../src/core/config/index.ts'
 import { createMemoryStore, COMPRESS } from '../../src/features/memory/index.ts'
 import { createMemoryStorage, MEMORY_SCHEMA } from '../../src/features/memory/store/store.ts'
 import { createBackup, stageRestore, applyPendingRestore } from '../../src/core/runtime/backup/backup.ts'
-import memoryModule from '../../packages/modules/memory/index.ts'
+import memoryModule from '../../packages/memory/index.ts'
 
 let Database
 try { ({ DatabaseSync: Database } = await import('node:sqlite')) } catch {}

@@ -4,7 +4,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { isOwner, GROUP_RESPONSE_LABELS } from '../policy/rules/access.ts'
 import { DEFAULT_GROUP_POLICY } from '../policy/rules/group.ts'
 import { changePermissions } from '../policy/rules/permission.ts'
-import { planGroupSettings, readSettings } from '../../../packages/modules/contacts/group-settings.ts'
+import { planGroupSettings, readSettings } from '../../../packages/contacts/group-settings.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type GroupReportOptions = Partial<Record<'name' | 'brief', any>>

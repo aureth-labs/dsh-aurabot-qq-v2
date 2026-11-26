@@ -2,7 +2,7 @@
 // 图片先按图发，明确发不出去才按文件发，结果不确定时绝不发第二份。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import qqTools from '../../packages/modules/qq-tools/index.ts'
+import qqTools from '../../packages/qq-tools/index.ts'
 
 function setup({ level = 'full', kind = 'private', ownerAll = true, files = { enabled: true }, hubOver = {} } = {}) {
   const sent = [], images = []

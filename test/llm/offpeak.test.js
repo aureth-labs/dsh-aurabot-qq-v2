@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isPeak, isOffPeak, nextChange, shouldDeferBackground } from '../../src/core/llm/usage/offpeak.ts'
-import { offpeakSkipReason } from '../../packages/modules/bili/impl/live/duty.ts'
+import { offpeakSkipReason } from '../../packages/bili/impl/live/duty.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { readClientSource } from '../helpers/client-source.js'
 

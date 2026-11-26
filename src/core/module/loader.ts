@@ -77,8 +77,8 @@ export interface UserModule { id: string; dir: string; safe?: boolean; version?:
 export const SRC = fileURLToPath(new URL('../..', import.meta.url)) // 内核 src/（发布态是 lib/src/）
 export const REPO = fileURLToPath(new URL('../../..', import.meta.url)) // 插件根（发布态是 lib/）
 export const PKG = join(REPO, 'packages') // 插件与适配器包（发布态是 lib/packages/）
-/** 内置模块目录：src 只放内核，内置插件全部住在 packages/modules。 */
-export const BUILTIN_DIR = join(PKG, 'modules')
+/** 内置插件目录：src 只放内核，插件直接住在 packages/<插件名>，适配器在 packages/adapters。 */
+export const BUILTIN_DIR = PKG
 /** 内置模块目录（社区安装时判断会不会替换内置用）。 */
 export const builtinDir = () => BUILTIN_DIR
 
@@ -126,7 +126,7 @@ export async function loadLib() {
     }
   }
   // 内核 src 按裸键索引（features/memory.js…）；packages 按 `packages/` 前缀索引，
-  // 让复制出去的内置插件能 __lib('packages/modules/...') 拿到自己的实现。
+  // 让复制出去的内置插件能 __lib('packages/...') 拿到自己的实现。
   walk(SRC, SRC, '')
   walk(PKG, PKG, 'packages/')
   for (const [full, key] of entries) {

@@ -30,7 +30,7 @@ const mem = createMemoryStore({
 
 const TOPICS = ['白米饭', '晚饭', '早饭', '面条', '饺子', '包子', '米粥', '煲汤', '炒菜', '烧烤']
 
-// 分页逻辑：与 packages/modules/memory/index.js 的 /memories 路由完全一致
+// 分页逻辑：与 packages/memory/index.js 的 /memories 路由完全一致
 function page(all, { limit, offset } = {}) {
   const limitRaw = Number(limit)
   const offsetRaw = Number(offset)

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createBili } from '../../packages/modules/bili/impl/live/duty.ts'
+import { createBili } from '../../packages/bili/impl/live/duty.ts'
 import { readJson, writeJson } from '../../src/core/store/index.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-bili-login-'))

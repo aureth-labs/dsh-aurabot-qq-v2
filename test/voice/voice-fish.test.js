@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize, publicConfig, mergeFromPanel } from '../../src/core/config/index.ts'
-import voiceModule from '../../packages/modules/voice/index.ts'
+import voiceModule from '../../packages/voice/index.ts'
 import { fishSpeech } from '../../src/voice/tts/fish.ts'
 
 test('Fish：面板不回传 Key，保存空框不覆盖；试听、发语音和旧凭据都用同一免费型号', async t => {

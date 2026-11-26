@@ -8,7 +8,7 @@ import { createImageGen } from '../../src/features/media/generate/imagegen.ts'
 import { gifFrameCount } from '../../src/features/media/image/format.ts'
 import { normalize, mergeFromPanel } from '../../src/core/config/index.ts'
 import { imageToolBlock, findFfmpeg } from '../../src/core/message/media/img.ts'
-import imagegen from '../../packages/modules/imagegen/index.ts'
+import imagegen from '../../packages/imagegen/index.ts'
 const GIF = Buffer.from('R0lGODlhEAAQAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQAFAAAACwAAAAAEAAQAAAIHQABCBxIsKDBgwgTKlzIsKHDhxAjSpxIsaLFgQEBACH5BAEUAAEALAAAAAAQABAAgQAA/wAAAAAAAAAAAAgdAAEIHEiwoMGDCBMqXMiwocOHECNKnEixosWBAQEAOw==', 'base64')
 const PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc(64)])
 const log = { info(){},warn(){},debug(){} }

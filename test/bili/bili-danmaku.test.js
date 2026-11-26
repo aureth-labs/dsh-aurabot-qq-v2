@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createDanmaku, danmakuInput, danmakuPanelRequest } from '../../packages/modules/bili/danmaku.ts'
-import definition from '../../packages/modules/bili/index.ts'
-import { bangumiEpisode } from '../../packages/modules/bili/impl/live/danmaku.ts'
+import { createDanmaku, danmakuInput, danmakuPanelRequest } from '../../packages/bili/danmaku.ts'
+import definition from '../../packages/bili/index.ts'
+import { bangumiEpisode } from '../../packages/bili/impl/live/danmaku.ts'
 const video = 'BV1xx411c7mD'
 const input = { video, text: '这一段好有意思😀', seconds: 8.25, position: 'bottom' }
 

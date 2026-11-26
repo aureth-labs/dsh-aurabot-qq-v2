@@ -2,7 +2,7 @@
 // 方案：docs/SPEAKUP-INTO-PURPOSE-PLAN.md §3（配置迁移）/ §7.1（P1 用例清单）。
 // 覆盖五条验收：新装默认开、显式 false 不被洗回、老用户 speakUp.enabled=true 播种开、
 // 播种只发生一次、nudge 写读一致（双层 fallback）。
-// 播种用例走真实模块壳（packages/modules/purpose/index.js）+ createModules 最小 harness；
+// 播种用例走真实模块壳（packages/purpose/index.js）+ createModules 最小 harness；
 // 落盘用 AURABOT_DATA_DIR 临时目录隔离，不引入新依赖。
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
@@ -10,9 +10,9 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../../src/core/config/index.ts'
-import { purposeConfig } from '../../../packages/modules/purpose/impl/module/index.ts'
+import { purposeConfig } from '../../../packages/purpose/impl/module/index.ts'
 import { quietWindowOf, inHourWindow } from '../../../src/core/support/time/time-window.ts'
-import purposeDef from '../../../packages/modules/purpose/index.ts'
+import purposeDef from '../../../packages/purpose/index.ts'
 import { createModules } from '../../../src/core/module/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 

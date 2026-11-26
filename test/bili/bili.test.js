@@ -11,8 +11,8 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-bili-'))
-  api = await import('../../packages/modules/bili/impl/api.ts')
-  duty = await import('../../packages/modules/bili/impl/live/duty.ts')
+  api = await import('../../packages/bili/impl/api.ts')
+  duty = await import('../../packages/bili/impl/live/duty.ts')
   ;({ normalize } = await import('../../src/core/config/index.ts'))
 })
 
@@ -284,7 +284,7 @@ test('#6 换 B 站头像：先下载图片再 multipart 上传到 face/update；
 })
 
 test('评论里的 @昵称 按昵称查到 mid 一起发，查不到的留作文字', async () => {
-  const { createBiliApi } = await import('../../packages/modules/bili/impl/api.ts')
+  const { createBiliApi } = await import('../../packages/bili/impl/api.ts')
   const posts = []
   const json = (data) => ({ ok: true, status: 200, headers: { getSetCookie: () => [], get: () => '' }, json: async () => ({ code: 0, data }) })
   const fetchImpl = async (url, opts = {}) => {

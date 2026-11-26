@@ -4,7 +4,7 @@ import { parseReply, stripMarkdown, bubbleDelay } from '../../src/chat/reply/ind
 import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../../src/chat/policy/rules/group.ts'
 import { parseMessageEvent, isStickerSegment, stickerSizeOk, imageSize } from '../../src/chat/inbound/index.ts'
 import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../../src/chat/policy/rules/access.ts'
-import { avatarSource } from '../../packages/modules/profile/index.ts'
+import { avatarSource } from '../../packages/profile/index.ts'
 import { redact, registerSecret } from '../../src/core/support/log/redact.ts'
 
 test('parseReply 拆 ||| 成多条', () => {

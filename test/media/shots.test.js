@@ -10,8 +10,8 @@ import { dataDir } from '../../src/core/store/index.ts'
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-'))
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-')) }
 
-const { clockOf, pickShot, createShotStore, loadShots } = await import('../../packages/modules/bili/impl/media/shots.ts')
-const { createBili } = await import('../../packages/modules/bili/impl/live/duty.ts')
+const { clockOf, pickShot, createShotStore, loadShots } = await import('../../packages/bili/impl/media/shots.ts')
+const { createBili } = await import('../../packages/bili/impl/live/duty.ts')
 const { normalize } = await import('../../src/core/config/index.ts')
 
 test('clockOf：秒数转 mm:ss', () => {
@@ -282,7 +282,7 @@ test('自动截图：只发主人私聊、使用真实文件路径，试运行�
 
 test('B 站模块：截图库路由预览 / 删除、工具固定发当前会话、关闭后隐藏', async () => {
   freshDir()
-  const { default: module } = await import('../../packages/modules/bili/index.ts')
+  const { default: module } = await import('../../packages/bili/index.ts')
   const { cfg, sent } = makeBili()
   const routes = new Map(), builders = []
   const fake = {
