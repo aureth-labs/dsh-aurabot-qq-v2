@@ -27,5 +27,5 @@
     "noEmitOnError": false
   },
   "include": ["src/**/*.ts", "packages/**/*.ts"],
-  "exclude": ["src/**/*.d.ts", "packages/**/*.d.ts", "node_modules", "lib", "dist", "test"]
+  "exclude": ["packages/modules/sandbox/web/**/*.ts", "src/**/*.d.ts", "packages/**/*.d.ts", "node_modules", "lib", "dist", "test"]
 }

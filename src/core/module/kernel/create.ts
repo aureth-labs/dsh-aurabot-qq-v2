@@ -132,8 +132,15 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       url: /^https?:\/\//i.test(String(page.url || '')) ? String(page.url) : '/aurabot/api' + prefix + path,
     }
     pages.set(path, item)
-    rec.offs.push(() => { if (pages.get(path) === item) pages.delete(path) })
-    return () => { if (pages.get(path) === item) pages.delete(path) }
+    bumpNavigation()
+    const removePage = () => {
+      if (pages.get(path) === item) {
+        pages.delete(path)
+        bumpNavigation()
+      }
+    }
+    rec.offs.push(removePage)
+    return removePage
   }
 
   function remove(list, item) {

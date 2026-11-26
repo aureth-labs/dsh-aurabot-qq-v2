@@ -384,7 +384,7 @@ export const DEFAULTS = {
   // useBuiltin：自己写了同名模块，但想先用回内置的
   // 框架出厂不预设任何指令：内置命令表住在 commands 模块里，默认关着，要用自己在面板打开。
   // 聊天沙盒会开一个本地端口，同样默认关着。
-  modules: { sandbox: { enabled: false }, commands: { enabled: false } } as ModuleSwitchTable,
+  modules: { commands: { enabled: false } } as ModuleSwitchTable,
   safeMode: false, // 安全模式：自己写的模块一个都不加载（排查问题用）
   ext: {} as ModuleSettings, // 自己写的模块的设置：{ 模块id: {...} }
   // 自定义渠道费率按渠道和完整模型名匹配，与内置的官方美元参考价分开。

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聊天沙盒</title>
+<link rel="stylesheet" href="/chat.css">
+</head>
+<body>
+<header>
+  <strong>聊天沙盒</strong>
+  <span class="hint" id="endpoint"></span>
+  <span class="grow"></span>
+  <span class="hint"><span id="status" role="status">正在连接</span></span>
+</header>
+<main>
+  <div id="log" role="log" aria-label="消息"></div>
+  <form id="send">
+    <select id="kind" aria-label="会话类型">
+      <option value="group">群聊</option>
+      <option value="private">私聊</option>
+    </select>
+    <input id="name" type="text" autocomplete="nickname" title="昵称">
+    <input aria-label="消息内容" id="text" type="text" placeholder="说点什么……" autocomplete="off">
+    <button type="submit">发送</button>
+  </form>
+</main>
+<script type="module" src="/chat.js"></script>
+</body>
+</html>

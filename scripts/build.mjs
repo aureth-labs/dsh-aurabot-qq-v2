@@ -1,6 +1,7 @@
 // 构建：src/** -> lib/**（tsc 逐文件），client/** -> dist/client.js（esbuild 单文件 bundle）
 // 产物里不留注释，源码里保留。
 import { spawnSync } from 'node:child_process'
+import { build } from 'esbuild'
 import { copyFileSync, existsSync, mkdirSync, rmSync, readdirSync, statSync, writeFileSync, readFileSync } from 'node:fs'
 import { join, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -52,6 +53,10 @@ tsc('tsconfig.json', STAGE.lib)
 // 插件作者要的类型声明：只出 src/types 这一层（见 tsconfig.types.json）
 tsc('tsconfig.types.json', STAGE.lib)
 await bundleClient(join(STAGE.dist, 'client.js'))
+await build({
+  entryPoints: ['packages/modules/sandbox/web/chat.ts'], outfile: join(STAGE.lib, 'packages/modules/sandbox/web/chat.js'),
+  format: 'esm', platform: 'browser', target: 'es2022', bundle: true, charset: 'utf8', legalComments: 'none',
+})
 await bundleAdapters(ROOT, join(STAGE.dist, 'adapters'))
 await bundleSdk(ROOT, join(STAGE.dist, 'sdk'))
 

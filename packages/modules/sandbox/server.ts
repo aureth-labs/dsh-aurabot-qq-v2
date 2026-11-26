@@ -1,13 +1,8 @@
-// 聊天沙盒的服务端：一个本地 Satori 服务（HTTP + WebSocket）+ 一个网页聊天室。
-//
-// 两件事共用一份内存状态：
-//   - 适配器按 Satori 协议连 `/v1/events`，发 `/v1/message.create`；
-//   - 浏览器打开 `/`，通过 SSE 收消息、通过 `/_sandbox/send` 发消息。
-// 消息不进数据库，重启即清空——它只是用来联调的假平台。
-
 import http from 'node:http'
 import crypto from 'node:crypto'
-import { SANDBOX_PAGE } from './ui.ts'
+import { servePage } from './page.ts'
+import type { SandboxMessage } from './protocol.ts'
+export type { SandboxMessage } from './protocol.ts'
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 const MAX_MESSAGES = 300
@@ -19,22 +14,12 @@ export interface SandboxServerOptions {
   selfId?: string
   selfName?: string
   platform?: string
-  /** 网页里没写昵称时用的默认身份；填主人的 QQ 号就等于「主人本人在沙盒里说话」。 */
   defaultUserId?: string
   defaultUserName?: string
   log?: (message: string) => void
 }
 
-export interface SandboxMessage {
-  id: string
-  at: number
-  channelId: string
-  channelName: string
-  userId: string
-  userName: string
-  content: string
-  direction: 'in' | 'out'
-}
+
 
 interface SocketConn {
   socket: any
@@ -121,6 +106,8 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
   const host = options.host || '127.0.0.1'
   const port = options.port === undefined ? 5140 : Number(options.port)
   let actualPort = port
+  const hostname = host === '0.0.0.0' ? '127.0.0.1' : host === '::' ? '[::1]' : host.includes(':') ? '[' + host + ']' : host
+  const addressOf = () => 'http://' + hostname + ':' + actualPort
   const token = String(options.token || '')
   const selfId = String(options.selfId || 'sandbox-bot')
   const selfName = String(options.selfName || '沙盒机器人')
@@ -241,7 +228,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         const result = resource(message)
         push({ type: deleted ? 'message-deleted' : 'message-updated', message: result, channel,
           guild: channel?.type === 1 ? undefined : guild, user: result.user })
-        const change = JSON.stringify({ id: message.id, content: message.content, deleted })
+        const change = JSON.stringify({ message, deleted })
         for (const stream of streams) stream.write(`event: change\ndata: ${change}\n\n`)
         return deleted ? {} : result
       }
@@ -261,18 +248,17 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
   }
 
   const handler = async (req: http.IncomingMessage, res: http.ServerResponse) => {
-    const url = new URL(String(req.url || '/'), `http://${host}:${port}`)
+    const url = new URL(String(req.url || '/'), addressOf())
     const path = url.pathname
 
-    if (req.method === 'GET' && (path === '/' || path === '/index.html')) {
-      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-      res.end(SANDBOX_PAGE)
-      return
+    if (req.method === 'POST' && req.headers.origin && req.headers.origin !== 'http://' + req.headers.host) {
+      return json(res, 403, { ok: false, message: '请求来源与沙盒地址不一致' })
     }
+    if (req.method === 'GET' && await servePage(path, res)) return
     if (req.method === 'GET' && path === '/_sandbox/state') {
       json(res, 200, {
         ok: true,
-        url: `http://${host}:${actualPort}`,
+        url: addressOf(),
         channels: [...channels.values()],
         messages,
         self: botUser,
@@ -287,7 +273,8 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         'cache-control': 'no-store',
         connection: 'keep-alive',
       })
-      res.write(': connected\n\n')
+      res.write('event: snapshot\ndata: ' + JSON.stringify({ url: addressOf(), messages,
+        user: { id: defaultUserId, name: defaultUserName } }) + '\n\n')
       streams.add(res)
       req.on('close', () => streams.delete(res))
       return
@@ -344,7 +331,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
 
   return {
     get url() {
-      return `http://${host}:${actualPort}`
+      return addressOf()
     },
     get running() {
       return Boolean(server)
@@ -359,6 +346,10 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         })
       })
       server.on('upgrade', (req, socket: any) => {
+        if (req.url?.split('?')[0] !== '/v1/events' || req.headers.origin && req.headers.origin !== 'http://' + req.headers.host) {
+          socket.destroy()
+          return
+        }
         const key = String(req.headers['sec-websocket-key'] || '')
         if (!key) {
           socket.destroy()
