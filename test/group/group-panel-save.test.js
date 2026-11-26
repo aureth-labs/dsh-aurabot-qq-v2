@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { runCommand, parseCommand } from '../../src/chat/commands/index.ts'
+import { runCommand, parseCommand } from '../../packages/commands/dispatch.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 let fake, app, dir
@@ -22,7 +22,7 @@ before(async () => {
     ownerQQ: '10000001', botQQ: '20000002', voice: { enabled: false },
     onebot: {} }))
   fake = createFakeDsh({ brain: async () => { throw new Error('设置保存不应开启对话') } })
-  app = (await import('../../src/plugin/index.ts')).apply(fake.ctx)
+  app = (await import('../../packages/app/index.ts')).apply(fake.ctx)
   await app.ready
 })
 after(async () => { fake?.dispose(); await app?.dispose?.(); cleanupDir(dir) })

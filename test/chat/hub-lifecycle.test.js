@@ -11,7 +11,7 @@ import { OneBotError } from '../../packages/adapters/qq/onebot-v11/src/client.ts
 const root = mkdtempSync(join(tmpdir(), 'aurabot-lifecycle-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
 const { createHub } = await import('../../src/chat/hub/index.ts')
-const { apply } = await import('../../src/plugin/index.ts')
+const { apply } = await import('../../packages/app/index.ts')
 const OWNER = '10000001'
 const OTHER = '10000002'
 const BOT = '20000002'

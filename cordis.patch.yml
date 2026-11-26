@@ -1,6 +1,6 @@
 # Aurabot —— DSH bundle patch（插件自带的挂载声明）
 #
-# 1) aurabot / aurabot-dev：插件本体（宿主半边 src/plugin/index.ts + 网页半边 client/client.ts）
+# 1) aurabot / aurabot-dev：插件本体（宿主半边 packages/app/index.ts + 网页半边 client/client.ts）
 #    发布态走 index.mjs -> lib/；本机开发起 dsh 时带 AURABOT_DEV=1 就切到 aurabot-dev，
 #    直接跑 src 里的 TS，改 .ts 即热重载，不需要任何编译产物。
 # 2) 三个 agent preset，只给 Aurabot 自己建的 QQ 会话/子智能体用：
@@ -16,7 +16,7 @@
       name: dsh-aurabot-qq
       # 本机开发（AURABOT_DEV=1）时让位给下面的 aurabot-dev
       disabled: !!js process.env.AURABOT_DEV === '1'
-# 开发态：dev.mjs 静态 re-export src/plugin/index.ts，Node 原生剥离类型直接跑 .ts。
+# 开发态：dev.mjs 静态 re-export packages/app/index.ts，Node 原生剥离类型直接跑 .ts。
     # 没有编译产物参与，dsh-hmr 跟的就是源码本身，改哪个 .ts 立刻热重载。
     # 市场安装的包不会带这个环境变量，这一项永远 disabled。
     # 必须写成路径式入口（./dev.mjs），不能写 `dsh-aurabot-qq/dev`：

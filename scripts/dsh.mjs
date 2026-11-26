@@ -37,7 +37,7 @@ const run = (args) => {
 if (dev) run([join(import.meta.dirname, 'dev.mjs')]) // 前端增量编译
 const dsh = run([bin, 'web', '--no-open', '--port', port])
 
-console.log(`[dsh] ${dev ? '开发' : '生产'}模式 → 插件入口 ${dev ? 'src/plugin/index.ts' : 'lib/'} ，端口 ${port}`)
+console.log(`[dsh] ${dev ? '开发' : '生产'}模式 → 插件入口 ${dev ? 'packages/app/index.ts' : 'lib/'} ，端口 ${port}`)
 
 const stop = () => children.forEach((c) => { try { c.kill() } catch {} })
 process.on('SIGINT', () => { stop(); process.exit(0) })

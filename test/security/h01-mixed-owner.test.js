@@ -47,7 +47,7 @@ const fake = createFakeDsh({
     return '嗯'
   },
 })
-const host = await import(`file:///${REPO}/src/plugin/index.ts`)
+const host = await import(`file:///${REPO}/packages/app/index.ts`)
 const api = host.apply(fake.ctx)
 await api.ready
 await new Promise((r) => setTimeout(r, 400))

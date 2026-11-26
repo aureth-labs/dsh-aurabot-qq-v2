@@ -1,7 +1,7 @@
 // 面板/模块接口的 HTTP 底座：响应编码、请求体读取、访问闸（本机 / Host / CSRF）与路由登记。
 
-import { encodeResponse } from '../core/net/http-compress.ts'
-import { redact } from '../core/support/log/redact.ts'
+import { encodeResponse } from '../../src/core/net/http-compress.ts'
+import { redact } from '../../src/core/support/log/redact.ts'
 
 export interface HttpOptions {
   ctx: any

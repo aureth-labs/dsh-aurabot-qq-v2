@@ -1,83 +1,70 @@
-import { validMemberFilter } from '../chat/inbound/filter/member-filter.ts'
+import { validMemberFilter } from '../../src/chat/inbound/filter/member-filter.ts'
 import { registerOutboundPanelRoutes } from './outbound-panel.ts'
-// Aurabot · 宿主半边（DSH 插件入口）
-//
-// 让 DSH 里的 AI 以独立 QQ 号「大肥鱼」住在 QQ 里：
-//   OneBot v11 适配器 ⇄ 本插件 ⇄ DSH 会话（Aurabot 自带的 preset + 人格）
-// 面板在侧栏「自动化任务」下面（网页半边见 client/**/*.ts，打包成 dist/client.js），这里提供它要的 /aurabot/api/* 接口。
-//
-// 这个文件只管「核心」：配置、QQ 网关、聊天中枢、人格、面板接口、模块内核和联动。
-// 表情、语音、记忆、空间、B 站、翻唱、生图……都是模块（packages/），能单独关掉，也能用自己写的替换。
-//
-// ⚠ 安全默认：总开关关、调试模式开。不手动打开，一句都不会真的发到 QQ。
-
 import { readFileSync, existsSync, writeFileSync, unlinkSync, statSync, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { ROOT as packageRoot } from '../core/support/util/root.ts'
+import { ROOT as packageRoot } from '../../src/core/support/util/root.ts'
 import { spawn } from 'node:child_process'
 import { isDeepStrictEqual } from 'node:util'
 import { randomUUID } from 'node:crypto'
-import { loadConfig, saveConfig, commitConfig, configRevision, publicConfig, mergeFromPanel, ownerAuthorizationRevision } from '../core/config/index.ts'
-import { quietWindowOf } from '../core/support/time/time-window.ts'
-import { createLogger } from '../core/support/log/logger.ts'
-import { encodeResponse } from '../core/net/http-compress.ts'
-import { registerSecret, redact } from '../core/support/log/redact.ts'
-import { createOneBotClient } from '../../packages/adapters/qq/onebot-v11/src/client.ts'
-import { createOutbox } from '../../packages/adapters/qq/onebot-v11/src/outbox.ts'
-import { createHub, workspaceDirOf } from '../chat/hub/index.ts'
-import { createPersonaMemoryRuntime } from '../core/support/bridge/persona-memory-bridge.ts'
-import { normalizeSelection } from '../chat/hub/store/chat-model.ts'
-import { grantOwner, moveWorkspace, realWorkspace } from '../core/runtime/workspace-move.ts'
-import { createLocal, fileOf, toImageBuffer } from '../local/index.ts'
+import { loadConfig, saveConfig, commitConfig, configRevision, publicConfig, mergeFromPanel, ownerAuthorizationRevision } from '../../src/core/config/index.ts'
+import { quietWindowOf } from '../../src/core/support/time/time-window.ts'
+import { createLogger } from '../../src/core/support/log/logger.ts'
+import { encodeResponse } from '../../src/core/net/http-compress.ts'
+import { registerSecret, redact } from '../../src/core/support/log/redact.ts'
+import { createOneBotConnection } from '../adapters/qq/onebot-v11/src/connection.ts'
+import { createOutbox } from '../adapters/qq/onebot-v11/src/outbox.ts'
+import { createHub, workspaceDirOf } from '../../src/chat/hub/index.ts'
+import { createPersonaMemoryRuntime } from '../../src/core/support/bridge/persona-memory-bridge.ts'
+import { normalizeSelection } from '../../src/chat/hub/store/chat-model.ts'
+import { grantOwner, moveWorkspace, realWorkspace } from '../../src/core/runtime/workspace-move.ts'
+import { createLocal, fileOf, toImageBuffer } from '../../src/local/index.ts'
 
-import { defaultModel, askModel, modelReasoning, modelVision, clearReasoningCache, clearVisionCache } from '../core/llm/index.ts'
-import { createLlmFacade } from '../core/llm/facade.ts'
-import { browserStatus } from '../core/runtime/browser.ts'
-import { mimeOf } from '../chat/inbound/index.ts'
-import { createMediaAccess } from '../core/message/media/media.ts'
-import { buildFaceIndex } from '../chat/media/face/index.ts'
-import { FACE_TABLE } from '../chat/media/face/table.ts'
-import { dataDir, ensureDir } from '../core/store/index.ts'
-import { closeMessageLogsUnder } from '../core/store/messages.ts'
-import { createUsageFx } from '../core/llm/usage/fx.ts'
-import { initUsage, usageReport, closeUsage } from '../core/llm/usage/usage.ts'
-import { BotRegistry, createBotsAccessor } from '../core/bot/instance/registry.ts'
-import { botApiStubs } from '../core/bot/index.ts'
-import { AdapterRegistry } from '../core/bot/adapter/registry.ts'
-import { wrapAdapterBot } from '../core/bot/instance/bot.ts'
-import type { BotLike } from '../types/adapter/bot.ts'
-import type { InboundMessage } from '../types/adapter/adapter.ts'
-import { OneBotBot, inboundOf, eventForHub } from '../../packages/adapters/qq/onebot-v11/src/index.ts'
-import { Pipeline } from '../core/pipeline/index.ts'
-import { Session, inboundSession } from '../core/pipeline/session.ts'
-import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from '../core/runtime/update.ts'
-import { parseCommand, runCommand, createMutes, commandList } from '../chat/commands/index.ts'
-import { isOwner, groupResponseMode } from '../chat/policy/rules/access.ts'
-import { createGroupRoles } from '../chat/policy/rules/group.ts'
-import { changePermissions, changePrivateWhitelist, privatePermissionCatalog } from '../chat/policy/rules/permission.ts'
-import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../chat/commands/delegated-commands.ts'
-import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow } from '../persona/personas.ts'
-import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook } from '../persona/persona-look.ts'
-import { createModules, API_VERSION, BUILTIN_DIR } from '../core/module/index.ts'
-import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../core/module/market/community.ts'
-import { createApprovalRelay } from '../security/approval.ts'
-import { createNoticeRelay, normalizeWorkspace } from '../features/notices/index.ts'
-import { captureSystemPrompt } from '../security/leak-guard.ts'
-import { applyPendingRestore, cancelRestore, createBackup, listBackups, pendingModules, pendingRestore, setPendingModules, stageReceivedBackup, stageRestore } from '../core/runtime/backup/backup.ts'
-import { pushBackup, listWebdavBackups, downloadWebdavBackup } from '../core/runtime/backup/backup-push.ts'
-import { cleanText } from '../core/support/util/text.ts'
-import { createBridge } from '../core/runtime/bridge.ts'
-import { createDangerGuard, safeOwnedSession } from '../security/danger.ts'
-import { createAuditor } from '../../packages/autotelic/impl/observe/audit.ts'
-import { setSsrpMode, assertPublicUrl, fetchGuarded } from '../core/net/index.ts'
-import { BUILTINS } from '../../packages/index.ts'
+import { defaultModel, askModel, modelReasoning, modelVision, clearReasoningCache, clearVisionCache } from '../../src/core/llm/index.ts'
+import { createLlmFacade } from '../../src/core/llm/facade.ts'
+import { browserStatus } from '../../src/core/runtime/browser.ts'
+import { mimeOf } from '../../src/chat/inbound/index.ts'
+import { createMediaAccess } from '../../src/core/message/media/media.ts'
+import { buildFaceIndex } from '../../src/chat/media/face/index.ts'
+import { FACE_TABLE } from '../../src/chat/media/face/table.ts'
+import { dataDir, ensureDir } from '../../src/core/store/index.ts'
+import { closeMessageLogsUnder } from '../../src/core/store/messages.ts'
+import { createUsageFx } from '../../src/core/llm/usage/fx.ts'
+import { initUsage, usageReport, closeUsage } from '../../src/core/llm/usage/usage.ts'
+import { BotRegistry, createBotsAccessor } from '../../src/core/bot/instance/registry.ts'
+import { botApiStubs } from '../../src/core/bot/index.ts'
+import { AdapterRegistry } from '../../src/core/bot/adapter/registry.ts'
+import { wrapAdapterBot } from '../../src/core/bot/instance/bot.ts'
+import type { BotLike } from '../../src/types/adapter/bot.ts'
+import type { InboundMessage } from '../../src/types/adapter/adapter.ts'
+import { inboundOf, eventForHub } from '../adapters/qq/onebot-v11/src/index.ts'
+import { Pipeline } from '../../src/core/pipeline/index.ts'
+import { Session, inboundSession } from '../../src/core/pipeline/session.ts'
+import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from '../../src/core/runtime/update.ts'
+import { parseCommand, runCommand, createMutes, commandList } from '../commands/dispatch.ts'
+import { isOwner, groupResponseMode } from '../../src/chat/policy/rules/access.ts'
+import { createGroupRoles } from '../../src/chat/policy/rules/group.ts'
+import { changePermissions, changePrivateWhitelist, privatePermissionCatalog } from '../../src/chat/policy/rules/permission.ts'
+import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../../src/chat/commands/delegated-commands.ts'
+import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow } from '../../src/persona/personas.ts'
+import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook } from '../../src/persona/persona-look.ts'
+import { createModules, API_VERSION, BUILTIN_DIR } from '../../src/core/module/index.ts'
+import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../../src/core/module/market/community.ts'
+import { createApprovalRelay } from '../../src/security/approval.ts'
+import { createNoticeRelay, normalizeWorkspace } from '../../src/features/notices/index.ts'
+import { captureSystemPrompt } from '../../src/security/leak-guard.ts'
+import { applyPendingRestore, cancelRestore, createBackup, listBackups, pendingModules, pendingRestore, setPendingModules, stageReceivedBackup, stageRestore } from '../../src/core/runtime/backup/backup.ts'
+import { pushBackup, listWebdavBackups, downloadWebdavBackup } from '../../src/core/runtime/backup/backup-push.ts'
+import { cleanText } from '../../src/core/support/util/text.ts'
+import { createBridge } from '../../src/core/runtime/bridge.ts'
+import { createDangerGuard, safeOwnedSession } from '../../src/security/danger.ts'
+import { createAuditor } from '../autotelic/impl/observe/audit.ts'
+import { setSsrpMode, assertPublicUrl, fetchGuarded } from '../../src/core/net/index.ts'
+import { BUILTINS } from '../index.ts'
 import { ensureDevBuild, runUpdate, tcpOpen, updateExec } from './support.ts'
 import { createHttp } from './http.ts'
-import { createOutboundPolicy } from '../chat/policy/outbound/index.ts'
-import { createPurposePolicy, createSharedBudget } from '../features/proactive/policy/index.ts'
+import { createOutboundPolicy } from '../../src/chat/policy/outbound/index.ts'
+import { createPurposePolicy, createSharedBudget } from '../../src/features/proactive/policy/index.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
 type SendOptions = Partial<Record<'item', any>>
 
 export const name = 'aurabot'
@@ -154,8 +141,8 @@ export function apply(ctx) {
     debugSwitch.on = Boolean(cfg.debug)
     // 改机器人号后旧连接的核对结果立刻失效，必须重新核对才能处理消息或完成向导。
     if (before.botQQ !== cfg.botQQ) {
-      wrongAccount = ''
-      if (onebotState === 'connected') onebot.restart()
+      connection.clearMismatch()
+      if (onebot.state === 'connected') onebot.restart()
     }
     secrets()
     if (bridge && (before.bridge.dshTools !== cfg.bridge.dshTools || before.persona.current !== cfg.persona.current)) bridge.refresh()
@@ -202,63 +189,10 @@ export function apply(ctx) {
     httpToken: cfg.onebot.httpToken,
     wsToken: cfg.onebot.wsToken,
   })
-  let onebotState = 'stopped'
-  // 连上后先核对登录的是不是机器人号，核对通过前不处理任何消息；不是就断开，不再自动重连
-  let loginOk = false
-  let wrongAccount = ''
-  // 已核验登录快照（方案 §二「连接摘要」）：checkLogin 核对时顺手缓存，面板轻量接口只读它，
-  // 绝不为了首屏现打 get_login_info（5 秒超时那个就是首屏卡顿的元凶）。断线即作废。
-  let loginSnapshot = { uin: '', nickname: '', at: 0 }
-  // 核对期间收到的事件先攒着：核对通过就补处理，核对失败就丢掉。
-  // 直接丢弃的话，刚连上那几百毫秒里主人发的消息就没了（登录核对要等一次 get_login_info 往返）。
-  let verifying = false
-  let pendingEvents = []
   let hub = null
   let dangerGuard = null // 危险命令确认（security.dangerConfirm 开着才生效）
   let approvalRelay = null // DSH 要授权时在 QQ 私聊问主人（approvalViaQQ 开着才生效）
   let noticeRelay = null // DSH 要授权 / 要选选项时通知到主人私聊（config.notice，按工作区开关）
-  async function checkLogin() {
-    verifying = true
-    pendingEvents = []
-    try {
-      let uin = ''
-      let info = null
-      try {
-        info = await onebot.call('get_login_info', {}, { timeoutMs: 10000 })
-        uin = String(info?.user_id ?? '')
-        // 核对往返顺带更新登录快照（昵称一起缓存；核对本身不增加任何额外网络调用）
-        loginSnapshot = { uin, nickname: info?.nickname || '', at: Date.now() }
-      } catch (error) {
-        logger.child('onebot').warn('核对登录的 QQ 号失败：', error.message)
-      }
-      if (onebotState !== 'connected') return
-      if (!uin) {
-        // 核对不了就别用，断开后由看门狗重试
-        onebot.stop()
-        return
-      }
-      if (String(uin) === String(cfg.botQQ)) {
-        const wasOnline = onebotBot.status === 'online'
-        loginOk = true
-        wrongAccount = ''
-        // S0：登录核对通过才算上线，插件这时才能拿到可用的 bot 实例
-        onebotBot.setSelfId(uin)
-        onebotBot.markOnline()
-        if (!wasOnline) botRegistry.emit('online', onebotBot)
-        // 把核对期间攒下的补上（按到达顺序）
-        const queued = pendingEvents
-        pendingEvents = []
-        for (const ev of queued) handleEvent(ev)
-      } else {
-        wrongAccount = uin
-        pendingEvents = []
-        onebot.stop()
-      }
-    } finally {
-      verifying = false
-    }
-  }
-  /** 核对通过后的事件都在这里处理（onEvent 直接调，核对期间攒下的也会补到这里）。 */
   function handleEvent(ev) {
     if (!hub) return
     // 模块能看到所有原始事件（加群、撤回、好友申请……），只看不拦
@@ -293,22 +227,20 @@ export function apply(ctx) {
   // 预热阶段：QQ 没开 / 正在登录 / 已登录未接入 / 已接入等 OneBot / OneBot 已监听
   let warmupPhase = { phase: '', label: '' }
   let warmupProbing = false
-  const onebot = createOneBotClient({
+  const botRegistry = new BotRegistry()
+  const connection = createOneBotConnection({
     endpoint,
+    expectedAccount: () => cfg.botQQ,
+    enabled: () => Boolean(cfg.enabled),
     log: logger.child('onebot'),
+    speak: async text => String((await tts.speak(text))?.file ?? ''),
+    onOnline: bot => botRegistry.emit('online', bot),
+    onOffline: (bot, reason) => botRegistry.emit('offline', bot, reason),
+    onEvent: handleEvent,
+    onReady: flushOutbox,
     onState: (s, d) => {
-      onebotState = s
       if (s === 'connected' || s === 'stopped' || s === 'unconfigured') { gatewayWarmSince = 0; warmupPhase = { phase: '', label: '' } }
       else if (!gatewayWarmSince && cfg.enabled) gatewayWarmSince = Date.now()
-      if (s !== 'connected') {
-        const wasOnline = onebotBot.status === 'online'
-        loginOk = false
-        pendingEvents = []
-        loginSnapshot = { uin: '', nickname: '', at: loginSnapshot.at }
-        onebotBot.markOffline(s)
-        if (wasOnline) botRegistry.emit('offline', onebotBot, s)
-      }
-      else checkLogin().then(() => { if (loginOk) flushOutbox() }).catch((error) => log.warn('核对登录号出错：', error.message))
       // 预热阶段 connecting/disconnected 会每 3 秒来回刷：首次和每 20 秒记一条 info，其余进 debug
       const line = `QQ 网关：${s}${d ? '（' + d + '）' : ''}`
       const now = Date.now()
@@ -320,42 +252,9 @@ export function apply(ctx) {
       }
       mods?.emit('onebot/state', s)
     },
-    onEvent: (ev) => {
-      // 还没核对是机器人号：核对期间先攒着，核对通过后补处理
-      if (!loginOk) {
-        if (verifying) {
-          pendingEvents.push(ev)
-          if (pendingEvents.length > 200) pendingEvents.shift()
-        }
-        return
-      }
-      handleEvent(ev)
-    },
   })
+  const { bot: onebotBot, client: onebot } = connection
   let flushingOutbox = false
-  // ---------- S0：Bot 注册表（v2 发送面） ----------
-  // 现有链路仍走 onebot.call；这里额外提供一个「已上线机器人」的稳定视图，
-  // 给 v2 插件用 session.bot / ctx.bots 发消息，行为与旧链路一致。
-  const botRegistry = new BotRegistry()
-  const onebotBot = new OneBotBot({
-    // 调试模式 / 总开关关着时，v2 的 send 也不许真发出去——和旧链路一个口径。
-    call: (action, params, options) => {
-      const live = getConfig()
-      if (!live.enabled) {
-        log.info(`总开关关着（v2 没发）→ ${action} ${params?.group_id ?? params?.user_id ?? ''}`)
-        return Promise.resolve({ ok: false, simulated: true })
-      }
-      return onebot.call(action, params, options)
-    },
-    isConnected: () => onebot.isConnected(),
-    // `<voice>要念的话</voice>`：发之前先合成音频。语音模块关着就退回文字（见 voice-element.ts），
-    // 这里晚绑定（tts 在下面才声明），发送发生在启动之后，不存在取不到的问题。
-    speak: async (text) => {
-      const voice = await tts.speak(text)
-      return String(voice?.file ?? '')
-    },
-    log: logger.child('voice'),
-  })
   botRegistry.add(onebotBot)
   // 面板「机器人列表」的数据源：QQ 是内置适配器，用 adopt 挂进来；
   // 插件用 ctx.adapter(spec) 拉起来的走 start()，两边一起在这里列出来。
@@ -431,7 +330,7 @@ export function apply(ctx) {
   }
 
   async function flushOutbox () {
-    if (flushingOutbox || onebotState !== 'connected' || !loginOk) return
+    if (flushingOutbox || onebot.state !== 'connected' || !connection.verified) return
     flushingOutbox = true
     try {
       const r = await outbox.flush((action, params, opts) => onebot.call(action, params, { ...opts, retries: 0 }),
@@ -442,7 +341,7 @@ export function apply(ctx) {
             try { hub.noteProactive(item.chatId, item.params?.message || [], { proactiveCause: item.proactive }) } catch (error) { logger.child('outbox').warn('补发后补记主动发言失败：', error.message) }
           }
           if (item.action !== 'send_private_msg' || item.chatId !== `private:${item.params?.user_id}` ||
-              (item.deliveryScope as any)?.botQQ !== loginSnapshot.uin || (result as any)?.queued) return
+              (item.deliveryScope as any)?.botQQ !== connection.login.uin || (result as any)?.queued) return
           personaMemoryRuntime.confirmDelivery(item.chatId, (result as any)?.message_id, item.deliveryScope)
         })
       if (r.sent || r.dropped || r.left) log.info(`补发队列：成功 ${r.sent}，丢弃 ${r.dropped}，剩余 ${r.left}`)
@@ -463,7 +362,7 @@ export function apply(ctx) {
   }
   /** 每 2 秒看一次 OneBot 端口有没有起来；只在预热期跑，连上/关掉/超过 5 分钟就停。 */
   async function probeWarmup () {
-    if (warmupProbing || !gatewayWarmSince || onebotState === 'connected') return
+    if (warmupProbing || !gatewayWarmSince || onebot.state === 'connected') return
     if (!cfg.enabled) return
     if (Date.now() - gatewayWarmSince > 300_000) return
     warmupProbing = true
@@ -594,7 +493,7 @@ export function apply(ctx) {
       model: (sel, chat) => mods.filterSync('model', sel, chat),
       poke: (ev) => mods.claim('poke', ev),
       journal: (row) => mods?.emit('chat/log', row),
-      deliveryScope: (chatId, personaId, botQQ) => loginOk && loginSnapshot.uin === botQQ
+      deliveryScope: (chatId, personaId, botQQ) => connection.verified && connection.login.uin === botQQ
         ? personaMemoryRuntime.captureDelivery(chatId, personaId, botQQ)
         : null,
       delivery: personaMemoryRuntime.confirmDelivery,
@@ -706,18 +605,18 @@ export function apply(ctx) {
     debug: Boolean(cfg.debug),
     safeMode: Boolean(cfg.safeMode),
   })
-  // 连接快照：QQ 直连只用事件状态（onebotState）+ 已核验登录快照（checkLogin 顺带缓存），
+  // 连接快照：QQ 直连只用事件状态（onebot.state）+ 已核验登录快照（checkLogin 顺带缓存），
   // 原因码只给可公开的机器值（reason），不给内部细节。
   const connectionsView = () => {
-    const connected = onebotState === 'connected'
-    const verified = connected && loginOk
+    const connected = onebot.state === 'connected'
+    const verified = connected && connection.verified
     let stage = 'connecting'
     let reason = 'gateway_connecting'
     if (!cfg.enabled) { stage = 'disabled'; reason = 'disabled_in_config' }
     else if (connected && verified) { stage = 'connected'; reason = 'ok' }
-    else if (connected) { stage = 'verifying'; reason = wrongAccount ? 'wrong_account' : 'verifying_login' }
-    else if (onebotState === 'unconfigured') { stage = 'unconfigured'; reason = 'gateway_unconfigured' }
-    else if (onebotState === 'stopped') { stage = 'disconnected'; reason = 'gateway_disconnected' }
+    else if (connected) { stage = 'verifying'; reason = connection.wrongAccount ? 'wrong_account' : 'verifying_login' }
+    else if (onebot.state === 'unconfigured') { stage = 'unconfigured'; reason = 'gateway_unconfigured' }
+    else if (onebot.state === 'stopped') { stage = 'disconnected'; reason = 'gateway_disconnected' }
     else if (gatewayWarmSince) { reason = 'gateway_warming' }
     return [{
       platform: 'qq',
@@ -726,7 +625,7 @@ export function apply(ctx) {
       stage, // connected | verifying | connecting | disconnected | unconfigured | disabled
       verified,
       reason, // ok | wrong_account | verifying_login | gateway_warming | gateway_connecting | gateway_disconnected | gateway_unconfigured | disabled_in_config
-      login: verified ? { uin: loginSnapshot.uin, nickname: loginSnapshot.nickname } : null,
+      login: verified ? { uin: connection.login.uin, nickname: connection.login.nickname } : null,
       warmupSeconds: gatewayWarmSince ? Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)) : 0,
     }]
   }
@@ -1118,7 +1017,7 @@ export function apply(ctx) {
       return
     }
     // 上次连上的不是机器人号：等主人改设置再连
-    if (wrongAccount) return
+    if (connection.wrongAccount) return
     if (onebot.state === 'stopped') onebot.start()
   }
   const safe = (fn, label) => () => { Promise.resolve().then(fn).catch((error) => log.warn(`${label}出错：`, error.message)) }
@@ -1141,7 +1040,7 @@ export function apply(ctx) {
   // ---------- 面板接口 ----------
   async function overview() {
     let login = null
-    if (onebotState === 'connected') {
+    if (onebot.state === 'connected') {
       try {
         const info = await onebot.call('get_login_info', {}, { timeoutMs: 5000 })
         login = { uin: String(info?.user_id ?? ''), nickname: info?.nickname || '' }
@@ -1157,7 +1056,7 @@ export function apply(ctx) {
       startedAt: STARTED_AT,
       apiVersion: API_VERSION,
       config: publicConfig(cfg),
-      onebot: { state: onebotState, login, endpoint: { httpUrl: endpoint().httpUrl, wsUrl: endpoint().wsUrl }, problem: onebotState === 'connected' && loginOk ? '' : await connectionProblem(), warmup: gatewayWarmSince ? { since: gatewayWarmSince, seconds: Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)), phase: warmupPhase.phase || '', label: warmupPhase.label || '' } : null },
+      onebot: { state: onebot.state, login, endpoint: { httpUrl: endpoint().httpUrl, wsUrl: endpoint().wsUrl }, problem: onebot.state === 'connected' && connection.verified ? '' : await connectionProblem(), warmup: gatewayWarmSince ? { since: gatewayWarmSince, seconds: Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)), phase: warmupPhase.phase || '', label: warmupPhase.label || '' } : null },
       outbox: outbox.status(),
       stats: hub.stats(),
       // 模块关着时给个空壳，面板照常显示
@@ -1295,7 +1194,7 @@ export function apply(ctx) {
     // 换了模型：思考强度和「能不能看图」的探测结果都得重来，不然要等 10 分钟缓存过期
     const changedModel = before.model.provider !== cfg.model.provider || before.model.model !== cfg.model.model
     if (changedModel) { clearReasoningCache(); clearVisionCache() }
-    if (changedConn || before.botQQ !== cfg.botQQ) wrongAccount = ''
+    if (changedConn || before.botQQ !== cfg.botQQ) connection.clearMismatch()
     if (changedConn && onebot.state !== 'stopped') onebot.restart()
     if (!before.enabled && cfg.enabled) setTimeout(safe(watchdog, '看门狗'), 100)
     if (before.enabled && !cfg.enabled) onebot.stop()
@@ -2000,8 +1899,8 @@ export function apply(ctx) {
       const open = await tcpOpen(port)
       add(`${kind}-port`, `${label} 端口 ${port}`, open, open ? '端口正在监听' : '端口没有监听', '确认你的 OneBot 服务（NapCat / LLOneBot / Lagrange 等）已启动并监听该端口')
     }
-    const connected = onebotState === 'connected'
-    add('gateway', '插件 ↔ OneBot 网关', connected, connected ? '已连接' : String(onebotState || '未连接'), '连不上时看上面几项，或者点「重新连接」')
+    const connected = onebot.state === 'connected'
+    add('gateway', '插件 ↔ OneBot 网关', connected, connected ? '已连接' : String(onebot.state || '未连接'), '连不上时看上面几项，或者点「重新连接」')
     const problem = connected ? '' : await connectionProblem()
     return { ok: items.every((item) => item.ok), items, problem }
   })
@@ -2011,7 +1910,7 @@ export function apply(ctx) {
     if (!cfg.botQQ) return '还没填机器人 QQ 号'
     const ep = endpoint()
     if (!ep.wsUrl) return '还没填 OneBot 的 WebSocket 地址：在「连接」页填你的 OneBot v11 正向 WebSocket 地址（收消息要靠它；HTTP 可以不填）'
-    if (wrongAccount) return `连上的是 ${wrongAccount}，不是机器人号 ${cfg.botQQ}，已经断开：让你的 OneBot 服务登录机器人号，再点「重新连接」`
+    if (connection.wrongAccount) return `连上的是 ${connection.wrongAccount}，不是机器人号 ${cfg.botQQ}，已经断开：让你的 OneBot 服务登录机器人号，再点「重新连接」`
     if (gatewayWarmSince && Date.now() - gatewayWarmSince < 300_000) {
       const sec = Math.max(1, Math.round((Date.now() - gatewayWarmSince) / 1000))
       const label = warmupPhase.label || '正在等 OneBot 会话'
@@ -2021,11 +1920,11 @@ export function apply(ctx) {
   }
   route('/onebot/reconnect', async () => {
     if (!cfg.enabled) return { ok: false, message: await connectionProblem() }
-    wrongAccount = ''
+    connection.clearMismatch()
     onebot.restart()
     // 等几秒看结果，别只回一句「正在重连」
-    for (let i = 0; i < 16 && !(onebotState === 'connected' && loginOk); i++) await new Promise((r) => setTimeout(r, 500))
-    if (onebotState === 'connected' && loginOk) return { ok: true, message: '连上了' }
+    for (let i = 0; i < 16 && !(onebot.state === 'connected' && connection.verified); i++) await new Promise((r) => setTimeout(r, 500))
+    if (onebot.state === 'connected' && connection.verified) return { ok: true, message: '连上了' }
     return { ok: false, message: '没连上：' + (await connectionProblem()) }
   })
   route('/onebot/test', async () => {

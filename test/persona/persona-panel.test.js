@@ -405,7 +405,7 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
     onebot: {  }, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
   const fake = createFakeDsh({ brain: async () => '' })
   try {
-    const { apply } = await import('../../src/plugin/index.ts')
+    const { apply } = await import('../../packages/app/index.ts')
     const api = apply(fake.ctx)
     await api.ready
     const memory = api.modules.use('memory')

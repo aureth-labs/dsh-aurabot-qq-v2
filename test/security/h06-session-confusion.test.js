@@ -52,7 +52,7 @@ before(async () => {
     if (String(text).includes('H06-HANG')) { hang.started++; await new Promise((r) => { hang.resolve = r }); return 'H06-旧回复（不该发出）' }
     return 'H06-新回复'
   } })
-  const host = await import('../../src/plugin/index.ts')
+  const host = await import('../../packages/app/index.ts')
   api = host.apply(fake.ctx)
   await fake.call('/onebot/reconnect')
   await until(() => mock.connected() > 0)

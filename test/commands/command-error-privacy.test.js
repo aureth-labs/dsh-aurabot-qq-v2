@@ -7,7 +7,7 @@ import {createFakeDsh} from '../helpers/fake-dsh.js'
 import {normalize} from '../../src/core/config/index.ts'
 process.env.AURABOT_DATA_DIR=mkdtempSync(join(tmpdir(),'cmd-privacy-'))
 const {createHub}=await import('../../src/chat/hub/index.ts')
-const {runCommand,parseCommand}=await import('../../src/chat/commands/index.ts')
+const {runCommand,parseCommand}=await import('../../packages/commands/dispatch.ts')
 const {createSongStudio,songFailureReason}=await import('../../src/song/studio/index.ts')
 const errors=['ENOENT C:\\Users\\Private\\config.json','failed at /home/private/run.js:20:3','Traceback \\wsl.localhost\\Ubuntu\\root\\secret','const password = "hidden"; internal detail']
 const owner='10000001',cfg=normalize({enabled:true,dryRun:false,ownerQQ:owner,botQQ:'20000002',merge:{enabled:false},voice:{enabled:false}})

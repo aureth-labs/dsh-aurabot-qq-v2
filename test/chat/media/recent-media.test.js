@@ -207,7 +207,7 @@ test('宿主卸载会关闭媒体缓存，旧中枢不能继续读写暂存文�
   const s = setup()
   writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, onebot: { ...s.cfg.onebot } }))
   const { createFakeDsh } = await import('../../helpers/fake-dsh.js')
-  const { apply } = await import('../../../src/plugin/index.ts')
+  const { apply } = await import('../../../packages/app/index.ts')
   const fake = createFakeDsh({ brain: async () => '' }), api = apply(fake.ctx)
   try {
     await api.ready

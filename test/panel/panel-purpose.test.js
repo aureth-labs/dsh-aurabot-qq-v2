@@ -43,7 +43,7 @@ before(async () => {
   fake = createFakeDsh({ brain })
   // DSH 的 webServer 服务带真实端口（真机同理）：host.js 靠它给 pet 模块注入端口、破「host.json 写 :0」的自举死锁
   fake.ctx.webServer.port = 5099
-  const host = await import('../../src/plugin/index.ts')
+  const host = await import('../../packages/app/index.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
   await fake.call('/onebot/reconnect')

@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize } from '../../src/core/config/index.ts'
-import { parseCommand, runCommand } from '../../src/chat/commands/index.ts'
-import { parseGroupSettingsCommand, runGroupSettingsCommand } from '../../src/chat/commands/group-settings-command.ts'
+import { parseCommand, runCommand } from '../../packages/commands/dispatch.ts'
+import { parseGroupSettingsCommand, runGroupSettingsCommand } from '../../packages/commands/group-settings-command.ts'
 import { canUseDelegatedCommand, delegatedCommandKey } from '../../src/chat/commands/delegated-commands.ts'
 const OWNER = '10000001', G = '30000003', H = '40000004', OTHER = '10000002'
 const owner = { kind: 'private', userId: OWNER }
@@ -125,19 +125,17 @@ test('查询等待期间换主人、关闭指令或收到更新指令，旧操�
   const old = x.run('修改 全部 主动 关'); await x.run('取消'); release([{ group_id: G }])
   assert.match(await old, /当前指令已变化/); assert.match(await x.run('确认 123456'), /没有有效/)
 })
-test('恢复默认只删接话覆盖；零概率恢复与自然语言工具一致，试运行不写', async () => {
+test('恢复默认只删接话覆盖；零概率恢复与自然语言工具一致，调试时只预览', async () => {
   const x = setup({ group: { interjectChance: 0, overrides: { [G]: { proactiveEnabled: false, cooldownSec: 222 } } }, memory: { passiveGroups: [G] } })
   await x.run(`修改 ${G} 主动 开`)
   assert.equal(x.cfg().group.overrides[G].interjectChance, .15)
   assert.equal(x.cfg().group.overrides[G].engagedEnabled, false, '保持原来的有效关闭')
   await x.run(`恢复 ${G}`); assert.equal(x.cfg().group.overrides[G], undefined)
   assert.deepEqual(x.cfg().memory.passiveGroups, [G]); assert.deepEqual(x.cfg().allow.groups, [G])
-  for (const patch of [{ dryRun: true }, { debug: true }]) {
-    const y = setup(patch), before = structuredClone(y.cfg())
-    assert.match(await y.run('修改 全部 主动 关'), /仅预览，未保存/)
-    assert.match(await y.run(`修改 ${G} 白名单 关`), /仅预览，未保存/)
-    assert.deepEqual(y.cfg(), before); assert.equal(y.saves(), 0)
-  }
+  const y = setup({ debug: true }), before = structuredClone(y.cfg())
+  assert.match(await y.run('修改 全部 主动 关'), /仅预览，未保存/)
+  assert.match(await y.run(`修改 ${G} 白名单 关`), /仅预览，未保存/)
+  assert.deepEqual(y.cfg(), before); assert.equal(y.saves(), 0)
 })
 test('保存异常不给聊天泄露路径/堆栈，不把失败说成成功', async () => {
   const x = setup(); x.deps.setConfig = () => { throw new Error('EACCES C:\\private\\token.json at stack.js') }
@@ -160,8 +158,8 @@ test('查询按群分段，单群保留限制，批量回执逐项列出改动',
   assert.match(p,/\n主动 开\n窗口 关\n其余设置不变/);assert.match(p,/尚未修改/)
   assert.equal(x.saves(),0)
 })
-test('总开关、试运行、暂停、静默和零次数限制不能被简短排版隐藏', async()=>{
-  for(const [patch,label] of [[{enabled:false},'总开关关闭'],[{debug:true},'调试模式'],[{dryRun:true},'试运行']]){
+test('总开关、调试、暂停、静默和零次数限制不能被简短排版隐藏', async()=>{
+  for(const [patch,label] of [[{enabled:false},'总开关关闭'],[{debug:true},'调试模式']]){
     const x=setup(patch);assert.ok((await x.run('查看 全部')).includes(label))
   }
   const x=setup({group:{maxPerHour:0,engagedMax:0,quietHours:[1,8]}})

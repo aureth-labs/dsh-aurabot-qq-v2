@@ -1,7 +1,8 @@
+import { DeliveryError, type DeliveryOutcome } from '../../../../../src/core/bot/delivery.ts'
 
+interface ErrorOptions { transport?: boolean; uncertain?: boolean }
+interface ErrorData { message?: string; wording?: string; retcode?: number | string; status?: string }
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type OptsOptions = Partial<Record<'transport' | 'uncertain', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CallOptions = Partial<Record<'timeoutMs' | 'retries', any>>
 
@@ -25,18 +26,20 @@ export function messageDedupeKey(event) {
   return `${chat}|${id}`
 }
 
-export class OneBotError extends Error {
+export class OneBotError extends DeliveryError {
   /** 失败的那个 OneBot 动作名。 */
   action: string
   /** 网关回的业务错误体。 */
-  data: any
+  data: ErrorData
   /** true = 根本没连上网关，可以重试。 */
   transport: boolean
   /** true = 不确定消息有没有发出去。 */
   uncertain: boolean
 
-  constructor(action, data, { transport = false, uncertain = false } : OptsOptions = {}) {
-    super(`${action} 失败：${data?.message || data?.wording || data?.retcode || '未知错误'}`)
+  constructor(action: string, data: ErrorData, { transport = false, uncertain = false }: ErrorOptions = {}) {
+    const message = `${action} 失败：${data?.message || data?.wording || data?.retcode || '未知错误'}`
+    super(message, deliveryOutcome(data, message, transport, uncertain))
+    this.name = 'OneBotError'
     this.action = action
     this.data = data
     // transport = 根本没连上网关（可以重试）；业务错误（retcode 不为 0、超时但也可能已经发出去）不重试
@@ -45,11 +48,13 @@ export class OneBotError extends Error {
   }
 }
 
-/** 只有确定没连上或网关明确拒绝时，才能换一种方式发送。 */
-export function isDefiniteFailure(error) {
-  if (error instanceof OneBotError && !error.uncertain && Number(error.data?.retcode || 0) !== 0 && /highway|upload/i.test(String(error.data?.message || error.message))) return true // 语音传不上去，消息肯定没发出去
-  if (!(error instanceof OneBotError) || error.uncertain || /超时|timeout|timed?\s*out/i.test(String(error.data?.message || error.message))) return false
-  return error.transport || error.data?.status === 'failed' || (error.data?.retcode != null && Number(error.data.retcode) !== 0)
+function deliveryOutcome(data: ErrorData, message: string, transport: boolean, uncertain: boolean): DeliveryOutcome {
+  if (uncertain) return 'unknown'
+  const rejected = data?.retcode != null && Number(data.retcode) !== 0
+  const reason = data?.message || message
+  if (rejected && /highway|upload/i.test(reason)) return 'rejected'
+  if (/超时|timeout|timed?\s*out/i.test(reason)) return 'unknown'
+  return transport || data?.status === 'failed' || rejected ? 'rejected' : 'unknown'
 }
 
 // fetch 失败不一定是没连上：连接建立后断开时，网关可能已经收到了请求。

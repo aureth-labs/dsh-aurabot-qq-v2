@@ -69,7 +69,7 @@ before(async () => {
     model: { provider: 'fake', model: 'fake-1' },
   }))
   fake = createFakeDsh({ brain })
-  const host = await import('../../../src/plugin/index.ts')
+  const host = await import('../../../packages/app/index.ts')
   api = host.apply(fake.ctx)
   await fake.call('/onebot/reconnect')
   await until(() => mock.connected() > 0)

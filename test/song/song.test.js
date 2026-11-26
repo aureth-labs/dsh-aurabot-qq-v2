@@ -16,7 +16,7 @@ before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-song-'))
   studio = await import('../../src/song/studio/index.ts')
   netease = await import('../../src/song/source/netease.ts')
-  commands = await import('../../src/chat/commands/index.ts')
+  commands = await import('../../packages/commands/dispatch.ts')
   ;({ normalize } = await import('../../src/core/config/index.ts'))
 })
 

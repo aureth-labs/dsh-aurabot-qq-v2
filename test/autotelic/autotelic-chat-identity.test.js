@@ -12,7 +12,7 @@ import { cleanupDir } from '../helpers/cleanup.js'
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
 
 test('core 暴露 identity.owner()，否则采集器会静默零采集', () => {
-  const host = read('../../src/plugin/index.ts')
+  const host = read('../../packages/app/index.ts')
   const a = host.indexOf('const core = {')
   const b = host.indexOf('mods = createModules', a)
   assert.ok(a > 0 && b > a, '应能定位 core 定义')

@@ -11,7 +11,7 @@ import { activeCapture, failStore, MAX_IMAGE_BYTES, workspaceDirOf } from '../co
 import type { OutputScope } from '../context/context.ts'
 import { dataDir } from '../../../core/store/index.ts'
 import { fetchImage } from '../../../core/net/index.ts'
-import { isDefiniteFailure } from '../../../../packages/adapters/qq/onebot-v11/src/client.ts'
+import { isDefiniteFailure } from '../../../core/bot/delivery.ts'
 
 /** 出站用到的调用参数：字段名固定，值由调用方传。 */
 type SendOptions = Record<string, any>

@@ -45,10 +45,10 @@ before(async () => {
   // 一个 setup 必炸的用户模块：导航摘要里应出现 availability=error
   const broken = join(dataDir, 'modules', 'broken-mod')
   mkdirSync(broken, { recursive: true })
-  writeFileSync(join(broken, 'index.mjs'), "export default { id: 'broken-mod', name: '坏模块', apply() { throw new Error('boom-测试炸') } }\n")
+  writeFileSync(join(broken, 'index.mjs'), "export const name = '坏模块'; export function apply() { throw new Error('boom-测试炸') }\n")
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.webServer.port = 5123
-  const host = await import('../../src/plugin/index.ts')
+  const host = await import('../../packages/app/index.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
 })
@@ -87,7 +87,7 @@ async function callRaw(path, { method, headers = {}, body } = {}) {
 const get = (path) => fake.call(path)
 const jsonOf = async (path) => (await fake.call(path)).json()
 
-const hostSource = () => readFileSync(new URL('../../src/plugin/index.ts', import.meta.url), 'utf8')
+const hostSource = () => readFileSync(new URL('../../packages/app/index.ts', import.meta.url), 'utf8')
 
 // ================= 1. 三接口契约 =================
 

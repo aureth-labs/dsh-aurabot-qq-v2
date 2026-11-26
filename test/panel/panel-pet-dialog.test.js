@@ -40,7 +40,7 @@ before(async () => {
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.webServer.port = 5098
-  const host = await import('../../src/plugin/index.ts')
+  const host = await import('../../packages/app/index.ts')
   api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
   await fake.call('/onebot/reconnect')

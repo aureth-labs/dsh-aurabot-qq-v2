@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { setTimeout as wait } from 'node:timers/promises'
-import { apply } from '../../src/plugin/index.ts'
+import { apply } from '../../packages/app/index.ts'
 import { OneBotError } from '../../packages/adapters/qq/onebot-v11/src/client.ts'
 import { NATIVE_MEMORY_VIEW } from '../../src/features/memory/index.ts'
 import { personaScope } from '../../src/persona/personas.ts'

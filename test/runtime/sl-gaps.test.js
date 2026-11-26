@@ -342,7 +342,7 @@ test('账号离线只记 warn，不走聊天通知或发送 QQ 消息', { timeou
   const fake = createFakeDsh({ brain: async () => '' })
   t.after(async () => { fake.dispose(); await mock.close() })
   writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true, gateway: 'onebot', botQQ: BOT, ownerQQ: OWNER, onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token } }))
-  const { apply } = await import('../../src/plugin/index.ts')
+  const { apply } = await import('../../packages/app/index.ts')
   const app = apply(fake.ctx)
   await app.ready
   assert.equal((await fake.call('/onebot/reconnect')).json().ok, true)

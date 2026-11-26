@@ -9,7 +9,7 @@ let dir, fake, app
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'aurabot-filter-save-')); process.env.AURABOT_DATA_DIR = dir; process.env.AURABOT_WORKSPACE = join(dir, 'ws')
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: false, setupDone: true, ownerQQ: '10000001', botQQ: '20000002', onebot: {} }))
-  fake = createFakeDsh({ brain: async () => 'unused' }); app = (await import('../../src/plugin/index.ts')).apply(fake.ctx); await app.ready
+  fake = createFakeDsh({ brain: async () => 'unused' }); app = (await import('../../packages/app/index.ts')).apply(fake.ctx); await app.ready
 })
 after(() => { fake?.dispose(); cleanupDir(dir) })
 const save = async body => (await fake.call('/save', body)).json()

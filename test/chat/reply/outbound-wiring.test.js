@@ -754,7 +754,7 @@ test('面板路由：/panel/outbound-policy 能读能写，且只认合法档位
     if (oldWs === undefined) delete process.env.AURABOT_WORKSPACE
     else process.env.AURABOT_WORKSPACE = oldWs
   })
-  const host = await import('../../../src/plugin/index.ts')
+  const host = await import('../../../packages/app/index.ts')
   const api = host.apply(fake.ctx)
   await api.ready.catch(() => {})
 

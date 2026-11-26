@@ -1,10 +1,10 @@
 // 确定性主人私聊入口；配置和自然语言工具共用规划器，不通过 LLM 执行。
 import { randomInt } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
-import { isOwner, GROUP_RESPONSE_LABELS } from '../policy/rules/access.ts'
-import { DEFAULT_GROUP_POLICY } from '../policy/rules/group.ts'
-import { changePermissions } from '../policy/rules/permission.ts'
-import { planGroupSettings, readSettings } from '../../../packages/contacts/group-settings.ts'
+import { isOwner, GROUP_RESPONSE_LABELS } from '../../src/chat/policy/rules/access.ts'
+import { DEFAULT_GROUP_POLICY } from '../../src/chat/policy/rules/group.ts'
+import { changePermissions } from '../../src/chat/policy/rules/permission.ts'
+import { planGroupSettings, readSettings } from '../contacts/group-settings.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type GroupReportOptions = Partial<Record<'name' | 'brief', any>>

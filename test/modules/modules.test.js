@@ -112,7 +112,7 @@ export function apply(_ctx, config) {
     return { nextTime: () => 0, history: () => [], writeDiary: async () => { globalThis.__wrote = (globalThis.__wrote || 0) + 1; return { ok: true } } }
   } }`)
   fake = createFakeDsh({ brain })
-  const host = await import('../../src/plugin/index.ts')
+  const host = await import('../../packages/app/index.ts')
   api = host.apply(fake.ctx)
   await api.ready
   await fake.call('/onebot/reconnect')
