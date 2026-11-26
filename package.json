@@ -21,7 +21,8 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
     "check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.client.json --noEmit && node scripts/check-lifecycle.mjs",
-    "test": "node --import ./scripts/ts-resolution.mjs --test \"test/**/*.test.js\""
+    "test": "node --import ./scripts/ts-resolution.mjs --test \"test/**/*.test.js\"",
+    "pack:api": "npm pack ./packages/plugin-api --silent"
   },
   "dsh": {
     "bundle": {
