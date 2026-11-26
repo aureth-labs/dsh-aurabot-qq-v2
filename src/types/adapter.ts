@@ -106,6 +106,35 @@ export interface OneBotSendMessageParams {
   auto_escape?: boolean
 }
 
+/** QQ 频道 `POST /channels/{channel_id}/messages` 的入参。 */
+export interface QQGuildMessageParams {
+  /** 纯文本，`@` 用 `<@!user_id>`。 */
+  content: string
+  /** 被动回复必填：要回复的那条消息 id。 */
+  msg_id?: string
+  /** 同一条 msg_id 的多条回复用递增序号。 */
+  msg_seq?: number
+  /** 图片 URL（频道消息支持直接带一张图）。 */
+  image?: string
+  message_reference?: { message_id: string; ignore_get_message_error?: boolean }
+  event_id?: string
+}
+
+/** QQ 官方机器人 `POST /v2/groups/{group_openid}/messages` 的入参。 */
+export interface QQOfficialMessageParams {
+  /** 文本内容；markdown 时放 markdown 源。 */
+  content: string
+  /** 0 文本 / 2 markdown / 3 ark / 7 富媒体。 */
+  msg_type: 0 | 2 | 3 | 7
+  /** 被动回复必填：收到的那条消息 id。 */
+  msg_id?: string
+  /** 同一条 msg_id 的第几条回复，从 1 递增；重复会报错。 */
+  msg_seq?: number
+  markdown?: { custom_template_id?: string; content?: string }
+  keyboard?: Record<string, unknown>
+  media?: { file_uuid?: string; file_info?: string; ttl?: number }
+}
+
 /** Telegram Bot API `sendMessage` 的主要参数。 */
 export interface TelegramSendMessageParams {
   chat_id: string | number

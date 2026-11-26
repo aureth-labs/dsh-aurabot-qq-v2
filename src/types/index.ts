@@ -32,6 +32,8 @@ export type {
   DiscordEmbed,
   InboundMessage,
   OneBotSendMessageParams,
+  QQGuildMessageParams,
+  QQOfficialMessageParams,
   TelegramMessageEntity,
   TelegramSendMessageParams,
 } from './adapter.ts'
