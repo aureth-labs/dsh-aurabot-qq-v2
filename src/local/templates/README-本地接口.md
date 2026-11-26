@@ -44,7 +44,7 @@
 
 #### Windows Applio 的可选 CPU 配置
 
-已使用 Applio、且 CPU 推理在 `ConvTranspose1d` 崩溃时，可把插件安装目录 `src/local/templates/song-cpu-infer.py` 复制到翻唱根目录的 `setup/`（同级应有 `Applio/`）。让现有 `song-convert.mjs` 用翻唱环境的 Python 调用这个文件，替代 `core.py`；后面的 `infer --input-path ... --output-path ...` 等参数保持不变。
+已使用 Applio、且 CPU 推理在 `ConvTranspose1d` 崩溃时，可把插件安装目录 `src/local/templates/song/song-cpu-infer.py` 复制到翻唱根目录的 `setup/`（同级应有 `Applio/`）。让现有 `song-convert.mjs` 用翻唱环境的 Python 调用这个文件，替代 `core.py`；后面的 `infer --input-path ... --output-path ...` 等参数保持不变。
 
 这个入口关闭 MKLDNN、保留短分段并限定 PyTorch 线程数；默认单线程。在现有 `spawn` 的子进程 `env` 中加入 `AURABOT_RVC_CPU_THREADS: '4'`，可试用四线程，删掉该字段便恢复默认。不用修改系统环境变量或人格，也不改变普通 TTS。只在这条本地换声路径启用，不会自动改变其他用户的内置推理。
 

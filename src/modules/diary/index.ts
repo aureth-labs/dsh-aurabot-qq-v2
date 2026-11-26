@@ -6,8 +6,8 @@ import { resolveAudience } from '../../features/qzone/audience.ts'
 import { pickDiaryImage } from '../../features/media/diary-image.ts'
 import { defineTool, str } from '../../tools/index.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
-import { createDiaryMedia } from './media.ts'
-import { createDiaryArchive } from './archive.ts'
+import { createDiaryMedia } from './source/media.ts'
+import { createDiaryArchive } from './source/archive.ts'
 
 export default {
   id: 'diary',

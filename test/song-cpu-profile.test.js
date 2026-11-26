@@ -13,7 +13,7 @@ function fixture(t) {
   const setup = join(root, 'setup'), project = join(root, 'Applio')
   mkdirSync(setup); mkdirSync(join(project, 'rvc', 'configs'), { recursive: true })
   const entry = join(setup, 'song-cpu-infer.py'), trace = join(root, 'trace.json')
-  copyFileSync(new URL('../src/local/templates/song-cpu-infer.py', import.meta.url), entry)
+  copyFileSync(new URL('../src/local/templates/song/song-cpu-infer.py', import.meta.url), entry)
   writeFileSync(join(setup, 'torch.py'), `from types import SimpleNamespace
 backends = SimpleNamespace(mkldnn=SimpleNamespace(enabled=True))
 def set_num_threads(n): globals()['threads'] = n

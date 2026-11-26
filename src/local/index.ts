@@ -12,11 +12,11 @@ const TEMPLATES = fileURLToPath(new URL('./templates/', import.meta.url))
 const README = 'README-本地接口.md'
 
 export const SLOTS = {
-  tts: { file: 'tts.mjs', title: '语音合成', timeoutMs: 60_000, example: 'GPT-SoVITS（http://127.0.0.1:9880，参考音频在 D:/voices/ref.wav）' },
-  image: { file: 'image.mjs', title: '生图', timeoutMs: 300_000, example: 'SD WebUI（http://127.0.0.1:7860）或 ComfyUI（http://127.0.0.1:8188）' },
-  song: { file: 'song-convert.mjs', title: '翻唱换声', timeoutMs: 20 * 60_000, example: '我自己训练的 so-vits-svc 模型（项目在 D:/so-vits-svc，模型 logs/44k/G_10000.pth）' },
-  asr: { file: 'asr.mjs', title: '语音识别', timeoutMs: 60_000, example: 'FunASR / faster-whisper 的本地服务（http://127.0.0.1:8000）' },
-  video: { file: 'video.mjs', title: '生视频', timeoutMs: 20 * 60_000, example: 'ComfyUI（http://127.0.0.1:8188）跑的视频工作流' },
+  tts: { file: 'tts.mjs', source: 'audio/tts.mjs', title: '语音合成', timeoutMs: 60_000, example: 'GPT-SoVITS（http://127.0.0.1:9880，参考音频在 D:/voices/ref.wav）' },
+  image: { file: 'image.mjs', source: 'media/image.mjs', title: '生图', timeoutMs: 300_000, example: 'SD WebUI（http://127.0.0.1:7860）或 ComfyUI（http://127.0.0.1:8188）' },
+  song: { file: 'song-convert.mjs', source: 'song/song-convert.mjs', title: '翻唱换声', timeoutMs: 20 * 60_000, example: '我自己训练的 so-vits-svc 模型（项目在 D:/so-vits-svc，模型 logs/44k/G_10000.pth）' },
+  asr: { file: 'asr.mjs', source: 'audio/asr.mjs', title: '语音识别', timeoutMs: 60_000, example: 'FunASR / faster-whisper 的本地服务（http://127.0.0.1:8000）' },
+  video: { file: 'video.mjs', source: 'media/video.mjs', title: '生视频', timeoutMs: 20 * 60_000, example: 'ComfyUI（http://127.0.0.1:8188）跑的视频工作流' },
 }
 
 /** 生图脚本的各种返回值统一成 Buffer。 */
@@ -99,7 +99,7 @@ export function createLocal({ getConfig, log }) {
     if (!existsSync(join(dir(), README))) copyFileSync(join(TEMPLATES, README), join(dir(), README))
     const dest = pathOf(slot)
     if (existsSync(dest)) return { ok: true, created: false, path: dest, message: '文件已经有了，没覆盖' }
-    copyFileSync(join(TEMPLATES, SLOTS[slot].file), dest)
+    copyFileSync(join(TEMPLATES, SLOTS[slot].source), dest)
     return { ok: true, created: true, path: dest, message: '模板放好了，照里面的注释改，或者让 DSH 帮你改' }
   }
 
