@@ -1,5 +1,6 @@
 import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMessage } from '../../../types/adapter/adapter.ts'
 import type { BotLike } from '../../../types/adapter/bot.ts'
+import { redact } from '../../support/log/redact.ts'
 import { startAdapter } from './contract.ts'
 import type { BotRegistry } from '../instance/registry.ts'
 import { botKey, findBot } from '../instance/registry.ts'
@@ -17,7 +18,17 @@ export interface AdapterRegistryDeps {
   speak?: (text: string) => Promise<string>
 }
 
+interface ConnectionInfo {
+  instance: string
+  platform: string
+  id: string
+  selfId: string
+  status: string
+  reason?: string
+}
+
 interface Entry {
+  reason?: string
   instance?: string
   platform: string
   name: string
@@ -30,7 +41,7 @@ export class AdapterRegistry {
   private readonly deps: AdapterRegistryDeps
   private readonly entries = new Map<string, Entry>()
   private readonly connecting = new Map<symbol, { instance: string; platform: string; signal: AbortSignal }>()
-  private readonly failures = new Map<string, { instance: string; platform: string; id: string; selfId: string; status: string }>()
+  private readonly failures = new Map<string, ConnectionInfo>()
   private lifetime = new AbortController()
   private readonly listeners = new Set<() => void>()
 
@@ -75,10 +86,14 @@ export class AdapterRegistry {
     const connection = await startAdapter(this.deps.bots, spec, config, runtime, {
       platform, wrapBot: this.deps.wrapBot,
       active: () => !signal.aborted,
-      statusChanged: () => { if (entry) this.changed() },
+      statusChanged: reason => {
+        if (!entry) return
+        entry.reason = reason ? redact(reason).slice(0, 400) : undefined
+        this.changed()
+      },
     }).catch(error => {
       if (instance && !signal.aborted) {
-        const failure = { instance, platform, id: '', selfId: '', status: 'error' }
+        const failure = { instance, platform, id: '', selfId: '', status: 'error', reason: redact(error?.message ?? error).slice(0, 400) }
         this.failures.set(instance, failure)
         signal.addEventListener('abort', () => {
           if (this.failures.get(instance) === failure) this.failures.delete(instance)
@@ -130,9 +145,9 @@ export class AdapterRegistry {
     }))
   }
 
-  connections() {
-    const online = [...this.entries.values()].map(({ instance, platform, bot }) => ({
-      instance: instance || '', platform, id: bot.id, selfId: bot.selfId, status: bot.status,
+  connections(): ConnectionInfo[] {
+    const online = [...this.entries.values()].map(({ instance, platform, bot, reason }) => ({
+      instance: instance || '', platform, id: bot.id, selfId: bot.selfId, status: bot.status, ...(reason && { reason }),
     }))
     const pending = [...this.connecting.values()].filter(row => !row.signal.aborted).map(({ instance, platform }) => ({
       instance, platform, id: '', selfId: '', status: 'connecting',

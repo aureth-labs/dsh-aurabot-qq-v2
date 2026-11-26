@@ -9,6 +9,7 @@ const PATTERNS: Array<[RegExp, string]> = [
   [/(Bearer\s+)[A-Za-z0-9._~+/=-]{8,}/g, '$1***'],
   // OpenAI / 常见 sk- 密钥
   [/\bsk-[A-Za-z0-9_-]{16,}\b/g, 'sk-***'],
+  [/(\/bot)\d+:[A-Za-z0-9_-]{8,}/g, '$1***'],
   // URL 查询参数里的 token
   [/([?&](?:token|access_token|key)=)[^&\s]+/gi, '$1***'],
 ]

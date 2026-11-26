@@ -11,7 +11,7 @@ export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '..
 
 export interface StartAdapterOptions {
   active?: () => boolean
-  statusChanged?: () => void
+  statusChanged?: (reason?: string) => void
   /**
    * 已经解析好的平台名。
    *
@@ -51,11 +51,12 @@ export async function startAdapter(
   const statusChanged = (reason?: string) => {
     if (closed || !bot || runtime.signal?.aborted || registry.get(bot.id, platform) !== bot) return
     const next = bot.status === 'online'
-    if (online === next) return
-    online = next
-    if (online) registry.emit('online', bot)
-    else registry.emit('offline', bot, reason || 'disconnected')
-    options.statusChanged?.()
+    if (online !== next) {
+      online = next
+      if (online) registry.emit('online', bot)
+      else registry.emit('offline', bot, reason || 'disconnected')
+    }
+    options.statusChanged?.(next ? undefined : reason)
   }
   const connected = await spec.connect(config, { ...runtime, platform, statusChanged })
   try {

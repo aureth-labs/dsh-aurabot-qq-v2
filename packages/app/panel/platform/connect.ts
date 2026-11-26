@@ -1,3 +1,4 @@
+import { redact } from '../../../../src/core/support/log/redact.ts'
 import { isDeepStrictEqual } from 'node:util'
 import type { createHttp } from '../../http.ts'
 import type { AdapterRegistry } from '../../../../src/core/bot/adapter/registry.ts'
@@ -22,9 +23,9 @@ const fail = (message: string) => ({ ok: false, message })
 export function registerConnectionRoutes({ http, mods, adapterRegistry, getConfig, setConfig, onReloadError }: Options) {
   function connections() {
     const rows = adapterRegistry.connections()
-    for (const instance of mods.failedAdapters()) {
+    for (const { instance, reason } of mods.failedAdapters()) {
       if (!rows.some((row) => row.instance === instance))
-        rows.push({ instance, platform: '', id: '', selfId: '', status: 'error' })
+        rows.push({ instance, platform: '', id: '', selfId: '', status: 'error', reason: redact(reason).slice(0, 400) })
     }
     return rows
   }

@@ -667,7 +667,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
 
   return {
     hasListeners: events.has,
-    failedAdapters: () => [...errors].filter(([key, error]) => error.adapter && isEnabled(key.split('@')[0])).map(([key]) => key),
+    failedAdapters: () => [...errors].filter(([key, error]) => error.adapter && isEnabled(key.split('@')[0])).map(([instance, error]) => ({ instance, reason: error.message })),
     normalizeSettings(previous: Record<string, RawConfig>, next: Record<string, RawConfig>, patch: unknown) {
       if (!isObj(patch)) return
       for (const id of Object.keys(patch)) {
