@@ -1,7 +1,7 @@
 // S4：所有平台共用的出站处理——试运行闸门、`<voice>` 合成、元素按能力降级。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { wrapAdapterBot } from '../../src/core/bot/bot/instance.ts'
+import { wrapAdapterBot } from '../../src/core/bot/instance/bot.ts'
 import { toText } from '../../src/core/message/element/element.ts'
 
 function fakeBot(capabilities = ['text']) {

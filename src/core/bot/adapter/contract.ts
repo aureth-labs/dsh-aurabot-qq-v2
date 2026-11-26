@@ -5,7 +5,7 @@
 
 import type { AdapterHandle, AdapterRuntime, AdapterSpec } from '../../../types/adapter/adapter.ts'
 import type { BotLike } from '../../../types/adapter/bot.ts'
-import type { BotRegistry } from '../bot/registry.ts'
+import type { BotRegistry } from '../instance/registry.ts'
 
 export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '../../../types/adapter/adapter.ts'
 

@@ -9,7 +9,7 @@
 import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMessage } from '../../../types/adapter/adapter.ts'
 import type { BotLike } from '../../../types/adapter/bot.ts'
 import { startAdapter } from './contract.ts'
-import type { BotRegistry } from '../bot/registry.ts'
+import type { BotRegistry } from '../instance/registry.ts'
 
 export interface AdapterRegistryDeps {
   bots: BotRegistry

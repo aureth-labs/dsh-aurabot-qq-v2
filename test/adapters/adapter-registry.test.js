@@ -1,7 +1,7 @@
 // 适配器注册表：面板「机器人列表」看到的应该和真实在线状态一致。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BotRegistry } from '../../src/core/bot/bot/registry.ts'
+import { BotRegistry } from '../../src/core/bot/instance/registry.ts'
 import { AdapterRegistry } from '../../src/core/bot/adapter/registry.ts'
 
 function fakeBot(platform, id) {

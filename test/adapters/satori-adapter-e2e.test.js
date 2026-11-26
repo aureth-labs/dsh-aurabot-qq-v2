@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 import crypto from 'node:crypto'
 import { startAdapter } from '../../src/core/bot/adapter/contract.ts'
-import { BotRegistry } from '../../src/core/bot/bot/registry.ts'
+import { BotRegistry } from '../../src/core/bot/instance/registry.ts'
 import { satoriAdapter } from '../../packages/adapters/satori/src/index.ts'
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
