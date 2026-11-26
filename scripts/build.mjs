@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url'
 import { bundleClient } from './bundle-client.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
-const COPY_EXT = new Set(['.json', '.yml', '.yaml', '.md', '.txt', '.html', '.css', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.wav', '.mp3'])
+// 运行时资产：编译产物里也要有一份（内置模块模板 .mjs、翻唱下载脚本 .py、类型声明 .d.ts）。
+const COPY_EXT = new Set(['.json', '.yml', '.yaml', '.md', '.txt', '.html', '.css', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.wav', '.mp3', '.py', '.mjs'])
+const isDecl = (name) => name.endsWith('.d.ts')
 
 function tsc(project, outDir) {
   const bin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc')
@@ -30,7 +32,7 @@ function copyAssets(from, to) {
       copyAssets(src, dst)
       continue
     }
-    if (!COPY_EXT.has(extname(entry).toLowerCase())) continue
+    if (!isDecl(entry) && !COPY_EXT.has(extname(entry).toLowerCase())) continue
     mkdirSync(dirname(dst), { recursive: true })
     copyFileSync(src, dst)
   }
