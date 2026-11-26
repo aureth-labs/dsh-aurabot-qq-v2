@@ -10,7 +10,7 @@ import { cleanupDir } from '../helpers/cleanup.js'
 function withFakeChrome() {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-browser-'))
   const exe = join(dir, process.platform === 'win32' ? 'chrome.exe' : 'chrome')
-  writeFileSync(exe, '', 'utf8')
+  writeFileSync(exe, '', { mode: 0o755 })
   return { dir, exe }
 }
 
@@ -56,5 +56,20 @@ test('同一个路径不会重复出现', () => {
     if (old[1] === undefined) delete process.env.CHROME_PATH
     else process.env.CHROME_PATH = old[1]
     cleanupDir(dir)
+  }
+})
+
+test('FFmpeg 使用目标平台的 PATH、可执行文件名和目录分隔符', async () => {
+  const { findFfmpeg } = await import('../../src/core/runtime/executable.ts')
+  const rows = [
+    ['win32', '"D:\\Media Tools";C:\\bin', 'D:\\Media Tools\\ffmpeg.exe'],
+    ['linux', '/custom/bin:/opt/bin', '/opt/bin/ffmpeg'],
+    ['darwin', '/usr/bin', '/opt/homebrew/bin/ffmpeg'],
+  ]
+  for (const [platform, pathEnv, expected] of rows) {
+    const exists = path => path === expected
+    assert.equal(findFfmpeg('', { platform, pathEnv, exists }), expected)
+    assert.equal(findFfmpeg('explicit', { platform, pathEnv, exists: () => true }), 'explicit')
+    assert.equal(findFfmpeg('', { platform, pathEnv, exists: () => false }), '')
   }
 })

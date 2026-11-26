@@ -75,21 +75,6 @@ export function ensureDevBuild(log) {
   }
 }
 
-/**
- * 自动更新要在宿主上跑 `dsh plugin add`：
- * - 桌面版：用 DSH 自带的 Electron 可执行文件 + app.asar 里的 cli.js（等价于 dsh.cmd / dsh 脚本）；
- * - 网页版：PATH 里的 dsh（Windows 上 .cmd 要过 shell）。
- */
-export function updateExec(env, args) {
-  if (env.mode === 'desktop' && env.resourcesPath) {
-    const cliJs = join(env.resourcesPath, 'app.asar', 'dsh', 'node_modules', '@deepseek-ai', 'dsh-desktop-host', 'lib', 'cli.js')
-    if (existsSync(cliJs)) {
-      return { cmd: process.execPath, cmdArgs: [cliJs, ...args], env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, shell: false }
-    }
-  }
-  return { cmd: env.cli, cmdArgs: args, env: process.env, shell: process.platform === 'win32' }
-}
-
 /** 本机端口有没有人在听（诊断用，别拿它当业务判断）。 */
 export function tcpOpen(port, host = '127.0.0.1', timeoutMs = 800) {
   return new Promise((resolve) => {
@@ -108,32 +93,3 @@ export function tcpOpen(port, host = '127.0.0.1', timeoutMs = 800) {
     socket.connect(port, host)
   })
 }
-
-/** 跑更新命令，收集输出；3 分钟没结束就杀掉。 */
-export function runUpdate(cmd, args, env, shell = false) {
-  return new Promise<{ ok: boolean; message?: string; output?: string }>((resolve) => {
-    let out = ''
-    let done = false
-    const finish = (value) => { if (!done) { done = true; resolve(value) } }
-    let child
-    try {
-      child = spawn(cmd, args, { env, shell, windowsHide: true })
-    } catch (error) {
-      return finish({ ok: false, message: '启动更新命令失败：' + error.message })
-    }
-    const timer = setTimeout(() => {
-      try { child.kill() } catch (error) {}
-      finish({ ok: false, message: '更新超时（3 分钟），可能网络不通', output: out.slice(-4000) })
-    }, 180000)
-    child.stdout?.on('data', (b) => { out += String(b) })
-    child.stderr?.on('data', (b) => { out += String(b) })
-    child.on('error', (error) => { clearTimeout(timer); finish({ ok: false, message: '更新失败：' + error.message }) })
-    child.on('exit', (code) => {
-      clearTimeout(timer)
-      finish(code === 0
-        ? { ok: true, message: '更新命令跑完了，重启 DSH 生效', output: out.slice(-4000) }
-        : { ok: false, message: '更新命令退出码 ' + code, output: out.slice(-4000) })
-    })
-  })
-}
-

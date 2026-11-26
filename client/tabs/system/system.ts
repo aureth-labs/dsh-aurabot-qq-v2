@@ -18,7 +18,7 @@ function LocalApi({ draft, setDraft, toast }) {
       h('div', { className: 'ab-flex' },
         h('code', { className: 'ab-small', style: { wordBreak: 'break-all', flex: 1 } }, st ? st.dir : '…'),
         h(Btn, { small: true, onClick: () => post('/local/open').then((r) => toast(r.message)) }, '打开文件夹'))),
-    h(Card, { title: '媒体工具' }, h(Row, { label: 'FFmpeg 路径', hint: '留空时使用 PATH 中的 ffmpeg' }, f.text('local.ffmpegPath'))),
+    h(Card, { title: '媒体工具' }, h(Row, { label: 'FFmpeg 路径', hint: st ? (st.ffmpeg || '未找到 FFmpeg。请安装后加入 PATH，或填入可执行文件的完整路径。') : '留空时使用 PATH 中的 ffmpeg' }, f.text('local.ffmpegPath'))),
     !st ? h(Empty, { icon: '⏳', text: '加载中…' }) : st.list.map((x) => h(Card, { key: x.slot, title: x.title + '（' + x.file + '）', right: f.sw('local.' + x.slot) },
       h('div', { className: 'ab-flex', style: { marginBottom: 8 } },
         h('span', { className: 'ab-small', style: { color: x.active ? 'var(--ab-ok)' : 'var(--ab-muted)' } },

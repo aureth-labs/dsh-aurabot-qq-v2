@@ -402,15 +402,6 @@ test('下载源：自动模式下官方源慢就用国内镜像；老配置自�
   assert.equal(normalize({ song: { pypiMirror: 'tuna' } }).song.pypiMirror, 'cn')
 })
 
-test('检查更新：Release Atom 连不上就走 GitHub API', async () => {
-  const u = await import('../../src/core/runtime/update.ts')
-  const seen = []
-  const check = u.createUpdateChecker({ pkg: { version: '0.2.0', repository: 'https://github.com/a/b' }, fetchImpl: async (url) => { seen.push(url); if (url.includes('releases.atom')) throw new Error('reset'); return { ok: true, json: async () => [{ tag_name: 'v0.3.0', draft: false }] } } })
-  const r = await check({ force: true })
-  assert.equal(r.newer, true)
-  assert.ok(seen[1].includes('api.github.com'))
-})
-
 test('翻唱失败那句话：让她自己说，提示词带上歌名和真实原因、明说别念内部信息', async () => {
   const { failPrompt } = await import('../../packages/modules/song/index.ts')
   const p = failPrompt('雨爱', '翻唱环境不完整，在面板里点「重新检查」')

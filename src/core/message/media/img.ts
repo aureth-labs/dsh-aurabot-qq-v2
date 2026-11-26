@@ -1,5 +1,7 @@
 // 图片小工具：找 ffmpeg、把图缩小（生图的结果要回传给模型时用，太大的图不能直接塞进上下文）。
 
+import { findFfmpeg } from '../../runtime/executable.ts'
+export { findFfmpeg }
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
@@ -11,26 +13,7 @@ type ShrinkImageOptions = Partial<Record<'timeoutMs', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ImageToolBlockOptions = Partial<Record<'ffmpegPath' | 'maxSide' | 'maxBytes' | 'log', any>>
 
-const EXE = process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
-
-/** ffmpeg 在哪：配置里填的 > PATH 里的 > 几个常见安装位置。找不到返回 ''。 */
-/** Electron 打包后才有 resourcesPath；纯 Node 环境没有，就当空串。 */
 const resourcesPathOf = (): string => (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath || ''
-
-/** 按绝对路径找可执行文件时用的注入点（测试方便）。 */
-interface FindOptions { pathEnv?: string; exists?: (p: string) => boolean }
-
-export function findFfmpeg (configured = '', { pathEnv = process.env.PATH || '', exists = existsSync }: FindOptions = {}): string {
-  const sep = process.platform === 'win32' ? ';' : ':'
-  const cands = []
-  const own = String(configured || '').trim()
-  if (own) cands.push(own)
-  for (const d of String(pathEnv).split(sep)) if (d && d.trim()) cands.push(join(d.trim(), EXE))
-  if (process.platform === 'win32') cands.push('C:\\ffmpeg\\bin\\ffmpeg.exe', 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe')
-  else cands.push('/usr/bin/ffmpeg', '/usr/local/bin/ffmpeg', '/opt/homebrew/bin/ffmpeg')
-  for (const c of cands) { try { if (exists(c)) return c } catch (error) {} }
-  return ''
-}
 
 /**
  * 把图缩到 maxSide 以内，输出 JPEG（走 stdin/stdout，不落临时文件）。

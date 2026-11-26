@@ -66,8 +66,7 @@
     "README_EN.md"
   ],
   "optionalDependencies": {
-    "onnxruntime-node": "^1.20.0",
-    "puppeteer-finder": "^1.1.1"
+    "onnxruntime-node": "^1.20.0"
   },
   "repository": {
     "type": "git",
@@ -81,5 +80,8 @@
     "@types/node": "^22.20.7",
     "esbuild": "^0.28.2",
     "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "puppeteer-finder": "^1.1.1"
   }
 }

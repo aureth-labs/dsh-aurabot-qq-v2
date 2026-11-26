@@ -1,10 +1,11 @@
+import { findFfmpeg } from '../../../../src/core/runtime/executable.ts'
 import { fileOf, toImageBuffer } from '../../../../src/local/index.ts'
 import { existsSync } from 'node:fs'
 
 export function registerLocalRoutes({ http, local, openFolder, getConfig }) {
   const { route, readBody } = http
 
-  route('/local/status', async () => ({ ok: true, dir: local.dir(), list: local.status() }))
+  route('/local/status', async () => ({ ok: true, dir: local.dir(), list: local.status(), ffmpeg: findFfmpeg(getConfig().local.ffmpegPath) }))
   route('/local/template', async (req) => {
     const slot = String((await readBody(req)).slot || '')
     if (!local.has(slot))
