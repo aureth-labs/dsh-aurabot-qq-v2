@@ -71,3 +71,31 @@ test('引用先查当前账号和会话；重启、撤回与平台重放保留�
   const pm = { ...quoted, type: 'private', elements: [h.quote('6')] }
   assert.equal((await store.receive(bot, pm)).content, undefined)
 })
+
+test('跨平台模型回合带当前消息 ID 与可选时钟，引用只回到当前消息', async t => {
+  const { apply } = await import('../../packages/modules/chat-bridge/index.ts')
+  const root = mkdtempSync(join(tmpdir(), 'aurabot-turn-quotes-'))
+  let receive, close
+  const requests = [], sent = []
+  const config = { enabled: true, timeContext: true, history: 4 }
+  apply({
+    config, root: { config: { enabled: true } }, dataDir: file => join(root, file),
+    effect: dispose => { close = dispose }, on: (_, handler) => { receive = handler },
+    get() {}, isOwner: () => false, logger: { warn: (_, error) => assert.fail(error) },
+    llm: { generate: async prompt => {
+      requests.push(prompt)
+      const { messageId } = JSON.parse(prompt.text)
+      return '<quote id="foreign"/><quote id="' + messageId + '"/>知道了'
+    } },
+    text: { clean: text => text, isSilence: () => false },
+  })
+  t.after(() => { close(); rmSync(root, { recursive: true, force: true }) })
+  const session = { bot: { id: 'b', selfId: 'b', supports: () => true }, platform: 'matrix', type: 'private',
+    isPrivate: true, userId: 'u', messageId: 'm1', elements: [], content: '你好', send: async elements => { sent.push(elements); return { ok: true } } }
+  await receive(session)
+  config.timeContext = false
+  await receive({ ...session, messageId: 'm2' })
+  assert.match(requests[0].system, /【当前本机时间】/)
+  assert.doesNotMatch(requests[1].system, /【当前本机时间】/)
+  assert.deepEqual(sent.map(elements => h.select(elements, 'quote').map(el => el.attrs.id)), [['m1'], ['m2']])
+})

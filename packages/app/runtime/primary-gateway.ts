@@ -178,7 +178,7 @@ export function createPrimaryGateway({
           }
         }
       }
-      return { result: hub.onMessage(event) }
+      return { result: hub.onMessage(event, Boolean(session.quote?.deletedAt)) }
     }
   }
   return {
@@ -191,7 +191,12 @@ export function createPrimaryGateway({
     beforeMessage: (bot: BotLike, message: InboundMessage) =>
       primary(bot) && claimPrimaryMessage(message.raw, message),
     beforeEvent: (event: string, payload: unknown, bot: BotLike) => {
-      if (primary(bot) && event === 'onebot') handleNotice(payload)
+      if (!primary(bot)) return
+      if (event === 'onebot') handleNotice(payload)
+      if (event === 'message-deleted') {
+        const row = payload as { type: string; channelId: string; messageId: string }
+        getHub()?.recallQuote(row.type, row.channelId, row.messageId)
+      }
     },
   }
 }

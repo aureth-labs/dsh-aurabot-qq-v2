@@ -643,3 +643,18 @@ test('用量接入：真实会话事件记一次，失败重试分别记，非 A
   assert.equal(read().runs, 2)
   assert.equal(read().totalTokens, 2020)
 })
+
+test('QQ 私聊模型收到本轮消息 ID，按 Satori 引用且可关闭时间注入', async t => {
+  const inputs = []
+  const { hub, calls } = setup(t, {
+    cfg: config({ ext: { 'chat-bridge': { timeContext: false } } }),
+    brain: async ({ text }) => { inputs.push(text); return '<quote id="1"/>收到' },
+  })
+  await hub.onMessage(event())
+  await settle()
+  assert.match(inputs[0], /"messageId":"1"/)
+  assert.doesNotMatch(inputs[0], /【当前本机时间】/)
+  const message = calls.find(c => c.action === 'send_private_msg')?.params.message
+  assert.deepEqual(message?.[0], { type: 'reply', data: { id: '1' } })
+  assert.equal(message?.[1]?.data.text, '收到')
+})

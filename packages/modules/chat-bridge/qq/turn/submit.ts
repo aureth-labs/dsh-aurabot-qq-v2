@@ -226,7 +226,8 @@ export function createTurnSubmission({
     const requestSource = requestIdentity(getConfig(), [senderId, ...(opts.extraSenders || [])])
     if (chat.kind === 'group' || chat.kind === 'private')
       content = [...content, { type: 'text', text: requestSource.note }]
-    content = cleanContent([...content, { type: 'text', text: currentTimeLine() }])
+    if (getConfig().ext?.['chat-bridge']?.timeContext !== false) content.push({ type: 'text', text: currentTimeLine() })
+    content = cleanContent(content)
     content = await seedHistoryOnce(sessionId, chat, content)
     const admitted = await admit(agent, content)
     for (const block of admitted.filter((c) => c.type === 'text')) {
@@ -286,6 +287,8 @@ export function createTurnSubmission({
     st.lastText = userText.slice(-600)
     st.speakers =
       opts.speakers || (senderId ? [String(senderId), ...(opts.extraSenders || []).map(String)] : [])
+    const refsSlot = queuedNextTurn ? 'pendingQuoteIds' : 'quoteIds'
+    st[refsSlot] = steer ? [...(st[refsSlot] || []), ...(opts.quoteIds || [])] : opts.quoteIds || []
     if (opts.wantVoice) st.wantVoice = true
     if (!steer) {
       st.autoReply = opts.autoReply || null

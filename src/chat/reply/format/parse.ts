@@ -40,7 +40,7 @@ export function parseReply(text, options) {
     const part = bubble.trim()
     if (!part) continue
     // 依次切出 poke / reply / voice / sticker / markdown 图片，其余是文字
-    const re = /<poke\s*\/?>|<\/poke\s*>|<reply:\s*(\d+)\s*>|<voice>([\s\S]*?)<\/voice>|<sticker:([^>]+?)>(?:\s*<\/sticker>)?|!\[[^\]]*\]\(\s*([^)\s]+)\s*\)|\[表情[:：]\s*([^\]\n]+?)\s*\]|<text>([\s\S]*?)<\/text>|<file(?:\s+name\s*=\s*["']([^"']*)["'])?>([\s\S]*?)<\/file>/g
+    const re = /<poke\s*\/?>|<\/poke\s*>|<reply:\s*(\d+)\s*>|<voice>([\s\S]*?)<\/voice>|<sticker:([^>]+?)>(?:\s*<\/sticker>)?|!\[[^\]]*\]\(\s*([^)\s]+)\s*\)|\[表情[:：]\s*([^\]\n]+?)\s*\]|<text>([\s\S]*?)<\/text>|<file(?:\s+name\s*=\s*["']([^"']*)["'])?>([\s\S]*?)<\/file>|<quote\s+id\s*=\s*["'](-?\d+)["']\s*\/>/g
     let last = 0
     let m
     while ((m = re.exec(part)) !== null) {
@@ -50,6 +50,8 @@ export function parseReply(text, options) {
       from = items.length
       if (m[0].startsWith('<poke')) {
         if (!items.some((i) => i.kind === 'poke')) items.push({ kind: 'poke', value: '' })
+      } else if (m[9] !== undefined) {
+        replyTo = 'id:' + m[9]
       } else if (m[1] !== undefined) {
         replyTo = m[1]
       } else if (m[2] !== undefined) {

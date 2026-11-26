@@ -312,7 +312,7 @@ const ACP_TIME_TAIL = /(?:^|[\s(【\[])\d{1,4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{2}:\
  * 判据故意宽于 acpLeakRanges：它的用途是「正则剥完还像有残渣吗」，宁可多问一次模型。
  */
 export function hasSuspectTagShape(text) {
-  const s = String(text || '')
+  const s = String(text || '').replace(/<quote\s+id=["']-?\d+["']\s*\/>/g, '')
   return /<\s*\/?\s*[A-Za-z][\w:-]*\s+[\w:-]+\s*=/i.test(s) || /=\s*"[^"]*"\s+[\w:-]+\s*=\s*"/i.test(s)
 }
 

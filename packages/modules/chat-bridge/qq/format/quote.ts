@@ -1,3 +1,4 @@
+import { messageSource } from '../../../../adapters/qq/onebot-v11/src/message/source.ts'
 import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/message/parse.ts'
 import { QUOTE_FORWARD_MAX_CHARS } from '../context/context.ts'
 
@@ -43,10 +44,11 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
     const id = String(replyId || '')
     if (!id) return null
     const chatId = ctx?.chatId || (ctx?.groupId ? `group:${ctx.groupId}` : ctx?.userId ? `private:${ctx.userId}` : '')
+    if (!chatId || ctx?.quoteDeleted) return null
     const key = `${chatId}|${id}`
     if (quoteCache.has(key)) {
       const cached = quoteCache.get(key)
-      if (!historyVisible(chatId, cached.uid, cached.time)) return null
+      if (cached.deleted || !historyVisible(chatId, cached.uid, cached.time)) return null
       cached.at = Date.now()
       quoteCache.delete(key)
       quoteCache.set(key, cached)
@@ -54,7 +56,12 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
     }
     const out = { ok: false, who: '', uid: '', text: '', images: [], stickers: [], records: 0, isBot: false, at: 0, chatId, time: 0 }
     try {
-      const m = await onebot.call('get_msg', { message_id: Number(id) || id }, { timeoutMs: 5000, retries: 0 })
+      let m = await onebot.call('get_msg', { message_id: Number(id) || id }, { timeoutMs: 5000, retries: 0 })
+      const source = messageSource(m, String(selfId() || getConfig().botQQ))
+      if (source.type + ':' + source.id !== chatId || String(m?.message_id ?? '') !== id) {
+        m = await quoteFromHistory(id, ctx)
+        if (!m) return null
+      }
       // 被引用那条消息的发生时间（QQ 给的是秒）。引用里要标出来，否则模型拿「今晚/昨天」
       // 去对历史引用时会按当前时间算错（2026-11-04 实测：11-02 的话被当成「今晚」）。
       out.time = Number(m?.time) || 0
@@ -63,12 +70,12 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
       if (out.time && !historyVisible(chatId, out.uid, out.time)) return null
       out.who = String(sender.card || sender.nickname || out.uid || '某人')
       const kind = ctx?.groupId ? 'group' : 'private'
-      let parsed = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender, message: m?.message ?? m?.raw_message ?? '' }, selfId, { faceName: faceName })
+      let parsed = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender, message: m?.message ?? m?.raw_message ?? '' }, selfId(), { faceName })
       if (quoteNeedsHistory(parsed)) {
         const hit = await quoteFromHistory(id, ctx)
         if (hit) {
           out.time ||= Number(hit?.time) || 0
-          const again = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender: hit.sender || sender, message: hit.message ?? '' }, selfId, { faceName: faceName })
+          const again = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender: hit.sender || sender, message: hit.message ?? '' }, selfId(), { faceName })
           if (!quoteNeedsHistory(again)) parsed = again
           else { parsed.images = [...(parsed.images || []), ...(again.images || [])]; parsed.stickers = [...(parsed.stickers || []), ...(again.stickers || [])] }
         }
@@ -92,7 +99,7 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
     } catch (error) {
       log.debug(`引用消息没拉到（${id}）：`, error.message)
     }
-    if (!historyVisible(chatId, out.uid, out.time)) return null
+    if (quoteCache.get(key)?.deleted || !historyVisible(chatId, out.uid, out.time)) return null
     if (quoteCache.size >= QUOTE_CACHE_MAX) quoteCache.delete(quoteCache.keys().next().value)
     quoteCache.set(key, out)
     return out
@@ -138,5 +145,9 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
     return got.map((x, i) => ({ type: 'image', data: x.data, mediaType: x.mediaType, name: `quote-${q.uid || 'x'}-${i + 1}` }))
   }
 
-  return { cache: quoteCache, info: quotedInfo, who: quoteWho, body: quoteBody, when: quoteWhen, inline: quoteInline, images: quoteImages }
+  function recall(chatId: string, messageId: string) {
+    if (quoteCache.size >= QUOTE_CACHE_MAX) quoteCache.delete(quoteCache.keys().next().value)
+    quoteCache.set(chatId + '|' + messageId, { deleted: true })
+  }
+  return { recall, cache: quoteCache, info: quotedInfo, who: quoteWho, body: quoteBody, when: quoteWhen, inline: quoteInline, images: quoteImages }
 }

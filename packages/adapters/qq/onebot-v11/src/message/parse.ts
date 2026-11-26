@@ -44,7 +44,8 @@ export function parseMessageEvent(event, selfId, { faceName } : ParseMessageEven
   const records = []
   const forwards = [] // 合并转发的 id
   const files = []
-  for (const seg of segmentsOf(event)) {
+  const segments = segmentsOf(event)
+  for (const seg of segments) {
     const d = seg.data || {}
     switch (seg.type) {
       case 'text':
@@ -120,6 +121,7 @@ export function parseMessageEvent(event, selfId, { faceName } : ParseMessageEven
   const text = texts.join('').replace(/\s+\n/g, '\n').trim()
   const wakeText = atAllIndexes.size ? texts.filter((_t, i) => !atAllIndexes.has(i)).join('').replace(/\s+\n/g, '\n').trim() : text
   return {
+    segments,
     kind,
     chatId: kind === 'group' ? `group:${groupId}` : `private:${userId}`,
     userId,

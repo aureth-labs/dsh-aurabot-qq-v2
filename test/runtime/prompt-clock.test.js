@@ -25,7 +25,7 @@ test('私聊与群聊拼提示词时都带上钟点', () => {
   // 群聊：每行都挂，之前的背景句和这一段新说的话都算
   assert.ok(hub.includes('const line = (x) => `[${clockLabel(x.t)}] ${x.nick}'), '群聊每行应挂 [HH:MM]')
   // 引入不必逐字对上（不同分支的 import 还带着 itemsToLine 之类），只要求从 reply.js 引进来
-  assert.match(hub, /import \{[^}]*\bclockLabel\b[^}]*\} from '\.\.?\/reply(?:\/index)?\.ts'/)
+  assert.match(hub, /import \{[^}]*\bclockLabel\b[^}]*\} from '[^']*reply\/index\.ts'/)
 })
 
 test('跨天时补日期：昨天 / 更早 / 跨年', async () => {
@@ -45,7 +45,7 @@ test('跨天时补日期：昨天 / 更早 / 跨年', async () => {
 test('补看历史与跨会话转达也带时间标签', () => {
   const hub = hubSource()
   // 补读已提取到 identity.js：检查调用方传入时钟，并直接验证历史日期行为。
-  assert.match(hub, /flatHistory\(filterHistory\(chat.chatId, list\), selfId \|\| cfg.botQQ, \{ clockLabel \}\)/)
+  assert.match(hub, /flatHistory\(filterHistory\(chat.chatId, list\), activity.selfId \|\| cfg.botQQ, \{\s*clockLabel,?\s*\}\)/)
   const now = Date.UTC(2026, 10, 9, 15, 34)
   const rows = flatHistory([
     { user_id: 10002, time: Date.UTC(2026, 10, 8, 15, 5) / 1000, message: '昨天的消息' },

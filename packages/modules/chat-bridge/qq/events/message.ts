@@ -1,5 +1,5 @@
 import { personaScope } from '../../../../../src/persona/personas.ts'
-import { parseMessageEvent, segmentsOf } from '../../../../adapters/qq/onebot-v11/src/message/parse.ts'
+import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/message/parse.ts'
 import { ignoredGroupMember } from '../../../../../src/chat/inbound/filter/member-filter.ts'
 import { isOwner, checkAllowed, shouldObserveGroup, groupResponseMode } from '../../../../../src/chat/policy/rules/access.ts'
 import { ownerAuthorizationRevision } from '../../../../../src/core/config/index.ts'
@@ -54,11 +54,11 @@ export function createIncomingMessages({
   const { info: quotedInfo, inline: quoteInline, images: quoteImages } = quotes
   const { stats, privateSources, logChat, refreshFriends, repliedToBot, sendSegments } = conversation
 
-  function onMessage(event) {
-    return personaScope.run(pnow(), () => onPersonaMessage(event))
+  function onMessage(event, quoteDeleted = false) {
+    return personaScope.run(pnow(), () => onPersonaMessage(event, quoteDeleted))
   }
 
-  async function onPersonaMessage(event) {
+  async function onPersonaMessage(event, quoteDeleted: boolean) {
     if (isDisposed()) return
     activity.selfId = String(event.self_id || activity.selfId || getConfig().botQQ)
     const cfg = getConfig()
@@ -88,6 +88,7 @@ export function createIncomingMessages({
         mid: msg.messageId,
         direct: false,
         replyId: msg.replyId,
+        ...(quoteDeleted ? { quote: null } : {}),
         images: msg.images,
         stickers: msg.stickers,
         forwards: msg.forwards?.length ? [...msg.forwards] : undefined,
@@ -140,7 +141,7 @@ export function createIncomingMessages({
     await refreshFriends()
     if (isDisposed()) return
 
-    const quotedBot = msg.kind === 'group' && msg.replyId ? await repliedToBot(msg.replyId, msg) : false
+    const quotedBot = msg.kind === 'group' && msg.replyId ? !quoteDeleted && await repliedToBot(msg.replyId, msg) : false
     if (isDisposed() || wasCleared()) return
     const interaction = msg.kind === 'private' || msg.mentioned || quotedBot ? [msg.userId] : []
     const originId = chatMessageOrigin(msg.chatId, msg.messageId, 'in', cfg.botQQ)?.originId
@@ -174,7 +175,7 @@ export function createIncomingMessages({
     if (msg.stickers.length || msg.images.length) {
       recentMedia.remember(
         msg.chatId,
-        segmentsOf(event)
+        msg.segments
           .filter((seg) => msg.images.includes(seg) || msg.stickers.includes(seg))
           .map((seg, index) => ({
             seg,
@@ -412,7 +413,7 @@ export function createIncomingMessages({
       if (last) last.text = text
     }
 
-    const quoted = msg.kind === 'private' && msg.replyId ? await quotedInfo(msg.replyId, msg) : null
+    const quoted = msg.kind === 'private' && msg.replyId && !quoteDeleted ? await quotedInfo(msg.replyId, msg) : null
     if (isDisposed()) return
 
     const content: ContentBlock[] =
@@ -424,6 +425,7 @@ export function createIncomingMessages({
               text:
                 `【私聊】[${clockLabel(now)}] ${msg.nickname}(${msg.userId})：` +
                 (text || '（没有文字）') +
+                (msg.messageId && msg.messageId !== '0' ? '\n' + JSON.stringify({ messageId: msg.messageId }) : '') +
                 (quoted ? '\n' + quoteInline(quoted) : ''),
             },
           ]
@@ -479,7 +481,7 @@ export function createIncomingMessages({
       msg.userId,
       wantsVoice(msg.text),
       mode,
-      { stickerPick },
+      { stickerPick, messageId: msg.messageId },
     )
   }
 

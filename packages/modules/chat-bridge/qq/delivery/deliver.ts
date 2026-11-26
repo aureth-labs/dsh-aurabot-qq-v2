@@ -238,6 +238,10 @@ export function createDeliver(deps: DeliverDeps) {
     // 一段只有一个人明确 @ / 引用她时，第一条回复引用并 @ 那个人；多人同时叫她不猜。
     // 模型明确选了引用编号时尊重它，不再自动引用另一条。
     const refs = inGroup ? groupRefs.get(chatId.slice(6)) || {} : {}
+    const turnRefs = new Map<string, { mid: string; uid?: string; direct?: boolean }>((opts.quoteIds || []).map(id => [String(id), { mid: String(id) }]))
+    for (const ref of Object.values(refs) as { mid: string }[]) {
+      if (turnRefs.has(String(ref.mid))) turnRefs.set(String(ref.mid), ref)
+    }
     const explicit = items.some((item) => item.replyTo)
     const firstSendable = items.findIndex((item) => item.kind === 'text' || item.kind === 'voice' || item.kind === 'image' || item.kind === 'file' || (item.kind === 'sticker' && cfg.stickers.enabled && Boolean(item.value && typeof item.value === 'object' ? item.value : stickers.match(item.value))))
     const missedAt = [] // 写了 @ 却没对上群里人的名字
@@ -252,7 +256,8 @@ export function createDeliver(deps: DeliverDeps) {
       for (let i = 0; i < items.length; i++) {
         if (isDisposed()) return
         const it = items[i]
-        const selected = it.replyTo ? refs[it.replyTo] : (!explicit && i === firstSendable ? opts.autoReply : null)
+        const selected = it.replyTo?.startsWith('id:') ? turnRefs.get(it.replyTo.slice(3))
+          : it.replyTo ? refs[it.replyTo] : (!explicit && i === firstSendable ? opts.autoReply : null)
         const replyId = selected?.mid
         // 她自己引用了 @ 她的人就照常 @；自动回复只有一个人说话时才有（#160）
         const userId = selected && (selected.direct || opts.autoReply?.uid === selected.uid) ? selected.uid : undefined

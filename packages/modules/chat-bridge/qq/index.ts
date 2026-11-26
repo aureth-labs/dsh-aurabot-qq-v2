@@ -645,6 +645,12 @@ export function createHub({
     resetPersonChat,
     memoryResetAt,
     filterHistory,
+    recallQuote(type: string, channelId: string, messageId: string) {
+      media.quotes.recall(type + ':' + channelId, messageId)
+      if (type === 'group') {
+        for (const row of groupBuf.get(channelId) || []) if (row.replyId === messageId) row.quote = null
+      }
+    },
     joinTopic: (gid) => groupEngaged.set(String(gid), Date.now() + ENGAGE_MS),
     leaveTopic: (gid) => groupEngaged.delete(String(gid)),
     chatOfSession,

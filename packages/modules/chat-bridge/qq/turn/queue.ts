@@ -28,7 +28,7 @@ export function createTurnQueue({
   } = turnGuard
   const { groupRefs, groupEngagedRun, groupInterjects, groupMusts } = groups
 
-  function enqueue(chat, content, senderId, wantVoice, mode = 'must', extra: { stickerPick?: number } = {}) {
+  function enqueue(chat, content, senderId, wantVoice, mode = 'must', extra: { stickerPick?: number; messageId?: string } = {}) {
     if (!groupChatAllowed(chat.chatId)) return
     const m = getConfig().merge
     const p = pending.get(chat.chatId) || {
@@ -36,12 +36,14 @@ export function createTurnQueue({
       texts: [],
       images: [],
       senders: new Set(),
+      messageIds: new Set<string>(),
       wantVoice: false,
       timer: null,
       firstAt: Date.now(),
       mode,
       count: 0,
     }
+    if (extra.messageId && extra.messageId !== '0') p.messageIds.add(extra.messageId)
     p.chat = chat
     p.count++
     if ((RANK[mode] || 3) > (RANK[p.mode] || 3)) p.mode = mode
@@ -78,6 +80,7 @@ export function createTurnQueue({
       clearTimeout(next.timer)
       p.texts.push(...next.texts)
       p.images = [...p.images, ...next.images].slice(0, MAX_MESSAGE_IMAGES)
+      for (const id of next.messageIds) p.messageIds.add(id)
       for (const sender of next.senders) p.senders.add(sender)
       p.count += next.count
       p.wantVoice ||= next.wantVoice
@@ -112,6 +115,7 @@ export function createTurnQueue({
           wantVoice: p.wantVoice,
           extraSenders: rest,
           queryText: query,
+          quoteIds: [...p.messageIds],
           steer: true,
           turnToken: busyTurns.get(chatId),
         })
@@ -182,6 +186,9 @@ export function createTurnQueue({
         queryText: query,
         speakers: p.speakers,
         autoReply: p.autoReply,
+        quoteIds: p.chat.kind === 'group'
+          ? Object.values<{ mid: string }>(groupRefs.get(p.chat.groupId) || {}).map(row => row.mid)
+          : [...p.messageIds],
         turnToken,
         archiveMessages: p.archiveMessages,
         directRequester: p.directRequester,

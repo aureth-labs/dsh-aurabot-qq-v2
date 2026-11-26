@@ -23,6 +23,7 @@ export interface PushToSessionOptions {
   extraSenders?: Array<string | number>
   speakers?: Array<string | number>
   directRequester?: unknown
+  quoteIds?: string[]
   autoReply?: unknown
   archiveMessages?: Record<string, unknown>[]
   suppressDelivery?: boolean

@@ -238,6 +238,9 @@ export function createTurnEvents({
       }
       const sys = st.system
       const wantVoice = Boolean(st.wantVoice)
+      const quoteIds = st.quoteIds || []
+      st.quoteIds = st.pendingQuoteIds || []
+      st.pendingQuoteIds = []
       const autoReply = st.autoReply
       const onDelivered = st.onDelivered
       st.onDelivered = st.pendingOnDelivered || null
@@ -302,7 +305,7 @@ export function createTurnEvents({
       const sendLast = () =>
         deliver(chatId, text, {
           wantVoice,
-          autoReply,
+          autoReply, quoteIds,
           userText: st.lastText || '',
           own: true,
           onDelivered,

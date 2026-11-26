@@ -13,6 +13,7 @@ import type {
   User,
 } from '../../../../../src/types/adapter/bot.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
+import { messageSource } from './message/source.ts'
 import { toOneBot, fromOneBot } from './element.ts'
 import { isElement, normalize, degrade, toText } from '../../../../../src/core/message/element/element.ts'
 import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
@@ -176,11 +177,8 @@ export class OneBotBot extends Bot {
 
   async getMessage(channelId: string, messageId: string): Promise<Message> {
     const info = await this.callApi('get_msg', { message_id: String(messageId) })
-    const group = info?.group_id != null && String(info.group_id) !== '0'
-    const from = String(info?.sender?.user_id ?? info?.user_id ?? '')
-    const channel = group ? String(info.group_id) : from === this.selfId ? String(info?.target_id || '') : from
-    const type = group ? 'group' : 'private'
-    if (!channel || channel !== String(channelId))
+    const { type, id: channel } = messageSource(info, this.selfId)
+    if (!channel || channel !== channelId)
       throw Error('引用消息不属于当前会话')
     return { ...mapMessage(info, channel), channelType: type }
   }

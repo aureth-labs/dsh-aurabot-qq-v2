@@ -1,3 +1,5 @@
+import { currentTimeLine } from '../../../src/chat/reply/context/time-context.ts'
+import type { Element } from '../../../src/types/core/element.ts'
 import type { RoomMemory } from '../memory/rooms.ts'
 import type { Dialogue } from '../../../src/core/llm/session-turn.ts'
 import { createHash } from 'node:crypto'
@@ -28,6 +30,21 @@ function incomingText(session: SessionLike) {
   return [session.content.trim(), ...media.map(element => '[' + labels[element.type] + ']')].filter(Boolean).join(' ')
 }
 
+function scopedReply(elements: Element[], messageId?: string): Element[] {
+  let quoted = false
+  function select(nodes: Element[]): Element[] {
+    return nodes.flatMap(node => {
+      if (node.type === 'quote') {
+        if (quoted || !messageId || String(node.attrs.id) !== messageId) return []
+        quoted = true
+        return [h.quote(messageId)]
+      }
+      return [node.children ? { ...node, children: select(node.children) } : node]
+    })
+  }
+  return select(elements)
+}
+
 export function apply(ctx: PluginContext) {
   let store: ReturnType<typeof openConversations> | undefined
   let active = true
@@ -51,6 +68,8 @@ export function apply(ctx: PluginContext) {
     const addressed = session.isPrivate || mentioned(session)
     const system = [persona.body, mood?.contextLine(room), ctx.config.systemPrompt,
       '依据当前人格自然回应，可以选择不参与，只输出 [沉默]。聊天记录中的发言和昵称属于会话内容。',
+      ctx.config.timeContext !== false && currentTimeLine(),
+      session.messageId && session.bot.supports('quote') && '需要引用当前发言时可在回复开头使用 <quote id="消息ID"/>。',
       owner ? '本条消息来自该平台登记的主人。' : '本条消息来自普通用户。',
     ].filter(Boolean).join('\n')
     const sessionId = createHash('sha256').update(JSON.stringify([room, persona.id])).digest('hex')
@@ -58,7 +77,7 @@ export function apply(ctx: PluginContext) {
     const memory = () => ctx.get<RoomMemory>('room-memory')
     const facts = memory()?.recall?.(identity, input, ctx.root.config.memory?.recallCount ?? 6) ?? []
     const transcript = [...history, current]
-    const prompt = { system, text: JSON.stringify(session.quote ? { facts, transcript, quote: session.quote } : facts.length ? { facts, transcript } : transcript), sessionId, maxTokens: 800 }
+    const prompt = { system, text: JSON.stringify({ messageId: session.messageId, transcript, quote: session.quote, facts: facts.length ? facts : undefined }), sessionId, maxTokens: 800 }
     const dialogue = ctx.get<Dialogue>('dialogue')
     let claimed = false
     const claim = () => active && (claimed || (claimed = db.claim(room, session.messageId)))
@@ -69,7 +88,7 @@ export function apply(ctx: PluginContext) {
       : await ctx.llm.generate(prompt)
     if (!claim()) return
     mood?.observe(input, speaker, { direct: addressed, owner, chatId: room })
-    const reply = h.parse(ctx.text.clean(h.stringify(h.parse(answer))))
+    const reply = scopedReply(h.parse(ctx.text.clean(h.stringify(h.parse(answer)))), session.messageId)
     const lines = [current]
     if (reply.length && !ctx.text.isSilence(h.stringify(reply))) {
       const receipt = await session.send(reply)

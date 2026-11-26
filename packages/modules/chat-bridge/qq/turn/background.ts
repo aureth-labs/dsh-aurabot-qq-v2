@@ -276,7 +276,7 @@ export function createBackgroundTurns({
             agent.followup({
               id: randomUUID(),
               role: 'user',
-              content: [{ type: 'text', text: cleanText(prompt) + '\n' + currentTimeLine() }],
+              content: [{ type: 'text', text: [cleanText(prompt), getConfig().ext?.['chat-bridge']?.timeContext !== false && currentTimeLine()].filter(Boolean).join('\n') }],
               source: { kind: SOURCE_KIND, speaker: { role: 'none' } },
             }),
           )
