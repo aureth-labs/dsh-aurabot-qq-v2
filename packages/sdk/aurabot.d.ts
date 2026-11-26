@@ -83,6 +83,7 @@ export interface GuildMember {
 }
 
 export interface Message {
+  userName?: string
   channelType?: 'private' | 'group' | 'channel'
   id: string
   channelId: string
@@ -111,10 +112,10 @@ export declare abstract class Bot {
   getGuild(guildId: string): Promise<Guild>
   getGuildList(): Promise<Guild[]>
   getUserList(guildId: string): Promise<GuildMember[]>
-  getChannel(channelId: string): Promise<Channel>
+  getChannel(channelId: string, type?: Message['channelType']): Promise<Channel>
   getChannelList(guildId: string): Promise<Channel[]>
   getMessage(channelId: string, messageId: string): Promise<Message>
-  getMessageList(channelId: string, query?: { limit?: number; next?: string; order?: 'asc' | 'desc' }): Promise<Message[]>
+  getMessageList(channelId: string, query?: { channelType?: Message['channelType']; limit?: number; next?: string; order?: 'asc' | 'desc' }): Promise<Message[]>
   deleteMessage(channelId: string, messageId: string): Promise<void>
   updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message>
   /** 平台原生调用：QQ 是 OneBot action，Telegram 是 Bot API 方法名。不支持的平台抛错。 */

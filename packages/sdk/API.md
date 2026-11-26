@@ -117,7 +117,9 @@ export async function apply(ctx, config) {
 }
 ```
 
-连上并登录后才发 `online`；卸载时自动下线。
+连接完成后宿主登记 Bot。网关掉线或恢复时，适配器先更新 `bot.status`，再调用 `runtime.statusChanged(reason?)`。同一实例在重连期间保留原 ID。
+
+频道 ID 原样传递。对群和私聊可能使用相同编号的平台，用 `bot.getChannel(channelId, session.type)` 或 `bot.getMessageList(channelId, { channelType: session.type, limit: 20 })` 指明类型。
 
 ## 开发
 

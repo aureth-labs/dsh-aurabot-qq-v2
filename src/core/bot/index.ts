@@ -106,7 +106,7 @@ export abstract class Bot implements BotLike {
     throw new UnsupportedApiError(this, 'getUserList')
   }
 
-  async getChannel(channelId: string): Promise<Channel> {
+  async getChannel(channelId: string, type?: Message['channelType']): Promise<Channel> {
     void channelId
     throw new UnsupportedApiError(this, 'getChannel')
   }

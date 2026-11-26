@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isStickerSegment, parseMessageEvent } from '../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
 import { gifFrames } from '../../src/core/message/media/inspect.ts'
-import { readQqFile } from '../../src/features/platform/qq/file.ts'
+import { readQqFile } from '../../packages/modules/qq-tools/file.ts'
 
 const file = (over = {}) => ({ name: 'a.txt', size: 5, id: 'f1', url: 'https://x/a', hash: '', busid: 0, ...over })
 const download = (text) => async () => Buffer.from(text)
@@ -35,9 +35,9 @@ test('非文本、超大、二进制内容都不读', async () => {
 
 test('没有直链时用 file_id 换地址：群和私聊接口不同', async () => {
   const calls = []
-  const onebot = { call: async (action, params) => { calls.push([action, params]); return { url: 'https://x/b' } } }
-  await readQqFile({ onebot, chat: { kind: 'group', groupId: '9' }, file: file({ url: '', busid: 102 }), download: download('x') })
-  await readQqFile({ onebot, chat, file: file({ url: '', hash: 'h' }), download: download('x') })
+  const bot = { internal: async (action, params) => { calls.push([action, params]); return { url: 'https://x/b' } } }
+  await readQqFile({ bot, chat: { kind: 'group', groupId: '9' }, file: file({ url: '', busid: 102 }), download: download('x') })
+  await readQqFile({ bot, chat, file: file({ url: '', hash: 'h' }), download: download('x') })
   assert.deepEqual(calls.map((c) => c[0]), ['get_group_file_url', 'get_private_file_url'])
   assert.deepEqual(calls[0][1], { group_id: 9, file_id: 'f1', busid: 102 })
   assert.deepEqual(calls[1][1], { user_id: 1, file_id: 'f1', file_hash: 'h' })
@@ -82,8 +82,8 @@ test('群内 JPEG 和 PNG 文件生成有尺寸上限的真实预览，只返回
     const buf = await sharp({ create: { width: 1400, height: 800, channels: 3, background: '#5a4b2c' } })[format]().toBuffer()
     const group = { kind: 'group', groupId: '9' }
     const input = file({ name: `群文件.${format}`, size: buf.length, url: '' })
-    const onebot = { call: async (action, args) => { assert.equal(action, 'get_group_file_url'); assert.equal(args.group_id, 9); return { url: 'https://cdn.example/image' } } }
-    const base = { chat: group, onebot, file: input, canPreview: () => true,
+    const bot = { call: async (action, args) => { assert.equal(action, 'get_group_file_url'); assert.equal(args.group_id, 9); return { url: 'https://cdn.example/image' } } }
+    const base = { chat: group, bot, file: input, canPreview: () => true,
       download: async (url, opts) => { assert.equal(url, 'https://cdn.example/image'); assert.deepEqual(opts, { maxBytes: 2 ** 21, allowLocal: false }); return buf } }
     const dsh = { attachments: { admitPromptContent: async ([item]) => {
       const m = await sharp(Buffer.from(item.data, 'base64')).metadata()

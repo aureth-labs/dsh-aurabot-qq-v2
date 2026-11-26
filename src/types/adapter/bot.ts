@@ -66,6 +66,7 @@ export interface GuildMember {
 }
 
 export interface Message {
+  userName?: string
   channelType?: 'private' | 'group' | 'channel'
   id: string
   channelId: string
@@ -77,6 +78,7 @@ export interface Message {
 }
 
 export interface MessageQuery {
+  channelType?: Message['channelType']
   limit?: number
   /** 平台分页游标；不传取最近一页。 */
   next?: string
@@ -102,7 +104,7 @@ export interface BotLike {
   getGuildList(): Promise<Guild[]>
   getUserList(guildId: string): Promise<GuildMember[]>
 
-  getChannel(channelId: string): Promise<Channel>
+  getChannel(channelId: string, type?: Message['channelType']): Promise<Channel>
   getChannelList(guildId: string): Promise<Channel[]>
 
   getMessage(channelId: string, messageId: string): Promise<Message>

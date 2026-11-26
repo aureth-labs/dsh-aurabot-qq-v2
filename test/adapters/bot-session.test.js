@@ -106,7 +106,7 @@ test('上线后按 OneBot action 发，私聊/群各自走对接口', async () =
   })
   bot.markOnline()
 
-  await bot.sendMessage('group:123', 'hello')
+  await bot.sendMessage('123', 'hello')
   await bot.sendPrivateMessage('456', 'hi')
 
   assert.deepEqual(calls[0], { action: 'send_group_msg', params: { group_id: '123', message: 'hello' } })

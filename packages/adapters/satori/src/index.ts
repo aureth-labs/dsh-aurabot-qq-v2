@@ -361,6 +361,7 @@ function mapMessage(raw: any, channelId: string): Message {
     id: String(raw?.id ?? ''),
     channelId: String(raw?.channel?.id ?? channelId),
     userId: String(raw?.user?.id ?? ''),
+    userName: raw?.member?.nick || raw?.user?.nick || raw?.user?.name,
     content: toText(elements),
     elements,
     createdAt: Number(raw?.created_at) || undefined,

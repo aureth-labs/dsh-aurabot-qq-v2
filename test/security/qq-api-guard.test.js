@@ -57,17 +57,19 @@ test('不在名单里的动作不动参数', () => {
 test('qq_api_call 接到网关前已清洗，整段违规时不会发送', async () => {
   const calls = []
   let build
-  const { default: mod } = await import('../../packages/modules/qq-api/index.ts')
-  mod.setup({
-    core: {
-      hub: { turnSendersAllOwner: () => true, cleanOutbound: (chatId, text) => clean(text) },
-      onebot: { call: async (action, params) => { calls.push([action, params]); return { ok: 1 } } },
-    },
-    config: () => ({ enabled: true, dryRun: false, ownerQQ: '1', allow: { private: ['1'], groups: ['9'] }, qqApi: { enabled: true } }),
-    tool: (fn) => { build = fn }, rule: () => {}, log: { info () {} },
+  const { apply } = await import('../../packages/modules/qq-api/index.ts')
+  const target = { platform: 'qq', botId: 'second', type: 'private', id: '1' }
+  const bot = { status: 'online', internal: async (action, params) => { calls.push([action, params]); return { ok: 1 } } }
+  apply({
+    root: { config: { enabled: true, allow: { private: ['1'], groups: ['9'] } } },
+    host: { hub: { cleanOutbound: (_chat, text) => clean(text) } },
+    bots: { get: (id, platform) => id === 'second' && platform === 'qq' ? bot : undefined },
+    get: name => name === 'onebot/second' && { verified: true }, turnFromOwner: () => true,
+    tool: fn => { build = fn }, rule() {}, logger: { info() {} },
   })
-  const chat = { kind: 'private', chatId: 'private:1', userId: '1', groupId: '' }
-  const api = build({ chat, level: 'full', sessionId: 's' }).find((t) => t.name === 'qq_api_call')
+  const where = { chat: { kind: 'private', chatId: 'private:1', userId: '1' }, level: 'full', sessionId: 's', primaryChat: true, target }
+  assert.deepEqual(build({ ...where, target: { ...target, botId: 'other' } }), [])
+  const api = build(where).find(t => t.name === 'qq_api_call')
   const forwarded = await api.execute({
     action: 'send_group_forward_msg',
     param: JSON.stringify({ group_id: 9, messages: [{ type: 'node', data: { content: [{ type: 'text', data: { text: `前文${block}后文` } }] } }] }),

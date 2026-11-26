@@ -34,12 +34,12 @@ test('OneBot：getSelf / getGuild / getChannel 落到对应 action', async () =>
   assert.equal(calls.at(-1).action, 'get_group_info')
   assert.equal(calls.at(-1).params.group_id, '7788')
 
-  const channel = await bot.getChannel('group:7788')
+  const channel = await bot.getChannel('7788')
   assert.equal(channel.id, '7788')
   assert.equal(channel.type, 'text')
   assert.equal(channel.guildId, '7788')
 
-  const direct = await bot.getChannel('private:20001')
+  const direct = await bot.getChannel('20001', 'private')
   assert.deepEqual(direct, { id: '20001', type: 'direct' })
 })
 
@@ -52,7 +52,7 @@ test('OneBot：getUserList 映射角色与入群时间，getMessage 解析元素
   assert.deepEqual(member.roles, ['owner'])
   assert.equal(member.joinedAt, 1700000000000)
 
-  const message = await bot.getMessage('group:7788', '9')
+  const message = await bot.getMessage('7788', '9')
   assert.equal(message.id, '9')
   assert.equal(message.userId, '20001')
   assert.equal(message.content, '在吗')
@@ -67,7 +67,7 @@ test('包装层：资源 API 原样转发给适配器实例', async () => {
   assert.equal(wrapped.status, 'online')
   assert.equal(wrapped.getSelfId(), '10000')
   assert.equal((await wrapped.getGuild('7788')).name, '摸鱼群')
-  assert.equal((await wrapped.getChannel('group:7788')).type, 'text')
+  assert.equal((await wrapped.getChannel('7788')).type, 'text')
 })
 
 test('基类：平台没实现的接口抛 UnsupportedApiError，不静默返回空', async () => {

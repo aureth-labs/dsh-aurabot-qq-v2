@@ -1,10 +1,10 @@
 // 读别人发来的 QQ 文件：私聊文件段自带下载地址，群文件要用 file_id 去换。只按请求读取文本或预览图片。
 
 import { extname } from 'node:path'
-import { mimeOf } from '../../../core/message/media/inspect.ts'
-import { findSharp, imageToolBlock } from '../../../core/message/media/img.ts'
-import { fetchImage } from '../../../core/net/index.ts'
-import { cleanText, clipText } from '../../../core/support/util/text.ts'
+import { mimeOf } from '../../../src/core/message/media/inspect.ts'
+import { findSharp, imageToolBlock } from '../../../src/core/message/media/img.ts'
+import { fetchImage } from '../../../src/core/net/index.ts'
+import { cleanText, clipText } from '../../../src/core/support/util/text.ts'
 
 const MAX_BYTES = 2 * 1024 * 1024
 const MAX_CHARS = 20000
@@ -17,12 +17,12 @@ function decodeText(buf) {
   try { return new TextDecoder('gb18030', { fatal: true }).decode(buf) } catch (error) { return null }
 }
 
-async function fileUrl(onebot, chat, file) {
+async function fileUrl(bot, chat, file) {
   if (file.url) return file.url
   if (!file.id) return ''
   const r = chat.kind === 'group'
-    ? await onebot.call('get_group_file_url', { group_id: Number(chat.groupId), file_id: file.id, ...(file.busid ? { busid: file.busid } : {}) }, { timeoutMs: 15000 })
-    : await onebot.call('get_private_file_url', { user_id: Number(chat.userId), file_id: file.id, file_hash: file.hash || '' }, { timeoutMs: 15000 })
+    ? await bot.internal('get_group_file_url', { group_id: Number(chat.groupId), file_id: file.id, ...(file.busid ? { busid: file.busid } : {}) }, { timeoutMs: 15000 })
+    : await bot.internal('get_private_file_url', { user_id: Number(chat.userId), file_id: file.id, file_hash: file.hash || '' }, { timeoutMs: 15000 })
   return String(r?.url || '')
 }
 
@@ -40,7 +40,7 @@ async function previewFile(dsh, buf, ext) {
   return imageToolBlock(dsh, jpeg)
 }
 
-export async function readQqFile({ onebot, chat, file, download = fetchImage, canPreview, dsh }) {
+export async function readQqFile({ bot, chat, file, download = fetchImage, canPreview, dsh }) {
   const ext = extname(file.name).toLowerCase()
   const image = ['.jpg', '.jpeg', '.png'].includes(ext)
   if (!image && !TEXT_EXT.has(ext)) return { ok: false, message: `《${file.name}》不是支持的文本或 JPG、PNG 文件` }
@@ -48,7 +48,7 @@ export async function readQqFile({ onebot, chat, file, download = fetchImage, ca
   if (image && (await canPreview?.()) !== true) return { ok: false, message: '当前模型未确认支持看图，未读取图片文件' }
   let buf
   try {
-    const url = await fileUrl(onebot, chat, file)
+    const url = await fileUrl(bot, chat, file)
     if (!url) return { ok: false, message: `拿不到《${file.name}》的下载地址，可能已经过期` }
     if (image && !/^https?:\/\//i.test(url)) return { ok: false, message: '没有可下载的图片地址，请直接按图片发送' }
     buf = await download(url, { maxBytes: MAX_BYTES, allowLocal: false })

@@ -95,11 +95,11 @@ export class OneBotBot extends Bot {
   }
 
   async sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown> {
-    return this.deliver('send_group_msg', { group_id: toId(channelId), message: await this.toMessage(content) }, options)
+    return this.deliver('send_group_msg', { group_id: String(channelId), message: await this.toMessage(content) }, options)
   }
 
   async sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown> {
-    return this.deliver('send_private_msg', { user_id: toId(userId), message: await this.toMessage(content) }, options)
+    return this.deliver('send_private_msg', { user_id: String(userId), message: await this.toMessage(content) }, options)
   }
 
   /**
@@ -114,7 +114,7 @@ export class OneBotBot extends Bot {
   }
 
   async getUser(userId: string): Promise<User> {
-    const info = await this.callApi('get_stranger_info', { user_id: toId(userId), no_cache: true })
+    const info = await this.callApi('get_stranger_info', { user_id: String(userId), no_cache: true })
     return {
       id: String(info?.user_id ?? userId),
       name: String(info?.remark || info?.nickname || ''),
@@ -134,7 +134,7 @@ export class OneBotBot extends Bot {
   }
 
   async getGuild(guildId: string): Promise<Guild> {
-    const info = await this.callApi('get_group_info', { group_id: toId(guildId), no_cache: true })
+    const info = await this.callApi('get_group_info', { group_id: String(guildId), no_cache: true })
     return { id: String(info?.group_id ?? guildId), name: String(info?.group_name ?? ''), raw: info }
   }
 
@@ -148,7 +148,7 @@ export class OneBotBot extends Bot {
   }
 
   async getUserList(guildId: string): Promise<GuildMember[]> {
-    const list = await this.callApi('get_group_member_list', { group_id: toId(guildId) })
+    const list = await this.callApi('get_group_member_list', { group_id: String(guildId) })
     return (Array.isArray(list) ? list : []).map((item) => {
       const role = String(item?.role ?? '')
       return {
@@ -161,9 +161,9 @@ export class OneBotBot extends Bot {
     })
   }
 
-  async getChannel(channelId: string): Promise<Channel> {
-    const id = toId(channelId)
-    if (String(channelId).startsWith('private:')) return { id, type: 'direct' }
+  async getChannel(channelId: string, type?: Message['channelType']): Promise<Channel> {
+    const id = String(channelId)
+    if (type === 'private') return { id, type: 'direct' }
     const info = await this.callApi('get_group_info', { group_id: id, no_cache: true })
     return { id, type: 'text', name: String(info?.group_name ?? ''), guildId: id, raw: info }
   }
@@ -175,29 +175,37 @@ export class OneBotBot extends Bot {
   }
 
   async getMessage(channelId: string, messageId: string): Promise<Message> {
-    const info = await this.callApi('get_msg', { message_id: toId(messageId) })
+    const info = await this.callApi('get_msg', { message_id: String(messageId) })
     const group = info?.group_id != null && String(info.group_id) !== '0'
     const from = String(info?.sender?.user_id ?? info?.user_id ?? '')
     const channel = group ? String(info.group_id) : from === this.selfId ? String(info?.target_id || '') : from
     const type = group ? 'group' : 'private'
-    if (!channel || channel !== toId(channelId) || (channelId.includes(':') && !channelId.startsWith(type + ':')))
+    if (!channel || channel !== String(channelId))
       throw Error('引用消息不属于当前会话')
     return { ...mapMessage(info, channel), channelType: type }
   }
 
   async getMessageList(channelId: string, query: MessageQuery = {}): Promise<Message[]> {
-    const id = toId(channelId)
+    const id = String(channelId)
     const count = Math.max(1, Math.min(Number(query.limit) || 20, 100))
-    const action = String(channelId).startsWith('private:') ? 'get_friend_msg_history' : 'get_group_msg_history'
-    const params = action === 'get_friend_msg_history' ? { user_id: id, count } : { group_id: id, count }
-    const result = await this.callApi(action, params)
-    const list = Array.isArray(result?.messages) ? result.messages : []
-    return list.map((item) => mapMessage(item, channelId))
+    const direct = query.channelType === 'private'
+    const target = direct ? { user_id: id } : { group_id: id }
+    const params: Record<string, unknown> = { ...target, count }
+    if (query.next !== undefined) {
+      if (!/^-?\d+$/.test(query.next) || !Number.isSafeInteger(Number(query.next)) || Number(query.next) === 0)
+        throw new Error('无效的 OneBot 消息游标')
+      params.message_id = Number(query.next)
+      params.reverse_order = true
+    }
+    const result = await this.callApi(direct ? 'get_friend_msg_history' : 'get_group_msg_history', params)
+    const rows = Array.isArray(result) ? result : result?.messages
+    if (!Array.isArray(rows)) return []
+    return rows.map(item => ({ ...mapMessage(item, channelId), channelType: direct ? 'private' : 'group' }))
   }
 
   async deleteMessage(channelId: string, messageId: string): Promise<void> {
     void channelId
-    await this.callApi('delete_msg', { message_id: toId(messageId) })
+    await this.callApi('delete_msg', { message_id: String(messageId) })
   }
 
   async updateMessage(channelId: string, messageId: string, content: unknown): Promise<Message> {
@@ -209,7 +217,7 @@ export class OneBotBot extends Bot {
 
   async createReaction(channelId: string, messageId: string, emoji: string): Promise<void> {
     void channelId
-    await this.callApi('set_msg_emoji_like', { message_id: toId(messageId), emoji_id: emoji, set: true })
+    await this.callApi('set_msg_emoji_like', { message_id: String(messageId), emoji_id: emoji, set: true })
   }
 
   override async internal<T = any>(action: string, params: Record<string, unknown> = {}, options?: { timeoutMs?: number }): Promise<T> {
@@ -238,9 +246,7 @@ export class OneBotBot extends Bot {
   }
 }
 
-function toId(value: string | number): string {
-  return String(value).replace(/^(group|private|channel):/, '')
-}
+
 
 function mapMessage(raw: any, channelId: string): Message {
   const elements = fromOneBot(raw?.message ?? raw?.raw_message ?? '')
@@ -248,6 +254,7 @@ function mapMessage(raw: any, channelId: string): Message {
     id: String(raw?.message_id ?? ''),
     channelId: String(channelId),
     userId: String(raw?.user_id ?? raw?.sender?.user_id ?? ''),
+    userName: String(raw?.sender?.card || raw?.sender?.nickname || ''),
     content: toText(elements),
     elements,
     createdAt: Number(raw?.time) ? Number(raw.time) * 1000 : undefined,

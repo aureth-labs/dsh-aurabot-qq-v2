@@ -220,12 +220,14 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         return [...channels.values()]
       case 'message.get': {
         const hit = messages.find((m) => m.id === String(body.message_id || '') && m.channelId === String(body.channel_id || ''))
-        return hit ? { id: hit.id, content: hit.content, channel: { id: hit.channelId } } : {}
+        return hit ? resource(hit) : {}
       }
-      case 'message.list':
-        return messages
-          .filter((m) => m.channelId === String(body.channel_id || ''))
-          .map((m) => ({ id: m.id, content: m.content, channel: { id: m.channelId } }))
+      case 'message.list': {
+        const rows = messages.filter(message => message.channelId === String(body.channel_id || ''))
+        const end = body.next ? rows.findIndex(message => message.id === String(body.next)) : rows.length
+        const limit = Math.max(1, Math.min(MAX_MESSAGES, Number(body.limit) || 20))
+        return end < 0 ? [] : rows.slice(Math.max(0, end - limit), end).map(resource)
+      }
       case 'message.delete':
       case 'message.update':
       case 'reaction.create':
@@ -233,6 +235,13 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         return {}
       default:
         return null
+    }
+  }
+
+  function resource(message: SandboxMessage) {
+    return {
+      id: message.id, content: message.content, channel: { id: message.channelId },
+      user: { id: message.userId, name: message.userName }, created_at: message.at,
     }
   }
 

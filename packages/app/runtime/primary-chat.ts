@@ -43,7 +43,7 @@ export function createPrimaryChat({
       const target = id
         ? { platform: 'qq', botId: defaultOneBotId, type: chat.kind, id: String(id) }
         : undefined
-      return modules().buildTools({ ...where, target })
+      return modules().buildTools({ ...where, target, primaryChat: true })
     },
     capabilitiesOf: (id) =>
       typeof modules().capabilitiesOf === 'function' ? modules().capabilitiesOf(id) : [],

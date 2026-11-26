@@ -112,10 +112,13 @@ export const version = '1.0.0'
 export const description = '把协议端的 QQ 能力交给她：查群公告、精华、荣誉、群文件，主人开口时还能撤回、设精华、改群名片等（qq_api_find / qq_api_call）'
 
 export function apply(ctx, config) {
-  const { hub, onebot } = ctx.host
-  ctx.tool(({ chat, level, sessionId }) => {
-    if (chat.kind === 'system' || ctx.root.config.qqApi?.enabled === false) return []
-    const isOwner = () => level === 'full' || Boolean(hub.turnSendersAllOwner?.(sessionId))
+  ctx.tool(({ chat, level, sessionId, target, primaryChat }) => {
+    if (target?.platform !== 'qq' || ctx.root.config.qqApi?.enabled === false) return []
+    const bot = ctx.bots.get(target.botId, target.platform)
+    const connection = ctx.get('onebot/' + target.botId)
+    if (!bot || !connection?.verified || bot.status !== 'online') return []
+    const hub = primaryChat ? ctx.host.hub : undefined
+    const isOwner = () => ctx.turnFromOwner(sessionId) || (primaryChat && level === 'full' && ctx.isOwner(chat.userId, 'qq', bot.id))
     return [
       defineTool({
         name: 'qq_api_find',
@@ -140,17 +143,19 @@ export function apply(ctx, config) {
           try { params = JSON.parse(String(param || '{}')) } catch (error) { return { ok: false, message: 'param 不是合法的 JSON' } }
           if (!params || typeof params !== 'object' || Array.isArray(params)) return { ok: false, message: 'param 要是 JSON 对象' }
           const name = String(action || '')
-          const no = refusal({ action: name, params, cfg: ctx.root.config, owner: isOwner(), chat })
+          const no = refusal({ action: name, params, cfg: ctx.root.config, owner: isOwner(), chat: { kind: target.type, groupId: target.id } })
           if (no) return { ok: false, message: no }
           // 原始动作里的文本/转发/卡片参数也过出站清洗（和 QQ 投递同一套），别让工具文字走旁路露出。
-          const clean = typeof hub.cleanOutbound === 'function'
+          const clean = typeof hub?.cleanOutbound === 'function'
             ? (text) => hub.cleanOutbound(chat.chatId, text)
-            : (text) => cleanOutboundText(text, { ownerPrivate: chat.chatId === `private:${ctx.root.config.ownerQQ}` })
+            : (text) => cleanOutboundText(text, { ownerPrivate: target.type === 'private' && isOwner() })
           const cleaned = cleanOutboundParams(name, pickParams(name, params), clean)
           if (!cleaned.ok) return { ok: false, message: cleaned.message }
           if (cleaned.changed) ctx.logger.info(`qq_api：${chat.chatId} 调用 ${name} 前清洗了外显文本`)
           ctx.logger.info(`qq_api：${chat.chatId} 调用 ${name}`)
-          const data = await onebot.call(name, cleaned.params, { timeoutMs: 15000, retries: 0 })
+          if (!connection.verified || ctx.bots.get(target.botId, target.platform) !== bot)
+            return { ok: false, message: '机器人连接已经变化' }
+          const data = await bot.internal(name, cleaned.params, { timeoutMs: 15000, retries: 0 })
           return { ok: true, message: clipText(JSON.stringify(data ?? null), RESULT_CHARS) }
         },
         render: (_args, value) => [{ type: 'text', text: (value as any)?.message || '' }],
