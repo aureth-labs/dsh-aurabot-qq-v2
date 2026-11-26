@@ -15,6 +15,7 @@ import type {
   ThinkOptions,
   ChatLogFacade,
   HttpHelpers,
+  TextHelpers,
 } from '../../../types/plugin/ctx.ts'
 import type { Middleware, MiddlewareOptions, SessionFilter } from '../../../types/plugin/pipeline.ts'
 import type { Target } from '../../../types/core/target.ts'
@@ -67,6 +68,8 @@ interface KernelApi {
   thinkCooldown: (key?: string) => { retryAt: number; message?: string } | null
   chatLog: ChatLogFacade
   http: HttpHelpers
+  turnFromOwner: (sessionId: string) => boolean
+  text: TextHelpers
   route: (path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' }) => () => void
 }
 
@@ -146,6 +149,8 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('thinkCooldown', (key?: string) => api.thinkCooldown(key))
   value('chatLog', api.chatLog)
   value('http', api.http)
+  value('turnFromOwner', (sessionId: string) => api.turnFromOwner(sessionId))
+  value('text', api.text)
   value('dataDir', (...parts: string[]) => api.dataDir(...parts))
 
   // 定时器随模块卸载自动回收（Cordis 的 effect 语义），不要用裸 setInterval

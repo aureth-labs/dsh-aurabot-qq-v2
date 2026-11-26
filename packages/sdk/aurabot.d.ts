@@ -322,6 +322,13 @@ export interface Ctx {
     read(day: string): Array<{ t: number; chatId: string; who: string; text: string; uid?: string; forgottenAt?: number }>
     append(chatId: string, who: string, text: string, uid?: string): unknown
   }
+  /** 工具执行时：这一轮说话的人是不是全是主人（sessionId 来自工具工厂的 where）。 */
+  turnFromOwner(sessionId: string): boolean
+  readonly text: {
+    clean(value: unknown, label?: string): string
+    isSilence(value: unknown): boolean
+    sent(receipt: unknown): boolean
+  }
   readonly http: {
     body(req: any): Promise<Record<string, any>>
     query(req: any): Record<string, string>

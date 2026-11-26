@@ -150,6 +150,16 @@ export interface HttpHelpers {
   send(res: any, status: number, body: unknown, type?: string): void
 }
 
+/** `ctx.text`：模型输出进平台前的清洗。 */
+export interface TextHelpers {
+  /** 去掉内部标签、提示词回声、Markdown；返回可以直接发出去的纯文本。 */
+  clean(value: unknown, label?: string): string
+  /** 模型选择了沉默（[沉默] 或只有标点）。 */
+  isSilence(value: unknown): boolean
+  /** 平台回执里真的有 message_id（不是模拟发送 / 补发队列）。 */
+  sent(receipt: unknown): boolean
+}
+
 /** 管线本体（`ctx.middleware` 要挂到它上面）。 */
 export interface PipelineLike {
   use(fn: Middleware, options?: MiddlewareOptions): () => void
@@ -284,6 +294,9 @@ export interface PluginContext extends ScopeFactory {
   thinkCooldown: (key?: string) => { retryAt: number; message?: string } | null
   chatLog: ChatLogFacade
   http: HttpHelpers
+  /** 工具执行时：这一轮说话的人是不是全是主人。 */
+  turnFromOwner: (sessionId: string) => boolean
+  text: TextHelpers
   /** 适配器实例：连接 → 上线 → 可用；模块卸载时自动断开。 */
   adapter: (spec: AdapterSpec, config?: unknown) => Promise<AdapterHandle>
   /** 已上线的机器人：`ctx.bots[0]` / `ctx.bots('号')` / `ctx.bots.list()`。 */

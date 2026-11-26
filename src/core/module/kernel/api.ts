@@ -11,6 +11,8 @@ import { defineTool } from '../../../tools/index.ts'
 import { personaScope, personaNow } from '../../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
 import { isOwnerOf } from '../../config/global.ts'
+import { cleanOutboundText, isSilence, stripMarkdown } from '../../../chat/reply/index.ts'
+import { reallySent } from '../../../chat/hub/context/context.ts'
 
 /** 路由选项。 */
 export type RouteOptions = Partial<Record<'access', any>>
@@ -233,6 +235,12 @@ export function createApi(deps: ApiDeps) {
         append: (chatId, who, text, uid = '') => core.hub.logChat?.(chatId, who, text, uid),
       },
       http: core.http,
+      turnFromOwner: (sessionId) => Boolean(core.hub.turnSendersAllOwner?.(String(sessionId || ''))),
+      text: {
+        clean: (value, label = id) => stripMarkdown(cleanOutboundText(value, { warn: (message) => mlog.warn(`${label}：${message}`) })).trim(),
+        isSilence,
+        sent: reallySent,
+      },
       onebot: writable('onebot', (action, params, opts) => core.onebot.call(action, params, opts)),
       // 出站治理面（主动发言策略）。
       // 宿主注入 core.outbound 才有；旧环境/纯测试下 available=false，模块据此降级，
