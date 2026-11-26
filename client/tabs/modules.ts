@@ -341,10 +341,11 @@ function Market({ st, toast, reload, go }) {
 
 /** 扩展页：所有模块（内置的 + 市场装的 + 自己写的）、安全模式；写模块的工具收在最下面。 */
 
-function Modules({ st, draft, toast, reload, go }) {
+function Modules({ st, draft, setDraft, toast, reload, go }) {
   const [data, setData] = useState(null)
   const [newId, setNewId] = useState('')
   const [newName, setNewName] = useState('')
+  const f = useField(draft, setDraft)
   const load = () => get('/modules').then(setData)
   useEffect(() => { load() }, [])
   useEffect(() => { if (data && st.modules) setData((d) => ({ ...d, list: st.modules })) }, [JSON.stringify(st.modules)])
@@ -364,6 +365,13 @@ function Modules({ st, draft, toast, reload, go }) {
     reload()
   }
   return h('div', { className: 'ab-grid' },
+    h(Card, { title: '插件运行方式', desc: 'v2 插件（export function apply(ctx)）怎么跑。改完点下面的「保存设置」生效。' },
+      h(Row, {
+        label: '指令处理完，还继续走中间件',
+        hint: '开发中：默认关（和 Koishi 一致）——指令回完这条就结束，不再进中间件和模型。'
+          + '打开后指令也照样往下传，适合「指令只做副作用、回复交给中间件」的写法；'
+          + '副作用是有人发了正好和指令同名的内容时，指令会把消息「抢走」。',
+      }, f.sw('middlewareAfterCommand'))),
     h(Card, { title: '已安装', right: h(Btn, { small: true, kind: 'primary', onClick: () => go('market') }, '逛模块市场'), desc: 'ta的每项本事都是一个模块：能单独关掉；能复制一份来改，改了就替换内置的；也能自己写新模块，让ta学会你想要的任何事。自己写的东西放在下面这个文件夹，插件升级不会动；改完保存几秒内自动生效，不用重启。不会写代码？点「复制给 DSH 的话」，粘给 DSH，说你想要什么。' },
       h('div', { className: 'ab-flex' },
         h('code', { className: 'ab-small', style: { wordBreak: 'break-all', flex: 1 } }, data.dir),
