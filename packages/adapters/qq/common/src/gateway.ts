@@ -204,6 +204,7 @@ export class QQGateway {
   private startHeartbeat(intervalMs: number): void {
     this.stopHeartbeat()
     const interval = Math.max(5_000, intervalMs)
+    // lifecycle-safe: close / dispose 调 stopHeartbeat() 清掉，socket 生命周期内的心跳
     this.heartbeatTimer = setInterval(() => this.sendHeartbeat(), interval)
     this.heartbeatTimer.unref?.()
   }

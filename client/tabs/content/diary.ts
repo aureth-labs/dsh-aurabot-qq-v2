@@ -112,7 +112,7 @@ function DiaryArchive({ st, draft, setDraft, toast }) {
       try { const result = await post('/diary/archive/collect', {}); toast(result.message || '归档完成'); await load() }
       finally { setBusy(false) }
     } }, busy ? '正在收集…' : '现在收集浏览图'),
-    h('div', { className: 'ab-small ab-muted', style: { marginTop: 8 } }, '先保存设置。总开关关闭或试运行开启时不保存图片；归档本身不会发布到空间。要用作日记配图，另在上方启用指定图库。'),
+    h('div', { className: 'ab-small ab-muted', style: { marginTop: 8 } }, '先保存设置。总开关关闭或调试模式开启时不保存图片；归档本身不会发布到空间。要用作日记配图，另在上方启用指定图库。'),
   )
 }
 
@@ -166,7 +166,7 @@ function QzoneSocial({ draft, setDraft, toast }) {
   const [s, setS] = useState(null)
   const load = () => get('/qzone/social/state').then(setS)
   useEffect(() => { load() }, [])
-  return h(Card, { title: '空间互动', right: f.sw('qzoneSocial.enabled'), desc: 'ta会定期逛 QQ 空间：有人评论ta的说说就回一句；刷到好友的说说，偶尔点个赞、评一句（你的说说ta更爱评）。评论按ta的人格现写；试运行时只记日志不发。' },
+  return h(Card, { title: '空间互动', right: f.sw('qzoneSocial.enabled'), desc: 'ta会定期逛 QQ 空间：有人评论ta的说说就回一句；刷到好友的说说，偶尔点个赞、评一句（你的说说ta更爱评）。评论按ta的人格现写；调试模式时只记日志不发。' },
     h(Row, { label: '回复自己说说下的评论' }, f.sw('qzoneSocial.replyOwn')),
     h(Row, { label: '评论好友的说说' }, f.sw('qzoneSocial.commentFriends')),
     h(Row, { label: '顺手点赞' }, f.sw('qzoneSocial.like')),

@@ -244,7 +244,7 @@ export default {
         const bufs = (Array.isArray(buf) ? buf : [buf]).filter((item) => Buffer.isBuffer(item) && item.length)
         if (!bufs.length) { await progress(new Error('生图接口没有返回图片'), false); return { ok: false, message: '生图失败：生图接口没有返回图片。已尝试告知对方，请结合情况回应，不要说画好了。' } }
         const sent = await hub.sendSegments(chat.chatId, bufs.map((item) => ({ type: 'image', data: { file: 'base64://' + item.toString('base64') } })), `[生图] ${String(prompt).slice(0, 30)}`)
-        // 调试 / 试运行下本来就不真发（sendSegments 只记日志、返回 null）：
+        // 调试 / 调试模式下本来就不真发（sendSegments 只记日志、返回 null）：
         // 这一轮仍算画好了 —— 存盘、给编号、能看图，只是 QQ 里收不到；不能当失败。
         // 只有 null 才是“调试拦下”；明确的 false 仍按发送失败处理。
         const simulated = sent === null && Boolean(cfg.debug)
@@ -298,7 +298,7 @@ export default {
         if (animated) { out.format = 'gif'; out.frames = gifFrameCount(bufs[0]); out.message += `\n这是 GIF 动图（${out.frames} 帧）；若给了你预览，它只含第一帧，不代表完整动作。` }
         if (img) out.image = img
         if (indexes.length && saved.length) out.message += `\n画作编号 ${indexes.filter(Boolean).map((n) => '#' + n).join('、')}（想换头像、收成表情时用这个编号）`
-        if (simulated) out.message += '\n（试运行/调试：这些图没真发到 QQ，只在本地存下了）'
+        if (simulated) out.message += '\n（调试模式/调试：这些图没真发到 QQ，只在本地存下了）'
         // 只有**图真的交给模型了**才把本地路径告诉她（#59）：收录表情包 / 存素材 / qq_add_sticker 用；
         // 看不了图或开关关着时不给路径，免得她知道路径就去读图，绕开「不给看」的判断。
         if (shown && saved.length) out.message += `\n已保存到本机：${saved.join('、')}（要收录表情包、存素材时可以用这个路径）`

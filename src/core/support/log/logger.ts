@@ -1,6 +1,6 @@
 // 日志：按天写文件 + 内存里留最近几百条给面板看。所有文本先脱敏。
 
-import { appendFileSync, readdirSync, unlinkSync, statSync } from 'node:fs'
+import { appendFileSync, closeSync, openSync, readdirSync, readSync, statSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { dataDir, ensureDir } from '../../store/index.ts'
 import { redact } from './redact.ts'
@@ -45,6 +45,9 @@ export interface Logger extends AreaLogger {
   child (area: string): AreaLogger
   recent (limit?: number, filter?: LogFilter): LogEntry[]
   onEntry (fn: (entry: LogEntry) => void): () => void
+  dir (): string
+  files (): Array<{ name: string; size: number; mtime: number }>
+  tail (name: string, limit?: number): string[]
 }
 
 export function createLogger ({ dsh, retainDays = 14, debugEnabled }: CreateLoggerOptions = {}): Logger {
@@ -52,6 +55,28 @@ export function createLogger ({ dsh, retainDays = 14, debugEnabled }: CreateLogg
   const listeners = new Set<(entry: LogEntry) => void>()
   const dir = (): string => ensureDir(dataDir('logs'))
   let lastCleanup = 0
+  let writes = 0
+  let rotated: { day: string; index: number; size: number } = { day: '', index: 1, size: 0 }
+  const MAX_FILE_BYTES = 8 * 1024 * 1024
+
+  /** 当天第几份文件：超过 8 MB 就换下一条，避免单文件无限长。 */
+  function fileOf (day: string): string {
+    if (rotated.day !== day) rotated = { day, index: 1, size: 0 }
+    if (!rotated.size) {
+      try { rotated.size = statSync(join(dir(), `aurabot-${day}.log`)).size } catch { rotated.size = 0 }
+    }
+    const name = rotated.index > 1 ? `aurabot-${day}-${rotated.index}.log` : `aurabot-${day}.log`
+    return join(dir(), name)
+  }
+
+  function rotateIfNeeded (): void {
+    writes += 1
+    if (writes % 200 !== 0) return
+    try {
+      const p = fileOf(rotated.day || new Date().toISOString().slice(0, 10))
+      if (statSync(p).size >= MAX_FILE_BYTES) rotated = { day: rotated.day, index: rotated.index + 1, size: 0 }
+    } catch { /* 文件还没建或没权限：下次再说 */ }
+  }
 
   function cleanup (): void {
     const now = Date.now()
@@ -77,7 +102,10 @@ export function createLogger ({ dsh, retainDays = 14, debugEnabled }: CreateLogg
     ring.push(entry)
     if (ring.length > RING) ring.shift()
     try {
-      appendFileSync(join(dir(), `aurabot-${day}.log`), `${day} ${time} [${level}] [${area}] ${text}\n`, 'utf8')
+      const line = `${day} ${time} [${level}] [${area}] ${text}\n`
+      appendFileSync(fileOf(day), line, 'utf8')
+      rotated.size += Buffer.byteLength(line)
+      rotateIfNeeded()
     } catch { /* 写不进磁盘还有内存环和宿主日志 */ }
     try {
       const fn = level === 'error' ? dsh?.logger?.error : level === 'warn' ? dsh?.logger?.warn : dsh?.logger?.info
@@ -109,6 +137,34 @@ export function createLogger ({ dsh, retainDays = 14, debugEnabled }: CreateLogg
     onEntry (fn: (entry: LogEntry) => void): () => void {
       listeners.add(fn)
       return () => { listeners.delete(fn) }
+    },
+    dir,
+    files (): Array<{ name: string; size: number; mtime: number }> {
+      try {
+        return readdirSync(dir())
+          .filter((name) => /^aurabot-.*\.log$/.test(name))
+          .map((name) => {
+            const s = statSync(join(dir(), name))
+            return { name, size: s.size, mtime: s.mtimeMs }
+          })
+          .sort((a, b) => b.mtime - a.mtime)
+      } catch { return [] }
+    },
+    tail (name: string, limit = 200): string[] {
+      const safe = String(name || '')
+      if (!/^aurabot-[0-9-]+(-\d+)?\.log$/.test(safe)) throw new Error('日志文件名不对')
+      const file = join(dir(), safe)
+      const size = statSync(file).size
+      const max = Math.min(2 * 1024 * 1024, size)
+      const count = Math.min(2000, Math.max(1, Number(limit) || 200))
+      const buf = Buffer.allocUnsafe(max)
+      const fd = openSync(file, 'r')
+      try {
+        readSync(fd, buf, 0, max, Math.max(0, size - max))
+      } finally {
+        closeSync(fd)
+      }
+      return buf.toString('utf8').split(/\r?\n/).filter(Boolean).slice(-count)
     },
   }
   return api

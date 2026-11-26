@@ -97,7 +97,7 @@ function Bili({ draft, setDraft, toast }) {
       h(Row, { label: '播放量门槛' }, f.num('bili.minViews', { min: 0 }), h('span', { className: 'ab-muted' }, '次以上')),
       h(Row, { label: '只看最近' }, f.num('bili.maxAgeDays', { min: 0 }), h('span', { className: 'ab-muted' }, '天内发的（0 = 不限）')),
     ),
-    h(Card, { title: '评论、回复和分享', desc: '评论和回复要登录。试运行开着时只记日志不发。' },
+    h(Card, { title: '评论、回复和分享', desc: '评论和回复要登录。调试模式开着时只记日志不发。' },
       h(Row, { label: '主人的 B 站昵称', hint: '填完整昵称。ta评论里写 @主人 时会 @ 这个号' }, f.text('bili.ownerName', { placeholder: '不填就 @ 不到你' })),
       h(Row, { label: '自己发评论', hint: '只管ta自己刷视频时发不发；别人让ta发，看「权限」页的 B 站评论' }, f.sw('bili.comment'), h('span', { className: 'ab-muted' }, '每天最多'), f.num('bili.maxCommentsPerDay', { min: 0, max: 50 }), h('span', { className: 'ab-muted' }, '条')),
       h(Row, { label: '回别人回ta的评论' }, f.sw('bili.reply'), h('span', { className: 'ab-muted' }, '每天最多'), f.num('bili.maxRepliesPerDay', { min: 0, max: 100 }), h('span', { className: 'ab-muted' }, '条')),
@@ -178,7 +178,7 @@ function BiliDanmaku({ draft, setDraft, toast }) {
     } catch { toast('弹幕接口暂时无法连接，请先到 B 站确认是否发送，避免重复提交', 'err') }
     finally { setBusy(false) }
   }
-  return h(Card, { title: '视频弹幕', desc: '两个开关默认关闭，改完先保存设置。发送按钮会实际提交弹幕；试运行时不发送。沿用本页的 B 站登录。' },
+  return h(Card, { title: '视频弹幕', desc: '两个开关默认关闭，改完先保存设置。发送按钮会实际提交弹幕；调试模式时不发送。沿用本页的 B 站登录。' },
     h(Row, { label: '允许发送弹幕', hint: '关闭后手动、聊天工具和自动弹幕均不发送；聊天工具只接受主人私聊请求' }, f.sw('bili.danmakuEnabled')),
     h(Row, { label: '刷完视频自己发弹幕', hint: '另行开启；每个视频每天最多一条自动弹幕' }, f.sw('bili.autoDanmaku')),
     h(Row, { label: '每天最多提交弹幕', hint: '手动和自动共用次数上限，提交失败也计数' }, f.num('bili.maxDanmakuPerDay', { min: 1, max: 20 })),
@@ -221,7 +221,7 @@ function ShotCell({ it, onChanged, toast }) {
   )
 }
 
-const DOUYIN_KIND = { watch: '看了', look: '点开看', like: '点赞', comment: '评论', share: '分享给你', dm: '回你私信', 'dry:dm': '试运行·私信', 'dry:like': '试运行·点赞', 'dry:comment': '试运行·评论', error: '没成功' }
+const DOUYIN_KIND = { watch: '看了', look: '点开看', like: '点赞', comment: '评论', share: '分享给你', dm: '回你私信', 'dry:dm': '调试模式·私信', 'dry:like': '调试模式·点赞', 'dry:comment': '调试模式·评论', error: '没成功' }
 
 /** 抖音：专用浏览器扫码登录、定时刷、点赞 / 评论、在 QQ 上分享给主人，以及她刷过什么。 */
 
@@ -304,7 +304,7 @@ function Douyin({ draft, setDraft, toast }) {
         { value: 'stingy', label: '少分享', desc: '拿不准就不发' },
       ])),
     ),
-    h(Card, { title: '每天上限', desc: '刚登录的号前几天上限自动减半（新号猛点赞最容易被风控）。遇到验证码 / 操作频繁当天就停手，看还能看。试运行开着时只记日志不真点。权限在「权限」页单独设（默认仅主人）。' },
+    h(Card, { title: '每天上限', desc: '刚登录的号前几天上限自动减半（新号猛点赞最容易被风控）。遇到验证码 / 操作频繁当天就停手，看还能看。调试模式开着时只记日志不真点。权限在「权限」页单独设（默认仅主人）。' },
       h(Row, { label: '点赞' }, f.num('douyin.caps.like', { min: 0, max: 300 })),
       h(Row, { label: '评论' }, f.num('douyin.caps.comment', { min: 0, max: 30 })),
       h(Row, { label: '分享给你' }, f.num('douyin.caps.share', { min: 0, max: 30 })),

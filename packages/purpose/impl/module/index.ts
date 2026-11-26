@@ -529,7 +529,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
           // 做过全部排程/额度判定，投递时不再过模块包装层门闸——否则策略源账本与引擎账本
           // 双轨漂移（2026-11-04 实测：引擎到点开口反被策略账本旧排程以 cooldown 拦死）。
           // hub 的 enginePolicy 路径自己向策略源 reserve/commit（sent/failed/uncertain），
-          // 同时仍照旧走总开关 / 试运行 / 禁言。
+          // 同时仍照旧走总开关 / 调试模式 / 禁言。
           const cred = friend ? null : engineCredential() // 朋友各有各的账本，仍走引擎自己直投
           // 不带 own:true：这条是别处（目的回合）发的，hub 只把「实际成功发出」的文本记进 saidElsewhere，
           // 主人在 QQ 私聊回复时补进她的上下文（#133 同款桥接；#211 review 后改为按真发出结果记）。

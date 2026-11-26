@@ -203,7 +203,7 @@ function Overview({ st, toast, go }) {
           h('span', null, 'QQ 会话'), h('span', null, Object.keys(st.sessions || {}).filter((k) => !k.startsWith('system:')).length + ' 个（在侧栏「Aurabot · QQ」工作区里）'),
         ),
       ),
-      h(Card, { title: '快捷操作', desc: '试一试ta是不是活着。这些操作会真的发到 QQ（试运行时只写日志）。' },
+      h(Card, { title: '快捷操作', desc: '试一试ta是不是活着。这些操作会真的发到 QQ（调试模式时只写日志）。' },
         h('div', { className: 'ab-flex' },
           h(Btn, { kind: 'primary', onClick: quick('/test-send') }, '给主人发一条自测'),
           h(Btn, { onClick: quick('/purpose/fire') }, '让ta现在来找你'),

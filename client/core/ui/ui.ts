@@ -467,6 +467,7 @@ body[data-ds-dark-theme] .ab-root,.ab-root.ab-dark{--ab-shadow:0 1px 2px rgba(0,
 .ab-mood{height:12px}
 .ab-mood > i{background:linear-gradient(90deg,#9ad0ff,var(--ab-sea) 60%,#7a6cf0)}
 .ab-logs{border-radius:12px;border:1px solid var(--ab-line)}
+.ab-log-raw{white-space:pre-wrap;word-break:break-all;padding:2px 10px;border-bottom:1px solid var(--ab-line);content-visibility:auto;contain-intrinsic-size:20px}
 .ab-savebar{border-radius:14px;backdrop-filter:blur(8px)}
 .ab-table th{font-size:12px;letter-spacing:.02em}
 .ab-table tr:hover td{background:var(--ab-hover)}

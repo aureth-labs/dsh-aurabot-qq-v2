@@ -289,7 +289,7 @@ export default {
           const sent = sentTypes.length ? '已发送：' + [...new Set(sentTypes.map((t) => labels[t] || '其他消息'))].join('、') + '。' : ''
           if (r.failed) return { ok: false, sentTypes, queuedTypes, message: sent + (queuedTypes.length ? '还有消息在等待补发。' : '') + '部分发送失败或结果未确认；不要宣称全部成功，也不要自动重发整条消息，以免重复。' }
           if (queuedTypes.length) return { ok: true, sentTypes, queuedTypes, message: sent + '还有消息已排队等待补发，尚未确认送达，请勿重复发送。' }
-          if (!sentTypes.length) return { ok: false, message: '没有确认发出的消息；可能被拦下、处于试运行或总开关关闭，不能说已发送。' }
+          if (!sentTypes.length) return { ok: false, message: '没有确认发出的消息；可能被拦下、处于调试模式或总开关关闭，不能说已发送。' }
           const expectedVoice = voice === true || /<voice>/.test(body)
           const fallback = expectedVoice && !sentTypes.includes('record') ? '本次没有发出语音；若已发文字，不要称为语音成功。' : ''
           const mentions = r.missedAt?.length ? `但 ${r.missedAt.map((n) => '@' + n).join('、')} 没对上群里的人，只是文字、对方收不到提醒；真 @ 需要 <at:QQ号>。` : ''

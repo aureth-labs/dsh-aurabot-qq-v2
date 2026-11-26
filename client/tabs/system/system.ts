@@ -557,16 +557,41 @@ function Logs({ st }) {
   const [level, setLevel] = useState('info')
   const [area, setArea] = useState('')
   const [auto, setAuto] = useState(true)
+  const [view, setView] = useState('live')
+  const [files, setFiles] = useState([])
+  const [file, setFile] = useState('')
+  const [lines, setLines] = useState([])
   const load = useCallback(() => get('/logs?limit=400&level=' + level + '&area=' + area).then((r) => setItems(r.entries || [])), [level, area])
   useEffect(() => { load(); if (!auto) return; const t = setInterval(load, 3000); return () => clearInterval(t) }, [load, auto])
+  const openFile = (name) => {
+    setFile(name)
+    setLines([])
+    get('/logs/tail?name=' + encodeURIComponent(name)).then((r) => setLines(r.lines || [])).catch(() => setLines([]))
+  }
+  useEffect(() => {
+    if (view !== 'files') return
+    get('/logs/files').then((r) => {
+      const list = r.files || []
+      setFiles(list)
+      if (!file && list[0]) openFile(list[0].name)
+    }).catch(() => setFiles([]))
+  }, [view])
   const debugOn = Boolean(st?.config?.debug)
   return h(Card, { title: '日志', desc: '所有后台动作都在这里，令牌和密码已自动打码。完整日志按天写在数据目录的 logs\\ 下，默认保留 14 天。' + (debugOn ? '' : ' debug 级别只在打开「调试日志」后记录。'),
     right: h('div', { className: 'ab-flex' },
+      h(Seg, { value: view, onChange: setView, options: [{ value: 'live', label: '实时' }, { value: 'files', label: '文件' }] }),
       h(Select, { value: level, onChange: setLevel, width: 110, options: [['debug', '调试'], ['info', '一般'], ['warn', '警告'], ['error', '错误']].map(([value, label]) => ({ value, label })) }),
       h(Select, { value: area, onChange: setArea, width: 130, options: [['', '所有模块'], ['core', '核心'], ['chat', '聊天'], ['onebot', 'QQ 网关'], ['sticker', '表情'], ['qzone', '空间'], ['voice', '语音'], ['imagegen', '生图'], ['speakup', '搭话']].map(([value, label]) => ({ value, label })) }),
       h('span', { className: 'ab-switch-row' }, h(Switch, { on: auto, onChange: setAuto }), h('span', { className: 'ab-muted ab-small' }, '自动刷新'))) },
-    items === null ? h(Empty, { icon: '⏳', text: '加载中…' }) : items.length === 0 ? h(Empty, { text: '没有符合条件的日志' }) :
-      h('div', { className: 'ab-logs' }, items.slice().reverse().map((e, i) => h(LogLine, { key: i, e }))))
+    view === 'files'
+      ? h('div', null,
+          h('div', { className: 'ab-flex', style: { marginBottom: 8 } },
+            h(Select, { value: file, onChange: openFile, width: 260, options: files.map((f) => ({ value: f.name, label: f.name + ' · ' + fmtBytes(f.size) })) }),
+            h(Btn, { small: true, kind: 'ghost', onClick: () => file && openFile(file) }, '刷新')),
+          lines.length === 0 ? h(Empty, { text: '没有日志文件，或文件还是空的' }) :
+            h('div', { className: 'ab-logs', style: { maxHeight: 480, overflow: 'auto' } }, lines.map((line, i) => h('div', { key: i, className: 'ab-log-raw' }, line))))
+      : items === null ? h(Empty, { icon: '⏳', text: '加载中…' }) : items.length === 0 ? h(Empty, { text: '没有符合条件的日志' }) :
+        h('div', { className: 'ab-logs' }, items.slice().reverse().map((e, i) => h(LogLine, { key: i, e }))))
 }
 
 export { RootPicker, InstallProgress, SONG_PARTS, Song, BiliCookie, LocalApi, RemoteBackup, Backup, Browser, Security, DebugChat, Logs }

@@ -20,8 +20,8 @@ export interface StartAdapterOptions {
   /**
    * 宿主统一包装 bot 的发送方法。
    *
-   * 试运行闸门、元素降级、`<voice>` 合成这些是**所有**平台都要的，
-   * 不能让每个适配器各写一遍（写漏一个就等于那个平台能绕过试运行真发消息）。
+   * 调试模式闸门、元素降级、`<voice>` 合成这些是**所有**平台都要的，
+   * 不能让每个适配器各写一遍（写漏一个就等于那个平台能绕过调试模式真发消息）。
    */
   wrapBot?: (bot: BotLike, spec: AdapterSpec) => BotLike
 }

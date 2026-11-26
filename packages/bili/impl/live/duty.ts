@@ -316,7 +316,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
         if (c.like) api.likeVideo(v.aid).catch(() => {})
         const share = cleanOutboundText(d.share, { warn: (message) => log.warn(`B 站分享：${message}`) }).trim()
         if (share && !isSilence(share) && c.shareToOwner && getConfig().ownerQQ) {
-          // proactive：真发出去才记账（聊天流水 + 她下次在私聊里认得出自己发过什么）；试运行/排队补发不算
+          // proactive：真发出去才记账（聊天流水 + 她下次在私聊里认得出自己发过什么）；调试模式/排队补发不算
           const r = await hub.sendText(`private:${getConfig().ownerQQ}`, `${share}\n${playerLink(v.bvid)}`, undefined, undefined, undefined, { proactive: true, proactiveCause: 'bili' })
           if (reallySent(r)) {
             shared++
@@ -329,7 +329,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
         }
         record(s, { kind: 'watch', title: v.title, bvid: v.bvid, text: feeling })
       }
-      // 想发进群的先攒成待批，问主人一次；没批准一条都不发（试运行下连攒都不攒）
+      // 想发进群的先攒成待批，问主人一次；没批准一条都不发（调试模式下连攒都不攒）
       if (groupWanted.length) {
         const asked = await groupShare.submit(groupWanted)
         if (asked.ok) awaiting = asked.n

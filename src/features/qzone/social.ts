@@ -1,5 +1,5 @@
 // QQ 空间互动：回复自己说说下的新评论；逛好友动态，偶尔点个赞、评一句。
-// 评论在专用的后台会话里按她的人格写；试运行时只记日志不发。
+// 评论在专用的后台会话里按她的人格写；调试模式时只记日志不发。
 
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { inHourWindow } from '../../core/support/time/time-window.ts'

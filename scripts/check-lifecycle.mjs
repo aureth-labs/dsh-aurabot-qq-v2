@@ -29,8 +29,11 @@ let count = 0
 for (const file of walk(MODULES)) {
   const code = readFileSync(file, 'utf8')
   const rel = relative(ROOT, file).replace(/\\/g, '/')
-  code.split('\n').forEach((line, i) => {
+  const lines = code.split('\n')
+  lines.forEach((line, i) => {
     if (/^\s*(\/\/|\*)/.test(line)) return
+    // 有明确清理点、且清理点由宿主 dispose 驱动的，行上一行写 lifecycle-safe: 说明原因即可
+    if (/\/\/\s*lifecycle-safe:\s*\S/.test(lines[i - 1] || '')) return
     for (const rule of RULES) {
       if (rule.re.test(line)) {
         count++

@@ -13,6 +13,7 @@ import { ImageGen, Video } from '../tabs/content/media.ts'
 import { MemoryTab } from '../tabs/memory/memory.ts'
 import { Model } from '../tabs/chat/model.ts'
 import { ExtPage, Market, Modules } from '../tabs/system/modules.ts'
+import { PluginPageFrame } from '../tabs/system/page.ts'
 import { Mood } from '../tabs/chat/mood.ts'
 import { About, Manage, Overview } from '../tabs/overview/overview.ts'
 import { Persona } from '../tabs/persona/persona.ts'
@@ -424,7 +425,7 @@ function AurabotPage() {
               h('span', { className: 'ab-pill' }, h('i', { className: 'ab-dot' }), bootErr ? '还没就绪' : '读取中'))),
           h('div', { className: 'ab-hero-side' },
             h('div', { className: 'ab-switch-row' }, h('span', null, '总开关'), h(Switch, { on: false, disabled: true, onChange: () => {} })),
-            h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '试运行'), h(Switch, { on: false, disabled: true, onChange: () => {} })),
+            h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试模式'), h(Switch, { on: false, disabled: true, onChange: () => {} })),
             h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试'), h(Switch, { on: false, disabled: true, onChange: () => {} })))),
         h(NavBar, { tabs: shellTabs, cur: shellCur, go, dirtyOf: () => false, subRef: tabsRef, mark: () => null }),
         h('div', { className: 'ab-boot-note' },
@@ -475,9 +476,11 @@ function AurabotPage() {
   }))
   const tabs = TABS.filter((t) => !TAB_MODS[t.id] || TAB_MODS[t.id].some(running))
   tabs.splice(tabs.findIndex((t) => t.id === 'logs'), 0, ...extTabs)
+  const pageTabs = (boot.pages || []).map((p) => ({ id: 'page:' + p.path, label: p.name, page: p, navGroup: p.navGroup || 'system' }))
+  tabs.splice(tabs.findIndex((t) => t.id === 'logs'), 0, ...pageTabs)
   const curTab = tabs.find((t) => t.id === tab) || tabs[0]
   const voiceExtensions = curTab.id === 'voice' ? mods.filter(m => hasUi(m) && tabOf(m) === 'voice') : []
-  const body = curTab.ext ? ExtPage : {
+  const body = curTab.page ? PluginPageFrame : curTab.ext ? ExtPage : {
     overview: Overview, manage: Manage, bots: Bots, connect: Connect, character: Persona, access: Access, group: Group, model: Model, voice: VoiceTab,
     stickers: Stickers, imagegen: ImageGen, video: Video, diary: Diary, speakup: SpeakUp, autotelic: Autotelic, pet: PetPanel, mood: Mood, memory: MemoryTab, song: Song, content: ContentTab, local: LocalApi, browser: Browser, security: Security, market: Market, modules: Modules, logs: Logs, about: About, backup: Backup,
   }[curTab.id] || Overview
@@ -520,7 +523,7 @@ function AurabotPage() {
         },
       }),
       saveConflict ? h('div', { className: 'ab-note err', role: 'alert' }, saveConflict, h(Btn, { small: true, onClick: discardDraft }, '读取最新设置')) : null,
-      h(TabBoundary, { key: curTab.id, onHome: () => go('overview') }, h(body, { ...props, mod: curTab.ext, extensions: voiceExtensions })),
+      h(TabBoundary, { key: curTab.id, onHome: () => go('overview') }, h(body, { ...props, page: curTab.page, mod: curTab.ext, extensions: voiceExtensions })),
       // dsh-image 已经嵌进「生图」页的「接口格式」里了，这里再渲染一次就是同一张卡出现两遍。
       curTab.ext || curTab.id === 'voice' ? null : mods.filter((m) => hasUi(m) && tabOf(m) === curTab.id && !(curTab.id === 'imagegen' && m.id === 'dsh-image')).map((m) => h('div', { key: 'embed-' + m.id, style: { marginTop: 14 } }, h(ExtPage, { ...props, mod: m.id, embedded: true }))),
       dirty ? h('div', { className: 'ab-savebar' }, h('span', { className: 'msg' }, '有改动还没保存'),

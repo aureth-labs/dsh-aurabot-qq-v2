@@ -153,7 +153,7 @@ export function createGroupShare({ getConfig, hub, log = console, think: thinkIn
 
   /**
    * 把她想发到群的几条攒进待批，并问主人一次。items: [{ bvid, title, text, shotIds }]
-   * 试运行 / 总开关关着 / 没配群号时一律不攒（审批消息本身也发不出去，攒了只会烂在文件里）。
+   * 调试模式 / 总开关关着 / 没配群号时一律不攒（审批消息本身也发不出去，攒了只会烂在文件里）。
    */
   async function submit(items = []) {
     const g = getConfig()

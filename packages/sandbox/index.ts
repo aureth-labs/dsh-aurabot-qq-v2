@@ -3,32 +3,14 @@
 
 import { createSandboxServer } from './server.ts'
 import { satoriAdapter } from '../adapters/satori/src/index.ts'
+import { config } from './config.ts'
 
 export default {
   id: 'sandbox',
   name: '聊天沙盒',
   version: '1.0.0',
   description: '本地 Satori 服务端 + 网页聊天室：不用 QQ 也能和机器人对话，用来联调插件',
-  defaults: {
-    host: '127.0.0.1',
-    port: 5140,
-    token: '',
-    selfId: 'sandbox-bot',
-    selfName: '沙盒机器人',
-    platform: 'sandbox',
-    defaultUserId: '',
-    defaultUserName: '',
-    autoConnect: true,
-  },
-  settings: [
-    { key: 'host', type: 'string', label: '监听地址（默认只监听本机）' },
-    { key: 'port', type: 'number', label: '端口' },
-    { key: 'token', type: 'password', label: '访问令牌（留空则不校验）' },
-    { key: 'selfName', type: 'string', label: '机器人昵称' },
-    { key: 'platform', type: 'string', label: '平台名（进 Target.platform）' },
-    { key: 'defaultUserName', type: 'string', label: '网页里默认的昵称（留空用主人名）' },
-    { key: 'autoConnect', type: 'boolean', label: '自动用 Satori 适配器连上自己' },
-  ],
+  ...config,
   apply(ctx, config) {
     const settings = ctx.config as Record<string, any>
     const cfg = ctx.root.config
@@ -42,6 +24,13 @@ export default {
       defaultUserId: String(settings.defaultUserId || cfg.ownerQQ || 'sandbox-user'),
       defaultUserName: String(settings.defaultUserName || cfg.ownerName || '沙盒用户'),
       log: (message) => ctx.logger.info(message),
+    })
+    ctx.page({
+      path: '/sandbox',
+      name: '聊天沙盒',
+      icon: '🧪',
+      order: 40,
+      url: `http://${String(settings.host || '127.0.0.1')}:${Number(settings.port) || 5140}/`,
     })
     let handle = null
     let stopped = false

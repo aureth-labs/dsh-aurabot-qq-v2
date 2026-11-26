@@ -10,7 +10,8 @@
 // 并发保护：host.ts 的目录监听一次保存会触发好几次 startCompiler，测试并发 import 更凶。
 // 没有锁的时候每触发一次就起一个编译器，孤儿进程攒到几十个，机器直接被拖垮。
 // 现在用独占锁文件，抢不到就说明别人正在起，直接退出。
-import { closeSync, openSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { closeSync, openSync, readFileSync, writeFileSync, mkdirSync, rmSync, watch } from 'node:fs'
+import { spawn } from 'node:child_process'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -127,9 +128,44 @@ try {
 
 writePidFile([process.pid])
 releaseLock()
-console.log('[dev] 已启动后台编译：client -> dist（后端走 dev 入口，直接跑 src 里的 TS）')
+console.log('[dev] 已启动后台编译：src/packages -> lib（tsc）、client -> dist（esbuild）')
+
+// 后端：保存 src / packages 里的 .ts 就重编到 lib。DSH 的 HMR 盯的是 lib，
+// 所以对开发者来说就是「存盘即热重载」，不需要手动 npm run build。
+let building = false
+let again = false
+let rebuildTimer = null
+function rebuild() {
+  if (building) { again = true; return }
+  building = true
+  const proc = spawn(process.execPath, [join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: ROOT, stdio: 'inherit' })
+  proc.on('exit', (code) => {
+    building = false
+    if (code) console.error(`[dev] 后端编译失败（退出码 ${code}），看上面的类型错误`)
+    else console.log('[dev] lib 已更新')
+    if (again) { again = false; setTimeout(rebuild, 200) }
+  })
+}
+const backendWatchers = []
+for (const dir of ['src', 'packages']) {
+  try {
+    const w = watch(join(ROOT, dir), { recursive: true }, (_event, file) => {
+      if (!file || !String(file).endsWith('.ts')) return
+      if (String(file).includes('.aurabot-cache')) return
+      clearTimeout(rebuildTimer)
+      rebuildTimer = setTimeout(rebuild, 250)
+      rebuildTimer.unref?.()
+    })
+    w.on?.('error', (error) => console.error('[dev] 后端监听出错：' + error.message))
+    backendWatchers.push(w)
+  } catch (error) {
+    console.error(`[dev] 监听 ${dir} 失败：${error.message}`)
+  }
+}
 
 async function stop() {
+  for (const w of backendWatchers) { try { w.close() } catch {} }
+  clearTimeout(rebuildTimer)
   try {
     await context.dispose()
   } catch {

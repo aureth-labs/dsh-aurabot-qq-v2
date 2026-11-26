@@ -116,7 +116,7 @@ export default {
             const avatar = await reader.avatar()
             reader.assertCurrent(avatar.qq)
             if (!allowed()) throw new Error('主人身份已变化，未发送头像')
-            if (ready()) return { ok: true, sent: false, simulated: true, message: '已切换到试运行或调试模式，未发送头像' }
+            if (ready()) return { ok: true, sent: false, simulated: true, message: '已切换到调试模式或调试模式，未发送头像' }
             const sent = await hub.sendSegments(chat.chatId, [{ type: 'image', data: { file: 'base64://' + avatar.bytes.toString('base64') } }], '[当前 QQ 头像]')
             if (sent?.message_id == null) throw new Error('未收到 QQ 网关的头像发送确认，请检查连接；不要重复发送')
             ctx.logger?.info?.('当前 QQ 头像已发送给主人私聊')
