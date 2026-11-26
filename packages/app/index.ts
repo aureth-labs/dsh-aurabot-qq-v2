@@ -49,7 +49,7 @@ import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } 
 import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow, personaScope } from '../../src/persona/personas.ts'
 import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook } from '../../src/persona/persona-look.ts'
 import { createModules, API_VERSION, BUILTIN_DIR } from '../../src/core/module/index.ts'
-import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../../src/core/module/market/community.ts'
+import { createCommunity, REGISTRY_URL, PAGES_URL } from '../../src/core/module/market/community.ts'
 import { createApprovalRelay } from '../../src/security/approval.ts'
 import { createNoticeRelay, normalizeWorkspace } from '../../src/features/notices/index.ts'
 import { captureSystemPrompt } from '../../src/security/leak-guard.ts'
@@ -827,7 +827,7 @@ export function apply(ctx) {
   mods.listen('module/start', (id) => { if (id === 'pet') injectPetPort() })
 
   let unloaded = false
-  const community = createCommunity({ mods, getConfig, setConfig, log, version: VERSION, alive: () => !unloaded })
+  const community = createCommunity({ mods, getConfig, setConfig, log, version: VERSION })
   mods.listen('onebot/connection', connectionChanged)
   mods.listen('onebot/ready', id => { if (id === defaultOneBotId) return flushOutbox() })
   const booted = mods.boot()
@@ -836,8 +836,7 @@ export function apply(ctx) {
   booted.then(() => { if (getConfig().debug) hub.ensureDebugSession().catch((error) => log.warn('建调试会话失败：', error.message)) }).catch(() => {})
   // 模块起来之后再把策略源接上（此时 use('speakup') / use('purpose') 才拿得到实例）
   booted.then(() => wirePolicySources()).catch((error) => logger.child('出站策略').warn('策略源接线上失败：', error && error.message))
-  booted.then(() => (unloaded ? [] : community.migrate())).catch((error) => log.warn('搬到社区库的模块处理失败：', error.message))
-    .then(async () => {
+  booted.then(async () => {
       // 恢复备份后把市场模块装回来；没装上的留着，下次启动再试
       const left = []
       for (const id of pendingModules()) {
@@ -2194,7 +2193,7 @@ export function apply(ctx) {
       default: REGISTRY_URL,
       sources: [
         { id: 'github', label: 'GitHub 官方源', url: REGISTRY_URL, note: '默认；海外直连，国内偶尔慢' },
-        { id: 'gitee', label: 'Gitee 官方镜像', url: GITEE_MIRROR, note: '国内直连更稳；每天跟 GitHub 的 registry 分支同步一次' },
+        { id: 'pages', label: 'GitHub Pages', url: PAGES_URL, note: '市场构建发布的同版索引' },
         { id: 'custom', label: '自定义', url: '', note: '自建索引 / ghproxy 中转 / 内网部署' },
       ],
     }

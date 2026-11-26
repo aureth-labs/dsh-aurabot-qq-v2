@@ -191,8 +191,8 @@ function Market({ st, toast, reload, go }) {
   })
   useEffect(() => { loadReg() }, [])
   const REG_SOURCE_FALLBACK = [
-    { id: 'github', label: 'GitHub 官方源', url: 'https://raw.githubusercontent.com/aureth-labs/dsh-aurabot-qq-mods/registry/index.json' },
-    { id: 'gitee', label: 'Gitee 官方镜像', url: 'https://raw.giteeusercontent.com/aureth-labs/dsh-aurabot-qq-mods/raw/registry/index.json' },
+    { id: 'github', label: 'GitHub 官方源', url: 'https://raw.githubusercontent.com/aureth-labs/dsh-aurabot-qq-market-dev/market/market.json' },
+    { id: 'pages', label: 'GitHub Pages', url: 'https://aureth-labs.github.io/dsh-aurabot-qq-market-dev/market.json' },
     { id: 'custom', label: '自定义', url: '' },
   ]
   const regList = regSources.length ? regSources : REG_SOURCE_FALLBACK
@@ -204,8 +204,8 @@ function Market({ st, toast, reload, go }) {
     setRegMode(id)
     setRegUrl(s && s.url ? s.url : '')
   }
-  const regHint = regPreset === 'gitee'
-    ? 'Gitee 官方镜像：国内直连更稳，内容每天从 GitHub 的 registry 分支同步一次。'
+  const regHint = regPreset === 'pages'
+    ? '使用 GitHub Pages 的 V2 市场索引。'
     : regPreset === 'custom'
       ? '自定义地址：填指向 index.json 的完整 http(s) 链接；留空等于用 GitHub 官方源。'
       : 'GitHub 官方源：默认地址，国内访问 raw.githubusercontent.com 可能不稳。'
@@ -276,12 +276,7 @@ function Market({ st, toast, reload, go }) {
   const shown = sortMarketModules(filtered, effectiveSort)
   const missingTimes = timeMode ? shown.filter((m) => !marketTimeOf(m, timeMode)).length : 0
   const dateTextOf = (m) => { const t = marketTimeOf(m, timeMode || 'latest'); return t ? new Date(t).toISOString().slice(0, 10) : '' }
-  // 模块仓库地址：每个市场模块都在模块库 modules/<id> 下，默认深入到它自己的目录
-  // /tree/main/modules/<id>（比条目里的 homepage 更准——有的 homepage 指向别处仓库根）；
-  // 认不出模块库仓库才退 homepage（只认 http/https，索引是外部数据）
-  const repoUrl = (m) => (stats.source
-    ? 'https://github.com/' + stats.source + '/tree/main/modules/' + m.id
-    : /^https?:\/\//i.test(String(m.homepage || '')) ? m.homepage : '')
+  const repoUrl = (m) => /^https?:\/\//i.test(String(m.source || '')) ? m.source : ''
   const num = (n) => (Number(n) >= 10000 ? (Number(n) / 10000).toFixed(1).replace(/\.0$/, '') + ' 万' : String(Number(n) || 0))
   const openSettings = (m) => {
     const running = (st.modules || []).find((x) => x.id === m.id)

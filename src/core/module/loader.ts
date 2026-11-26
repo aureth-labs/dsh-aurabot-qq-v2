@@ -79,7 +79,7 @@ export const BUILTIN_DIR = PKG
 export const builtinDir = () => BUILTIN_DIR
 
 // 平铺 id 或 owner/name（带 scope 安装）
-export const ID_RE = /^[a-z][a-z0-9-]{1,39}(\/[a-z][a-z0-9-]{1,39})?$/
+export const ID_RE = /^(?:[a-z][a-z0-9-]{1,39}|[a-z0-9][a-z0-9-]{0,38}\/[a-z0-9][a-z0-9-]{0,39})$/
 export const DOC = 'API.md'
 export const TYPES = 'aurabot.d.ts'
 // 文档与类型声明放在 sdk/ 下：内置模块目录只留实现，用户目录仍拿平铺文件名。
