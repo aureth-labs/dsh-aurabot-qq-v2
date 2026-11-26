@@ -28,7 +28,12 @@ type RouteOptions = Partial<Record<'access', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ThinkOptions = Partial<Record<'title', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type StartOptions = Partial<Record<'replaces', any>>
+interface StartOptions {
+  replaces?: any
+  /** 额外实例名；不写就是主实例（注册表键等于模块 id）。 */
+  instance?: string
+  [key: string]: any
+}
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type StopOptions = Partial<Record<'quiet', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -62,6 +67,12 @@ export interface ModuleDef {
 
 /** 运行中的一个模块实例。 */
 interface ModuleRecord {
+  /** 注册表键。主实例等于模块 id；额外实例是 `id@实例名`，这样老接口、老配置路径都不用动。 */
+  key: string
+  /** 模块 id。同一份插件的所有实例共用一个 moduleId。 */
+  moduleId: string
+  /** 额外实例名；主实例没有这个字段。 */
+  instance?: string
   id: string
   def: ModuleDef
   source: 'builtin' | 'user'
@@ -108,6 +119,11 @@ const STABLE_ROUTES = new Set(['pet', 'douyin', 'heybox', 'group-admin'])
 export const userDir = () => dataDir('modules')
 /** id → 安装目录：平铺的在 modules/<id>，带 scope 的在 modules/<owner>/<name>。 */
 export const idDir = (id) => join(userDir(), ...String(id || '').split('/'))
+
+/** 额外实例的注册表键。模块 id 不含 `@`（ID_RE 管着），所以不会歧义。 */
+const instanceKey = (id: string, instance: string) => `${id}@${instance}`
+/** 实例名：小写字母数字开头，允许字母数字、`-`、`_`，最长 40。 */
+const INSTANCE_RE = /^[a-z0-9][a-z0-9_-]{0,39}$/i
 
 /** 内部源码全部按「相对 src 的路径」开放出来：lib('features/memory.js') → 那个文件导出的全部东西。 */
 const libCache = new Map()
@@ -244,6 +260,15 @@ export function namedModuleDef(mod) {
     name: mod.name,
     description: mod.description,
     version: mod.version,
+    // 插件类型与多实例：模板仓库用「具名导出」写法（export const kind/reusable），
+    // 漏了这几个字段会让适配器在面板里变成普通插件、reusable 也永远起不来第二份配置。
+    kind: mod.kind,
+    reusable: mod.reusable,
+    reloadOnConfig: mod.reloadOnConfig,
+    panel: mod.panel,
+    tab: mod.tab,
+    navGroup: mod.navGroup,
+    platforms: mod.platforms,
     config: mod.config,
     defaults: mod.defaults,
     settings: mod.settings,
@@ -272,6 +297,47 @@ export function schemaDefaults(schema) {
     return out
   }
   return meta.default
+}
+
+/**
+ * 把「别人家的 Schema」（模板仓库 plugin-api.js 里那份 `{ meta: { type, dict, flags } }`）
+ * 翻成面板的 settings 字段。
+ *
+ * 宿主自己的 Schema 有 toSettings()；外部插件带的是精简版，不认它的话
+ * 适配器的 endpoint / token 这类字段在面板里一个都不显示。
+ */
+export function settingsFromMeta(schema) {
+  const meta = schema && typeof schema === 'object' ? (schema as { meta?: any }).meta : undefined
+  if (!meta || meta.type !== 'object' || !meta.dict || typeof meta.dict !== 'object') return []
+  const fields = []
+  for (const [key, node] of Object.entries(meta.dict)) {
+    const sub = node && typeof node === 'object' ? (node as { meta?: any }).meta : undefined
+    if (!sub) continue
+    const flags = Array.isArray(sub.flags) ? sub.flags.map(String) : []
+    const field: Record<string, unknown> = {
+      key,
+      label: sub.description || key,
+      type: flags.includes('role:secret') ? 'password'
+        : sub.type === 'boolean' ? 'switch'
+          : sub.type === 'number' ? 'number'
+            : sub.type === 'union' ? 'select'
+              : 'text',
+    }
+    if (sub.description) field.hint = sub.description
+    if (sub.default !== undefined) field.default = sub.default
+    if (sub.min !== undefined) field.min = sub.min
+    if (sub.max !== undefined) field.max = sub.max
+    if (sub.type === 'union' && Array.isArray(sub.options)) {
+      field.options = sub.options.map((item) => (item && typeof item === 'object' && 'value' in item
+        ? { value: String(item.value), label: String(item.label ?? item.value) }
+        : { value: String(item), label: String(item) }))
+    }
+    if (flags.includes('hidden')) field.hidden = true
+    if (flags.includes('experimental')) field.experimental = true
+    if (flags.includes('deprecated')) field.deprecated = true
+    fields.push(field)
+  }
+  return fields
 }
 
 /** 把一份源码里指向插件内部的相对 import 改成走 lib()，这样复制出去也能跑。 */
@@ -707,6 +773,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   let navigationRevisionCounter = 0
   const bumpNavigation = () => { navigationRevisionCounter++ }
   let userSeen = new Map() // id → { dir, file, stamp }
+  /** 额外实例上一次启动时的配置快照：配置一改就重启那个实例（适配器要重连）。 */
+  const instanceSeen = new Map() // 注册表键 → JSON(config)
   let watching = null
   let watcher = null
   let pendingSync = null
@@ -715,6 +783,38 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const modCfg = (id) => getConfig().modules?.[id] || {}
   const isEnabled = (id) => modCfg(id).enabled !== false
   const isUserOn = () => !getConfig().safeMode
+  /**
+   * 一份插件的额外实例（`ext.<id>.instances`）。
+   *
+   * 只有清单里 `reusable: true` 的插件才会被启动；配置写坏了（不是数组、没名字、名字重复）
+   * 一律当没写，别让一条脏数据把整个模块拖死。
+   */
+  const instancesOf = (id) => {
+    // 实例配置和插件设置放在一起（ext.<id>.instances），不是 modules.<id>（那个只管启停）
+    const raw = getConfig().ext?.[id]?.instances
+    if (!Array.isArray(raw)) return []
+    const seen = new Set()
+    const out = []
+    for (const item of raw) {
+      if (!item || typeof item !== 'object') continue
+      const name = String(item.id ?? item.name ?? '').trim()
+      if (!INSTANCE_RE.test(name) || seen.has(name)) continue
+      seen.add(name)
+      out.push({
+        id: name,
+        label: String(item.label ?? '').trim(),
+        enabled: item.enabled !== false,
+        config: item.config && typeof item.config === 'object' ? item.config : {},
+      })
+    }
+    return out
+  }
+  /** 某个模块现在有没有实例在跑（主实例或任意额外实例）。 */
+  const hasModule = (id) => {
+    if (live.has(id)) return true
+    for (const rec of live.values()) if (rec.moduleId === id) return true
+    return false
+  }
   // 接口挂在哪：内置模块（以及从内置搬到社区库的那几个）沿用原来的根路径，别的模块挂在自己的 /ext/<id>/ 下。
   // 面板里的 call('/x') 要用同一份判断决定基址（见 status().routesAtRoot），两边不能各算各的。
   const routesAtRoot = (id) => builtinDefs.has(id) || STABLE_ROUTES.has(id)
@@ -722,10 +822,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   // ---------- 给模块的 api ----------
   function makeApi(id, source, rec) {
     const mlog = logger.child(id)
-    const active = () => !disposed && !rec.stopped && live.get(id) === rec
+    const active = () => !disposed && !rec.stopped && live.get(rec.key) === rec
     const writable = (label, fn, allowed = active) => (...args) => {
       if (!allowed()) {
-        const error = new Error(`模块「${id}」已停止，不能调用 ${label}`)
+        const error = new Error(`模块「${rec.key}」已停止，不能调用 ${label}`)
         mlog.warn(error.message)
         throw error
       }
@@ -735,10 +835,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       if (!active()) return
       try {
         const r = fn(...args)
-        if (r && typeof r.then === 'function') return r.catch((error) => { note(id, label, error); throw error })
+        if (r && typeof r.then === 'function') return r.catch((error) => { note(rec.key, label, error); throw error })
         return r
       } catch (error) {
-        note(id, label, error)
+        note(rec.key, label, error)
         throw error
       }
     }
@@ -750,14 +850,25 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       return off
     }
     // 内置模块和替换它的版本用原来的路径（内置的面板页照常能用）；新模块放在 /ext/模块id/ 下
-    const prefix = routesAtRoot(id) ? '' : `/ext/${id}`
+    // 额外实例再往下一层：/ext/<id>/i/<实例名>，主实例的路径保持不变。
+    const prefix = rec.instance
+      ? `/ext/${id}/i/${rec.instance}`
+      : (routesAtRoot(id) ? '' : `/ext/${id}`)
     const def = rec.def
+    /** 这个实例自己的配置：插件基础配置（ext.<id>）+ 实例覆盖（ext.<id>.instances[n].config）。 */
+    const instanceConfig = () => {
+      const base = { ...(getConfig().ext?.[id] || {}) }
+      delete base.instances
+      if (!rec.instance) return base
+      const own = instancesOf(id).find((item) => item.id === rec.instance)
+      return deepMerge(base, own?.config || {})
+    }
     const setModuleConfig = writable('setConfig', (patch) => setConfig(typeof patch === 'function' ? patch(getConfig()) : deepMerge(getConfig(), patch)))
     // 兼容在同步收尾里恢复设置的模块；迟到的回调和旧实例不能再写。
     const setCoreConfig = writable('core.setConfig', (patch) => {
       if (!isObj(patch)) throw new TypeError('core.setConfig 需要配置对象')
       return setConfig(deepMerge(getConfig(), patch))
-    }, () => active() || (rec.cleaning && !live.has(id)))
+    }, () => active() || (rec.cleaning && !live.has(rec.key)))
     // 模块拿到的 core：hub 换成「宿主按模块身份封装」的白名单副本（三审 #177：原型链斩断，
     // 模块摸不到原始 runSubagentTurn / subagentFor）；core 本体用 Proxy 转发，
     // getPrototypeOf 也掐断，防 getPrototypeOf(api.core).hub 绕回原始入口。
@@ -783,17 +894,32 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       // ---- 配置 ----
       config: () => getConfig(),
       setConfig: setModuleConfig,
-      settings: () => ({ ...(def.defaults || {}), ...(getConfig().ext?.[id] || {}) }),
+      settings: () => ({ ...(def.defaults || {}), ...instanceConfig() }),
       saveSettings: writable('saveSettings', (patch) => {
         const cfg = getConfig()
-        setConfig({ ...cfg, ext: { ...cfg.ext, [id]: { ...(cfg.ext?.[id] || {}), ...patch } } })
+        if (!rec.instance) {
+          setConfig({ ...cfg, ext: { ...cfg.ext, [id]: { ...(cfg.ext?.[id] || {}), ...patch } } })
+          return api.settings()
+        }
+        // 额外实例只写自己那一份，别改到别的实例的配置
+        const list = Array.isArray(cfg.ext?.[id]?.instances) ? cfg.ext[id].instances : []
+        const next = list.map((item) => (String(item?.id ?? '') === rec.instance
+          ? { ...item, config: { ...(item?.config || {}), ...patch } }
+          : item))
+        setConfig({ ...cfg, ext: { ...cfg.ext, [id]: { ...(cfg.ext?.[id] || {}), instances: next } } })
         return api.settings()
       }),
-      dataDir: (...parts) => { const d = dataDir('modules-data', id); mkdirSync(d, { recursive: true }); return join(d, ...parts) },
+      dataDir: (...parts) => {
+        const d = rec.instance
+          ? dataDir('modules-data', id, 'instances', rec.instance)
+          : dataDir('modules-data', id)
+        mkdirSync(d, { recursive: true })
+        return join(d, ...parts)
+      },
       // ---- 别的模块和插件内部 ----
       use: (other) => exportsOf(other),
       lazy: (other) => lazyProxy(() => exportsOf(other)),
-      has: (other) => live.has(other),
+      has: (other) => hasModule(other),
       core: scopedCore,
       dsh: ctx,
       lib,
@@ -823,13 +949,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         const t = setInterval(() => {
           // 调试模式不跑定时任务：刷 B 站、逛空间、主动搭话、整理记忆这些都别在调试里自己动
           if (!active() || getConfig().debug) return
-          personaScope.run(personaNow(getConfig()), () => Promise.resolve().then(() => { if (active()) return fn() }).catch((error) => note(id, label, error)))
+          personaScope.run(personaNow(getConfig()), () => Promise.resolve().then(() => { if (active()) return fn() }).catch((error) => note(rec.key, label, error)))
         }, Math.max(1000, Number(ms) || 60_000))
         t.unref?.()
         return track(() => clearInterval(t))
       },
       later: (ms, fn) => {
-        const t = setTimeout(() => { personaScope.run(personaNow(getConfig()), () => Promise.resolve().then(() => { if (active()) return fn() }).catch((error) => note(id, '延时任务', error))) }, Math.max(0, Number(ms) || 0))
+        const t = setTimeout(() => { personaScope.run(personaNow(getConfig()), () => Promise.resolve().then(() => { if (active()) return fn() }).catch((error) => note(rec.key, '延时任务', error))) }, Math.max(0, Number(ms) || 0))
         t.unref?.()
         return track(() => clearTimeout(t))
       },
@@ -838,8 +964,9 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         if (options.access != null && options.access !== 'panel') throw new Error('路由 access 只支持 panel')
         const full = '/aurabot/api' + prefix + (String(path).startsWith('/') ? path : '/' + path)
         const cur = routes.get(full)
-        if (cur && cur.id !== id && live.has(cur.id)) throw new Error(`接口 ${full} 已经被模块「${cur.id}」占了`)
-        const route = { id, handler: guard(`接口 ${path}`, handler), access: options.access || null }
+        if (cur && cur.id !== rec.key && live.has(cur.id)) throw new Error(`接口 ${full} 已经被模块「${cur.id}」占了`)
+        // 路由记注册表键：额外实例的同名接口各挂各的路径，停止时的存活判断也按实例算
+        const route = { id: rec.key, handler: guard(`接口 ${path}`, handler), access: options.access || null }
         routes.set(full, route)
         return track(() => { if (routes.get(full) === route) routes.delete(full) })
       },
@@ -896,19 +1023,23 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     if (i >= 0) list.splice(i, 1)
   }
 
-  function note(id, label, error) {
+  /** key 是注册表键（主实例 = 模块 id，额外实例 = `id@名字`）。 */
+  function note(key, label, error) {
     const message = String(error && error.message ? error.message : error).slice(0, 500)
-    const rec = live.get(id)
+    const rec = live.get(key)
     if (rec) {
       rec.errors.unshift({ at: Date.now(), label, message })
       rec.errors.length = Math.min(rec.errors.length, 8)
     }
-    log.warn(`模块「${id}」${label}出错：`, message)
+    log.warn(`模块「${key}」${label}出错：`, message)
   }
 
+  /** 按模块 id 取导出：主实例优先，没有再取第一个额外实例。 */
   function exportsOf(id) {
-    const rec = live.get(id)
-    return rec ? rec.exports : null
+    const primary = live.get(id)
+    if (primary) return primary.exports
+    for (const rec of live.values()) if (rec.moduleId === id) return rec.exports
+    return null
   }
 
   // 卸载接口保持同步；模块自己的同步 / 异步收尾失败只记日志。
@@ -921,21 +1052,45 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   async function start(def, source, extra : StartOptions = {}) {
     if (disposed) return null
     const id = def.id
+    const instance = String(extra.instance || '').trim()
+    const key = instance ? instanceKey(id, instance) : id
     // v2：配置用 Schema 声明时，面板字段与默认值都从它派生，不再手写 settings 数组
     if (isSchema(def.config)) {
       def = { ...def, settings: def.config.toSettings(), defaults: def.config.defaults() }
+    } else if (def.config && !(Array.isArray(def.settings) && def.settings.length)) {
+      // 模板仓库自带的精简 Schema（plugin-api.js）：只读地翻成面板字段，不改它自己的校验逻辑
+      const derived = settingsFromMeta(def.config)
+      if (derived.length) def = { ...def, settings: derived }
     }
-    const rec: ModuleRecord = { id, def, source, exports: null, offs: [], tools: [], contexts: [], rules: [], commands: [], dshTools: [], errors: [], startedAt: Date.now(), ...extra }
+    const rec: ModuleRecord = {
+      key,
+      moduleId: id,
+      id,
+      def,
+      source,
+      exports: null,
+      offs: [],
+      tools: [],
+      contexts: [],
+      rules: [],
+      commands: [],
+      dshTools: [],
+      errors: [],
+      startedAt: Date.now(),
+      ...extra,
+      instance: instance || undefined,
+    }
     // 设置里的密码字段不回传给面板
     for (const f of def.settings || []) if (f && f.type === 'password' && f.key) registerSecretField(['ext', id, f.key])
-    // 设置的默认值补进配置（面板表单直接有值可改；已经填过的不动）
-    if (def.defaults && typeof def.defaults === 'object') {
+    // 设置的默认值补进配置（面板表单直接有值可改；已经填过的不动）。
+    // 只有主实例落盘：额外实例的默认值由 api.settings() 在读取时合并，不往共享配置里写。
+    if (!instance && def.defaults && typeof def.defaults === 'object') {
       const cur = getConfig().ext?.[id] || {}
       const missing = Object.keys(def.defaults).filter((k) => !(k in cur))
       if (missing.length) setConfig({ ...getConfig(), ext: { ...getConfig().ext, [id]: { ...Object.fromEntries(missing.map((k) => [k, def.defaults[k]])), ...cur } } })
     }
-    live.set(id, rec)
-    errors.delete(id)
+    live.set(key, rec)
+    errors.delete(key)
     generation++ // 新实例：会话里的工具要在下一轮重挂（issue #73）
     try {
       const api = makeApi(id, source, rec)
@@ -970,29 +1125,29 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       }
       const r = entry === def.apply ? entry(ctx, passed) : entry(api)
       const exports = (r && typeof r.then === 'function' ? await r : r) ?? {}
-      if (disposed || rec.stopped || live.get(id) !== rec) {
+      if (disposed || rec.stopped || live.get(key) !== rec) {
         cleanup(() => exports?.dispose?.())
         return null
       }
       rec.exports = exports
-      log.info(`模块「${def.name || id}」${source !== 'user' ? '' : existsSync(join(rec.dir, '.aurabot-source.json')) ? '（模块市场）' : '（自己写的）'}已启动（${entry === def.apply ? 'v2 apply' : 'v1 setup'}）`)
+      log.info(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}${source !== 'user' ? '' : existsSync(join(rec.dir, '.aurabot-source.json')) ? '（模块市场）' : '（自己写的）'}已启动（${entry === def.apply ? 'v2 apply' : 'v1 setup'}）`)
       bumpNavigation() // 新实例进了注册表：导航摘要可能变（新增/替换）
-      emit('module/start', id)
+      emit('module/start', id, key)
     } catch (error) {
-      if (disposed || rec.stopped || live.get(id) !== rec) return null
-      stop(id, { quiet: true })
-      errors.set(id, { message: String(error && error.message ? error.message : error).slice(0, 800), at: Date.now(), source })
+      if (disposed || rec.stopped || live.get(key) !== rec) return null
+      stop(key, { quiet: true })
+      errors.set(key, { message: String(error && error.message ? error.message : error).slice(0, 800), at: Date.now(), source })
       bumpNavigation() // 启动失败也进导航（availability=error）
-      log.warn(`模块「${def.name || id}」启动失败：`, error.message)
+      log.warn(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}启动失败：`, error.message)
     }
-    return live.get(id)
+    return live.get(key)
   }
 
   /** 同步启动（内置模块的 setup 都是同步的，插件一加载就要能用）。 */
   function startSync(def) {
     if (disposed) return
     const id = def.id
-    const rec: ModuleRecord = { id, def, source: 'builtin', exports: null, offs: [], tools: [], contexts: [], rules: [], commands: [], dshTools: [], errors: [], startedAt: Date.now() }
+    const rec: ModuleRecord = { key: id, moduleId: id, id, def, source: 'builtin', exports: null, offs: [], tools: [], contexts: [], rules: [], commands: [], dshTools: [], errors: [], startedAt: Date.now() }
     live.set(id, rec)
     generation++ // 内置模块（重）启动也换代际：会话里的工具要在下一轮重挂
     if (errors.get(id)?.source !== 'user') errors.delete(id) // 替换版的报错留着给面板看
@@ -1012,11 +1167,12 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     }
   }
 
-  function stop(id, { quiet = false } : StopOptions = {}) {
-    revisions.set(id, (revisions.get(id) || 0) + 1)
-    const rec = live.get(id)
+  /** 停一个实例（key 是注册表键）。 */
+  function stop(key, { quiet = false } : StopOptions = {}) {
+    revisions.set(key, (revisions.get(key) || 0) + 1)
+    const rec = live.get(key)
     if (!rec) return false
-    live.delete(id)
+    live.delete(key)
     generation++ // 停止或替换也使会话工具缓存失效
     bumpNavigation() // 模块停了/被替换：导航摘要可能变
     rec.stopped = true
@@ -1030,8 +1186,16 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     rec.exports = null
     // 路由和监听器由各自的 off 按实例撤销，清理期间可能已经启动了同名新实例。
     if (rec.dshTools.length) core.bridge?.refresh()
-    if (!quiet) { log.info(`模块「${rec.def.name || id}」已停下`); emit('module/stop', id) }
+    if (!quiet) { log.info(`模块「${rec.def.name || rec.id}」${rec.instance ? `实例 ${rec.instance} ` : ''}已停下`); emit('module/stop', rec.id, key) }
     return true
+  }
+
+  /** 停掉一个模块的全部实例（主实例 + 额外实例）。 */
+  function stopModule(id, options : StopOptions = {}) {
+    const keys = [id, ...[...live.keys()].filter((key) => key !== id && live.get(key)?.moduleId === id)]
+    let stopped = false
+    for (const key of keys) if (stop(key, options)) stopped = true
+    return stopped
   }
 
   /** 加载一个自己写的模块（按修改时间重新 import，改了就是新的）。 */
@@ -1072,12 +1236,15 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return { def: mod.default, mod, stamp }
   }
 
-  async function startUser(u) {
+  async function startUser(u, instance = '') {
     if (disposed) return null
-    const revision = revisions.get(u.id) || 0
+    const key = instance ? instanceKey(u.id, instance) : u.id
+    const revision = revisions.get(key) || 0
     const stillWanted = () => {
       const users = isUserOn() ? scanUser() : []
-      return wanted(u.id, users) === 'user' && users.some((item) => item.id === u.id && item.file === u.file)
+      const base = wanted(u.id, users) === 'user' && users.some((item) => item.id === u.id && item.file === u.file)
+      if (!base || !instance) return base
+      return instancesOf(u.id).some((item) => item.id === instance && item.enabled)
     }
     let def
     let stamp = 0
@@ -1121,16 +1288,16 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           reloadOnConfig: def.reloadOnConfig ?? manifest.reloadOnConfig,
         }
       }
-      if (disposed || (revisions.get(u.id) || 0) !== revision) return null
+      if (disposed || (revisions.get(key) || 0) !== revision) return null
       if (!stillWanted()) { resyncRequested = true; return null }
       const why = checkDef(def, u.id)
       if (why) throw new Error(why)
     } catch (error) {
-      if (disposed || (revisions.get(u.id) || 0) !== revision) return null
+      if (disposed || (revisions.get(key) || 0) !== revision) return null
       if (!stillWanted()) { resyncRequested = true; return null }
-      errors.set(u.id, { message: String(error.message || error).slice(0, 800), at: Date.now(), source: 'user', fallback: builtinDefs.has(u.id) })
+      errors.set(key, { message: String(error.message || error).slice(0, 800), at: Date.now(), source: 'user', fallback: builtinDefs.has(u.id) })
       bumpNavigation() // 加载失败也进导航（availability=error）
-      log.warn(`模块「${u.id}」加载失败：`, error.message)
+      log.warn(`模块「${key}」加载失败：`, error.message)
       userSeen.set(u.id, { ...u, stamp: stampOfTarget(u) })
       return null
     }
@@ -1138,13 +1305,14 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     // 替换内置模块：记下替换时内置模块的版本，以后内置的更新了提醒一声
     const b = builtinDefs.get(u.id)
     const extra: Record<string, any> = { dir: u.dir }
+    if (instance) extra.instance = instance
     if (b) {
       extra.replaces = b.version
       const m = modCfg(u.id)
       if (!m.forkedFrom) setConfig({ ...getConfig(), modules: { ...getConfig().modules, [u.id]: { ...m, forkedFrom: b.version || version } } })
     }
     // setConfig 可能同步触发安全模式或关闭模块，再确认一次才执行 setup。
-    if (disposed || (revisions.get(u.id) || 0) !== revision) return null
+    if (disposed || (revisions.get(key) || 0) !== revision) return null
     if (!stillWanted()) { resyncRequested = true; return null }
     return start(def, 'user', extra)
   }
@@ -1212,26 +1380,33 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   let resyncRequested = false
   async function syncPass() {
     const users = isUserOn() ? scanUser() : []
-    const ids = new Set([...builtinDefs.keys(), ...users.map((u) => u.id), ...live.keys()])
+    const ids = new Set([
+      ...builtinDefs.keys(),
+      ...users.map((u) => u.id),
+      ...[...live.values()].map((rec) => rec.moduleId),
+    ])
     for (const id of ids) {
       if (disposed || resyncRequested) return
       const want = wanted(id, users)
       const rec = live.get(id)
       const u = users.find((x) => x.id === id)
-      if (!want) { if (rec) stop(id); continue }
+      if (!want) { if (hasModule(id)) stopModule(id); continue }
       if (want === 'builtin') {
-        if (rec && rec.source === 'builtin') continue
-        if (rec) stop(id)
+        if (rec && rec.source === 'builtin') { await syncInstances(id, users); continue }
+        if (hasModule(id)) stopModule(id)
         if (errors.get(id)?.source === 'builtin' && !rec) continue // 内置的启动失败过，别每 3 秒重试
         startSync(builtinDefs.get(id))
+        await syncInstances(id, users)
         continue
       }
       // 自己写的：没跑、换了文件、改过 → (重新)加载
       const seen = userSeen.get(id)
       const changed = !seen || seen.file !== u.file || seen.stamp !== stampOfTarget(u)
-      if (rec && rec.source === 'user' && !changed) continue
+      if (rec && rec.source === 'user' && !changed) { await syncInstances(id, users); continue }
       if (!changed && (!rec || rec.fallback)) continue // 上次加载失败、文件也没改：等改了再试
-      if (rec) stop(id, { quiet: true })
+      // 代码变了：主实例和所有额外实例一起换代，别让实例继续跑旧代码
+      if (hasModule(id)) stopModule(id, { quiet: true })
+      clearInstanceSeen(id)
       if (seen && changed) log.info(`模块「${id}」文件改了，重新加载`)
       const revision = revisions.get(id) || 0
       const ok = await startUser(u)
@@ -1244,8 +1419,65 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         const back = live.get(id)
         if (back) { back.fallback = true; log.warn(`模块「${id}」：你的版本没加载成功，先用内置的`) }
       }
+      await syncInstances(id, users)
     }
     for (const id of [...userSeen.keys()]) if (!users.some((u) => u.id === id)) { userSeen.delete(id); if (errors.get(id)?.source === 'user') errors.delete(id); bumpNavigation() /* 安装的模块被删了：导航摘要要变 */ }
+  }
+
+  /** 清掉某个模块所有实例的「上次配置」记录（重载 / 卸载时用）。 */
+  function clearInstanceSeen(id) {
+    for (const key of [...instanceSeen.keys()]) {
+      if (key === id || key.startsWith(`${id}@`)) instanceSeen.delete(key)
+    }
+  }
+
+  /**
+   * 把 `ext.<id>.instances` 和正在跑的额外实例对齐。
+   *
+   * 只给用户模块开多实例（内置模块的 setup 是同步单例，没有可重复调用的入口）；
+   * 清单没写 `reusable: true` 时，残留的实例一律停掉。
+   */
+  async function syncInstances(id, users) {
+    const rec = live.get(id)
+    const def = rec?.def || builtinDefs.get(id)
+    const u = users.find((x) => x.id === id)
+    const reusable = Boolean(def?.reusable)
+    if (reusable && !u) {
+      const key = `${id}@`
+      if (!instanceSeen.has(key)) {
+        instanceSeen.set(key, '')
+        log.debug?.(`模块「${id}」声明了 reusable，但它不是用户模块，额外实例暂不支持`)
+      }
+      return
+    }
+    const wanted = reusable && isEnabled(id) && u ? instancesOf(id).filter((item) => item.enabled) : []
+    // 1) 配置里已经没有的实例：停掉
+    for (const key of [...live.keys()]) {
+      const running = live.get(key)
+      if (!running || key === id || running.moduleId !== id) continue
+      if (wanted.some((item) => instanceKey(id, item.id) === key)) continue
+      stop(key, { quiet: true })
+      instanceSeen.delete(key)
+      errors.delete(key)
+      log.info(`模块「${id}」实例 ${running.instance} 已按配置移除`)
+    }
+    // 2) 该有的实例：没跑 / 配置改过（含代码重载后 instanceSeen 被清空）→ 启动
+    for (const item of wanted) {
+      if (disposed || resyncRequested) return
+      const key = instanceKey(id, item.id)
+      const snapshot = JSON.stringify(item.config || {})
+      const running = live.get(key)
+      if (running && running.source === 'user' && instanceSeen.get(key) === snapshot) continue
+      if (running) stop(key, { quiet: true })
+      errors.delete(key)
+      const started = await startUser(u, item.id)
+      if (started) {
+        instanceSeen.set(key, snapshot)
+      } else if (!errors.has(key)) {
+        // startUser 在「配置里已经没有这个实例」时会直接返回 null，这里不当作失败
+        instanceSeen.delete(key)
+      }
+    }
   }
 
   function sync() {
@@ -1262,7 +1494,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
 
   /** 强制重新加载一个模块（面板「重新加载」）。 */
   async function reload(id) {
-    stop(id, { quiet: true })
+    stopModule(id, { quiet: true })
+    clearInstanceSeen(id)
     errors.delete(id)
     userSeen.delete(id)
     await sync()
@@ -1281,6 +1514,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     for (const id of ids) {
       const changed = JSON.stringify((beforeExt || {})[id]) !== JSON.stringify((nextExt || {})[id])
       if (!changed) continue
+      // 有实例的模块：改配置（改实例、加实例、删实例、改主配置里的 token）必须让实例重连，
+      // 否则面板上明明改了、实际还在用旧参数跑。
+      const runningInstance = [...live.values()].some((rec) => rec.moduleId === id && rec.key !== id)
+      if (runningInstance || instancesOf(id).length) {
+        await reload(id).catch(() => {})
+        continue
+      }
       if (live.get(id)?.def?.reloadOnConfig !== true) continue
       await reload(id).catch(() => {})
     }
@@ -1376,12 +1616,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return out
   }
   const commands = () => [...live.values()].flatMap((r) => r.commands)
-  const dshTools = () => [...live.values()].flatMap((r) => r.dshTools.map((t) => ({ ...t, module: r.id })))
+  const dshTools = () => [...live.values()].flatMap((r) => r.dshTools.map((t) => ({ ...t, module: r.moduleId, instance: r.instance })))
   /** 内置模块里没在跑的（关掉的、被替换的）。 */
   const builtinOff = () => new Set([...builtinDefs.keys()].filter((id) => live.get(id)?.source !== 'builtin'))
 
   async function handle(path, req, res) {
     const r = routes.get(path)
+    // 路由的 id 是注册表键（主实例 = 模块 id，额外实例 = id@名字）
     if (!r || !live.has(r.id)) return { ok: false, message: '这个功能所在的模块没开（面板「已安装」里看看）', moduleOff: true }
     return r.handler(req, res)
   }
@@ -1405,12 +1646,15 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function status() {
     const users = isUserOn() ? scanUser() : scanUser().map((u) => ({ ...u, safe: true }))
     // 文件夹刚删掉、还没来得及停的模块也列出来（下一轮检查就停）
-    const ids = [...builtinDefs.keys(), ...[...new Set([...users.map((u) => u.id), ...live.keys()])].filter((id) => !builtinDefs.has(id)).sort()]
+    const moduleIds = [...live.values()].map((rec) => rec.moduleId)
+    const ids = [...builtinDefs.keys(), ...[...new Set([...users.map((u) => u.id), ...moduleIds])].filter((id) => !builtinDefs.has(id)).sort()]
     return ids.map((id) => {
       const b = builtinDefs.get(id)
       const u = users.find((x) => x.id === id)
       const rec = live.get(id)
-      const def: any = rec?.def || b || {}
+      // 主实例没跑但额外实例在跑时，定义从实例上取，面板照样能显示名称/设置字段
+      const instanceRecs = [...live.values()].filter((item) => item.moduleId === id && item.key !== id)
+      const def: any = rec?.def || instanceRecs[0]?.def || b || {}
       const m = modCfg(id)
       const err = errors.get(id)
       return {
@@ -1427,6 +1671,18 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         userDir: u?.dir || '',
         safeSkipped: Boolean(u?.safe),
         running: rec ? rec.source : null, // 'builtin' | 'user' | null
+        // 额外实例：面板按这个列表出「实例」卡片；配置在 ext.<id>.instances
+        instances: instanceRecs.map((item) => ({
+          id: item.instance,
+          key: item.key,
+          running: item.source,
+          startedAt: item.startedAt,
+          error: errors.get(item.key)?.message || '',
+          errors: item.errors,
+          tools: toolNames(item),
+          commands: item.commands.map((c) => c.name),
+          routes: [...routes].filter(([, route]) => route.id === item.key).map(([p]) => p.replace('/aurabot/api', '')),
+        })),
         fallback: Boolean(rec?.fallback),
         enabled: m.enabled !== false,
         useBuiltin: Boolean(m.useBuiltin),
@@ -1437,7 +1693,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         tools: rec ? toolNames(rec) : [],
         commands: rec ? rec.commands.map((c) => c.name) : [],
         routes: [...routes].filter(([, r]) => r.id === id).map(([p]) => p.replace('/aurabot/api', '')),
-        settings: rec?.source === 'user' || (!rec && u) ? (def.settings || []) : [],
+        settings: rec?.source === 'user' || instanceRecs.length || (!rec && u) ? (def.settings || []) : [],
         defaults: def.defaults || {},
         // 内置模块也能带面板：内置和用户模块走同一条加载链路，面板只按「定义里有没有声明 panel」判断。
         // 不再要求 rec.source === 'user'，否则内置模块写了 panel.js 也永远显示不出来。
@@ -1472,12 +1728,15 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
    * 每项：id/name/tab/navGroup/hasSettings/hasPanel/enabled/running/platforms/availability。
    */
   function summarizeModules() {
-    const ids = new Set([...builtinDefs.keys(), ...userSeen.keys(), ...live.keys()])
+    // live 的键可能是 `id@实例名`：导航按模块 id 去重，额外实例只体现在 instanceCount 上
+    const liveIds = [...live.values()].map((rec) => rec.moduleId)
+    const ids = new Set([...builtinDefs.keys(), ...userSeen.keys(), ...liveIds])
     const modules = [...ids].sort().map((id) => {
       const b = builtinDefs.get(id)
       const seen = userSeen.get(id)
       const rec = live.get(id)
-      const def: any = rec?.def || b || {}
+      const instanceRecs = [...live.values()].filter((item) => item.moduleId === id && item.key !== id)
+      const def: any = rec?.def || instanceRecs[0]?.def || b || {}
       const m = modCfg(id)
       const err = errors.get(id)
       const enabled = m.enabled !== false
@@ -1497,6 +1756,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         reusable: Boolean(def.reusable),
         enabled,
         running: rec ? rec.source : null, // 'builtin' | 'user' | null
+        instanceCount: instanceRecs.length,
         platforms: Array.isArray(def.platforms) ? def.platforms.map(String) : [],
         availability, // ready | error | disabled | stopped | unloaded
         error: err && !rec ? err.message : '',
@@ -1518,7 +1778,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
    * 两边都要求落在各自的根目录里，防止 panel 写成 ../../xxx 去读根目录外面的文件。
    */
   function panelSource(id) {
-    const rec = live.get(id)
+    // 主实例没跑、只有额外实例在跑时，面板代码也从同一个定义里取
+    const rec = live.get(id) || [...live.values()].find((item) => item.moduleId === id && item.def.panel)
     if (!rec || !rec.def.panel) return null
     // 内置模块的根目录是 src/modules/<id>；id 先按 ID_RE 校验，别让奇怪的名字把根目录带到外面去。
     const builtin = rec.source !== 'user'
@@ -1605,7 +1866,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const trashDir = join(userDir(), '.trash')
       mkdirSync(trashDir, { recursive: true })
       const folder = `${id}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID().slice(0, 8)}`
-      stop(id)
+      stopModule(id)
       try {
         mkdirSync(join(trashDir, folder), { recursive: true })
         renameSync(singleFile, join(trashDir, folder, `${id}.mjs`))
@@ -1633,7 +1894,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     const stamp = new Date().toISOString().replace(/[:.]/g, '-')
     const folder = `${id}-${stamp}-${randomUUID().slice(0, 8)}`
     const archive = `modules/.trash/${folder}`
-    stop(id)
+    stopModule(id)
     try {
       renameSync(dir, join(trash, folder))
       log.info(`面板删除模块「${id}」，源码归档到 ${archive}`)
@@ -1674,11 +1935,15 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       + `只改 ${userDir()} 里的文件，不要动插件本身的代码；改完保存会自动重新加载，到面板「已安装」页看有没有报错，再告诉我怎么试。`
   }
 
-  const publicHandle = { use: exportsOf, has: (id) => live.has(id), list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
+  const publicHandle = { use: exportsOf, has: hasModule, list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
-    boot, sync, reload, stop, dispose, status, create, fork, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
-    use: exportsOf, has: (id) => live.has(id), running: (id) => live.get(id)?.source || null, generation: () => generation,
+    boot, sync, reload, dispose, status, create, fork, remove: removeModule, promptFor, panelSource, reloadOnConfigChange,
+    // 对外按模块 id 停 —— 一起停掉它的额外实例
+    stop: (id, options) => stopModule(id, options),
+    use: exportsOf, has: hasModule, running: (id) => live.get(id)?.source || null, generation: () => generation,
+    /** 某个模块正在跑的额外实例名（面板/调试用）。 */
+    instances: (id) => [...live.values()].filter((rec) => rec.moduleId === id && rec.key !== id).map((rec) => rec.instance),
     capabilitiesOf,
     // 面板首屏提速：导航摘要（纯内存）与导航版本号（安装/启停/失败/重载时递增）
     summarizeModules, navigationRevision: () => navigationRevisionCounter,

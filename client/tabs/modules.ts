@@ -427,6 +427,49 @@ function ExtPanel({ m, settings, draftSettings, setSettings, toast, reload, save
   return h(PanelBoundary, null, h(Comp, { settings, draftSettings, setSettings, save, toast, reload }))
 }
 
+/**
+ * 可复用插件的实例列表（ext.<id>.instances）。
+ *
+ * 一份代码多份配置：每个实例自己一套参数，宿主按 instances 逐个 apply。
+ * 没填的字段沿用主配置——所以这里只在实例上写「和主配置不一样」的值。
+ */
+function InstanceEditor({ m, instances, setInstances, toast }) {
+  const [name, setName] = useState('')
+  const settings = m.settings || []
+  const defaults = m.defaults || {}
+  const setOne = (index, patch) => setInstances(instances.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+  const patch = (index, key, value) => setOne(index, { config: { ...(instances[index].config || {}), [key]: value } })
+  const add = () => {
+    const id = String(name || '').trim().toLowerCase()
+    if (!/^[a-z0-9][a-z0-9_-]{0,39}$/.test(id)) return toast('实例名要字母或数字开头，只能用小写字母、数字、- 和 _', 'err')
+    if (instances.some((item) => String(item.id) === id)) return toast('这个实例名已经用了', 'err')
+    setInstances([...instances, { id, enabled: true, config: {} }])
+    setName('')
+  }
+  const field = (item, index, s) => {
+    const value = (item.config || {})[s.key] ?? ''
+    const hint = s.type === 'password' ? '留空 = 用主配置那一份' : (defaults[s.key] != null && value === '' ? '默认 ' + defaults[s.key] : (s.placeholder || ''))
+    if (s.type === 'switch') return h(Switch, { on: (item.config || {})[s.key] === true, onChange: (v) => patch(index, s.key, v) })
+    if (s.type === 'number') return h('input', { className: 'ab-input sm', type: 'number', value, min: s.min, max: s.max, step: s.step, onChange: (e) => patch(index, s.key, e.target.value === '' ? '' : Number(e.target.value)) })
+    if (s.type === 'select') return h(Select, { value, options: (s.options || []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o)), onChange: (v) => patch(index, s.key, v) })
+    if (s.type === 'textarea') return h('textarea', { className: 'ab-textarea', value, onChange: (e) => patch(index, s.key, e.target.value) })
+    return h('input', { className: 'ab-input', type: s.type === 'password' ? 'password' : 'text', value, placeholder: hint, onChange: (e) => patch(index, s.key, e.target.value) })
+  }
+  return h(Card, { title: '实例', desc: '这份插件可以同时跑多份配置：每个实例一套参数，互不影响（适配器多账号就靠它）' },
+    instances.length
+      ? instances.map((item, index) => h('div', { key: String(item.id), className: 'ab-note', style: { marginBottom: 10 } },
+        h('div', { className: 'ab-flex' },
+          h('strong', null, '实例 · ' + item.id),
+          h(Switch, { on: item.enabled !== false, onChange: (v) => setOne(index, { enabled: v }) }),
+          h(Btn, { small: true, kind: 'danger', onClick: () => setInstances(instances.filter((_, i) => i !== index)) }, '删除')),
+        settings.map((s) => h(Row, { key: s.key, label: s.label || s.key, hint: s.hint }, field(item, index, s))),
+        settings.length ? h('div', { className: 'ab-small ab-muted' }, '没填的字段沿用上面主配置的值。') : null))
+      : h('div', { className: 'ab-small ab-muted' }, '还没有额外实例。上面那份是主实例；要同时跑第二个账号，就在下面加一个实例。'),
+    h('div', { className: 'ab-flex', style: { marginTop: 8 } },
+      h('input', { className: 'ab-input', value: name, placeholder: '新实例名，比如 second', onChange: (e) => setName(e.target.value) }),
+      h(Btn, { small: true, onClick: add }, '添加实例')))
+}
+
 function ExtPage({ st, draft, setDraft, toast, reload, mod, embedded }) {
   const m = (st.modules || []).find((x) => x.id === mod)
   const f = useField(draft, setDraft)
@@ -435,6 +478,9 @@ function ExtPage({ st, draft, setDraft, toast, reload, mod, embedded }) {
   const settings = { ...(m.defaults || {}), ...((st.config.ext || {})[m.id] || {}) }
   const draftSettings = { ...(m.defaults || {}), ...((draft.ext || {})[m.id] || {}) }
   const setSettings = (patch) => setDraft((previous) => ({ ...previous, ext: { ...previous.ext, [m.id]: { ...(previous.ext || {})[m.id], ...patch } } }))
+  // 实例列表整块替换：数组用点路径写会变成 {"0":…} 对象，不能走 setPath
+  const instances = Array.isArray((draft.ext || {})[m.id]?.instances) ? draft.ext[m.id].instances : []
+  const setInstances = (next) => setDraft((previous) => ({ ...previous, ext: { ...previous.ext, [m.id]: { ...(previous.ext || {})[m.id], instances: next } } }))
   const field = (s) => {
     const p = base + s.key
     if (s.type === 'switch') return f.sw(p)
@@ -449,6 +495,7 @@ function ExtPage({ st, draft, setDraft, toast, reload, mod, embedded }) {
       (m.settings || []).map((s) => h(Row, { key: s.key, label: s.label || s.key, hint: s.hint }, field(s))),
       (m.settings || []).length ? h('div', { className: 'ab-small ab-muted' }, '改完点下面的「保存设置」。') : null,
       (m.errors || []).length ? h('div', { className: 'ab-note err', style: { marginTop: 8 } }, '最近的报错：' + m.errors[0].message) : null) : null,
+    m.reusable ? h(InstanceEditor, { m, instances, setInstances, toast }) : null,
     m.panel ? h(ExtPanel, { m, settings, draftSettings, setSettings, toast, reload }) : null)
 }
 
