@@ -81,7 +81,7 @@ test('跨平台模型回合带当前消息 ID 与可选时钟，引用只回到�
   apply({
     config, root: { config: { enabled: true } }, dataDir: file => join(root, file),
     effect: dispose => { close = dispose }, on: (_, handler) => { receive = handler },
-    get() {}, isOwner: () => false, logger: { warn: (_, error) => assert.fail(error) },
+    get() {}, isOwner: () => false, logger: { debug() {}, warn: (_, error) => assert.fail(error) },
     llm: { generate: async prompt => {
       requests.push(prompt)
       const { messageId } = JSON.parse(prompt.text)
@@ -92,7 +92,11 @@ test('跨平台模型回合带当前消息 ID 与可选时钟，引用只回到�
   t.after(() => { close(); rmSync(root, { recursive: true, force: true }) })
   const session = { bot: { id: 'b', selfId: 'b', supports: () => true }, platform: 'matrix', type: 'private',
     isPrivate: true, userId: 'u', messageId: 'm1', elements: [], content: '你好', send: async elements => { sent.push(elements); return { ok: true } } }
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+X2SI='
+  session.elements = [h.image('data:image/png;base64,' + png), h.image('file:///untrusted')]
+  config.history = 4
   await receive(session)
+  assert.deepEqual(requests[0].images, [{ data: png, mediaType: 'image/png' }])
   config.timeContext = false
   await receive({ ...session, messageId: 'm2' })
   assert.match(requests[0].system, /【当前本机时间】/)

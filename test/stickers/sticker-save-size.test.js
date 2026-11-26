@@ -9,14 +9,15 @@ import { join } from 'node:path'
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-sticker-size-'))
 
 let stickersModule
-let MAX_STICKER_BYTES
+let mediaLimits
 let PANEL_UPLOAD_MAX_BYTES
 let fetchImage
 let formatBytes
 
 before(async () => {
-  stickersModule = (await import('../../packages/modules/stickers/index.ts')).default
-  ;({ MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } = await import('../../src/features/stickers/index.ts'))
+  stickersModule = await import('../../packages/modules/stickers/index.ts')
+  ;({ mediaLimits } = await import('../../src/core/message/media/limits.ts'))
+  ;({ PANEL_UPLOAD_MAX_BYTES } = await import('../../src/features/stickers/index.ts'))
   ;({ fetchImage, formatBytes } = await import('../../src/core/net/index.ts'))
 })
 
@@ -42,7 +43,7 @@ function fixture({ recent = [], uploadBytes = 0 } = {}) {
   const routes = new Map()
   const builders = []
   const api = {
-    core: {
+    host: {
       hub: {
         turnSendersAllOwner: () => true,
         recentMedia: () => recent,
@@ -56,14 +57,14 @@ function fixture({ recent = [], uploadBytes = 0 } = {}) {
         send: () => {},
       },
     },
-    config: () => cfg,
-    log: { info() {}, warn() {}, debug() {} },
-    dsh: {},
+    root: { config: cfg, read: () => cfg },
+    logger: { info() {}, warn() {}, debug() {} },
+    harness: {},
     tool: (builder) => builders.push(builder),
-    route: (path, handler) => routes.set(path, handler),
+    server: { get: (path, handler) => routes.set(path, handler) },
     rule: () => {},
   }
-  const store = stickersModule.setup(api)
+  const store = stickersModule.apply(api)
   const tool = (name) => builders
     .flatMap((b) => b({ chat: { kind: 'private', userId: OWNER, chatId: `private:${OWNER}` }, level: 'full', sessionId: 'test' }))
     .find((t) => t.name === name)
@@ -99,8 +100,8 @@ test('#332 下载失败的原因会带回给模型（以前这里没 try，异�
 })
 
 test('#332 各入口共用同一个上限：表情工具和「偷表情」不再各写一个数', () => {
-  assert.equal(MAX_STICKER_BYTES, 1024 * 1024 * 1024, 'QQ 侧跟聊天收图同一个量级')
-  assert.ok(PANEL_UPLOAD_MAX_BYTES < MAX_STICKER_BYTES, '面板上传走 JSON+base64，单独一档')
+  assert.equal(mediaLimits().maxImageMB, 16)
+  assert.equal(mediaLimits({ maxImageMB: 3 }).maxImageMB, 3)
   assert.ok(PANEL_UPLOAD_MAX_BYTES >= 20 * 1024 * 1024, '至少能传 QQ 里最常见的大动图')
 })
 

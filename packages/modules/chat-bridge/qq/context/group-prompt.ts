@@ -4,7 +4,6 @@ import { engagedHint, pickAutoReply, pickDirectRequester, sameNameNote } from '.
 import { identityNote } from './identity.ts'
 import { emptyGroupPrompt } from './context.ts'
 import type { GroupPromptResult } from './context.ts'
-import { GROUP_IMAGE_WINDOW_MS } from './group-media.ts'
 
 export interface GroupPromptDeps {
   groupBuf: Map<string, any[]>
@@ -18,7 +17,6 @@ export interface GroupPromptDeps {
   quotedInfo: (replyId: any, chat: any) => Promise<any>
   quoteInline: (quote: any) => string
   quoteImages: (quote: any, take: number) => Promise<any[]>
-  canSeeFor: (chat: any) => Promise<boolean | null | undefined>
   freshGroupImages: (fresh: any[], room: number, chatId: string) => Promise<any[]>
 }
 
@@ -82,22 +80,10 @@ export function createGroupPromptBuilder (deps: GroupPromptDeps) {
         quotedImages.push(...await deps.quoteImages(x.quote, take))
       }
     }
-    // 这一段里群友发的图也给她看；看不了图就明说有几张，别让她照着占位编（#181）
-    const mediaNow = Date.now()
-    const mediaEntries = fresh.filter((x) => !x.mediaPending && (x.images?.length || x.stickers?.length) && x.t && mediaNow - x.t < GROUP_IMAGE_WINDOW_MS)
-    let mediaNote = ''
-    let extraImages = []
-    if (mediaEntries.length) {
-      const mediaCount = mediaEntries.reduce((n, x) => n + (x.images?.length || 0) + (x.stickers?.length || 0), 0)
-      if ((await deps.canSeeFor(chat)) === false) {
-        mediaNote = '\n（这一段里对方一共发了 ' + mediaCount + ' 张图/表情，你现在的模型看不了图，只能知道有这回事；别猜图里是什么，也别当成自己看过）'
-      } else {
-        extraImages = await deps.freshGroupImages(fresh, Math.max(0, imageRoom - quotedImages.length), chat.chatId)
-      }
-    }
+    const extraImages = await deps.freshGroupImages(fresh, Math.max(0, imageRoom - quotedImages.length), chat.chatId)
     const archiveMessages: any[] = fresh.filter(x => x.text).map(x => ({ role: 'user', text: x.text,
       speakerId: String(x.uid || ''), at: x.t, id: x.mid && x.mid !== '0' ? 'qq:' + chat.groupId + ':' + x.mid : randomUUID() }))
-    return { text: text + mediaNote, query, speakers, autoReply: pickAutoReply(fresh), directRequester: pickDirectRequester(fresh), images: [...quotedImages, ...extraImages], archiveMessages, freshCount: fresh.length }
+    return { text, query, speakers, autoReply: pickAutoReply(fresh), directRequester: pickDirectRequester(fresh), images: [...quotedImages, ...extraImages], archiveMessages, freshCount: fresh.length }
   }
   return { groupPrompt }
 }

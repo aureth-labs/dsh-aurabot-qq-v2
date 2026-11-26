@@ -199,7 +199,7 @@ export function apply(ctx, config) {
         const want = String(name || '').trim()
         const file = want ? list.findLast((f) => f.name === want) || list.findLast((f) => f.name.includes(want)) : list.at(-1)
         if (!file) return { ok: false, message: `没找到「${want}」，最近的文件有：${list.map((f) => f.name).join('、')}` }
-        return readQqFile({ bot, chat, file, dsh: ctx.harness, canPreview: () => hub.canSeeImages(chat) })
+        return readQqFile({ bot, chat, file, dsh: ctx.harness, canPreview: () => ctx.root.config.media?.receiveImages !== false })
       },
     }))
     // 发文件/发图：主人私聊（full）和群聊都挂；群里只有「这一轮说话的人全是主人」才放行（#169）。

@@ -1,6 +1,7 @@
 // 配置的唯一形状来源：默认值 + 由它派生的类型。
 // 这里只放数据与类型，不放读写与归一化（那些在 ./index.ts）。
 
+import { defaultMediaLimits } from '../../message/media/limits.ts'
 import type { KeyPools } from '../state/key-pool.ts'
 import { DEFAULT_GROUP_POLICY } from '../../../chat/policy/rules/group.ts'
 import { DEFAULT_TIER_DAYS } from '../../../features/memory/query/rules.ts'
@@ -61,6 +62,7 @@ export const DEFAULTS = {
   // 发文件（#52）：默认开但限制很多——她只能把 QQ 工作区（workspaceDir）和 dirs 里列的目录中的文件当文件发出去；
   // 单个文件有大小上限；主人私聊里能触发，群里只在主人开口那一轮能触发（可以发给白名单里的人和群）。日志里会记下发了什么。
   // imageByPath（#169）：本地图片先按路径直发，被网关明确拒绝才改用 base64；网关和 NapCat 没共享挂载时会自动回退。
+  media: { ...defaultMediaLimits },
   files: { enabled: true, maxMB: 50, imageByPath: true, dirs: [] as string[] },
   // 危险命令确认（默认开）：她在私聊里执行删根目录/格式化/关机/下载后直接执行等
   // 终端命令前，先发 QQ 私聊问主人，回复「确认」才执行；超时或「取消」就拦下。
@@ -77,7 +79,7 @@ export const DEFAULTS = {
   // 聊天回复/工具/审批/定时任务本身不变。offPeakHolidays 是中国法定节假日（北京时间日期 'YYYY-MM-DD'）。
   cost: { offPeak: false, offPeakHolidays: [] as string[] },
   update: { unstable: null as string | null }, // 订阅不稳定版本（beta、rc）；null = 没选过，按正在用的版本定
-  model: { provider: '', model: '', reasoningEffort: 'low', vision: 'auto' }, // 留空 = 跟随 DSH 默认；vision: auto/on/off
+  model: { provider: '', model: '', reasoningEffort: 'low' },
   // 按聊天选模型（主人在面板「模型」页设）：私聊 QQ 号 > 群号 > 所有私聊 / 所有群默认 > 上面的全局模型；没写的一级退到下一级
   chatEfforts: {}, // QQ 聊天单独选择的思考档位
   chatModels: { privateDefault: { provider: '', model: '', reasoningEffort: '' }, groupDefault: { provider: '', model: '', reasoningEffort: '' }, privates: {}, groups: {} },

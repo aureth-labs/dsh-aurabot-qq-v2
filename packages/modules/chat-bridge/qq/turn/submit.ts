@@ -1,7 +1,6 @@
 import { sessionKey, SOURCE_KIND } from '../context/context.ts'
 import { flatHistory, requestIdentity } from '../context/identity.ts'
 import { clockLabel } from '../../../../../src/chat/reply/index.ts'
-import { modelVision } from '../../../../../src/core/llm/index.ts'
 import { type PushToSessionOptions } from './options.ts'
 import { packEvidence } from '../context/conversation-context.ts'
 import { cleanContent } from '../../../../../src/core/support/util/text.ts'
@@ -15,7 +14,6 @@ export function createTurnSubmission({
   dsh,
   onebot,
   activity,
-  targetModel,
   targetOf,
   assertActive,
   store,
@@ -91,24 +89,6 @@ export function createTurnSubmission({
       log.debug?.('补历史失败（不影响正常回复）：', error.message)
       return content
     }
-  }
-
-  async function canSeeFor(chat) {
-    const cfg = getConfig()
-    if (cfg.model?.vision === 'on') return true
-    if (cfg.model?.vision === 'off') return false
-    const selected = targetModel(chat)
-    return selected ? modelVision(dsh, selected.provider, selected.model) : null
-  }
-
-  async function dropUnseenImages(chat, content) {
-    const count = content.filter((c) => c?.type === 'image').length
-    if (!count || (await canSeeFor(chat)) !== false) return content
-    log.debug(`模型不支持看图：${chat.chatId} 的 ${count} 张图换成文字提示`)
-    return [
-      ...content.filter((c) => c?.type !== 'image'),
-      { type: 'text', text: `（这里有 ${count} 张图片，你现在的模型看不了图，只能知道有这么回事）` },
-    ]
   }
 
   async function pushToSession(chat, content, senderId, opts: PushToSessionOptions = {}) {
@@ -195,7 +175,6 @@ export function createTurnSubmission({
       }
     }
     if (recalledConversation) content = [...content, { type: 'text', text: recalledConversation }]
-    content = await dropUnseenImages(chat, content)
     assertActive()
     const happened = noticesFor.get(chat.chatId)
     if (happened?.length) {
@@ -332,5 +311,5 @@ export function createTurnSubmission({
     } catch (error) {}
   }
 
-  return { canSeeFor, pushToSession, clearSeed: (key: string) => historySeeded.delete(key) }
+  return { pushToSession, clearSeed: (key: string) => historySeeded.delete(key) }
 }

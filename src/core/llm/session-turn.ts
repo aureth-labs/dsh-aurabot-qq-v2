@@ -7,6 +7,7 @@ export interface SessionPrompt {
   text: string
   system: string
   sessionId: string
+  images?: Array<{ data: string; mediaType: string }>
   maxTokens: number
 }
 interface Scope {

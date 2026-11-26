@@ -1,4 +1,5 @@
-import { MAX_MESSAGE_IMAGES, type ContentBlock } from '../context/context.ts'
+import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
+import { type ContentBlock } from '../context/context.ts'
 import { isSessionBackoff } from './session-backoff.ts'
 import { isOwner } from '../../../../../src/chat/policy/rules/access.ts'
 
@@ -49,7 +50,7 @@ export function createTurnQueue({
     if ((RANK[mode] || 3) > (RANK[p.mode] || 3)) p.mode = mode
     for (const c of content) {
       if (c.type === 'text') p.texts.push(c.text)
-      else if (c.type === 'image' && p.images.length < MAX_MESSAGE_IMAGES) p.images.push(c)
+      else if (c.type === 'image' && p.images.length < mediaLimits(getConfig().media).maxImages) p.images.push(c)
     }
     if (extra.stickerPick) p.stickerPick = (p.stickerPick || 0) + extra.stickerPick
     if (senderId) p.senders.add(String(senderId))
@@ -79,7 +80,7 @@ export function createTurnQueue({
     if (next) {
       clearTimeout(next.timer)
       p.texts.push(...next.texts)
-      p.images = [...p.images, ...next.images].slice(0, MAX_MESSAGE_IMAGES)
+      p.images = [...p.images, ...next.images].slice(0, mediaLimits(getConfig().media).maxImages)
       for (const id of next.messageIds) p.messageIds.add(id)
       for (const sender of next.senders) p.senders.add(sender)
       p.count += next.count
@@ -152,7 +153,7 @@ export function createTurnQueue({
         groupMusts.set(gid, arr)
       }
       const refOffset = Math.max(0, ...Object.keys(p.retryRefs || {}).map(Number))
-      const gp = await groupPrompt(p.chat, p.mode, Math.max(0, 4 - p.images.length), refOffset)
+      const gp = await groupPrompt(p.chat, p.mode, Math.max(0, mediaLimits(getConfig().media).maxImages - p.images.length), refOffset)
       if (isDisposed()) return
       if (gp.speakers.length) lastSpeaker.set(chatId, [...p.senders].pop() || gp.speakers.at(-1))
       const freshContent = [{ type: 'text', text: gp.text + hint }, ...p.images, ...(gp.images || [])]

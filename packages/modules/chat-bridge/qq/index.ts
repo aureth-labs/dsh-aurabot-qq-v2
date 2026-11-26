@@ -341,7 +341,6 @@ export function createHub({
     sentIds,
     isDisposed,
     assertActive,
-    canSeeFor: (chat) => canSeeFor(chat),
     localApi,
     asr,
   })
@@ -415,13 +414,12 @@ export function createHub({
 
   const { capture, simulateTurn } = createCapture({ captureStore, simulationStore, turnState, sessionKey })
 
-  const { canSeeFor, pushToSession, clearSeed } = createTurnSubmission({
+  const { pushToSession, clearSeed } = createTurnSubmission({
     getConfig,
     log,
     dsh,
     onebot,
     activity,
-    targetModel,
     targetOf,
     assertActive,
     store,
@@ -542,7 +540,7 @@ export function createHub({
       mood,
       memoryScore,
     },
-    media: { ...media, faces, stickers, stickerStash, canSeeFor },
+    media: { ...media, faces, stickers, stickerStash },
     conversation: { stats, privateSources, logChat, refreshFriends, repliedToBot, sendSegments },
     enqueue,
   })
@@ -657,7 +655,6 @@ export function createHub({
     personaOf,
     busy: hubBusy,
     isOwnedSession,
-    canSeeImages: canSeeFor,
     resetSessions,
     lastTextOf: (sessionId) => turnState.get(sessionKey(sessionId))?.lastText || '',
     prevTextOf: (sessionId) => turnState.get(sessionKey(sessionId))?.prevText || '',

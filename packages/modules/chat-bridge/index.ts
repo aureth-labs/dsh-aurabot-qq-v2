@@ -1,3 +1,4 @@
+import { modelImages } from './images.ts'
 import { currentTimeLine } from '../../../src/chat/reply/context/time-context.ts'
 import type { Element } from '../../../src/types/core/element.ts'
 import type { RoomMemory } from '../memory/rooms.ts'
@@ -77,7 +78,9 @@ export function apply(ctx: PluginContext) {
     const memory = () => ctx.get<RoomMemory>('room-memory')
     const facts = memory()?.recall?.(identity, input, ctx.root.config.memory?.recallCount ?? 6) ?? []
     const transcript = [...history, current]
-    const prompt = { system, text: JSON.stringify({ messageId: session.messageId, transcript, quote: session.quote, facts: facts.length ? facts : undefined }), sessionId, maxTokens: 800 }
+    const images = await modelImages(session.elements, ctx.root.config.media, reason => ctx.logger.debug(reason))
+    if (!active) return
+    const prompt = { system, images, text: JSON.stringify({ messageId: session.messageId, transcript, quote: session.quote, facts: facts.length ? facts : undefined }), sessionId, maxTokens: 800 }
     const dialogue = ctx.get<Dialogue>('dialogue')
     let claimed = false
     const claim = () => active && (claimed || (claimed = db.claim(room, session.messageId)))

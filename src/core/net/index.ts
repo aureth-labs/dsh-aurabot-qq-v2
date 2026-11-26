@@ -221,6 +221,7 @@ export async function fetchImage (src: unknown, o: FetchOptions = {}): Promise<B
   const s = String(src || '').trim()
   if (!s) throw new Error('没有地址')
   if (s.startsWith('base64://')) {
+    if (s.length - 9 > 4 * Math.ceil(maxBytes / 3)) throw tooLarge(Math.floor((s.length - 9) * 3 / 4), maxBytes)
     const buf = Buffer.from(s.slice(9), 'base64')
     if (buf.length > maxBytes) throw tooLarge(buf.length, maxBytes)
     return buf

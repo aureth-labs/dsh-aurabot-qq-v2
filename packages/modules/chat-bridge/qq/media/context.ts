@@ -2,7 +2,7 @@ import { createRecentMedia } from '../../../../../src/chat/media/recent.ts'
 import { createImageReader } from './images.ts'
 import { createQuoteResolver } from '../format/quote.ts'
 import { segmentBytes } from '../../../../../src/core/net/index.ts'
-import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES } from '../context/context.ts'
+import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
 import { createTranscriber } from './transcribe.ts'
 import { readForward, forwardBody, applyForwardBodies } from '../../../../adapters/qq/onebot-v11/src/message/forward.ts'
 import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from '../context/group-media.ts'
@@ -21,7 +21,6 @@ export function createMessageMedia({
   sentIds,
   isDisposed,
   assertActive,
-  canSeeFor,
   localApi,
   asr,
 }) {
@@ -88,7 +87,9 @@ export function createMessageMedia({
           ? '当前聊天没有可用的引用图片，请引用带图的消息再试'
           : '当前聊天最近半小时没有收到图片，请先发一张图',
       )
-    return segmentBytes(seg, onebot, { maxBytes: MAX_IMAGE_BYTES, allowLocal: false })
+    const limits = mediaLimits(getConfig().media)
+    if (!limits.receiveImages) throw Error('已关闭接收图片')
+    return segmentBytes(seg, onebot, { maxBytes: limits.maxImageMB * 1048576, allowLocal: false })
   }
 
   async function repliedToBot(replyId, msg) {
@@ -118,10 +119,10 @@ export function createMessageMedia({
 
   async function addGroupImages(msg, entry = null) {
     const p = pending.get(msg.chatId)
-    if (!p || p.images.length >= MAX_MESSAGE_IMAGES) return
+    if (!p || p.images.length >= mediaLimits(getConfig().media).maxImages) return
     try {
       const imgs = await imagesOf(msg)
-      for (let i = 0; i < imgs.length && p.images.length < MAX_MESSAGE_IMAGES; i++)
+      for (let i = 0; i < imgs.length && p.images.length < mediaLimits(getConfig().media).maxImages; i++)
         p.images.push({
           type: 'image',
           data: imgs[i].data,
@@ -129,7 +130,7 @@ export function createMessageMedia({
           name: imgs[i].name || `qq-${msg.messageId}-${i + 1}`,
         })
       if (imgs.length && entry) entry.mediaPending = true // 这些图已经进 pending.images，groupPrompt 不用再带
-      if (animatedNote(imgs) && (await canSeeFor(p.chat)) !== false)
+      if (animatedNote(imgs))
         p.images.push({ type: 'text', text: animatedNote(imgs) })
     } catch (error) {}
   }
@@ -176,7 +177,6 @@ export function createMessageMedia({
     quotedInfo,
     quoteInline,
     quoteImages,
-    canSeeFor: (chat) => canSeeFor(chat),
     freshGroupImages,
   })
 

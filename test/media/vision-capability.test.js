@@ -1,4 +1,4 @@
-// 没有视觉能力的模型：不该收到图片块（那会让整轮请求被模型拒掉）。
+// 聊天图片直接投递，后台显式选择的模型仍可查询能力。
 import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs'
@@ -31,23 +31,12 @@ test('canSeeImages 用当前设置里的模型', async () => {
   assert.equal(await canSeeImages(dsh, { model: {} }), null, '没配模型 → 不知道')
 })
 
-test('面板手动声明「支持 / 不支持」会覆盖 DSH 的元数据', async () => {
+test('后台单独选的视觉模型读取宿主元数据', async () => {
   clearVisionCache()
-  const dsh = stub(async () => ({ inputModalities: ['text'] })) // DSH 说不支持
-  // 手动说支持 → 就按支持发（哪怕元数据说不支持）
-  assert.equal(await canSeeImages(dsh, { model: { provider: 'p', model: 'm', vision: 'on' } }), true)
-  // 手动说不支持 → 哪怕元数据说支持，也不发图
-  const dsh2 = stub(async () => ({ inputModalities: ['text', 'image'] }))
-  assert.equal(await canSeeImages(dsh2, { model: { provider: 'p', model: 'm', vision: 'off' } }), false)
-  // auto 仍走元数据
-  clearVisionCache()
-  assert.equal(await canSeeImages(dsh2, { model: { provider: 'p', model: 'm', vision: 'auto' } }), true)
-  // 没配模型时，手动声明依然说话算数
-  assert.equal(await canSeeImages(dsh, { model: { vision: 'on' } }), true)
-  assert.equal(await canSeeImages(dsh, { model: { vision: 'off' } }), false)
+  const dsh = stub(async (_provider, id) => ({ inputModalities: id === 'caption' ? ['text', 'image'] : ['text'] }))
+  assert.equal(await canSeeImages(dsh, { model: { provider: 'p', model: 'chat' } }, { provider: 'p', model: 'caption' }), true)
 })
 
-// ---- 真跑一遍 hub：模型不支持看图时，图片不能出现在这一轮的内容里 ----
 const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-vision-'))
 process.env.AURABOT_DATA_DIR = dataDir
 process.env.AURABOT_WORKSPACE = join(dataDir, 'ws')
@@ -73,9 +62,10 @@ const PNG = (() => {
 // 模拟视觉类扩展：钩子里记下收到几张图
 const peekDir = join(dataDir, 'modules', 'peek')
 mkdirSync(peekDir, { recursive: true })
-writeFileSync(join(peekDir, 'index.mjs'), `export default { id: 'peek', setup(api) {
-  api.on('prompt', (content) => { globalThis.__peekImages = content.filter((c) => c.type === 'image').length })
-} }`)
+writeFileSync(join(peekDir, 'index.ts'), `export const name = 'peek'
+export function apply(ctx) {
+  ctx.on('prompt', content => { globalThis.__peekImages = content.filter(block => block.type === 'image').length })
+}`)
 
 const { createFakeDsh } = await import(`file:///${REPO}/test/helpers/fake-dsh.js`)
 const fake = createFakeDsh({ brain: async () => '我看见啦' })
@@ -98,15 +88,9 @@ const sendImage = async () => {
   await wait(1500)
 }
 
-test('模型不支持看图：图片换成一行文字提示，这一轮照常进行', async () => {
-  clearVisionCache()
+test('聊天模型直接得到图片，旧的视觉开关不改写发言', async () => {
   await sendImage()
-  const t = fake.turns.at(-1)
-  assert.ok(t, '应该跑了一轮')
-  assert.equal(t.images, 0, '不该把图片塞给不支持看图的模型')
-  // 上下文和用户消息都要看：系统提示里另有注入内容时，不能用 || 短路掉用户消息。
-  const prompt = String(t.ctxText || '') + '\n' + String(t.userText || '')
-  assert.match(prompt, /看不了图|图片/, '要有文字提示: ' + prompt)
+  assert.equal(fake.turns.at(-1).images, 1)
 })
 
 test('模型支持看图：图片照常交给她', async () => {
@@ -116,25 +100,10 @@ test('模型支持看图：图片照常交给她', async () => {
   assert.equal(fake.turns.at(-1).images, 1, '支持看图就该拿到图')
 })
 
-test('工具看图能力按当前聊天选的模型判断', async () => {
-  const cfg = api.getConfig()
-  // 使用假宿主模型列表中存在的模型，验证聊天级模型的选择顺序。
-  fake.ctx.llm.resolveModelInfo = async (p, m) => ({ inputModalities: m === 'm-owner' ? ['text', 'image'] : ['text'] })
-  api.setConfig({ ...cfg, model: { provider: 'fake', model: 'fake-1', vision: 'auto' }, chatModels: { ...cfg.chatModels, privateDefault: { provider: 'fake', model: 'm-owner' } } })
-  clearVisionCache()
-  assert.equal(await api.hub.canSeeImages({ kind: 'private', userId: OWNER }), true)
-  assert.equal(await api.hub.canSeeImages({ kind: 'group', groupId: '12345' }), false)
-  api.setConfig({ ...api.getConfig(), model: { provider: 'fake', model: 'fake-1', vision: 'off' } })
-  assert.equal(await api.hub.canSeeImages({ kind: 'private', userId: OWNER }), false)
-})
-
 after(() => fake.dispose())
 
-test('模型看不了图：prompt 钩子还能拿到图片，发给模型前才换掉（#167）', async () => {
-  clearVisionCache()
-  globalThis.__peekImages = -1
+test('关闭接收图片时，同一消息仍触发文字回合', async () => {
+  api.setConfig({ ...api.getConfig(), media: { receiveImages: false } })
   await sendImage()
-  assert.equal(globalThis.__peekImages, 1)
   assert.equal(fake.turns.at(-1).images, 0)
 })
-

@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
+import { mediaLimits } from '../../core/message/media/limits.ts'
 import { imageSize, mimeOf, stickerSizeOk } from '../../core/message/media/inspect.ts'
 import { segmentBytes, fetchImage } from '../../core/net/index.ts'
 import { askModel, canSeeImages } from '../../core/llm/index.ts'
@@ -27,18 +28,6 @@ type CaptionLibraryOptions = Partial<Record<'all' | 'limit', any>>
 const dir = () => dataDir('stickers')
 const indexFile = () => join(dir(), 'index.json')
 
-/**
- * 表情原件的体积上限。跟聊天收图用的 MAX_IMAGE_BYTES（src/chat/hub.js）取同一个量级：
- * QQ 动图 5~15MB 很常见，1.2.0 说好了「图片不再限制 MB 大小」，收表情这条路不能还卡在 5MB。
- * 所有入口（偷表情 / 工具存 / 工具加 / 从 QQ 导入）都必须用这一个值，否则同一张图
- * 会出现「偷得到、存不进」「她看得见、说存不了」这种自相矛盾的表现（#332）。
- */
-export const MAX_STICKER_BYTES = 1024 * 1024 * 1024
-
-/**
- * 面板「上传」那一档单独放宽但另有上限：那条路是 JSON + base64（体积 ×1.33、整份在内存里），
- * 跟 QQ 侧的下载链路不是一回事，不能照搬 1GB。这不是隐藏限制 —— 超了会明确告诉主人多大、上限多少。
- */
 export const PANEL_UPLOAD_MAX_BYTES = 20 * 1024 * 1024
 
 const ext = (mime) => ({ 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp' })[mime] || 'jpg'
@@ -170,6 +159,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
 
   /** 收一张表情。seg 必须已经过 isStickerSegment 严格判定。 */
   async function collect(seg, from) {
+    if (!mediaLimits(getConfig().media).receiveImages) return { ok: false, reason: '已关闭接收图片' }
     const cfg = getConfig().stickers
     if (getConfig().debug) return { ok: false, reason: '调试模式，不收表情' } // 调试不往表情库里添东西
     if (!cfg.enabled || !cfg.collect) return { ok: false, reason: '偷表情关着' }
@@ -179,7 +169,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
     const d = seg.data || {}
     let buf
     try {
-      buf = await segmentBytes(seg, onebot, { maxBytes: MAX_STICKER_BYTES })
+      buf = await segmentBytes(seg, onebot, { maxBytes: mediaLimits(getConfig().media).maxImageMB * 1048576 })
     } catch (error) {
       return { ok: false, reason: '下载失败：' + error.message }
     }
@@ -372,7 +362,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
       const named = []
       for (const url of urls) {
         let buf
-        try { buf = await fetchImage(url, { maxBytes: MAX_STICKER_BYTES }) } catch (error) { failed++; continue }
+        try { buf = await fetchImage(url, { maxBytes: mediaLimits(getConfig().media).maxImageMB * 1048576 }) } catch (error) { failed++; continue }
         const md5 = createHash('md5').update(buf).digest('hex')
         if (loadLibrary().items.some((i) => i.md5 === md5)) { existed++; continue }
         const r = await addFromBuffer(buf, { from: 'qq', toQQ: false })

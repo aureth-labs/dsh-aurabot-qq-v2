@@ -1,3 +1,4 @@
+import { mediaLimits } from '../../message/media/limits.ts'
 import { ownerFields } from '../owners.ts'
 import { normalizePools } from './key-pool.ts'
 import type { RawPools } from './key-pool.ts'
@@ -110,8 +111,8 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   // 只认绝对路径（Windows 的 D:\\… 或 Linux 的 /…），别的当没填
   c.workspaceDir = String(c.workspaceDir || '').trim()
   if (c.workspaceDir && !/^([a-zA-Z]:[\\/]|\/)/.test(c.workspaceDir)) c.workspaceDir = ''
-  // 视觉能力：auto = 问 DSH 的模型元数据；on / off = 主人手动声明（覆盖元数据）
-  c.model.vision = c.model.vision === 'on' || c.model.vision === 'off' ? c.model.vision : 'auto'
+  c.media = mediaLimits(c.media)
+  delete (c.model as Record<string, unknown>).vision
   c.ownerLevel = LEVELS.includes(c.ownerLevel) ? c.ownerLevel : 'full'
   c.longTasks = bool(c.longTasks, true)
   c.subagentBackground = bool(c.subagentBackground, false)

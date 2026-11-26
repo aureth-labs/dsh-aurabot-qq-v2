@@ -255,27 +255,14 @@ export function apply(ctx, config) {
       for (const path of saved) ctx.logger.debug(`生图已存盘：${path}`)
       try { const refNote = references.length ? `参考了${references.length === 1 ? '一张图' : references.length + ' 张图'}画了${bufs.length > 1 ? bufs.length + ' 张' : '一张'}` : (bufs.length > 1 ? `按提示词画了 ${bufs.length} 张` : '按提示词画了一张图'); memory.addEvent?.({ text: `${refNote}：${String(prompt).slice(0, 120)}（提示词不一定等于实际画面）`, about: chat.kind === 'private' ? chat.userId : '', tags: ['画画'], importance: 0.4 }) }
       catch (error) { ctx.logger.warn('生图已发送，但经历没记下来：', error.message) }
-      let visual = (await hub.canSeeImages(chat)) === true
-      // 「让她画完自己看一眼」是总开关：关掉就当没视觉能力处理 —— 不给图、也不给路径。
       const seeOwn = ctx.root.config.imageGen.seeOwn !== false
-      // 只有明确能看图的模型才把图交给它；纯文本模型只拿文字，不会崩。
-      // 图要先缩、再登记成 DSH 附件块 —— 直接塞 base64 会让下一轮请求整轮失败（实测）
-      let img = null
-      if (visual && seeOwn) {
-        img = await imageToolBlock(ctx.harness, bufs[0], { ffmpegPath: ctx.root.config.local?.ffmpegPath })
-        if (!img) {
-          // 图没给成：如实说看不了，别让她照着提示词编画面细节
-          visual = false
-          ctx.logger.debug('这次生图没把图交给模型（缩图/登记失败），只给文字')
-        }
-      }
+      const img = seeOwn
+        ? await imageToolBlock(ctx.harness, bufs[0], { ffmpegPath: ctx.root.config.local?.ffmpegPath })
+        : null
       const shown = Boolean(img)
+      if (seeOwn && !shown) ctx.logger.debug('本轮未能登记画作预览')
       const animated = bufs.length === 1 && mimeOf(bufs[0]) === 'image/gif' && gifFrameCount(bufs[0]) > 1
-      let message
-      if (!visual) message = drawToolMessage({ visual: false })
-      else if (!seeOwn) message = drawToolMessage({ visual: true, seeOwn: false })
-      else if (!shown) message = drawToolMessage({ visual: false })
-      else message = drawToolMessage({ visual: true, seeOwn: true })
+      const message = drawToolMessage({ visual: !seeOwn || shown, seeOwn })
       // 画作编号：换头像 / 收表情时用编号，别用路径（路径只在图真的交出去时才附带）。
       // 编号按「最新 = #1」：saved 是从旧到新，所以反过来排。
       for (const path of saved) rememberPainting(chat.chatId, path)

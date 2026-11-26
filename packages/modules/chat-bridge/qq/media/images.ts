@@ -5,7 +5,8 @@ import type { OneBotGateway } from '../../../../../src/core/net/index.ts'
 import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../../../../src/core/message/media/img.ts'
 import { gifFrames } from '../../../../../src/core/message/media/inspect.ts'
 import { mimeOf } from '../../../../../src/core/message/media/inspect.ts'
-import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES } from '../context/context.ts'
+import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
+import { MODEL_IMAGE_BYTES } from '../context/context.ts'
 
 export interface CreateImageReaderOptions {
   onebot: OneBotGateway
@@ -31,9 +32,11 @@ export function createImageReader({ onebot, getConfig, log, recentMediaOf }: Cre
 
   async function imagesOf(msg) {
     const out = []
-    for (const seg of [...msg.stickers, ...msg.images].slice(0, MAX_MESSAGE_IMAGES)) {
+    const limits = mediaLimits(getConfig().media)
+    if (!limits.receiveImages) return out
+    for (const seg of [...msg.stickers, ...msg.images].slice(0, limits.maxImages)) {
       try {
-        const raw = await segmentBytes(seg, onebot, { maxBytes: MAX_IMAGE_BYTES })
+        const raw = await segmentBytes(seg, onebot, { maxBytes: limits.maxImageMB * 1048576 })
         const frames = gifFrames(raw)
         const buf = await fitForModel(raw)
         const mime = mimeOf(buf)

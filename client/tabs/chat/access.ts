@@ -587,6 +587,9 @@ function Group({ draft, setDraft, st, go }) {
     // 折叠 E：发文件明细（3 项）
     more('发文件', [
       h(Row, { key: 'fe', label: '允许发文件', hint: '关了之后ta不能发任何本机文件。' }, f.sw('files.enabled')),
+      h(Row, { label: '接收聊天图片' }, f.sw('media.receiveImages')),
+      h(Row, { label: '接收图片大小上限' }, f.num('media.maxImageMB', { min: 1, max: 64 }), h('span', { className: 'ab-muted' }, ' MB')),
+      h(Row, { label: '单条消息最多接收' }, f.num('media.maxImages', { min: 1, max: 16 }), h('span', { className: 'ab-muted' }, ' 张图片')),
       h(Row, { key: 'd', label: '单个文件最大' }, f.num('files.maxMB', { min: 1, max: 2048 }), h('span', { className: 'ab-muted' }, ' MB')),
       h(Row, { key: 'dir', label: '额外允许的目录', hint: '一行一个完整路径。QQ 工作区里的文件一直允许，不用写；留空 = 只能发工作区里的' }, f.list('files.dirs', { placeholder: 'D:\\Aurabot\\要发的文件' })),
       h(Row, { key: 'p', label: '图片按路径直发', hint: '网关和 NapCat 在同一台机器或共享挂载时，直接把路径交给网关，省掉读盘和 base64 膨胀；网关读不到会自动改用 base64。默认开。' }, f.sw('files.imageByPath')),

@@ -1,3 +1,4 @@
+import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
 import { personaScope } from '../../../../../src/persona/personas.ts'
 import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/message/parse.ts'
 import { ignoredGroupMember } from '../../../../../src/chat/inbound/filter/member-filter.ts'
@@ -48,7 +49,6 @@ export function createIncomingMessages({
     addGroupImages,
     imagesOf,
     animatedNote,
-    canSeeFor,
     quotes,
   } = media
   const { info: quotedInfo, inline: quoteInline, images: quoteImages } = quotes
@@ -64,6 +64,11 @@ export function createIncomingMessages({
     const cfg = getConfig()
     const msg = parseMessageEvent(event, activity.selfId, { faceName: faces.nameOf })
     if (msg.userId === activity.selfId) return
+    const limits = mediaLimits(cfg.media)
+    const incoming = msg.segments.filter(seg => msg.images.includes(seg) || msg.stickers.includes(seg))
+    const accepted = new Set(limits.receiveImages ? incoming.slice(0, limits.maxImages) : [])
+    msg.images = msg.images.filter(seg => accepted.has(seg))
+    msg.stickers = msg.stickers.filter(seg => accepted.has(seg))
     if (ignoredGroupMember(cfg, msg)) return
     const now = Date.now()
     const wasCleared = () => isBeforeMemoryReset(msg.chatId, msg.userId, now)
@@ -446,12 +451,12 @@ export function createIncomingMessages({
           name: imgs[i].name || `qq-${msg.userId}-${msg.messageId}-${i + 1}`,
         })
       }
-      if (animatedNote(imgs) && (await canSeeFor(msg)) !== false)
+      if (animatedNote(imgs))
         content.push({ type: 'text', text: animatedNote(imgs) })
     }
 
-    if (quoted?.ok && (quoted.images.length || quoted.stickers.length) && imgs.length < 4) {
-      const qImgs = await quoteImages(quoted, Math.min(2, 4 - imgs.length))
+    if (quoted?.ok && (quoted.images.length || quoted.stickers.length) && imgs.length < limits.maxImages) {
+      const qImgs = await quoteImages(quoted, Math.min(2, limits.maxImages - imgs.length))
       for (const c of qImgs) content.push(c)
     }
     if (isDisposed() || wasCleared()) return

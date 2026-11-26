@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { cleanOutboundText, cleanOutboundSegments, capOutboundSegments, stripAcpLeak } from '../../../../../src/chat/reply/index.ts'
 import { textToSegments, stripFaceTags, splitSpeakable } from '../../../../adapters/qq/onebot-v11/src/face/index.ts'
 import { expandMentions, hasMention } from '../../../../../src/chat/inbound/parse/mentions.ts'
-import { activeCapture, failStore, MAX_IMAGE_BYTES, workspaceDirOf } from '../context/context.ts'
+import { activeCapture, failStore, workspaceDirOf } from '../context/context.ts'
 import type { OutputScope } from '../context/context.ts'
 import { dataDir } from '../../../../../src/core/store/index.ts'
 import { fetchImage } from '../../../../../src/core/net/index.ts'
@@ -467,7 +467,7 @@ export function createOutbound(deps: OutboundDeps) {
       }
     }
     try {
-      const buf = await fetchImage(s, { maxBytes: MAX_IMAGE_BYTES })
+      const buf = await fetchImage(s, { maxBytes: (getConfig().files?.maxMB ?? 50) * 1048576 })
       return sendSegments(chatId, [...head, { type: 'image', data: { file: 'base64://' + buf.toString('base64') } }], `[图片] ${s.slice(-40)}`, opts)
     } catch (error) {
       log.warn('图片发不出去：', error.message)

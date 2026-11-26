@@ -2,7 +2,8 @@
 // 导出的就是表情库（createStickerStore 的返回值），聊天中枢发表情、偷表情都找它。
 
 import { readFileSync, existsSync } from 'node:fs'
-import { createStickerStore, stickerPath, MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } from '../../../src/features/stickers/index.ts'
+import { mediaLimits } from '../../../src/core/message/media/limits.ts'
+import { createStickerStore, stickerPath, PANEL_UPLOAD_MAX_BYTES } from '../../../src/features/stickers/index.ts'
 import { defineTool, int, str } from '../../../src/tools/index.ts'
 import { fetchImage, segmentBytes, formatBytes } from '../../../src/core/net/index.ts'
 import { resolvePainting } from '../../../src/features/media/generate/paintings.ts'
@@ -120,7 +121,7 @@ export function apply(ctx, config) {
         if (!seg) return { ok: false, message: '这张表情已经拿不到了（超过 30 分钟，或者这一轮里没有这张）' }
         let buf
         try {
-          buf = await segmentBytes(seg, onebot, { maxBytes: MAX_STICKER_BYTES })
+          buf = await segmentBytes(seg, onebot, { maxBytes: mediaLimits(ctx.root.config.media).maxImageMB * 1048576 })
         } catch (error) {
           return { ok: false, message: '这张表情下载失败了：' + error.message }
         }
@@ -170,7 +171,7 @@ export function apply(ctx, config) {
           // 下载失败要说清是哪一步、多大：以前这里没 try，异常直接冒到工具层，
           // 模型只看到三个字「太大了」，只能让主人换一张反复试（#332）
           try {
-            buf = await segmentBytes(pick.seg, ctx.host.onebot, { maxBytes: MAX_STICKER_BYTES })
+            buf = await segmentBytes(pick.seg, ctx.host.onebot, { maxBytes: mediaLimits(ctx.root.config.media).maxImageMB * 1048576 })
           } catch (error) {
             return { ok: false, message: '这张表情下载失败了：' + error.message }
           }
@@ -198,7 +199,7 @@ export function apply(ctx, config) {
       execute: async ({ source, name, tags }) => {
         let buf
         try {
-          buf = await fetchImage(String(source), { maxBytes: MAX_STICKER_BYTES })
+          buf = await fetchImage(String(source), { maxBytes: mediaLimits(ctx.root.config.media).maxImageMB * 1048576 })
         } catch (error) {
           return { ok: false, message: '这张图取不下来：' + error.message }
         }
