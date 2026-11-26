@@ -1,4 +1,5 @@
 import { test, before, after } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -10,7 +11,7 @@ before(async () => {
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: false, setupDone: true, ownerQQ: '10000001', botQQ: '20000002', onebot: {} }))
   fake = createFakeDsh({ brain: async () => 'unused' }); app = (await import('../../src/plugin/index.ts')).apply(fake.ctx); await app.ready
 })
-after(() => { fake?.dispose(); rmSync(dir, { recursive: true, force: true }) })
+after(() => { fake?.dispose(); cleanupDir(dir) })
 const save = async body => (await fake.call('/save', body)).json()
 test('错填不保存任何项目；多个面板同时改名单会提示冲突', async () => {
   const before = structuredClone(app.getConfig()), next = { enabled: true, rules: [{ userId: '50000005', scope: 'groups', groups: ['30000003'] }] }

@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -42,7 +43,7 @@ function setup(t, options = {}) {
   t.after(() => {
     hub.dispose(); off(); fake.dispose()
     for (const [key, value] of [['AURABOT_DATA_DIR', before.data], ['AURABOT_WORKSPACE', before.workspace]]) { if (value === undefined) delete process.env[key]; else process.env[key] = value }
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, cfg, fake, rows, calls, memory, activity, deliveries, mute: (value) => { muted = value } }
 }

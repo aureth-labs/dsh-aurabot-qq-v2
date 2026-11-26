@@ -9,6 +9,7 @@ import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFeedback } from '../../src/autotelic/feedback/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const HOUR = 3600_000
 const DAY = 24 * HOUR
@@ -131,7 +132,7 @@ test('熔断：连续 2 个行动被叫停 → 静默 + 待检视 + decisions.js
   const text = readFileSync(decisionsFile, 'utf8')
   assert.match(text, /feedback\/breaker/)
   assert.match(text, /needsReview/)
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('feedback.json 持久化：抑制/冷度跨实例可读（dataDir 根，独家读写）', () => {
@@ -147,7 +148,7 @@ test('feedback.json 持久化：抑制/冷度跨实例可读（dataDir 根，独
   assert.equal(fb2.isSuppressed('spam'), true, '抑制表跨实例持久')
   assert.equal(fb2.chillOf('share-link'), 1, '冷度跨实例持久')
   assert.equal(fb2.weightOf('share-link'), 0.6)
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('主动发言频控持久化（lead 裁决 2026-11-17）：recordSpoke 写后重读仍在，重启不重置节流', () => {
@@ -160,7 +161,7 @@ test('主动发言频控持久化（lead 裁决 2026-11-17）：recordSpoke 写�
   assert.equal(fb1.lastSpokeOf('share-link'), clock)
   const fb2 = createFeedback({ file, now }) // 模拟重启重读
   assert.equal(fb2.lastSpokeOf('share-link'), clock, '频控账跨实例持久')
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('半衰可配置（settings 注入）：chillHalfLifeDays=7 时 7 天折半', () => {

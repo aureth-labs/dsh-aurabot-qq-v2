@@ -1,4 +1,5 @@
 import { test, after } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -9,7 +10,7 @@ import { normalize } from '../../src/core/config/index.ts'
 const dir = mkdtempSync(join(tmpdir(), 'ab-identity-'))
 process.env.AURABOT_DATA_DIR = dir
 const { createMemoryStore } = await import('../../src/features/memory/index.ts')
-after(() => rmSync(dir, { recursive: true, force: true }))
+after(() => cleanupDir(dir))
 
 test('补读同名群友和机器人：账号、@ 对象及自身标识不丢失', () => {
   const make = (uid, message) => ({ user_id: uid, sender: { user_id: uid, card: '同名用户' }, message })

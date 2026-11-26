@@ -12,6 +12,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const GUEST = '10000002'
@@ -85,7 +86,7 @@ before(async () => {
 after(async () => {
   try { fake?.dispose() } catch {}
   try { await mock?.close() } catch {}
-  try { rmSync(dataDir, { recursive: true, force: true }) } catch {}
+  try { cleanupDir(dataDir) } catch {}
 })
 
 const priv = (uid, t) => ({ message_type: 'private', sub_type: 'friend', user_id: Number(uid), message_id: Math.floor(Math.random() * 1e6), sender: { user_id: Number(uid), nickname: uid === OWNER ? 'xiaoming' : '小七' }, message: [{ type: 'text', data: { text: t } }] })

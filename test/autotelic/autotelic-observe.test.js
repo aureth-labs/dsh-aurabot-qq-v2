@@ -12,10 +12,11 @@ import { DEFAULT_TAGS, isValidTag, resolveTags, mergeTags, readUserTags } from '
 import {
   createObserve, matchCorrection, salienceOf, createEmotionBridge, createChatCollector,
 } from '../../src/autotelic/observe/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function tmpDir(t, name = 'autotelic-obs-') {
   const dir = mkdtempSync(join(tmpdir(), name))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   return dir
 }
 

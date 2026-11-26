@@ -11,10 +11,11 @@ import { join } from 'node:path'
 import { createSchedule } from '../../src/autotelic/plan/schedule.ts'
 import { TRANSIENT_RE, isForbidden } from '../../src/autotelic/exec/index.ts'
 import { createFeedback } from '../../src/autotelic/feedback/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const tmp = (t, name) => {
   const root = mkdtempSync(join(tmpdir(), `aurabot-autotelic-fix-${name}-`))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   return root
 }
 

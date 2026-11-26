@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { crc32, deflateRawSync } from 'node:zlib'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let root, createCommunity, readZip, userDir
 const zip = (files) => { // 和 mods 仓库 makeZip 同格式
@@ -84,7 +85,7 @@ before(async () => {
   ;({ userDir } = await import('../../src/core/module/index.ts'))
   mkdirSync(userDir(), { recursive: true })
 })
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 
 test('安装时报进度，装完清空', async () => {
   const p = pack('progress-mod', '1.0.0')

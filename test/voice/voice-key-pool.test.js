@@ -1,4 +1,5 @@
 import test from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { createKeyRouter, retryDelay } from '../../src/voice/tts/key-pool.ts'
 import { normalize, mergeFromPanel, publicConfig } from '../../src/core/config/index.ts'
@@ -49,7 +50,7 @@ test('masked saves retain keys by row and service, not index; deleting rows and 
 })
 
 test('MiniMax business-level 429 and explicit HTTP header pool use the next key; changed custom origin cannot receive existing keys', async t=>{
-  const dir=mkdtempSync(join(tmpdir(),'voice-pool-'));const old=process.env.AURABOT_DATA_DIR;process.env.AURABOT_DATA_DIR=dir;t.after(()=>{if(old===undefined)delete process.env.AURABOT_DATA_DIR;else process.env.AURABOT_DATA_DIR=old;rmSync(dir,{recursive:true,force:true})});const calls=[]
+  const dir=mkdtempSync(join(tmpdir(),'voice-pool-'));const old=process.env.AURABOT_DATA_DIR;process.env.AURABOT_DATA_DIR=dir;t.after(()=>{if(old===undefined)delete process.env.AURABOT_DATA_DIR;else process.env.AURABOT_DATA_DIR=old;cleanupDir(dir)});const calls=[]
   t.mock.method(globalThis,'fetch',async (url,opts)=>{const key=opts.headers.authorization;calls.push(key);assert.equal(opts.redirect,'error');if(key==='Bearer first')return Response.json({base_resp:{status_code:1002}});if(key==='Bearer second')return Response.json({base_resp:{status_code:0},data:{audio:'00'.repeat(410)}});assert.match(url,/^https:\/\/custom.test\//);return new Response(Buffer.alloc(410),{headers:{'content-type':'audio/mpeg'}})})
   const r=await textToSpeech('hello',{engine:'minimax',minimax:{apiKey:'first'},keyPools:{minimax:pool('ordered','second')}});assert.equal(r.engine,'minimax');assert.deepEqual(calls,['Bearer first','Bearer second']);
   const http={engine:'http',http:{urlTemplate:'https://custom.test/?q={text}',headers:'authorization: Bearer {apiKey}',fallback:'text'},keyPools:{http:{accounts:[{id:'custom',apiKey:'custom-key',origin:'https://custom.test'}]}}};assert.equal((await textToSpeech('hello',http)).engine,'http');assert.equal(calls[2],'Bearer custom-key');http.http.urlTemplate='https://other.test/?q={text}';await assert.rejects(textToSpeech('x',http),/HTTPS/);assert.equal(calls.length,3)

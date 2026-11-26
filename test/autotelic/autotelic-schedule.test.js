@@ -9,6 +9,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { scheduleConfig, quietOf, computeNextFire, createSchedule } from '../../src/autotelic/plan/schedule.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const BASE = {
   enabled: true,
@@ -29,7 +30,7 @@ function at(dayOffset = 0, h = 10, m = 0) {
 
 function tmpFile(t, name = 'schedule.json') {
   const dir = mkdtempSync(join(tmpdir(), 'autotelic-sched-'))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   return join(dir, name)
 }
 

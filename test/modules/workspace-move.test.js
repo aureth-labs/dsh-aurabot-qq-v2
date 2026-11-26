@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -7,7 +8,7 @@ import { moveWorkspace, realWorkspace } from '../../src/core/runtime/workspace-m
 
 function setup(t) {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-ws-'))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   const from = join(root, 'old', 'qq-chats')
   mkdirSync(join(from, 'sub'), { recursive: true })
   writeFileSync(join(from, 'sub', 'a.txt'), '文件')

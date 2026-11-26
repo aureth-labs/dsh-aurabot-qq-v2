@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { createHub } from '../../../src/chat/hub/index.ts'
 import { rowsOf } from '../../helpers/chatlog.mjs'
 import { normalize } from '../../../src/core/config/index.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 const SID = 'session-test-1'
 const CHAT = 'private:1'
@@ -43,7 +44,7 @@ function setup(t, { fails = false } = {}) {
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, calls, dir }
 }

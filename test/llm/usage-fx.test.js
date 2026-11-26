@@ -1,4 +1,5 @@
 import test from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,7 +7,7 @@ import { join } from 'node:path'
 import { createUsageFx } from '../../src/core/llm/usage/fx.ts'
 
 function setup(t) {
-  const dir = mkdtempSync(join(tmpdir(), 'usage-fx-')); t.after(() => rmSync(dir, {recursive:true,force:true}))
+  const dir = mkdtempSync(join(tmpdir(), 'usage-fx-')); t.after(() => cleanupDir(dir))
   const file = join(dir, 'fx.json'), now = () => Date.UTC(2026, 10, 25)
   return { file, make: request => createUsageFx({file, now, request}) }
 }

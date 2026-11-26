@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const DAY = 86400_000
@@ -34,7 +35,7 @@ function setup(t, answer = () => '[]') {
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { cfg, calls, make, state, put }
 }

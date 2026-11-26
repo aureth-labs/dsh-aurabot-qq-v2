@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -39,7 +40,7 @@ async function setup(t, { connect = false, safeMode = false } = {}) {
       if (value === undefined) delete process.env[key]
       else process.env[key] = value
     }
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   for (const id of ['persona-memory', 'observer-one', 'observer-two']) moduleFixture(root, id)
   writeFileSync(join(root, 'config.json'), JSON.stringify({

@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { createBook } from '../../src/autotelic/plan/book.ts'
 import { createJournal } from '../../src/autotelic/observe/reflect.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -90,7 +91,7 @@ test('「心里想要」附在本轮消息末尾，不进系统提示词；后�
 
 test('autotelic 账本按当时的文件取：换了人格就换一本，切回来接着记', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-ledger-'))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   // v5：模块壳按 own() 的目录惰性建账本（getBook），人格一换目录一换就换一本——这里按同样口径验 book 本体
   const mkBook = (file) => createBook({ file, now: () => Date.now() })
   const fileA = join(dir, 'a', 'ledger.json')
@@ -107,7 +108,7 @@ test('autotelic 账本按当时的文件取：换了人格就换一本，切回�
 
 test('autotelic 日志按当时的目录写', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-journal-'))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   let base = join(dir, 'a')
   const journal = createJournal(() => base)
   journal.write('daily', '2026-11-13', '大肥鱼的一天')

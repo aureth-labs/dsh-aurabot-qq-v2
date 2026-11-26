@@ -9,6 +9,7 @@ import { initUsage, closeUsage, usageReport } from '../../../src/core/llm/usage/
 import { createVectorIndex } from '../../../src/features/memory/vector/index.ts'
 import { buildIndex, createMemoryStore, memoryLine, search } from '../../../src/features/memory/index.ts'
 import memoryModule from '../../../src/modules/memory/index.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const FRIEND = '30000001'
@@ -32,7 +33,7 @@ function setup(t, fetchImpl) {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { dir, cfg, hub, calls, fake, index, store }
 }

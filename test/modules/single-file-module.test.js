@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function makeModulesDir(files) {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-single-'))
@@ -30,7 +31,7 @@ test('scanUser：认 modules/<id>.mjs，其他一律不认', async () => {
     assert.equal(found[0].file, join(dir, 'echo.mjs'))
   } finally {
     delete process.env.AURABOT_DATA_DIR
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   }
 })
 
@@ -45,6 +46,6 @@ test('scanUser：文件夹模块和单文件模块可以共存', async () => {
     assert.deepEqual(ids, ['folder-mod', 'quick'])
   } finally {
     delete process.env.AURABOT_DATA_DIR
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   }
 })

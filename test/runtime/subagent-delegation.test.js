@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10001'
 const settle = async () => { for (let i = 0; i < 5; i++) await new Promise(setImmediate) }
@@ -48,7 +49,7 @@ function setup(t, { subagents, capabilities, config } = {}) {
     fake.dispose()
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   // 模块拿到的唯一入口：subagentFor(真实 id)；调用方不能自报 moduleId/source
   const run = (prompt = '任务书', opts = {}) => hub.subagentFor('phone')('手机逛逛', '手机逛逛', prompt, opts)

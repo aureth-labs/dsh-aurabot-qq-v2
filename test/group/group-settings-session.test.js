@@ -5,6 +5,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001', G = '30000003'
 test('主人会话工具修改可持久化、面板能读、旧草稿不能覆盖，其他会话不挂工具', async t => {
@@ -20,7 +21,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
     return '' // 不发送 QQ 回复；这里只验证 Agent 工具链。
   } })
   const app = (await import('../../src/plugin/index.ts')).apply(fake.ctx)
-  t.after(async () => { fake.dispose(); await app.dispose?.(); rmSync(root, { recursive: true, force: true }) })
+  t.after(async () => { fake.dispose(); await app.dispose?.(); cleanupDir(root) })
   await app.ready
   const old = (await fake.call('/state')).json().config
   const ownerChat = { kind: 'private', userId: OWNER, chatId: `private:${OWNER}`, nickname: '主人', groupId: '' }

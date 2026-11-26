@@ -12,6 +12,7 @@ import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { createConversationArchive } from '../../src/chat/hub/context/conversation-context.ts'
 import memoryModule from '../../src/modules/memory/index.ts'
 import { clientBundleText, injectExports } from '../helpers/client-bundle.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const ALICE = '30000001'
@@ -70,7 +71,7 @@ function setup(t) {
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { cfg, hub, make, state, now }
 }

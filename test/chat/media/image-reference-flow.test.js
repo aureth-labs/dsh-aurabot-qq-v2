@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -37,7 +38,7 @@ test('真实收图→合批→提示：混合照片/表情与下载失败不会�
     on: (event, fn) => { if (event === 'prompt') prompt = fn }, core: { hub, local: { active: () => true } },
   })
   fake.ctx.effect(() => fake.ctx.on('session/event', hub.onSessionEvent))
-  t.after(() => { hub.dispose(); fake.dispose(); if (previous === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = previous; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); fake.dispose(); if (previous === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = previous; cleanupDir(dir) })
   await hub.onMessage({ message_type: 'group', self_id: BOT, user_id: OWNER, group_id: GROUP, message_id: -701,
     sender: { nickname: '测试' }, message: [
       { type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: '请改照片，不要改表情' } },

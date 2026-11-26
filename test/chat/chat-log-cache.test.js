@@ -7,6 +7,7 @@ import { join } from 'node:path'
 
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-chatlog-cache-'))
@@ -23,7 +24,7 @@ function setup(t) {
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return hub
 }

@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from '../../helpers/fake-dsh.js'
 import { createHub } from '../../../src/chat/hub/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const CHAT = `private:${OWNER}`
@@ -44,7 +45,7 @@ function setup(t, { brain, dryRun = false, review } = {}) {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
     // Windows 上 SQLite 句柄可能还没释放，清理失败不该让用例挂（临时目录由系统回收）
-    try { rmSync(dir, { recursive: true, force: true }) } catch {}
+    try { cleanupDir(dir) } catch {}
   })
   return { hub, fake, sent, cfg }
 }

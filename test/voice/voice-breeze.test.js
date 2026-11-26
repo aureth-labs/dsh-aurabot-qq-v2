@@ -6,6 +6,7 @@ import { createServer } from 'node:http'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-breeze-'))
 process.env.AURABOT_DATA_DIR = dataDir
@@ -31,7 +32,7 @@ const { splitSpeakable } = await import('../../src/chat/media/face/index.ts')
 after(() => {
   server.close()
   delete process.env.AURABOT_DATA_DIR
-  try { rmSync(dataDir, { recursive: true, force: true }) } catch (error) {}
+  try { cleanupDir(dataDir) } catch (error) {}
 })
 
 const mp3 = Buffer.alloc(1200, 0x55)

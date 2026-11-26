@@ -8,6 +8,7 @@ import { normalize } from '../../src/core/config/index.ts'
 import { createImageGen, customRequest, isUnsupportedReference } from '../../src/features/media/generate/imagegen.ts'
 import { createLocal } from '../../src/local/index.ts'
 import imagegenModule from '../../src/modules/imagegen/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const PNG = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(64)])
 const log = { info() {}, debug() {}, warn() {} }
@@ -20,7 +21,7 @@ function sandbox(t) {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return dir
 }

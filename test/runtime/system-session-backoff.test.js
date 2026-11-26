@@ -10,6 +10,7 @@ import { isSessionBackoff } from '../../src/chat/hub/turn/session-backoff.ts'
 import { createBili } from '../../src/bili/live/duty.ts'
 import { createPurpose } from '../../src/purpose/module.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const MINUTE = 60_000
 const OWNER = '10000001'
@@ -56,7 +57,7 @@ function setup(t) {
     fake.dispose()
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   return { hub, fake, cfg, log, logs, c, calls, orphans, root,
     mode: (value) => { mode = value },

@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -17,7 +18,7 @@ function fixture(t, output = { facts: [] }) {
   const old = process.env.AURABOT_DATA_DIR
   const dir = mkdtempSync(join(tmpdir(), 'persona-tags-'))
   process.env.AURABOT_DATA_DIR = dir
-  t.after(() => { if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   const cfg = normalize({ ownerQQ: owner, botQQ: bot, model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 7 } })
   const rows = []
   const hub = { chatLogDays: () => [day()], chatLogOf: () => rows, speakersOf: () => [a], groupNames: new Map([['777', '测试群']]) }

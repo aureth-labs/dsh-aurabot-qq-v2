@@ -9,6 +9,7 @@ import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../../src/cor
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 import { createMemoryStorage } from '../../src/features/memory/store/store.ts'
 import { clientBundleText, injectExports } from '../helpers/client-bundle.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function panelHarness(initial = {}) {
   const source = clientBundleText()
@@ -75,7 +76,7 @@ function isolatedDir(t) {
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return dir
 }

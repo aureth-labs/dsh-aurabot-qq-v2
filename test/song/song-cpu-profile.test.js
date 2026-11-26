@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
@@ -28,7 +29,7 @@ from rvc.configs.config import Config
 with open(os.environ['TRACE'], 'w') as f:
  json.dump(dict(argv=sys.argv, cwd=os.getcwd(), device=Config().device, segments=[Config().x_query,Config().x_center,Config().x_max], mkldnn=torch.backends.mkldnn.enabled, threads=torch.threads, interop=torch.interop, omp=os.environ['OMP_NUM_THREADS'], mkl=os.environ['MKL_NUM_THREADS']), f)
 `)
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   return { entry, project, trace }
 }
 for (const value of [undefined, '4']) test(`可选 CPU 入口：线程 ${value || '默认'}，保留推理参数和短分段`, { skip: !python }, t => {

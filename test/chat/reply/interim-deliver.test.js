@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../../../src/chat/hub/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 function setup(t, patch = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-interim-deliver-'))
@@ -40,7 +41,7 @@ function setup(t, patch = {}) {
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, calls, png }
 }

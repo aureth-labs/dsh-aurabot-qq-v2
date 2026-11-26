@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { crc32, deflateRawSync } from 'node:zlib'
 import { readClientSource } from '../helpers/client-source.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let root, createCommunity, userDir
 
@@ -80,7 +81,7 @@ before(async () => {
   ;({ userDir } = await import('../../src/core/module/index.ts'))
   mkdirSync(userDir(), { recursive: true })
 })
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 
 test('每个模块的下载量：按 tag 累加所有版本和资产', async () => {
   const packs = [pack('pet', '1.0.0'), pack('douyin', '2.0.0')]

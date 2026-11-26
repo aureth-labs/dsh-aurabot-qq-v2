@@ -7,10 +7,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../../src/autotelic/observe/audit.ts'
 import module from '../../src/modules/autotelic/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function tmpDir(t, name) {
   const root = mkdtempSync(join(tmpdir(), `aurabot-autotelic-${name}-`))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   return root
 }
 

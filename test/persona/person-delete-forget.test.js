@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -59,7 +60,7 @@ function fixture(t, initial = { items: [] }) {
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { dir, cfg, hub, rows, calls, friends, model, memory, state: () => readMemoryState(dir), put: (s) => writeMemoryState(dir, s) }
 }

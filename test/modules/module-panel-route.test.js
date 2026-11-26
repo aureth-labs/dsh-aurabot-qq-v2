@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -22,7 +23,7 @@ test('模块声明 panel 路由复用完整管理闸，普通客户端路由保�
   t.after(async () => {
     fake.dispose(); await new Promise(setImmediate)
     for (const [key, value] of [['AURABOT_DATA_DIR', old.data], ['AURABOT_WORKSPACE', old.workspace]]) { if (value === undefined) delete process.env[key]; else process.env[key] = value }
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   const app = (await import('../../src/plugin/index.ts')).apply(fake.ctx); await app.ready
   const path = '/ext/route-probe/manage'

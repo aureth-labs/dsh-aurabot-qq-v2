@@ -11,7 +11,7 @@ import { memoryPromptRanges, promptFingerprint } from '../../../src/security/lea
 
 const OWNER = '10000001', OTHER = '10000002', BOT = '20000002'
 const ownerChat = { kind: 'private', chatId: 'private:' + OWNER, userId: OWNER, nickname: '虚构用户' }
-const fixture = JSON.parse(readFileSync(new URL('./fixtures/wechat-history/bundle.json', import.meta.url), 'utf8'))
+const fixture = JSON.parse(readFileSync(new URL('../../fixtures/wechat-history/bundle.json', import.meta.url), 'utf8'))
 const settle = async () => { for (let i = 0; i < 30; i++) await new Promise(setImmediate) }
 
 function setup(t, { directory, enabled = true, brain = async () => '已收到', prompt } = {}) {

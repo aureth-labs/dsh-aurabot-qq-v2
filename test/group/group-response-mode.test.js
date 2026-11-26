@@ -9,10 +9,11 @@ import { groupResponseMode } from '../../src/chat/policy/access.ts'
 import { planGroupSettings, readSettings } from '../../src/modules/contacts/group-settings.ts'
 import { planWhitelist } from '../../src/modules/contacts/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 const root = mkdtempSync(join(tmpdir(), 'aurabot-group-mode-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
 const { createHub } = await import('../../src/chat/hub/index.ts')
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 const G = '30000003', H = '40000004', OWNER = '10000001', BOT = '20000002'
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 const settle = async () => { for (let i = 0; i < 30; i++) await new Promise(setImmediate) }

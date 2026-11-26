@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const ON = { stickers: { enabled: true, react: true, reactChance: 1, reactMaxPerHour: 10 } }
 
@@ -32,7 +33,7 @@ function setup(t, patch = {}, { failure = false } = {}) {
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, cfg, logs, reacts: () => calls.filter((c) => c.action === 'set_msg_emoji_like') }
 }

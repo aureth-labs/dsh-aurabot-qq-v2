@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -56,7 +57,7 @@ test('面板保存并重新读取，开启和关闭均保留，其他记忆设�
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   const ui = harness({ memory: { adaptStyle: false, recallCount: 7 } })
   for (const on of [true, false]) {

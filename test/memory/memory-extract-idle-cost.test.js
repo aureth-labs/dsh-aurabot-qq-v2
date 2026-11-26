@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }
 const owner = '10000000'
@@ -27,7 +28,7 @@ test('空闲提炼不再按批重扫所有天的聊天流水', async (t) => {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
 
   const days = makeDays(7)

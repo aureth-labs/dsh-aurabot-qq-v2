@@ -13,6 +13,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const GUEST = '10000002'
@@ -79,7 +80,7 @@ before(async () => {
 after(async () => {
   try { fake?.dispose() } catch {}
   try { await mock?.close() } catch {}
-  try { rmSync(dataDir, { recursive: true, force: true }) } catch {}
+  try { cleanupDir(dataDir) } catch {}
 })
 
 const priv = (uid, t) => ({ message_type: 'private', sub_type: 'friend', user_id: Number(uid), message_id: Math.floor(Math.random() * 1e6), sender: { user_id: Number(uid), nickname: uid === OWNER ? 'xiaoming' : '小七' }, message: [{ type: 'text', data: { text: t } }] })
@@ -144,7 +145,7 @@ export default {
   assert.ok(c1 >= 1, `探针模块已加载并且 tick 在跑（当前计数 ${c1}）`)
   await until(() => counter() > c1, 5000) // tick 持续在跑
   // 卸载：删文件夹，等 watcher 下一轮 sync 把它停掉，dispose 必须执行
-  rmSync(modsDir, { recursive: true, force: true })
+  cleanupDir(modsDir)
   await until(() => { const m = probe(); return !m || m.running === null }, 15000)
   const stopped = readCount()
   assert.match(stopped, /^STOPPED:\d+$/, `卸载后 onDispose 已执行（读到 ${stopped}）`)

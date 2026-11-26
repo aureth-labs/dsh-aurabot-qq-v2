@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const log = { info() {}, warn() {}, debug() {} }
@@ -36,7 +37,7 @@ function setup(t, lines, day = dateKey(new Date())) {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { make, logs, calls, day, fail: (s) => { failOnce = s }, invalid: (s) => { invalidOnce = s }, progress: () => readMemoryState(dir).processed[day] }
 }

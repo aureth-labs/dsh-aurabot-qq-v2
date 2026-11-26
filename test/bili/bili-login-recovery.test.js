@@ -1,4 +1,5 @@
 import test, { after } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -8,7 +9,7 @@ import { readJson, writeJson } from '../../src/core/store/index.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-bili-login-'))
 process.env.AURABOT_DATA_DIR = root
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 const file = join(root, 'bili.json')
 const d = new Date()
 const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`

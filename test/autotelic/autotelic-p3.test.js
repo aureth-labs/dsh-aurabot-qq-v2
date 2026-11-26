@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { probeOne, probePython, runPython, cleanEnv, envUsable } from '../../src/autotelic/exec/python.ts'
 import { createSkills, writeUserModule } from '../../src/autotelic/feedback/skills.ts'
 import module from '../../src/modules/autotelic/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const runOf = (map) => async (bin) => {
   const hit = map[bin]
@@ -57,7 +58,7 @@ test('env 缓存：24h 内直接用；unavailable 不算可用', () => {
 
 test('跑脚本：敏感 env 不继承（白名单制）；stdout 截断落盘；空的解释器直接拒', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-py-'))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   // 空解释器 / 空脚本 / 超大脚本
   assert.match((await runPython({ dir: root, pythonBin: '', code: 'x=1' })).error, /没有可用/)
   assert.match((await runPython({ dir: root, pythonBin: 'python', code: '  ' })).error, /脚本是空的/)
@@ -78,12 +79,12 @@ test('跑脚本：敏感 env 不继承（白名单制）；stdout 截断落盘�
   assert.equal(captured.env.PYTHONIOENCODING, 'utf-8')
   assert.equal(captured.env.SESSDATA, undefined, 'B 站 cookie 不给她')
   assert.equal(captured.env.imageGen_apiKey, undefined)
-  rmSync(root, { recursive: true, force: true })
+  cleanupDir(root)
 })
 
 test('跑脚本超时（场景 19）：到点 kill，ok=false，不悬挂', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-py-timeout-'))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   let killed = false
   const fakeChild = () => ({
     stdout: { on: () => {} },
@@ -95,7 +96,7 @@ test('跑脚本超时（场景 19）：到点 kill，ok=false，不悬挂', asyn
   assert.equal(killed, true, '超时被杀')
   assert.equal(r.ok, false)
   assert.equal(r.timedOut, true)
-  rmSync(root, { recursive: true, force: true })
+  cleanupDir(root)
 })
 
 test('技能库（场景 12）：连续 2 次成功 → learned；失败 3 次 → 退役；learned 连败 3 次降回候选', () => {
@@ -116,7 +117,7 @@ test('技能库（场景 12）：连续 2 次成功 → learned；失败 3 次 �
   const retired = sk.recordRun('flip', false)
   assert.equal(retired.status, 'retired')
   assert.equal(sk.list().find((x) => x.id === 'flip').status, 'retired')
-  rmSync(root, { recursive: true, force: true })
+  cleanupDir(root)
 })
 
 test('用户模块（场景 15）：id 合法性 / 必须 export default / 不许往外 import；写好了给诚实的降级提示', () => {
@@ -128,14 +129,14 @@ test('用户模块（场景 15）：id 合法性 / 必须 export default / 不�
   assert.equal(ok.ok, true)
   assert.match(ok.note, /不可用.*面板|人工清理|回退内置/)
   assert.ok(existsSync(join(root, 'kuaishou', 'index.mjs')))
-  rmSync(root, { recursive: true, force: true })
+  cleanupDir(root)
 })
 
 // ---------- 她的工具面 ----------
 
 function mkApi(t, { settings = {}, chatId = 'system:autotelic', submit = null, hooks = {} } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-tools-'))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   const routes = {}
   let toolBuilder = null
   const api = {

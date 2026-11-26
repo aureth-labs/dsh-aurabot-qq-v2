@@ -12,6 +12,7 @@ import { join } from 'node:path'
 
 import { createSkillStore } from '../../src/autotelic/feedback/skills.ts'
 import { buildPrefix, hashPrefix, createPrefixCache } from '../../src/autotelic/feedback/prefix.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let root
 let t0 // 固定时间源：快照目录名可预测
@@ -20,7 +21,7 @@ beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'autotelic-skills-v5-'))
   t0 = 1731800000000
 })
-afterEach(() => { try { rmSync(root, { recursive: true, force: true }) } catch {} })
+afterEach(() => { try { cleanupDir(root) } catch {} })
 
 const mkStore = (opts = {}) => createSkillStore(join(root, 'skills'), {
   now: () => { t0 += 1000; return t0 },

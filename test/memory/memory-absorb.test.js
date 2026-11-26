@@ -11,6 +11,7 @@ import { FACT_TIERS, tierDays, strongerTier, memoryPlatforms } from '../../src/f
 import memoryModule from '../../src/modules/memory/index.ts'
 import { readMemoryState, writeMemoryState } from '../helpers/memory-state.js'
 import { clientBundleText, injectExports } from '../helpers/client-bundle.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001', A = '30000001', B = '30000002', C = '30000003'
 const DAY = 86400_000
@@ -43,7 +44,7 @@ function setup(t, memory = {}) {
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { dir, cfg, mem, make, hub, dsh, rows, calls, answer: (fn) => { answer = fn },
     seed: (items, extra = {}) => writeMemoryState(dir, { items, ...extra }), state: () => readMemoryState(dir) }

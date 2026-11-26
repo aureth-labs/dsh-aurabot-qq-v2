@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 import { readMemoryState } from '../helpers/memory-state.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const A = '30000001'
@@ -54,7 +55,7 @@ function setup(t, patch = {}) {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { cfg, logs, calls, make, state: () => readMemoryState(dir) }
 }

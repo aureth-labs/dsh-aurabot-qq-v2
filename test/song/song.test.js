@@ -5,6 +5,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { nudgeMoodAfterSong } from '../../src/modules/song/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let studio
 let netease
@@ -219,7 +220,7 @@ test('翻唱环境：解释器真能跑才算 python 就绪，包缺了分离器
 
 test('Linux 一键安装从 uv 到 ffmpeg 走原生路径，保留残留的手工安装文件', { timeout: 5000 }, async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-song-linux-'))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   const oldPython = makeShim(root, '#!/bin/sh\nexit 127\n')
   const p = studio.pathsOf(root, { platform: 'linux', allowLegacy: false })
   assert.equal(studio.pathsOf(root, { platform: 'linux' }).python, oldPython)

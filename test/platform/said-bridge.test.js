@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 // 假环境：onebot.call 可脚本化（第 N 次调用可抛错），hooks 可注入 reply/items。
 function setup(t, { dryRun = false, enabled = true, onebotCall = null, hooks = null } = {}) {
@@ -26,7 +27,7 @@ function setup(t, { dryRun = false, enabled = true, onebotCall = null, hooks = n
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, calls }
 }

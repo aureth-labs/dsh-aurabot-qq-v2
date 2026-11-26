@@ -11,6 +11,7 @@ import {
   brightness, brightnessLabel, buildEdges, layoutGraph3d, regionOf, grams, similarity,
   initialStability, toStarTier, toHostTier, FADING_THRESHOLD, LAYOUT_VERSION,
 } from '../../../src/features/memory/store/graph.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const DAY = 86400_000
@@ -25,7 +26,7 @@ function setup(t, memoryOver = {}) {
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { dir, cfg, mem }
 }

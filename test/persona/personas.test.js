@@ -1,4 +1,5 @@
 import test from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -21,6 +22,6 @@ test('persona 数据目录不可写时 seed/list 不抛错，当前人格有兜�
   } finally {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(home, { recursive: true, force: true })
+    cleanupDir(home)
   }
 })

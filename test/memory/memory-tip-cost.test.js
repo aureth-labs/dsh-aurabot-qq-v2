@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }
 const owner = '10000000'
@@ -31,7 +32,7 @@ test('记忆和关系多时，contextFor / recallHint 不按条数反复读库',
   t.after(() => {
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   seed(dir)
 
@@ -63,7 +64,7 @@ test('聊天流水逐行 rememberedRow 不按每行整库读盘', (t) => {
   t.after(() => {
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   seed(dir, { items: 1000, relations: 0, people: 30 })
   const now = Date.now()

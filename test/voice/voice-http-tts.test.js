@@ -6,6 +6,7 @@ import { createServer } from 'node:http'
 import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 // 生成的音频别落到主人真实的语音缓存里
 const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-http-tts-'))
@@ -36,7 +37,7 @@ const base = `http://127.0.0.1:${server.address().port}`
 
 after(() => {
   server.close()
-  rmSync(dataDir, { recursive: true, force: true })
+  cleanupDir(dataDir)
 })
 
 test('GET：地址里的 {text} 换成编码过的文字，返回二进制直接落盘', async () => {

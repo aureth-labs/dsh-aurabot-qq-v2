@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let push
 let okFetch
@@ -35,7 +36,7 @@ before(async () => {
   push.pushHooks.fetch = okFetch
 })
 
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 
 const putBackup = (name) => {
   mkdirSync(join(root, 'backups'), { recursive: true })

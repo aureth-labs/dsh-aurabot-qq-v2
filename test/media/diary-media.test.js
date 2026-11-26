@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { cleanupDir } from '../helpers/cleanup.js'
 import { test, after, mock } from 'node:test'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -6,7 +7,7 @@ import { join } from 'node:path'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-diary-media-'))
 process.env.AURABOT_DATA_DIR = root
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 
 const { normalize } = await import('../../src/core/config/index.ts')
 const { createQzone } = await import('../../src/features/qzone/index.ts')

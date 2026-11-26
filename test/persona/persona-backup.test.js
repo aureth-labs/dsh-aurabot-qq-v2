@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMemoryStorage } from '../../src/features/memory/store/store.ts'
 import { createBackup, stageRestore, applyPendingRestore } from '../../src/core/runtime/backup/backup.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let Database
 try { ({ DatabaseSync: Database } = await import('node:sqlite')) } catch {}
@@ -18,7 +19,7 @@ test('persona-data 里的记忆库按 WAL 快照备份，SHM 不进包，恢复�
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   writeFileSync(join(root, 'config.json'), '{}')
   const dir = join(root, 'persona-data', 'xiaoxing')

@@ -6,6 +6,7 @@ import { commitConfig, loadConfig, mergeFromPanel, normalize, publicConfig, save
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readClientSource } from '../helpers/client-source.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const CLIENT = () => readClientSource()
 
@@ -50,7 +51,7 @@ test('vector.mode 真的落盘：mergeFromPanel 后 commitConfig 返回 local，
   } finally {
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   }
 })
 
@@ -96,6 +97,6 @@ test('默认 local 不写盘、旧客户端只传 baseUrl 仍能切在线', () =
   } finally {
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   }
 })

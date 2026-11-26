@@ -14,6 +14,7 @@ import { purposeConfig } from '../../../src/purpose/module.ts'
 import { quietWindowOf, inHourWindow } from '../../../src/core/support/time/time-window.ts'
 import purposeDef from '../../../src/modules/purpose/index.ts'
 import { createModules } from '../../../src/core/module/index.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 // ---------- 1. purposeConfig 开关语义（纯函数，Q1 拍板：默认开） ----------
 
@@ -118,7 +119,7 @@ function makeMods(initialCfg) {
     mods,
     cfg: () => cfg,
     writes,
-    cleanup: () => { mods.dispose(); rmSync(dataDir, { recursive: true, force: true }); delete process.env.AURABOT_DATA_DIR; delete process.env.AURABOT_WORKSPACE },
+    cleanup: () => { mods.dispose(); cleanupDir(dataDir); delete process.env.AURABOT_DATA_DIR; delete process.env.AURABOT_WORKSPACE },
   }
 }
 

@@ -5,6 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { findBrowser, findBrowsers } from '../../src/core/runtime/browser.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function withFakeChrome() {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-browser-'))
@@ -25,7 +26,7 @@ test('AURABOT_BROWSER 指向真实文件时排在最前面', () => {
   } finally {
     if (old === undefined) delete process.env.AURABOT_BROWSER
     else process.env.AURABOT_BROWSER = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   }
 })
 
@@ -54,6 +55,6 @@ test('同一个路径不会重复出现', () => {
     if (old[0] === undefined) delete process.env.AURABOT_BROWSER
     if (old[1] === undefined) delete process.env.CHROME_PATH
     else process.env.CHROME_PATH = old[1]
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   }
 })

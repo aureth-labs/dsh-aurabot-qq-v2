@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const dir = mkdtempSync(join(tmpdir(), 'aurabot-stats-'))
 process.env.AURABOT_DATA_DIR = dir
@@ -60,4 +61,4 @@ test('计数变化后卸载会把最新值落盘（下次启动继续累计）',
   again.dispose()
 })
 
-test.after(() => rmSync(dir, { recursive: true, force: true }))
+test.after(() => cleanupDir(dir))

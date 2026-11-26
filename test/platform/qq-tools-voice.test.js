@@ -10,6 +10,7 @@ import { hasInvalidVoiceMarkup } from '../../src/chat/reply/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { scopeCoreForModule } from '../../src/core/module/index.ts'
 import { OneBotError } from '../../packages/adapters/qq/onebot-v11/src/client.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, hooks, level = 'full', kind = 'private' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-cross-voice-'))
@@ -34,7 +35,7 @@ function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, h
   let build
   qqTools.setup({ core: scopeCoreForModule({ hub, onebot }, 'qq-tools'), config: () => cfg, tool: fn => { build = fn } })
   const tool = build({ chat: { kind, chatId: kind === 'private' ? 'private:1' : 'group:8' }, level, sessionId: 's' }).find(x => x.name === 'qq_send_message')
-  t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   return { tool, hub, calls, spoken }
 }
 const types = s => s.calls.flatMap(c => c.params.message || []).map(x => x.type)

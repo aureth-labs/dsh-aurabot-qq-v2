@@ -6,6 +6,7 @@ import { createServer } from 'node:http'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 // 生成的音频别落到主人真实的语音缓存里
 const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-volcano-'))
@@ -41,7 +42,7 @@ const stream = () => [
 
 after(() => {
   server.close()
-  rmSync(dataDir, { recursive: true, force: true })
+  cleanupDir(dataDir)
 })
 
 const conf = (extra = {}) => ({ apiKey: 'sk-test-key', voiceType: 'zh_female_vv_uranus_bigtts', ...extra })

@@ -13,10 +13,11 @@ import { buildTicket, createPlanner, trimGateInput, DEFAULT_BUDGETS } from '../.
 import { createPrefixCache, hashPrefix } from '../../src/autotelic/feedback/prefix.ts'
 import { createSkillStore } from '../../src/autotelic/feedback/skills.ts'
 import { createFeedback } from '../../src/autotelic/feedback/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const tmp = (t, name) => {
   const root = mkdtempSync(join(tmpdir(), `aurabot-autotelic-v5fix-${name}-`))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   return root
 }
 

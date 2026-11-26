@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let dir
 let usage
@@ -26,7 +27,7 @@ before(async () => {
 after(() => {
   usage.closeUsage()
   delete process.env.AURABOT_DATA_DIR
-  try { rmSync(dir, { recursive: true, force: true }) } catch (error) {}
+  try { cleanupDir(dir) } catch (error) {}
 })
 
 const snap = () => {

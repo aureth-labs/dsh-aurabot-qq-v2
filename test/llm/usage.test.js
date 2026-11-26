@@ -1,4 +1,5 @@
 import { test, beforeEach, afterEach } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -9,7 +10,7 @@ const now = Date.now()
 const sample = { inputTokens: 100, outputTokens: 10, cacheReadTokens: 800, cacheWriteTokens: 100 }
 const report = () => u.usageReport({ range: 'all', now: now + 10000 })
 beforeEach(() => { dir=mkdtempSync(join(tmpdir(),'aurabot-usage-')); process.env.AURABOT_DATA_DIR=dir; u.initUsage() })
-afterEach(() => { u.closeUsage(); delete process.env.AURABOT_DATA_DIR; rmSync(dir,{recursive:true,force:true}) })
+afterEach(() => { u.closeUsage(); delete process.env.AURABOT_DATA_DIR; cleanupDir(dir) })
 test('四类 Token 不重叠相加；命中率按输入总量加权，不平均每轮百分比', () => {
  u.recordUsage({chat:'group:1', usage:sample,at:now})
  u.recordUsage({chat:'group:1',usage:{inputTokens:1000,outputTokens:20},at:now})

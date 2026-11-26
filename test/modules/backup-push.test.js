@@ -1,4 +1,5 @@
 import { test, before, after } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -40,7 +41,7 @@ before(async () => {
   push.pushHooks.fetch = okApi
 })
 
-after(() => rmSync(root, { recursive: true, force: true }))
+after(() => cleanupDir(root))
 
 const remote = { owner: 'owner-x', repo: 'repo-x', token: 'SECRET_TOKEN_A1', branch: 'master', keep: 2, autoCreate: true }
 const putZip = (name) => writeFileSync(join(root, 'backups', name), name)

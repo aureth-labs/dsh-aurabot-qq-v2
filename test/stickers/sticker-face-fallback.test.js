@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -16,7 +17,7 @@ function makeStore(t, addFace) {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   const calls = []
   const cfg = normalize({ enabled: true, dryRun: false, stickers: { enabled: true, collect: true, caption: false } })

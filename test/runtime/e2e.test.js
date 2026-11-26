@@ -8,6 +8,7 @@ import { gunzipSync } from 'node:zlib'
 import { startMockOneBot } from '../helpers/mock-onebot.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { storeOf } from '../helpers/chatlog.mjs'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -123,7 +124,7 @@ before(async () => {
   mock = await startMockOneBot({ selfId: BOT })
   mkdirSync(dataDir, { recursive: true })
   mkdirSync(join(dataDir, 'modules', 'group-admin'), { recursive: true })
-  copyFileSync(new URL('./helpers/group-admin.mjs', import.meta.url), join(dataDir, 'modules', 'group-admin', 'index.mjs')) // 群管已搬到社区库，这里当成已安装
+  copyFileSync(new URL('../helpers/group-admin.mjs', import.meta.url), join(dataDir, 'modules', 'group-admin', 'index.mjs')) // 群管已搬到社区库，这里当成已安装
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
     enabled: true,
     dryRun: false,
@@ -1459,7 +1460,7 @@ test('模块热重载后：已有会话下一轮会重挂新实例的工具（is
   writeProbe('v2') // 改文件触发热重载
   const second = await until(async () => { const r = await ask(); return r.includes('v2') ? r : null }, 20000)
   assert.match(second, /v2/, '热重载后会话应重挂新实例的工具，而不是继续用旧闭包')
-  rmSync(modsDir, { recursive: true, force: true })
+  cleanupDir(modsDir)
 })
 
 test('#77 群里 at 标签和表情包同时出现：at 是真 @，表情包单独一条', async () => {
@@ -1507,7 +1508,7 @@ test('慢工具卡住超过 1.5 秒先发一条「正在做」提示，不让主
   const doneAt = texts.findIndex((x) => /慢工具好了/.test(x))
   assert.ok(noticeAt >= 0, '慢工具卡住时要先发提示：' + JSON.stringify(texts))
   assert.ok(doneAt > noticeAt, '提示要比最终回复先到：' + JSON.stringify(texts))
-  rmSync(modsDir, { recursive: true, force: true })
+  cleanupDir(modsDir)
 })
 
 test('来源章标明说话人：主人 owner，别人 guest，后台任务 none（#145）', async () => {
@@ -1593,7 +1594,7 @@ test('上一轮还在跑时排队的新消息，不会让下一轮的「仅主�
   mock.push(grp('557', OWNER, text('排队权限测试2'), '主人'))
   const second = await until(() => fake.turns.slice(before).find((t) => /allOwner=/.test(String(t.reply))), 20000)
   assert.match(String(second.reply), /allOwner=true/, '排队轮次也要认出主人：' + second.reply)
-  rmSync(modsDir, { recursive: true, force: true })
+  cleanupDir(modsDir)
 })
 
 test('语音里的表情和语音分开发：表情单独补一条文字气泡（开关关掉就不补）', async () => {

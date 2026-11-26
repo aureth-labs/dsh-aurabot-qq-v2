@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -50,7 +51,7 @@ function setup(t, beforeCall) {
       execute: async () => ({ ok: hub.turnSendersAllOwner(sessionId) }) }],
   })
   fake.ctx.effect(() => fake.ctx.on('session/event', hub.onSessionEvent))
-  t.after(() => { hub.dispose(); fake.dispose(); if (previous === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = previous; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); fake.dispose(); if (previous === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = previous; cleanupDir(dir) })
   const chat = { kind: 'group', chatId: 'group:30000003', groupId: '30000003' }
   return { hub, fake, captures, previousTexts, send: (uid, opts = {}, text = '执行测试操作') => hub.pushToSession(chat, [{ type: 'text', text }], uid, opts) }
 }

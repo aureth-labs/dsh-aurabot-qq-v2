@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -43,7 +44,7 @@ function setup(t, listed = true) {
   const hub = createHub({ getConfig: () => cfg, dsh: fake.ctx, log: { debug() {}, info() {}, warn() {}, error() {} },
     onebot: { connected: true, call: async action => { calls.push(action); return {} } },
     hooks: { message: m => { hooks.push(m); return true }, poke: e => { hooks.push(e); return true } } })
-  t.after(() => { hub.dispose(); fake.dispose(); rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); fake.dispose(); cleanupDir(dir) })
   const event = (extra = {}) => ({ post_type: 'message', message_type: 'group', self_id: +BOT, user_id: +U, group_id: +G, message_id: 1,
     sender: { user_id: +U, nickname: '测试' }, message: [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: '#表情列表' } }, { type: 'record', data: { file: 'never-download' } }], ...extra })
   return { cfg, hub, fake, calls, hooks, event, rows: () => hub.chatLogDays().flatMap(d => hub.chatLogOf(d)) }

@@ -11,6 +11,7 @@ import { normalize } from '../../../src/core/config/index.ts'
 import { readClientSource } from '../../helpers/client-source.js'
 
 import { hubSource } from '../../helpers/hub-source.js'
+import { cleanupDir } from '../../helpers/cleanup.js'
 const hubSrc = hubSource()
 const clientSrc = readClientSource()
 
@@ -86,7 +87,7 @@ function setup(t, { forward: fwd, allowed = true } = {}) {
     hub.dispose()
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = previous
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, calls }
 }

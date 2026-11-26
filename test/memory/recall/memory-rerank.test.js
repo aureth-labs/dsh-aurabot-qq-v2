@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize, publicConfig } from '../../../src/core/config/index.ts'
 import { createReranker } from '../../../src/features/memory/vector/rerank.ts'
+import { cleanupDir } from '../../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }
 const hits = () => [
@@ -91,5 +92,5 @@ test('检索排序、手动测试各记一次服务上报的数值', async () =>
     const service=createReranker({getConfig:()=>cfg,log,fetchImpl:async()=>({ok:true,text:async()=>JSON.stringify({usage:{total_tokens:11},results:[{index:0,relevance_score:1},{index:1,relevance_score:0.5}]})})})
     await service.rank('q',hits()); await service.test('q')
     const [row]=u.usageReport({range:'all'}).current.byMemoryTask; assert.equal(row.key,'记忆检索排序'); assert.equal(row.runs,2); assert.equal(row.totalTokens,22)
-  } finally {u.closeUsage(); if(old===undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR=old; rmSync(dir,{recursive:true,force:true})}
+  } finally {u.closeUsage(); if(old===undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR=old; cleanupDir(dir)}
 })

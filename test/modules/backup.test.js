@@ -1,4 +1,5 @@
 import { test, before } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
@@ -177,7 +178,7 @@ test('仅配置备份：只带配置/人格，排除画作、表情、截图、�
     assert.equal(b.files, 3, '只打包 config、人格和轻量聊天流水')
   } finally {
     process.env.AURABOT_DATA_DIR = prev
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   }
 })
 
@@ -225,7 +226,7 @@ test('整机和配置备份仅排除已知的生活推进旧暂存，保留正�
   } finally {
     process.env.AURABOT_DATA_DIR = previous
     const resolved = realpathSync(dir)
-    if (dirname(resolved) === base) rmSync(resolved, { recursive: true, force: true })
+    if (dirname(resolved) === base) cleanupDir(resolved)
   }
 })
 
@@ -239,7 +240,7 @@ function isolatedBackup(t) {
   t.after(() => {
     process.env.AURABOT_DATA_DIR = previous
     const resolved = realpathSync(sandbox)
-    if (dirname(resolved) === base) rmSync(resolved, { recursive: true, force: true })
+    if (dirname(resolved) === base) cleanupDir(resolved)
   })
   const write = (rel, value) => {
     const path = join(dir, rel)

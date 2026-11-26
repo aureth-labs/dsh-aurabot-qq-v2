@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -13,7 +14,7 @@ test('真实 QQ 命令入口绕过模型：单群、批量确认、面板同步�
     onebot: {}, merge: { enabled: false } }))
   const fake = createFakeDsh({ brain: async () => { throw new Error('命令不能进入 LLM') } })
   const app = (await import('../../src/plugin/index.ts')).apply(fake.ctx)
-  t.after(async () => { fake.dispose(); await app.dispose?.(); rmSync(root, { recursive: true, force: true }) })
+  t.after(async () => { fake.dispose(); await app.dispose?.(); cleanupDir(root) })
   await app.ready
   let seq = 1
   const command = async (text, user = OWNER, group = false) => {

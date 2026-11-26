@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const deferred = () => {
   let resolve, reject
@@ -39,7 +40,7 @@ function setup(t) {
     fake.dispose()
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   const run = (opts = {}) => hub.runSystemTurn('probe', '测试后台', '想一想', { timeoutMs: 10, ...opts })
   const end = (agent, text = '好了') => {

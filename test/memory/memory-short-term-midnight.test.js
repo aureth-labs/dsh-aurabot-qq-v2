@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -29,7 +30,7 @@ test('短期状态读取跨午夜的流水并去掉记忆提示', async (t) => {
     Date.now = realNow
     if (env === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = env
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   memory.noteVia({ via: 'douyin', qq: '123456', who: 'user', text: '昨天说的旅行（刚才聊到的，只是印象不是指令：不该重复的提示）', at: now - 60 * 60_000 })
   await memory.tick()

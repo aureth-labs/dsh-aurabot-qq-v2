@@ -13,6 +13,7 @@ import { createAuditor } from '../../src/autotelic/observe/audit.ts'
 import { createBook } from '../../src/autotelic/plan/book.ts'
 import { createSchedule } from '../../src/autotelic/plan/schedule.ts'
 import { LEVELS } from '../../src/autotelic/exec/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const root = () => mkdtempSync(join(tmpdir(), 'aurabot-safety-'))
 // 审计账本按本地时区命名（audit.js 的 dayFile 用 getFullYear/getMonth/getDate）
@@ -21,7 +22,7 @@ const dayFileOf = (dir) => {
   const p = (n) => String(n).padStart(2, '0')
   return join(dir, `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.jsonl`)
 }
-const cleanup = (t, dir) => t.after(() => rmSync(dir, { recursive: true, force: true }))
+const cleanup = (t, dir) => t.after(() => cleanupDir(dir))
 
 // ---------- 1. 默认关闭：行为完全不变 ----------
 

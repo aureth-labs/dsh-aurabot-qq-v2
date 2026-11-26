@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { createImageGen, minimaxImageBody, minimaxBaseUrl, minimaxImageKey, MINIMAX_IMAGE_MODELS } from '../../src/features/media/generate/imagegen.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import imagegenModule from '../../src/modules/imagegen/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }
 const PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.alloc(64, 1)])
@@ -187,7 +188,7 @@ test('qq_draw_image：count 多张时逐张发送、存盘、给编号', async (
   const old = process.env.AURABOT_DATA_DIR
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-minimax-'))
   process.env.AURABOT_DATA_DIR = dir
-  t.after(() => { if (old == null) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { if (old == null) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   t.mock.method(globalThis, 'fetch', async () => json({ data: [{ b64_json: PNG.toString('base64') }, { b64_json: PNG2.toString('base64') }] }))
   let build
   const sent = []

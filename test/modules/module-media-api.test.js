@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, unlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -10,7 +11,7 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 test('模块读取当前头像和当前表情库字节；不接受任意路径、不泄漏路径，模块切换即时生效', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-module-media-')), old = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = join(dir, 'data')
-  t.after(() => { if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   mkdirSync(join(dir, 'assets'), { recursive: true }); mkdirSync(join(dir, 'data', 'stickers'), { recursive: true })
   writeFileSync(join(dir, 'assets', 'dafeiyu.jpg'), png)
   let running = { library: () => ({ items: [{ md5: 'a'.repeat(32), file: 'test.png' }] }) }
@@ -31,7 +32,7 @@ test('模块读取当前头像和当前表情库字节；不接受任意路径�
 
 test('媒体辅助沿用文件头、PCM WAV 转换和现有 ffmpeg 配置', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-module-media-wav-'))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   const executable = join(dir, 'configured-ffmpeg'); writeFileSync(executable, '')
   const media = createMediaAccess({ root: dir, use: () => null, config: () => ({ bili: { ffmpegPath: executable } }) })
   assert.equal(media.ffmpegPath(), executable); assert.equal(media.mimeOf(png), 'image/png')

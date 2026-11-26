@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { tidyPunctuation, parseReply } from '../../src/chat/reply/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function setup(t, { hooks, synthFails = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-voice-order-'))
@@ -24,7 +25,7 @@ function setup(t, { hooks, synthFails = false } = {}) {
     moodEffects: () => ({ voice: 1, sticker: 1, delay: 0 }),
     tts: { async speak(text) { spoken.push(text); if (synthFails) throw new Error('tts failed'); return { file, engine: 'test' } } },
   })
-  t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   return { hub, calls, spoken }
 }
 

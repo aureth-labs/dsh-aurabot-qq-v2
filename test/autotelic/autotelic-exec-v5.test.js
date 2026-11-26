@@ -8,6 +8,7 @@ import { mkdtempSync, writeFileSync, existsSync, readdirSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createExecV5, isForbidden, TRANSIENT_RE } from '../../src/autotelic/exec/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 /** 造一张最小行动单。 */
 function ticket(over = {}) {
@@ -128,7 +129,7 @@ test('write-data：执行前把目标文件快照进 history/<ISO时间戳>/（a
   const stampDir = readdirSync(historyDir)[0]
   assert.match(stampDir, /^\d{4}-\d{2}-\d{2}T/, '目录名是 ISO 时间戳')
   assert.ok(existsSync(join(historyDir, stampDir, 'notes.json')), '目标文件应有快照')
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('touch-owner 默认静默排队：queued → confirm 放行；autoConfirmOwner 豁免直接跑', async () => {

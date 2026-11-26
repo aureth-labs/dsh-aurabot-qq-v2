@@ -1,4 +1,5 @@
 import test from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -83,7 +84,7 @@ function setup(t, patch = {}) {
     log: Object.fromEntries(['info', 'warn', 'error', 'debug'].map(k => [k, () => {}])),
     hooks: { message: (...a) => { messages.push(a) } },
     onCommand: (...a) => { commands.push(a) }, onActivity: (...a) => { activity.push(a) } })
-  t.after(() => { hub.dispose(); fake.dispose(); rmSync(root, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); fake.dispose(); cleanupDir(root) })
   const event = (text, extra = {}) => ({ post_type: 'message', message_type: 'group', self_id: Number(BOT),
     group_id: Number(G), user_id: Number(U), message_id: 123, sender: { nickname: '小纸船', user_id: Number(U) },
     message: [{ type: 'text', data: { text } }], ...extra })

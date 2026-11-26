@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { runCommand, parseCommand } from '../../src/chat/commands/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 let fake, app, dir
 const G = '30000003'
@@ -24,7 +25,7 @@ before(async () => {
   app = (await import('../../src/plugin/index.ts')).apply(fake.ctx)
   await app.ready
 })
-after(async () => { fake?.dispose(); await app?.dispose?.(); rmSync(dir, { recursive: true, force: true }) })
+after(async () => { fake?.dispose(); await app?.dispose?.(); cleanupDir(dir) })
 
 test('面板草稿早于 /quiet：整次保存拒绝，不写其他字段', async () => {
   await command('/normal')

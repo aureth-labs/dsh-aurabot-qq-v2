@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 import { systemVoiceEngine, edgeAllowed } from '../../src/voice/tts/index.ts'
 import { asPcmWav } from '../../src/modules/voice/index.ts'
 import { buildWav } from '../../src/voice/audio/wav.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 test('系统语音兜底：Windows 用系统语音、macOS 用 say、其它平台没有', () => {
   assert.equal(systemVoiceEngine('win32'), 'windows')
@@ -52,7 +53,7 @@ test('非 WAV 有 ffmpeg 时真走转换：读回转换结果并清掉临时文�
     const out = asPcmWav(input, Buffer.from('ID3xxxx'), '', { findFfmpegFn: () => '/fake/ffmpeg', runFn })
     assert.deepEqual(out, wav)
     assert.equal(existsSync(join(dir, 'in.16k.wav')), false, '转换后的临时文件要清掉')
-  } finally { rmSync(dir, { recursive: true, force: true }) }
+  } finally { cleanupDir(dir) }
 })
 
 test('转换失败时报清楚原因，不留下临时文件', async () => {
@@ -66,7 +67,7 @@ test('转换失败时报清楚原因，不留下临时文件', async () => {
   try {
     assert.throws(() => asPcmWav(input, Buffer.from('ID3xxxx'), '', { findFfmpegFn: () => '/fake/ffmpeg', runFn }), /音频转 WAV 失败.*Invalid data/)
     assert.equal(existsSync(join(dir, 'in.16k.wav')), false)
-  } finally { rmSync(dir, { recursive: true, force: true }) }
+  } finally { cleanupDir(dir) }
 })
 
 test('macOS say 调用把文本放在 -- 之后，避免正文被当成选项', () => {

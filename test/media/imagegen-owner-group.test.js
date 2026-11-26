@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -60,7 +61,7 @@ function setup(t, { beforeDraw } = {}) {
     core: { hub, local: { active: name => name === 'image', call: async () => { draws++; throw new Error('TEST_AUTHORIZED_NO_IMAGE_API') } } },
   })
   fake.ctx.effect(() => fake.ctx.on('session/event', hub.onSessionEvent))
-  t.after(() => { if (!fake.turns.length) t.diagnostic(fake.logs.join('\n')); hub.dispose(); fake.dispose(); rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { if (!fake.turns.length) t.diagnostic(fake.logs.join('\n')); hub.dispose(); fake.dispose(); cleanupDir(dir) })
   return { hub, fake, cfg, snapshots, draws: () => draws, batch: async (...messages) => {
     const before = fake.turns.length
     for (const message of messages) await hub.onMessage(message)

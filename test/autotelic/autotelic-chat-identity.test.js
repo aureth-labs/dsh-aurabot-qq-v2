@@ -7,6 +7,7 @@ import { mkdtempSync, appendFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createObserve, createChatCollector } from '../../src/autotelic/observe/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
 
@@ -21,7 +22,7 @@ test('core 暴露 identity.owner()，否则采集器会静默零采集', () => {
 
 test('identity 有效时，主人私聊流水进观察层', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'autotelic-identity-'))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   const now = Date.now()
   const ownerQQ = '1240819805'
   const rows = [
@@ -58,7 +59,7 @@ test('schedule 透出真实 outcome，status 返回 running', () => {
 
 test('窗口条目超过旧去重上限时，第二轮不重复写', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'autotelic-dedup-'))
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   const now = Date.now()
   const ownerQQ = '1240819805'
   // 3000 条 > 旧默认 seenLimit 2000：旧实现第二轮会把整窗再写一遍。

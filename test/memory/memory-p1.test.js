@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { readMemoryState, writeMemoryState } from '../helpers/memory-state.js'
@@ -40,7 +41,7 @@ function setup(t, answer = () => '[]', patch = {}) {
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { cfg, hub, logs, calls, make, state, putState }
 }

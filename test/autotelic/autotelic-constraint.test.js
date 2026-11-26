@@ -6,6 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseConstraintRules, check, ruleKeywords, createConstraintWatcher } from '../../src/autotelic/exec/constraint.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 // —— 解析：逐行一条，解析失败静默跳过 ——
 
@@ -94,7 +95,7 @@ test('变更感知：约束文件变化产出观察事件 + 审计回调，第�
     // load 出来的规则与观察层拿到的一致
     const loaded = await w.load()
     assert.equal(loaded.rules.length, 2)
-  } finally { rmSync(dir, { recursive: true, force: true }) }
+  } finally { cleanupDir(dir) }
 })
 
 test('变更感知：重启后（新 watcher + 指纹文件）仍能认出变更；文件不存在 = 空约束', async () => {
@@ -112,5 +113,5 @@ test('变更感知：重启后（新 watcher + 指纹文件）仍能认出变更
     const empty = createConstraintWatcher({ file: join(dir, '不存在.txt') })
     assert.equal((await empty.load()).rules.length, 0)
     assert.equal((await empty.detectChange()).changed, false)
-  } finally { rmSync(dir, { recursive: true, force: true }) }
+  } finally { cleanupDir(dir) }
 })

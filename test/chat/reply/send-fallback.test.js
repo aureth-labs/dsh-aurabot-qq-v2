@@ -26,7 +26,12 @@ function setup(t, failure, { ttsFailure = false, files = { enabled: true } } = {
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    // Windows 上 sqlite/媒体句柄释放可能晚于用例结束：重试几次，仍失败就留给系统临时目录清理。
+    try {
+      rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+    } catch (error) {
+      if (error.code !== 'EPERM') throw error
+    }
   })
   return { hub, file, calls, logs }
 }

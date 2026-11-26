@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { readManifest, entryOf, assertEsm } from '../../src/core/config/manifest.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function tempModule(files) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-manifest-'))
@@ -45,7 +46,7 @@ test('v2：从 package.json.aurabot 读清单', () => {
   assert.deepEqual(manifest.capabilities, ['network'])
   assert.equal(manifest.entry, join(dir, 'lib/index.js'))
   assert.equal(manifest.source, 'package')
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('v1：没有 package.json 时回退 module.json', () => {
@@ -60,7 +61,7 @@ test('v1：没有 package.json 时回退 module.json', () => {
   assert.deepEqual(manifest.capabilities, ['plugin-internals'])
   assert.equal(manifest.source, 'module.json')
   assert.equal(manifest.entry, join(dir, 'index.mjs'))
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('入口：main 优先于 index.mjs', () => {
@@ -70,7 +71,7 @@ test('入口：main 优先于 index.mjs', () => {
     'index.mjs': '// 老入口\n',
   })
   assert.equal(entryOf(dir), join(dir, 'dist', 'entry.js'))
-  rmSync(dir, { recursive: true, force: true })
+  cleanupDir(dir)
 })
 
 test('CommonJS 入口被拒绝，ESM 放行', () => {
@@ -84,8 +85,8 @@ test('CommonJS 入口被拒绝，ESM 放行', () => {
     'index.js': 'export default {}\n',
   })
   assert.equal(assertEsm(esm, join(esm, 'index.js')), '')
-  rmSync(dir, { recursive: true, force: true })
-  rmSync(esm, { recursive: true, force: true })
+  cleanupDir(dir)
+  cleanupDir(esm)
 })
 
 test('没清单 / 没入口都给明确错误', () => {
@@ -93,6 +94,6 @@ test('没清单 / 没入口都给明确错误', () => {
   assert.match(readManifest(empty).error, /没有 package\.json\.aurabot/)
   const noEntry = tempModule({ 'package.json': { name: 'demo', version: '1.0.0', aurabot: { api: 2 } } })
   assert.match(readManifest(noEntry).error, /找不到入口文件/)
-  rmSync(empty, { recursive: true, force: true })
-  rmSync(noEntry, { recursive: true, force: true })
+  cleanupDir(empty)
+  cleanupDir(noEntry)
 })

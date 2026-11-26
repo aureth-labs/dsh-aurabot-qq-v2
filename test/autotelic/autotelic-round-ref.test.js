@@ -9,10 +9,11 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import module from '../../src/modules/autotelic/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 test('runRound 真实回路：观察窗口足够时走到决策环，不因 planner 未定义整轮 failed', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-autotelic-round-'))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
+  t.after(() => cleanupDir(root))
   const routes = {}
   const settingsStore = { ...module.defaults, enabled: true, awakeStart: 0, awakeEnd: 24, maxPerDay: 10 }
   const api = {

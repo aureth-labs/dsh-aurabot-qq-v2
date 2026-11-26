@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { rowsOf } from '../helpers/chatlog.mjs'
 import { normalize } from '../../src/core/config/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 function setup(t, { dryRun = false, enabled = true, onebotCall = null, files = null } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-proactive-'))
@@ -39,7 +40,7 @@ function setup(t, { dryRun = false, enabled = true, onebotCall = null, files = n
     hub.dispose()
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   return { hub, calls, dir }
 }
@@ -107,7 +108,7 @@ test('主动发图：留痕记成 [图片]（路径直发）', async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-proactive-img-'))
   const png = join(dir, 'shot.png')
   writeFileSync(png, 'not-a-real-png')
-  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  t.after(() => cleanupDir(dir))
   const s = setup(t, { files: { imageByPath: true } })
   const r = await s.hub.sendImage('private:10001', png, undefined, undefined, { proactive: true, proactiveCause: 'bili' })
   assert.equal(r.message_id, 42)
@@ -131,7 +132,7 @@ test('重启后从聊天流水回捞：换一个 hub 实例也认得上一条主
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
   const cfg = normalize({ enabled: true, dryRun: false, workspaceDir: dir, voice: { enabled: false }, stickers: { enabled: false } })
   const mk = () => createHub({

@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync, readdirSy
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const previous = process.env.AURABOT_DATA_DIR
 const root = mkdtempSync(join(tmpdir(), 'aurabot-look-'))
@@ -16,7 +17,7 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 after(() => {
   if (previous === undefined) delete process.env.AURABOT_DATA_DIR
   else process.env.AURABOT_DATA_DIR = previous
-  rmSync(root, { recursive: true, force: true })
+  cleanupDir(root)
 })
 
 test('独立存图、描述、换图标记、删图保留文字、删人格清理', () => {

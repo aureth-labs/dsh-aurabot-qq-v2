@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -52,7 +53,7 @@ test('GIF 请求失败不会切换备用服务；不添加静态接口兼容参�
  await assert.rejects(generator({fallbackEnabled:true,fallbacks:[{provider:'openai',baseUrl:'https://backup.example',model:'backup'}]},async()=>{n++;return new Response('{}',{status:500})}).generate('猫',{format:'gif'}));assert.equal(n,1)
  n=0;await generator({},async(url,init)=>{n++;const b=JSON.parse(init.body);assert.equal(b.output_format,'gif');assert.equal(b.frame_count,8);assert.equal(b.response_format,undefined);assert.equal(b.image_size,undefined);return response()}).generate('猫',{format:'gif'});assert.equal(n,1)
 })
-function sandbox(t){const old=process.env.AURABOT_DATA_DIR;const dir=mkdtempSync(join(tmpdir(),'aurabot-gif-'));process.env.AURABOT_DATA_DIR=dir;t.after(()=>{if(old==null)delete process.env.AURABOT_DATA_DIR;else process.env.AURABOT_DATA_DIR=old;rmSync(dir,{recursive:true,force:true})});return dir}
+function sandbox(t){const old=process.env.AURABOT_DATA_DIR;const dir=mkdtempSync(join(tmpdir(),'aurabot-gif-'));process.env.AURABOT_DATA_DIR=dir;t.after(()=>{if(old==null)delete process.env.AURABOT_DATA_DIR;else process.env.AURABOT_DATA_DIR=old;cleanupDir(dir)});return dir}
 function tool(t,{owner=true,extra={},fetchImpl=async()=>response()}={}){
  sandbox(t);t.mock.method(globalThis,'fetch',fetchImpl);let build;const sent=[];const cfg=config({seeOwn:false,...extra})
  const hub={turnSendersAllOwner:()=>owner,sendText:async()=>({message_id:1}),sendSegments:async(...args)=>{sent.push(args);return {message_id:1}},canSeeImages:async()=>false,lastTextOf:()=>''}

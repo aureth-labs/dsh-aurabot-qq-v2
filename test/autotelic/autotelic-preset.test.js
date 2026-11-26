@@ -12,6 +12,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const settle = async () => { for (let i = 0; i < 20; i++) await new Promise(setImmediate) }
 
@@ -40,7 +41,7 @@ function setup(t, { presetIdOverride = false } = {}) {
     fake.dispose()
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(root, { recursive: true, force: true })
+    cleanupDir(root)
   })
   const run = (opts = {}) => hub.runSystemTurn('autotelic', '自驱测试', '想一想', { timeoutMs: 60_000, ...opts })
   const end = (agent, text = '好了') => {

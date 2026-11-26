@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -25,7 +26,7 @@ function setup(t, patch = {}, options = {}) {
     onebot: { async call(action, params) { calls.push({ action, params }); return { message_id: calls.length } } },
     stickers: { match: () => item, pickForReply: () => { picks++; return item }, markUsed() {},
       segmentFor: () => ({ type: 'image', data: { file: 'base64://test', sub_type: 1 } }) } })
-  t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   return { cfg, hub, calls, logs, draws: () => draws, picks: () => picks,
     segments: () => calls.flatMap(c => c.params.message || []) }
 }

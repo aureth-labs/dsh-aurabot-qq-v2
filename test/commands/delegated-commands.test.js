@@ -1,4 +1,5 @@
 import { test } from 'node:test'
+import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -59,7 +60,7 @@ test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和�
   const { apply } = await import('../../src/plugin/index.ts')
   const api = apply(fake.ctx)
   await api.ready
-  t.after(() => { delete globalThis.__delegatedProbe; fake.dispose(); rmSync(dir, { recursive: true, force: true }) })
+  t.after(() => { delete globalThis.__delegatedProbe; fake.dispose(); cleanupDir(dir) })
   const message = (text, group = false) => ({ post_type: 'message', message_type: group ? 'group' : 'private',
     self_id: 20000002, user_id: Number(guest), ...(group ? { group_id: 30000003 } : {}), message_id: 123,
     sender: { user_id: Number(guest), nickname: '访客' }, message: [{ type: 'text', data: { text } }] })

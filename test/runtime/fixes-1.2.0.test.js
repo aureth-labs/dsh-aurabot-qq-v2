@@ -10,6 +10,7 @@ import { createMemoryStore } from '../../src/features/memory/index.ts'
 import { matchSticker, pickForReply } from '../../src/features/stickers/index.ts'
 import { createImageGen } from '../../src/features/media/generate/imagegen.ts'
 import { askModel } from '../../src/core/llm/index.ts'
+import { cleanupDir } from '../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }
 
@@ -110,7 +111,7 @@ test('常驻记忆：超过 900 字截断并加省略号，恰好 900 字保留�
   t.after(() => {
     if (oldDir === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = oldDir
-    rmSync(dir, { recursive: true, force: true })
+    cleanupDir(dir)
   })
 
   const mem = createMemoryStore({ dsh: {}, getConfig: () => ({ memory: { enabled: true, residentMaxChars: 900, profileOnlyAcquainted: false } }), hub: {}, log })
