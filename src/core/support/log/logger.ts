@@ -36,6 +36,8 @@ interface HostLogger {
 export interface CreateLoggerOptions {
   dsh?: { logger?: HostLogger } | null
   retainDays?: number
+  /** 调试模式开关：关着时 debug 不入环、不落盘（面板日志页也就看不到）。 */
+  debugEnabled?: () => boolean
 }
 
 /** createLogger 的产物。 */
@@ -45,7 +47,7 @@ export interface Logger extends AreaLogger {
   onEntry (fn: (entry: LogEntry) => void): () => void
 }
 
-export function createLogger ({ dsh, retainDays = 14 }: CreateLoggerOptions = {}): Logger {
+export function createLogger ({ dsh, retainDays = 14, debugEnabled }: CreateLoggerOptions = {}): Logger {
   const ring: LogEntry[] = []
   const listeners = new Set<(entry: LogEntry) => void>()
   const dir = (): string => ensureDir(dataDir('logs'))
@@ -70,6 +72,8 @@ export function createLogger ({ dsh, retainDays = 14 }: CreateLoggerOptions = {}
     const day = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
     const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
     const entry: LogEntry = { t: d.getTime(), time, level, area, text }
+    // debug 只在调试模式里存在：关着时不占内存环、不写文件，面板也不会翻出噪声
+    if (level === 'debug' && !debugEnabled?.()) return entry
     ring.push(entry)
     if (ring.length > RING) ring.shift()
     try {
@@ -97,8 +101,9 @@ export function createLogger ({ dsh, retainDays = 14 }: CreateLoggerOptions = {}
       return c
     },
     recent (limit = 200, filter: LogFilter = {}): LogEntry[] {
+      const debugOn = debugEnabled?.() ?? false
       return ring
-        .filter((e) => (!filter.level || LEVELS.indexOf(e.level) >= LEVELS.indexOf(filter.level)) && (!filter.area || e.area === filter.area))
+        .filter((e) => (debugOn || e.level !== 'debug') && (!filter.level || LEVELS.indexOf(e.level) >= LEVELS.indexOf(filter.level)) && (!filter.area || e.area === filter.area))
         .slice(-limit)
     },
     onEntry (fn: (entry: LogEntry) => void): () => void {

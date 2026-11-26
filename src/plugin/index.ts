@@ -101,7 +101,8 @@ export function isChatSession(hub, session) {
 }
 
 export function apply(ctx) {
-  const logger = createLogger({ dsh: ctx })
+  const debugSwitch = { on: false }
+  const logger = createLogger({ dsh: ctx, debugEnabled: () => debugSwitch.on })
   const log = logger.child('core')
   ensureDevBuild(log)
   // ---------- 面板首屏提速（方案 §二） ----------
@@ -117,6 +118,7 @@ export function apply(ctx) {
     if (restored) log.info(`已恢复备份：${restored} 个文件，原来的文件在 backups/ 里留了底`)
   } catch (error) { log.error('恢复备份失败：', error.message) }
   let cfg = loadConfig()
+  debugSwitch.on = Boolean(cfg.debug)
   if (cfg.ownerQQ && !ownerAuthorizationRevision(cfg)) {
     try { cfg = commitConfig(cfg, cfg) }
     catch { log.warn('初始化主人授权记录失败，本次启动使用会话授权') }
@@ -150,6 +152,7 @@ export function apply(ctx) {
     // 统一提交函数（方案 §2.2）：落盘 + 发布 + configRevision 递增都收敛在 commitConfig 里；
     // 值与已发布配置完全一致时不落盘不递增（面板「只提交没变化字段」回执取接纳时版本）。
     cfg = commitConfig(next, before)
+    debugSwitch.on = Boolean(cfg.debug)
     // 改机器人号后旧连接的核对结果立刻失效，必须重新核对才能处理消息或完成向导。
     if (before.botQQ !== cfg.botQQ) {
       wrongAccount = ''
