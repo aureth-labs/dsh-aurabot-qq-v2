@@ -145,88 +145,6 @@ function Song({ st, draft, setDraft, toast }) {
   )
 }
 
-/** B 站 Cookie：SESSDATA 和 bili_jct 分两个框填（前缀已经写好），可以显示 / 隐藏；粘整串也行，会自动拆开。 */
-
-function BiliCookie({ draft, setDraft, load }) {
-  const [show, setShow] = useState(false)
-  const [qr, setQr] = useState(null) // { id?, png?, state: 'loading'|'waiting'|'expired'|'error', message? }
-  const qrTimer = useRef(null)
-  const qrId = useRef('')
-  const b = draft.bili
-  const stopQr = () => { if (qrTimer.current) { clearInterval(qrTimer.current); qrTimer.current = null } }
-  const cancelQr = (id) => { if (id) post('/bili/qr/cancel', { id }).catch(() => {}) }
-  const closeQr = () => { const id = qrId.current; qrId.current = ''; stopQr(); setQr(null); cancelQr(id) }
-  const pollQr = (id) => {
-    stopQr()
-    const tick = async () => {
-      try {
-        const r = await get('/bili/qr/status?id=' + encodeURIComponent(id))
-        if (qrId.current !== id) return // 浮层已经关了，别再往旧会话上轮询
-        if (r.state === 'done') {
-          qrId.current = ''
-          stopQr()
-          setQr(null)
-          if (load) load()
-          return
-        }
-        if (r.state === 'expired' || r.state === 'error') {
-          stopQr()
-          setQr({ id, state: r.state, message: r.message || (r.state === 'expired' ? '二维码过期了' : '出错了，重试一下') })
-        }
-      } catch {}
-    }
-    tick()
-    qrTimer.current = setInterval(tick, 1500)
-  }
-  const openQr = async () => {
-    const old = qrId.current
-    qrId.current = ''
-    stopQr()
-    cancelQr(old)
-    setQr({ state: 'loading' })
-    const r = await post('/bili/qr/start')
-    if (!r || !r.id) { setQr({ state: 'error', message: (r && r.message) || '出码失败，重试一下' }); return }
-    if (!r.png) { qrId.current = r.id; setQr({ id: r.id, state: 'error', message: r.message || '没出码，重试一下' }); return }
-    qrId.current = r.id
-    setQr({ id: r.id, png: r.png, state: 'waiting' })
-    pollQr(r.id)
-  }
-  // 组件卸载时一定要清定时器并通知后端收浏览器
-  useEffect(() => () => { const id = qrId.current; qrId.current = ''; if (qrTimer.current) clearInterval(qrTimer.current); cancelQr(id) }, [])
-  const modal = !qr ? null : h('div', {
-    style: { position: 'fixed', inset: 0, background: 'rgba(12,28,38,.45)', zIndex: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    onClick: closeQr,
-  }, h('div', {
-    style: { background: '#fff', borderRadius: 12, padding: '20px 24px', width: 300, textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,.25)' },
-    onClick: (e) => e.stopPropagation(),
-  },
-    h('div', { style: { fontWeight: 600, marginBottom: 10 } }, '扫码登录 B 站'),
-    qr.png ? h('img', { src: 'data:image/png;base64,' + qr.png, width: 200, height: 200, alt: '二维码', style: { display: 'block', margin: '0 auto', borderRadius: 6 } }) : null,
-    h('div', { className: 'ab-muted ab-small', style: { marginTop: 10 } },
-      qr.state === 'loading' ? '正在出码…' : qr.state === 'waiting' ? '等你扫码…' : qr.state === 'expired' ? '二维码过期了' : (qr.message || '出错了')),
-    qr.state === 'waiting' ? h('div', { className: 'ab-muted ab-small', style: { marginTop: 6 } }, '用手机 B 站 App 扫这个码，扫完在手机上点确认。票只存在这台服务器上，跟你自己浏览器登录的那个号互不影响。') : null,
-    h('div', { className: 'ab-flex', style: { justifyContent: 'center', marginTop: 12 } },
-      qr.state === 'expired' || qr.state === 'error' ? h(Btn, { small: true, kind: 'primary', onClick: openQr }, '重新生成') : null,
-      h(Btn, { small: true, kind: 'ghost', onClick: closeQr }, '取消'))))
-  const field = (key, prefix, setKey, hintKey, ph) => h('div', { className: 'ab-flex', style: { flexWrap: 'nowrap', marginBottom: 6 } },
-    h('code', { className: 'ab-small', style: { minWidth: 82, textAlign: 'right' } }, prefix),
-    h('input', {
-      className: 'ab-input wide', type: show ? 'text' : 'password', autoComplete: 'off', spellCheck: false, value: b[key] || '',
-      placeholder: b[setKey] ? '已保存（结尾 ' + (b[hintKey] || '…') + '），不改就留空' : ph,
-      onChange: (e) => setDraft(setPath(draft, 'bili.' + key, e.target.value.trim())),
-    }))
-  return h(Row, { label: 'B 站 Cookie', hint: '电脑浏览器登录 bilibili.com → F12 → 「应用」（Application）→ Cookie → bilibili.com，分别复制 SESSDATA 和 bili_jct 这两行的「值」。也可以直接粘整串 Cookie，会自动拆开。只存在本机；不填也能看视频，但看不到 AI 字幕、不能评论和回复。建议用小号' },
-    h('div', { style: { flex: 1 } },
-      field('sessdata', 'SESSDATA=', 'sessdataSet', 'sessdataHint', '粘贴 SESSDATA 的值'),
-      field('biliJct', 'bili_jct=', 'biliJctSet', 'biliJctHint', '粘贴 bili_jct 的值'),
-      h('div', { className: 'ab-flex' },
-        h(Btn, { small: true, onClick: () => setShow(!show) }, show ? '隐藏' : '显示'),
-        h(Btn, { small: true, kind: 'primary', onClick: openQr }, '扫码登录'),
-        b.sessdataSet || b.biliJctSet ? h(Btn, { small: true, kind: 'ghost', onClick: () => { if (confirm('清空保存的 B 站 Cookie？')) setDraft(setPath(setPath(setPath(draft, 'bili.sessdata', null), 'bili.biliJct', null), 'bili.cookie', null)) } }, '清空') : null,
-        h('span', { className: 'ab-muted ab-small' }, '「显示」看的是正在填的内容；保存过的出于安全不回传，只显示结尾几位')),
-      modal))
-}
-
 /** 本地接口：数据目录 local/ 里的脚本接管语音合成、生图、翻唱换声、语音识别。 */
 
 function LocalApi({ draft, setDraft, toast }) {
@@ -242,6 +160,7 @@ function LocalApi({ draft, setDraft, toast }) {
       h('div', { className: 'ab-flex' },
         h('code', { className: 'ab-small', style: { wordBreak: 'break-all', flex: 1 } }, st ? st.dir : '…'),
         h(Btn, { small: true, onClick: () => post('/local/open').then((r) => toast(r.message)) }, '打开文件夹'))),
+    h(Card, { title: '媒体工具' }, h(Row, { label: 'FFmpeg 路径', hint: '留空时使用 PATH 中的 ffmpeg' }, f.text('local.ffmpegPath'))),
     !st ? h(Empty, { icon: '⏳', text: '加载中…' }) : st.list.map((x) => h(Card, { key: x.slot, title: x.title + '（' + x.file + '）', right: f.sw('local.' + x.slot) },
       h('div', { className: 'ab-flex', style: { marginBottom: 8 } },
         h('span', { className: 'ab-small', style: { color: x.active ? 'var(--ab-ok)' : 'var(--ab-muted)' } },
@@ -594,4 +513,4 @@ function Logs({ st }) {
         h('div', { className: 'ab-logs' }, items.slice().reverse().map((e, i) => h(LogLine, { key: i, e }))))
 }
 
-export { RootPicker, InstallProgress, SONG_PARTS, Song, BiliCookie, LocalApi, RemoteBackup, Backup, Browser, Security, DebugChat, Logs }
+export { RootPicker, InstallProgress, SONG_PARTS, Song, LocalApi, RemoteBackup, Backup, Browser, Security, DebugChat, Logs }

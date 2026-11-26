@@ -2,20 +2,11 @@ import { useState, useEffect, Fragment } from '../../core/ui/react.ts'
 import { API, bustCache, get, getCached, post } from '../../core/api/api.ts'
 import { setPath, timeAgo } from '../../core/ui/format.ts'
 import { Btn, Card, Empty, Row, cx, h, useField } from '../../core/ui/ui.ts'
-import { BiliCookie } from '../system/system.ts'
 
 const CONTENT_PLATFORMS = [
-  { id: 'bili', label: 'B站', mod: 'bili' },
   { id: 'douyin', label: '抖音', mod: 'douyin' },
   { id: 'heybox', label: '小黑盒', mod: 'heybox' },
 ]
-
-/**
- * 内容平台页外壳：B站 / 抖音 / 小黑盒 三个子视图共用一个页签。
- * 只挂载选中的平台——不选不挂载，各平台数据互不拉取。
- * 默认取首个当前可用的平台（boot.modules 里对应模块 running）；
- * 尊重 aurabot.content-view 上次选择，存的平台若不可用则回落首个可用。
- */
 
 function ContentTab({ contentView, setContentView, boot, st, draft, setDraft, toast }) {
   const mods = (boot && boot.modules) || (st && st.modules) || []
@@ -44,181 +35,8 @@ function ContentTab({ contentView, setContentView, boot, st, draft, setDraft, to
       ? h(Card, { title: '这个平台还没启用' },
           h('div', { className: 'ab-note' }, '对应的模块没在跑，所以看不到它的设置和登录状态。'),
           h('div', { className: 'ab-small ab-muted', style: { marginTop: 8 } }, '到「模块」页把它启动（或装上），回来再点这个标签就行。'))
-      : picked === 'bili' ? h(Bili, { draft, setDraft, toast })
-        : picked === 'douyin' ? h(Douyin, { draft, setDraft, toast })
+      : picked === 'douyin' ? h(Douyin, { draft, setDraft, toast })
           : h(Heybox, { draft, setDraft, toast }))
-}
-
-const BILI_KIND = { watch: '看了', comment: '评论', reply: '回复', share: '分享给你', shot: '发你截图', error: '没成功' }
-
-/** B 站：登录、定时刷、评论 / 回复、分享给主人，以及她刷过什么。 */
-
-function Bili({ draft, setDraft, toast }) {
-  const f = useField(draft, setDraft)
-  const [s, setS] = useState(null)
-  const [busy, setBusy] = useState('')
-  const [shots, setShots] = useState(null)
-  const [shotsTotal, setShotsTotal] = useState(0)
-  const [shotsHasMore, setShotsHasMore] = useState(false)
-  const [shotsBusy, setShotsBusy] = useState(false)
-  const load = () => get('/bili/state').then((r) => { if (r && Array.isArray(r.history)) setS(r); else if (r && r.ok === false) toast(r.message || '读取 B 站状态失败', 'err') }).catch((e) => toast(e.message, 'err'))
-  const loadShots = (append = false, force = false) => {
-    const offset = append && shots ? shots.length : 0
-    return getCached('/bili/shots?limit=25&offset=' + offset, force).then((r) => {
-      const items = r.items || []
-      setShots((prev) => append ? [...(prev || []), ...items] : items)
-      setShotsTotal(Number(r.total) || 0)
-      setShotsHasMore(Boolean(r.hasMore))
-    }).catch((e) => { if (!append) setShots([]); toast(e.message, 'err') })
-  }
-  const loadMoreShots = async () => {
-    if (shotsBusy || !shotsHasMore) return
-    setShotsBusy(true)
-    try { await loadShots(true) } finally { setShotsBusy(false) }
-  }
-  useEffect(() => { load(); loadShots() }, [])
-  const act = (path, label) => async () => { setBusy(label); const r = await post(path); setBusy(''); toast(r.message, r.ok ? 'ok' : 'err'); load(); loadShots() }
-  const acct = s && s.account
-  return h('div', { className: 'ab-grid' },
-    h(Card, { title: '刷 B 站', right: f.sw('bili.enabled'), desc: 'ta会定时去 B 站刷几个视频：从ta的兴趣、记忆里你喜欢的东西和下面的关键词里挑方向去搜，读简介、字幕和热评，再按自己的性格决定评不评论、要不要私聊分享给你、记住什么。看过的、评过的都记成ta的经历，聊天时会自然提起。你在 QQ 里发 B 站链接或分享卡片，ta也能点进去看完再聊。' },
-      h(BiliCookie, { draft, setDraft, load }),
-      h('div', { className: 'ab-flex', style: { marginTop: 4 } },
-        h(Btn, { small: true, onClick: async () => { await get('/bili/account'); load() } }, '检查登录'),
-        acct ? h('span', { className: 'ab-small', style: { color: acct.isLogin ? 'var(--ab-ok)' : 'var(--ab-warn)' } }, acct.isLogin ? '已登录：' + acct.uname : '没登录（只能看，不能评论）') : null),
-    ),
-    h(Card, { title: '怎么刷', desc: '只在「目的引擎」里设的醒着时间内刷。' },
-      h(Row, { label: '定时自己去刷' }, f.sw('bili.autoBrowse')),
-      h(Row, { label: '只在谷时刷', hint: '避开 DeepSeek 峰时（北京时间工作日 9-12、14-18）；峰时跳过定时刷和看回复，等谷时再跑，周末和法定节假日全天可刷' }, f.sw('bili.offpeak')),
-      (draft.bili && draft.bili.offpeak && s && s.lastSkipReason) ? h(Row, { label: '上次跳过' }, h('span', { className: 'ab-small', style: { color: 'var(--ab-warn)' } }, s.lastSkipReason)) : null,
-      h(Row, { label: '多久刷一轮' }, f.range('bili.intervalHours', 1, 24, 1, (v) => v + ' 小时')),
-      h(Row, { label: '每天最多刷' }, f.range('bili.maxRunsPerDay', 0, 12, 1, (v) => v + ' 轮')),
-      h(Row, { label: '一轮看几个视频' }, f.range('bili.perRun', 1, 6, 1, (v) => v + ' 个')),
-      h(Row, { label: '额外想看的方向', hint: '一行一个；另外还会参考ta的兴趣和记忆' }, f.list('bili.keywords', { placeholder: '白米饭 做法\n猫咪\n游戏解说' })),
-      h(Row, { label: '播放量门槛' }, f.num('bili.minViews', { min: 0 }), h('span', { className: 'ab-muted' }, '次以上')),
-      h(Row, { label: '只看最近' }, f.num('bili.maxAgeDays', { min: 0 }), h('span', { className: 'ab-muted' }, '天内发的（0 = 不限）')),
-    ),
-    h(Card, { title: '评论、回复和分享', desc: '评论和回复要登录。调试模式开着时只记日志不发。' },
-      h(Row, { label: '主人的 B 站昵称', hint: '填完整昵称。ta评论里写 @主人 时会 @ 这个号' }, f.text('bili.ownerName', { placeholder: '不填就 @ 不到你' })),
-      h(Row, { label: '自己发评论', hint: '只管ta自己刷视频时发不发；别人让ta发，看「权限」页的 B 站评论' }, f.sw('bili.comment'), h('span', { className: 'ab-muted' }, '每天最多'), f.num('bili.maxCommentsPerDay', { min: 0, max: 50 }), h('span', { className: 'ab-muted' }, '条')),
-      h(Row, { label: '回别人回ta的评论' }, f.sw('bili.reply'), h('span', { className: 'ab-muted' }, '每天最多'), f.num('bili.maxRepliesPerDay', { min: 0, max: 100 }), h('span', { className: 'ab-muted' }, '条')),
-      h(Row, { label: '看到好玩的分享给你', hint: '私聊发给主人，带视频链接' }, f.sw('bili.shareToOwner')),
-      h(Row, { label: '也提议发到群里', hint: '刷到合适的先私聊问主人，批准了才发；关着就不提' }, f.sw('bili.groupShare.enabled')),
-      h(Row, { label: '发到哪个群', hint: '群号。留空则不生效' }, f.text('bili.groupShare.groupId', { placeholder: '群号' })),
-      h(Row, { label: '每天最多发', hint: '只算真发进群的条数' }, f.num('bili.groupShare.dailyLimit', { min: 0, max: 20 }), h('span', { className: 'ab-muted' }, '条')),
-      h(Row, { label: '顺手点赞' }, f.sw('bili.like')),
-    ),
-    h(Card, { title: '看画面（抽帧 + 视觉）', desc: '默认只读标题、简介、字幕和热评。打开后用 ffmpeg 抽帧交给视觉模型，截图保存到本机，可以在 QQ 聊天里让ta挑一张发送。没有 ffmpeg、模型明确不支持图片或处理失败时，自动继续文字阅读。' },
-      h(Row, { label: '让ta看画面', hint: '需要视觉模型 + ffmpeg；关掉就退回只看文字' }, f.sw('bili.vision')),
-      h(Row, { label: '每个视频抽几帧' }, f.range('bili.visionFrames', 2, 12, 1, (v) => v + ' 帧')),
-      h(Row, { label: '刷完顺手发张截图', hint: '概率；跟发一张表情包一样默认 35%，0 = 从不。截图都存在本机，你让ta发ta也能挑' }, f.range('bili.shotChance', 0, 1, 0.05, (v) => Math.round(v * 100) + '%')),
-      h(Row, { label: '截图库最多存', hint: '超过就自动删最旧的；下面的截图库里也能一张张手动删' }, f.num('bili.shotLibrary', { min: 20, max: 2000 }), h('span', { className: 'ab-muted' }, '张')),
-      h(Row, { label: 'ffmpeg 路径', hint: '留空就自己在 PATH 里找；找不到就填绝对路径' }, f.text('bili.ffmpegPath', { placeholder: 'C:\\ffmpeg\\bin\\ffmpeg.exe' })),
-      s && s.vision ? h('div', { className: 'ab-small', style: { marginTop: 4, color: s.vision.ffmpeg ? 'var(--ab-ok)' : 'var(--ab-warn)' } }, (s.vision.ffmpeg ? '✓ 已找到 ffmpeg：' + s.vision.ffmpeg : '✗ 没找到 ffmpeg：抽帧会被跳过，装一个或者在上面填路径') + (s.shots ? '　·　手上存了 ' + s.shots.count + ' 张截图' : '')) : null,
-    ),
-    h(Card, { title: '截图库' + (shots ? '（' + shots.length + (shotsTotal > shots.length ? '/' + shotsTotal : '') + '，上限 ' + ((draft.bili && draft.bili.shotLibrary) || 300) + '）' : ''), right: h('div', { className: 'ab-flex' },
-      h(Btn, { small: true, kind: 'ghost', onClick: () => { bustCache(); loadShots(false, true) } }, '刷新')) },
-      !shots ? h(Empty, { icon: '⏳', text: '加载中…' }) : shots.length === 0 ? h(Empty, { icon: '🎬', text: '还没有截图。打开上面的「让ta看画面」刷一轮 B 站，就会开始截。' }) :
-        h('div', { className: 'ab-shots' }, shots.map((it) => h(ShotCell, {
-          key: it.file, it, toast,
-          // 删掉后只从本地列表移除这一张，不重拉第一页、不改变滚动位置
-          onChanged: (file) => {
-            if (file) {
-              const nextLoaded = Math.max(0, (shots || []).length - 1)
-              const nextTotal = Math.max(0, shotsTotal - 1)
-              setShots((prev) => (prev || []).filter((x) => x.file !== file))
-              setShotsTotal(nextTotal)
-              setShotsHasMore(nextTotal > nextLoaded)
-            }
-            load()
-          },
-        }))),
-      shotsHasMore ? h('div', { className: 'ab-flex', style: { marginTop: 8 } },
-        h(Btn, { small: true, kind: 'ghost', disabled: shotsBusy, onClick: loadMoreShots }, shotsBusy ? '加载中…' : `加载更多（已显示 ${shots ? shots.length : 0}/${shotsTotal}）`)) : null,
-    ),
-    h(Card, { title: 'ta刷过什么', right: h('div', { className: 'ab-flex' },
-      h(Btn, { small: true, onClick: act('/bili/replies', 'replies'), disabled: !!busy }, busy === 'replies' ? '正在看…' : '看看有没有人回ta'),
-      h(Btn, { small: true, kind: 'primary', onClick: act('/bili/run', 'run'), disabled: !!busy }, busy === 'run' ? h(Fragment, null, h('i', { className: 'ab-spin' }), ' 正在刷…') : '现在刷一轮')) },
-      s && s.pauseReason ? h('div', { className: 'ab-note warn', style: { marginBottom: 8 } }, '今天先不发评论和回复了：' + s.pauseReason + '。登录失效请保存新 Cookie 后点「检查登录」；验证、风控或频率限制不会因登录成功而解除。') : null,
-      s ? h('div', { className: 'ab-muted ab-small', style: { marginBottom: 8 } }, '今天自动刷了 ' + s.runs + ' 轮 · 评论 ' + s.comments + ' 条 · 回复 ' + s.replies + ' 条' + (s.lastRun ? ' · 上次 ' + timeAgo(s.lastRun) : '') + '（手动刷不占次数）') : null,
-      !s ? h(Empty, { icon: '⏳', text: '加载中…' }) : !Array.isArray(s.history) || s.history.length === 0 ? h(Empty, { icon: '📺', text: '还没刷过。点「现在刷一轮」试试。' }) :
-        h('div', { className: 'ab-list' }, s.history.map((x, i) => h('div', { key: i, className: 'ab-li' },
-          h('div', { className: 'meta' }, timeAgo(x.at), h('br'), BILI_KIND[x.kind] || x.kind),
-          h('div', { className: 'body' }, x.bvid ? h('a', { href: 'https://www.bilibili.com/video/' + x.bvid, target: '_blank', rel: 'noreferrer' }, '《' + x.title + '》') : h('b', null, '《' + x.title + '》'), x.text ? h('div', { className: 'ab-muted' }, x.text) : null)))),
-    ),
-    h(BiliDanmaku, { draft, setDraft, toast }),
-  )
-}
-
-/** 弹幕直接嵌在内置 B 站页，不依赖额外扩展面板。 */
-
-function BiliDanmaku({ draft, setDraft, toast }) {
-  const f = useField(draft, setDraft)
-  const [video, setVideo] = useState('')
-  const [part, setPart] = useState(1)
-  const [seconds, setSeconds] = useState('')
-  const [text, setText] = useState('')
-  const [position, setPosition] = useState('scroll')
-  const [info, setInfo] = useState(null)
-  const [status, setStatus] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const load = () => get('/bili/danmaku/state').then(setStatus)
-  useEffect(() => { load() }, [])
-  useEffect(() => { setInfo(null) }, [video, part])
-  const action = async (kind) => {
-    setBusy(true)
-    try {
-      const response = await fetch(API + '/bili/danmaku/' + kind, {
-        method: 'POST', headers: { 'content-type': 'application/json', 'x-aurabot-bili-danmaku': '1' },
-        body: JSON.stringify({ video, part, seconds, text, position }),
-      })
-      const result = await response.json()
-      if (result.info) setInfo(result.info)
-      toast(result.message || (result.ok ? '视频信息已读取' : '读取未完成'), result.ok ? 'ok' : 'err')
-      await load()
-    } catch { toast('弹幕接口暂时无法连接，请先到 B 站确认是否发送，避免重复提交', 'err') }
-    finally { setBusy(false) }
-  }
-  return h(Card, { title: '视频弹幕', desc: '两个开关默认关闭，改完先保存设置。发送按钮会实际提交弹幕；调试模式时不发送。沿用本页的 B 站登录。' },
-    h(Row, { label: '允许发送弹幕', hint: '关闭后手动、聊天工具和自动弹幕均不发送；聊天工具只接受主人私聊请求' }, f.sw('bili.danmakuEnabled')),
-    h(Row, { label: '刷完视频自己发弹幕', hint: '另行开启；每个视频每天最多一条自动弹幕' }, f.sw('bili.autoDanmaku')),
-    h(Row, { label: '每天最多提交弹幕', hint: '手动和自动共用次数上限，提交失败也计数' }, f.num('bili.maxDanmakuPerDay', { min: 1, max: 20 })),
-    h(Row, { label: '视频或番剧链接', hint: '支持 BV/av、ep单集、ss整季链接；短链接请先展开' }, h('input', { className: 'ab-input', value: video, placeholder: '视频链接、番剧链接或编号', onChange: (e) => setVideo(e.target.value) })),
-    h(Row, { label: '分P / 选集序号', hint: '普通视频填1；多段投稿选分P，ss整季链接选第几集；ep链接直接定位那一集' }, h('input', { className: 'ab-input sm', type: 'number', min: 1, value: part, onChange: (e) => setPart(e.target.value) })),
-    h(Row, { label: '出现时间（秒）', hint: '例如83表示01:23；按当前分P或单集计算' }, h('input', { className: 'ab-input sm', type: 'number', min: 0, step: 0.1, value: seconds, onChange: (e) => setSeconds(e.target.value) })),
-    h(Row, { label: '弹幕文字', hint: '一行，最多100字' }, h('input', { className: 'ab-input', value: text, onChange: (e) => setText(e.target.value) })),
-    h(Row, { label: '位置' }, h('select', { className: 'ab-input', value: position, onChange: (e) => setPosition(e.target.value) },
-      h('option', { value: 'scroll' }, '滚动'), h('option', { value: 'top' }, '顶部'), h('option', { value: 'bottom' }, '底部'))),
-    info ? h('p', { className: 'ab-note' }, `《${info.title}》 · ${info.kind === 'bangumi' ? '番剧单集' : '第' + info.part + 'P'} · ${info.duration}秒`) : null,
-    h('div', { className: 'ab-flex', style: { marginTop: 12 } },
-      h(Btn, { disabled: busy || !video, onClick: () => action('inspect') }, '检查视频（不发送）'),
-      h(Btn, { kind: 'primary', disabled: busy || !video || !text.trim() || seconds === '' || draft.bili?.danmakuEnabled !== true, onClick: () => action('send') }, busy ? '处理中…' : '发送弹幕')),
-    status?.ok ? h('p', { className: 'ab-small ab-muted' }, `今天已确认发送 ${status.sentToday} 条 · 已提交 ${status.attemptsToday}/${status.limit} 次 · 两次提交至少间隔30秒`) : null,
-    h('div', { className: 'ab-list' }, (status?.history || []).map((row, index) => h('div', { className: 'ab-li', key: index },
-      h('div', { className: 'meta' }, timeAgo(row.at), h('br'), row.auto ? '自己决定' : '主人要求'),
-      h('div', { className: 'body' }, h('b', null, row.title || row.video), ` · ${/^(ep|ss)/.test(row.video) ? '番剧单集' : '第' + row.part + 'P'} ${row.seconds}秒`, h('div', null, row.text),
-        h('div', { className: 'ab-small ab-muted' }, row.ok ? `已发送 · 弹幕ID ${row.id}` : row.message),
-        row.platformResponse ? h('details', null, h('summary', null, '平台响应'), h('pre', { className: 'ab-code' }, JSON.stringify(row.platformResponse, null, 2))) : null)))),
-  )
-}
-
-function ShotCell({ it, onChanged, toast }) {
-  const src = API + '/bili/shot/image?file=' + encodeURIComponent(it.file)
-  const cap = (it.title ? '《' + it.title + '》' : '截图') + (it.clock ? '　' + it.clock : '')
-  return h('div', { className: 'ab-shot' },
-    h('a', { href: src, target: '_blank', rel: 'noreferrer' }, h('img', { src, alt: cap, loading: 'lazy' })),
-    h('div', { className: 'cap', title: it.note || '' }, cap),
-    h('button', {
-      type: 'button',
-      className: 'ab-btn sm danger x',
-      title: '删除',
-      onClick: async () => {
-        if (!confirm('删掉这张截图？\n' + cap)) return
-        const r = await post('/bili/shot/delete', { file: it.file })
-        toast(r.message || '删掉了', r.ok ? 'ok' : 'err')
-        if (r.ok) onChanged(it.file)
-      },
-    }, '✕'),
-  )
 }
 
 const DOUYIN_KIND = { watch: '看了', look: '点开看', like: '点赞', comment: '评论', share: '分享给你', dm: '回你私信', 'dry:dm': '调试模式·私信', 'dry:like': '调试模式·点赞', 'dry:comment': '调试模式·评论', error: '没成功' }
@@ -941,4 +759,4 @@ function CodexSub({ draft, setDraft, toast }) {
   )
 }
 
-export { CONTENT_PLATFORMS, ContentTab, BILI_KIND, Bili, BiliDanmaku, ShotCell, DOUYIN_KIND, Douyin, HEYBOX_KIND, HEYBOX_STYLE_LABEL, Heybox, PaintGallery, PaintCell, CodexSub }
+export { CONTENT_PLATFORMS, ContentTab, DOUYIN_KIND, Douyin, HEYBOX_KIND, HEYBOX_STYLE_LABEL, Heybox, PaintGallery, PaintCell, CodexSub }

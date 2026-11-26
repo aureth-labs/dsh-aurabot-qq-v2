@@ -23,7 +23,7 @@ export function createImageReader({ onebot, getConfig, log, recentMediaOf }: Cre
   /** 超大的图交给模型可能让整轮请求失败：先缩小，缩不了就跳过这张，别的照常。 */
   async function fitForModel(buf) {
     if (buf.length <= MODEL_IMAGE_BYTES) return buf
-    const ffmpeg = findFfmpeg(getConfig().bili?.ffmpegPath || '')
+    const ffmpeg = findFfmpeg(getConfig().local?.ffmpegPath || '')
     const small = (ffmpeg ? await shrinkImage(buf, 2048, ffmpeg) : null) || await shrinkWithSharp(await findSharp(), buf, 2048)
     if (!small || small.length > MODEL_IMAGE_BYTES) throw new Error(`图片 ${Math.round(buf.length / 1048576)}MB 缩不下来`)
     return small

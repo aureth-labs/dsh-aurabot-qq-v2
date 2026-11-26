@@ -539,7 +539,7 @@ export function createImageGen({ getConfig, log, local, dsh, fetchImpl, codexAut
 
   // 保留本地调用方的附件辅助接口，与模块工具共用同一份图片登记实现。
   const canSee = async () => Boolean(dsh && (await canSeeImages(dsh, getConfig())) === true)
-  const toolImage = async (buf) => dsh ? imageToolBlock(dsh, buf, { ffmpegPath: getConfig().bili?.ffmpegPath, log }) : null
+  const toolImage = async (buf) => dsh ? imageToolBlock(dsh, buf, { ffmpegPath: getConfig().local?.ffmpegPath, log }) : null
   async function referenceLimit() {
     const c = getConfig().imageGen
     if (c.img2img === false) return 0

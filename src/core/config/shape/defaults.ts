@@ -48,7 +48,7 @@ export const DEFAULTS = {
   qqApi: { enabled: true }, // 她能用 qq_api_call 调 QQ 接口：别人只能查当前群，写操作只听主人
   approvalViaQQ: true, // 主人私聊会话要授权时，在 QQ 回复「确认」直接批准这一次
   approvalTimeoutSec: 300, // 等主人回复「确认」多久（秒）：默认 300，范围 30 ~ 1800
-  profilePerms: { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', biliSign: 'owner', biliAvatar: 'owner', biliComment: 'owner', qqFriendRequest: 'owner', whitelist: 'owner', douyinBrowse: 'owner', douyinLike: 'owner', douyinComment: 'owner', douyinShareOwner: 'owner', douyinDm: 'owner' }, // 改资料类操作（含抖音浏览 / 点赞 / 评论 / 分享）的权限：off 关 / owner 仅主人私聊 / all 所有人。抖音项默认仅主人，总开关默认关
+  profilePerms: { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner', douyinBrowse: 'owner', douyinLike: 'owner', douyinComment: 'owner', douyinShareOwner: 'owner', douyinDm: 'owner' }, // 改资料类操作（含抖音浏览 / 点赞 / 评论 / 分享）的权限：off 关 / owner 仅主人私聊 / all 所有人。抖音项默认仅主人，总开关默认关
   capabilityAllow: { image: [] as string[], song: [] as string[], video: [] as string[] },
   commandAllow: Object.fromEntries(DELEGATED_COMMANDS.map((name) => [name, [] as string[]])) as Record<string, string[]>,
   longTasks: true, // 长任务模式：主人私聊（完整权限）额外挂 dsh-tool-jobs + dsh-tool-schedule，会多一点工具定义、稍慢
@@ -200,48 +200,7 @@ export const DEFAULTS = {
     captionModel: { provider: '', model: '' },
   },
   // 本地接口：数据目录 local/ 里的脚本接管这几项（文件要在、开关要开）
-  local: { tts: false, image: false, song: false, asr: false, video: false, videoTimeoutMin: 20 },
-  bili: {
-    enabled: false,
-    sessdata: '', // B 站 Cookie 里的 SESSDATA（登录凭证）
-    biliJct: '', // B 站 Cookie 里的 bili_jct（发评论要用）。两个都不填也能看视频，只是不能评论
-    buvid3: '', // 设备指纹之一：扫码登录时跟票一起发下来，重启后要沿用同一个，不然容易被风控
-    buvid4: '', // 设备指纹之一：跟 buvid3 配套，一起发下来、一起保存
-    dedeUserId: '', // 这个号自己的 UID（Cookie 里的 DedeUserID），跟票绑在一起
-    ownerName: '', // 主人的 B 站昵称：她写 @主人 时 @ 这个号
-    cookie: '', // 由上面几个拼出来给接口用；老配置的整串会自动拆到上面几个里
-    autoBrowse: true, // 定时自己去刷
-    offpeak: false, // 只在谷时刷：默认关；峰时跳过定时刷和看回复（省 token）
-    intervalHours: 4, // 多久刷一轮
-    maxRunsPerDay: 3,
-    perRun: 3, // 一轮看几个视频
-    keywords: [] as string[], // 额外想让她搜的方向（另外还会参考她的兴趣和记忆里你喜欢的东西）
-    minViews: 5000, // 播放量门槛
-    maxAgeDays: 60, // 只看最近多少天发的
-    comment: true, // 自己发评论
-    maxCommentsPerDay: 3,
-    reply: true, // 回别人回她的评论
-    maxRepliesPerDay: 6,
-    danmakuEnabled: false, // 主人主动打开后才允许发送弹幕
-    autoDanmaku: false, // 刷完自己发弹幕，另行开启
-    maxDanmakuPerDay: 3, // 手动和自动共用提交上限（失败也计数）
-    shareToOwner: true, // 看到好玩的私聊分享给主人
-    like: false, // 顺手点赞
-    vision: false, // 可选：ffmpeg 抽帧交给视觉模型
-    visionFrames: 6,
-    ffmpegPath: '', // 留空从 PATH 查找
-    shotChance: 0.35, // 刷完发截图给主人；0 = 不自动发
-    shotLibrary: 300,
-    // 想发到群里的时候不直接发：先攒成待批，私聊问主人「发几号」。默认关，开了才考虑。
-    groupShare: {
-      enabled: false, // 默认关：开了才会把想发群的攒起来问主人
-      groupId: '', // 目标群号；空 = 不生效。生产群号留在部署侧 config.json，不进默认值（上游开源）
-      groups: [] as string[], // 攒好待批的分享按群分开排队
-      dailyLimit: 3, // 每天最多真发几条到群
-      pendingTtlHours: 24, // 待批多久没回就当不发
-      queueLimit: 1, // 一次最多攒几条待批：默认 1，一次只问一条、只发一条（发多了像刷屏）
-    },
-  },
+  local: { ffmpegPath: '', tts: false, image: false, song: false, asr: false, video: false, videoTimeoutMin: 20 },
   // 刷抖音：专用浏览器（独立登录资料，不碰你平时的浏览器），经 CDP 控制。浏览 / 点赞 / 评论 / 分享各项权限在 profilePerms.douyin*。
   douyin: {
     enabled: false, // 总开关：默认关，先在面板里扫码登录再打开
@@ -476,7 +435,6 @@ export type AurabotConfig = Replace<typeof DEFAULTS, {
   mood: MoodConfig
   chat: ChatConfig
   memory: MemoryConfig
-  bili: Replace<typeof DEFAULTS.bili, { groupShare: Replace<typeof DEFAULTS.bili.groupShare, { groups: string[] }> }>
   voice: Replace<typeof DEFAULTS.voice, { keyPools?: KeyPools }>
 }>
 

@@ -8,7 +8,7 @@ import type { AurabotConfig } from '../shape/defaults.ts'
 const FILE = () => dataDir('config.json')
 
 /** 在某次更新里新增、会替她公开发东西的功能。以后再加这类功能，把配置键名加到这里。 */
-export const OPT_IN_ON_UPDATE = ['bili', 'douyin']
+export const OPT_IN_ON_UPDATE = ['douyin']
 
 export function loadConfig() {
   const file = FILE()

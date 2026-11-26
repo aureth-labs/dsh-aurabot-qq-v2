@@ -7,7 +7,6 @@ import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { isSessionBackoff } from '../../src/chat/hub/turn/session-backoff.ts'
-import { createBili } from '../../packages/bili/impl/live/duty.ts'
 import { createPurpose } from '../../packages/purpose/impl/module/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { cleanupDir } from '../helpers/cleanup.js'
@@ -256,29 +255,6 @@ test('QQ 并发创建也只调一次宿主', async (t) => {
   assert.ok(results.every((r) => r.status === 'rejected' && isSessionBackoff(r.reason)))
   assert.equal(s.calls.length, 1)
   assert.equal(s.logs.warn.length, 1)
-})
-
-test('B站挑关键词遇到挂载失败直接跳过；冷却期间 tick/run/checkReplies 不再请求宿主或 B站', async (t) => {
-  const s = setup(t)
-  let apiCalls = 0
-  const api = Object.fromEntries(['search', 'popular', 'replyFeed', 'nav'].map((name) => [name, async () => { apiCalls++; return [] }]))
-  const bili = createBili({ getConfig: () => s.cfg, hub: s.hub, log: s.log, dsh: s.fake.ctx, api })
-  t.after(() => bili.dispose())
-  const first = await bili.run()
-  assert.equal(first.skipped, true)
-  assert.equal(s.calls.length, 1)
-  assert.equal(apiCalls, 0, '不应退回随机关键词后继续搜索')
-  const before = structuredClone(s.logs)
-  for (let i = 0; i < 3; i++) {
-    await bili.tick()
-    assert.equal((await bili.run()).skipped, true)
-    assert.equal((await bili.checkReplies()).skipped, true)
-  }
-  assert.equal(s.calls.length, 1)
-  assert.equal(apiCalls, 0)
-  assert.equal(bili.state().runs, 0)
-  assert.equal(bili.state().lastRun, 0)
-  assert.deepEqual(s.logs, before)
 })
 
 test('目的引擎首次挂载失败撤销预占次数，冷却跳过且不记自己的失败或日志', async (t) => {

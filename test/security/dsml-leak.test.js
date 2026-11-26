@@ -7,7 +7,6 @@ import { join } from 'node:path'
 import { cleanOutboundText, cleanOutboundSegments, stripToolText, parseReply } from '../../src/chat/reply/index.ts'
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { createBiliApi } from '../../packages/bili/impl/api.ts'
 import { cleanReply } from '../../packages/purpose/impl/module/index.ts'
 
 const screenshot = ['@苏眠眠 </ | | DSML | | invoke>', '</ | | DSML | | calls>']
@@ -186,23 +185,6 @@ test('items 钩子加入的工具文字不能进入 TTS 或文字回落', async 
   await s.hub.deliver('private:1', '你好')
   assert.equal(s.spoken.length, 0)
   assert.equal(s.sent.length, 0)
-})
-
-test('B 站评论出口复用清洗，纯调用不请求网络，正常正文保留', async () => {
-  const requests = [], warnings = []
-  const api = createBiliApi({ getCookie: () => 'bili_jct=test', log: { warn: (m) => warnings.push(m) },
-    async fetchImpl(url, options) { requests.push({ url, options }); return { async json() { return { code: 0, data: { rpid: 42 } } } } },
-  })
-  assert.equal((await api.postComment(1, block)).silent, true)
-  assert.equal((await api.postDanmaku({}, block, 0, 1)).silent, true)
-  assert.equal(requests.length, 0)
-  await api.postComment(1, `前文${block}后文`, { root: 2, parent: 3 })
-  assert.equal(requests.length, 1)
-  const form = new URLSearchParams(requests[0].options.body)
-  assert.equal(form.get('message'), '前文后文')
-  assert.equal(form.get('root'), '2')
-  assert.equal(form.get('parent'), '3')
-  assert.equal(warnings.length, 2)
 })
 
 test('桌宠的独立出口清洗正文', () => {

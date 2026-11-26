@@ -1,42 +1,11 @@
-import { createHash, randomUUID } from 'node:crypto'
-import {
-  constants,
-  copyFileSync,
-  existsSync,
-  linkSync,
-  mkdirSync,
-  readFileSync,
-  unlinkSync,
-  writeFileSync,
-} from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, mkdirSync } from 'node:fs'
+import { backup, createFile, object, read, type Values } from './files.ts'
 import { join } from 'node:path'
 import { dataDir, writeJson } from '../../../src/core/store/index.ts'
 
 const plugin = 'shangxueink/qzone'
 const adapter = 'adapter-qq-onebot-v11'
-type Values = Record<string, unknown>
-
-function object(value: unknown): Values {
-  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Values) : {}
-}
-
-function read(path: string) {
-  return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, '')) as unknown
-}
-
-function createFile(path: string, value: unknown) {
-  if (existsSync(path)) return
-  const tmp = path + '.' + randomUUID()
-  writeFileSync(tmp, JSON.stringify(value))
-  try {
-    linkSync(tmp, path)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
-  } finally {
-    unlinkSync(tmp)
-  }
-}
-
 function historyFor(selfId: string, root: string) {
   const dir = join(root, 'modules-data', plugin)
   mkdirSync(dir, { recursive: true })
@@ -70,12 +39,7 @@ export function migrateQzone(root = dataDir()) {
   if (!existsSync(path)) return
   const raw = object(read(path))
   if (!Object.hasOwn(raw, 'diary') && !Object.hasOwn(raw, 'qzoneSocial')) return
-  const backup = path + '.before-community-qzone'
-  try {
-    copyFileSync(path, backup, constants.COPYFILE_EXCL)
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
-  }
+  backup(path, '.before-community-qzone')
   const previous = raw.diary
   const { enabled: diaryOn, rich, archive, ...diary } = object(previous)
   const { enabled: socialOn, ...social } = object(raw.qzoneSocial)

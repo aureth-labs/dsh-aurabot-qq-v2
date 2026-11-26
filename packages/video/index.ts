@@ -325,7 +325,7 @@ export function apply(ctx, config) {
     if (v().selfView === false) return ''
     try {
       if (canSeeImages && (await canSeeImages(ctx.harness, cfg())) === false) { ctx.logger.debug('当前模型看不了图，跳过自检'); return '' }
-      const ffmpeg = findFfmpeg(cfg().bili?.ffmpegPath || '')
+      const ffmpeg = findFfmpeg(cfg().local?.ffmpegPath || '')
       if (!ffmpeg) { ctx.logger.debug('没找到 ffmpeg，跳过抽帧'); return '' }
       const d = Math.max(4, Math.round(Number(seconds) || 5))
       const frames = []

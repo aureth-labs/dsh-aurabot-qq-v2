@@ -229,7 +229,7 @@ const MANAGE_FEATURES = [
   { key: 'imagegen', label: '生图', desc: '按描述画图发给你。', tab: 'imagegen', flag: 'imageGen.enabled', cli: 'imagegen' },
   { key: 'song', label: '翻唱', desc: '用 RVC 翻唱一段发给你。', tab: 'song', flag: 'song.enabled', cli: 'song' },
   { key: 'pet', label: '桌宠', desc: '桌面上的悬浮窗形象，和 QQ 里是同一个她。', tab: 'pet', cli: 'pet' },
-  { key: 'platform', label: '内容平台', desc: '逛 B站 / 抖音 / 小黑盒，看内容也能互动。', tab: 'bili', cli: ['bili', 'douyin', 'heybox'] },
+  { key: 'platform', label: '内容平台', desc: '逛抖音和小黑盒，看内容也能互动。', tab: 'content', cli: ['douyin', 'heybox'] },
   { key: 'purpose', label: '目的引擎', desc: '像人一样主动找你说话：攒素材 → 立目标 → 到点来找你。', tab: 'speakup', flag: 'ext.purpose.enabled', cli: 'purpose' },
   { key: 'autotelic', label: '自驱引擎（实验）', desc: '观察→回味→决策→行动→沉淀，v5 重写，实验性功能。', tab: 'autotelic', flag: 'ext.autotelic.enabled', cli: 'autotelic' },
 ]

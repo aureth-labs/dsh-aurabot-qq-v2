@@ -262,7 +262,7 @@ export function apply(ctx, config) {
       // 图要先缩、再登记成 DSH 附件块 —— 直接塞 base64 会让下一轮请求整轮失败（实测）
       let img = null
       if (visual && seeOwn) {
-        img = await imageToolBlock(ctx.harness, bufs[0], { ffmpegPath: ctx.root.config.bili && ctx.root.config.bili.ffmpegPath })
+        img = await imageToolBlock(ctx.harness, bufs[0], { ffmpegPath: ctx.root.config.local?.ffmpegPath })
         if (!img) {
           // 图没给成：如实说看不了，别让她照着提示词编画面细节
           visual = false

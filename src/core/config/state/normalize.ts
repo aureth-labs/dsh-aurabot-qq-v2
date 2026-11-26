@@ -11,7 +11,6 @@ import { DEFAULT_TIER_DAYS } from '../../../features/memory/query/rules.ts'
 import { normalizeEmotions } from '../../../features/mood/emotions.ts'
 import { DEFAULTS } from '../shape/defaults.ts'
 import { deepMerge, isObj } from './shared.ts'
-import { splitBiliCookie } from './secrets.ts'
 import type { AurabotConfig, NoticeWorkspace } from '../shape/defaults.ts'
 import type { RawConfig } from './shared.ts'
 
@@ -300,29 +299,8 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.mood.emotions = normalizeEmotions(c.mood.emotions)
   for (const k of ['tts', 'image', 'song', 'asr', 'video']) c.local[k] = bool(c.local[k], false)
   c.local.videoTimeoutMin = num(c.local.videoTimeoutMin, 20, 1, BIG)
-  const b = c.bili
-  Object.assign(b, splitBiliCookie(b))
-  for (const k of ['enabled', 'autoBrowse', 'offpeak', 'comment', 'reply', 'shareToOwner', 'like', 'vision', 'danmakuEnabled', 'autoDanmaku']) b[k] = bool(b[k], DEFAULTS.bili[k])
-  b.visionFrames = Math.round(num(b.visionFrames, 6, 1, 100))
-  b.ffmpegPath = String(b.ffmpegPath || '').trim()
-  b.shotChance = num(b.shotChance, 0.35, 0, 1)
-  b.shotLibrary = Math.round(num(b.shotLibrary, 300, 1, BIG))
-  if (!isObj(b.groupShare)) b.groupShare = structuredClone(DEFAULTS.bili.groupShare)
-  b.groupShare.enabled = bool(b.groupShare.enabled, false)
-  b.groupShare.groupId = qq(b.groupShare.groupId)
-  b.groupShare.groups = [...new Set((Array.isArray(b.groupShare.groups) ? b.groupShare.groups : []).map(qq).filter(Boolean))].slice(0, 20)
-  b.groupShare.dailyLimit = Math.round(num(b.groupShare.dailyLimit, 3, 0, BIG))
-  b.groupShare.pendingTtlHours = Math.round(num(b.groupShare.pendingTtlHours, 24, 1, 24 * 30))
-  b.groupShare.queueLimit = Math.round(num(b.groupShare.queueLimit, 1, 1, 20))
-  b.intervalHours = num(b.intervalHours, 4, 0.1, BIG)
-  b.maxRunsPerDay = num(b.maxRunsPerDay, 3, 0, BIG)
-  b.perRun = num(b.perRun, 3, 1, BIG)
-  b.minViews = num(b.minViews, 5000, 0, BIG * 1e6)
-  b.maxAgeDays = num(b.maxAgeDays, 60, 0, BIG)
-  b.maxCommentsPerDay = num(b.maxCommentsPerDay, 3, 0, BIG)
-  b.maxRepliesPerDay = num(b.maxRepliesPerDay, 6, 0, BIG)
-  b.maxDanmakuPerDay = Math.round(num(b.maxDanmakuPerDay, 3, 1, 20))
-  b.keywords = (Array.isArray(b.keywords) ? b.keywords : String(b.keywords || '').split(/[\n,，]+/)).map((x) => String(x).trim()).filter(Boolean).slice(0, 30)
+  c.local.ffmpegPath = String(c.local.ffmpegPath || '').trim()
+  delete (c as RawConfig).bili
   const hb = c.heybox
   hb.shareToOwner = bool(hb.shareToOwner, true)
   hb.shareBias = ['stingy', 'normal', 'proactive'].includes(hb.shareBias) ? hb.shareBias : 'normal'

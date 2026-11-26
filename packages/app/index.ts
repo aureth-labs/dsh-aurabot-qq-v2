@@ -22,6 +22,7 @@ import { registerFaceRoutes } from './panel/platform/faces.ts'
 import { registerBridgeRoutes } from './panel/platform/open-api.ts'
 import { registerModelRoutes } from './panel/agent/models.ts'
 import { registerAvatarRoutes } from './panel/platform/avatar.ts'
+import { migrateBilibili } from './migrations/bilibili.ts'
 import { migrateQzone } from './migrations/qzone.ts'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -102,6 +103,7 @@ export function apply(ctx) {
     const restored = applyPendingRestore()
     if (restored) log.info(`已恢复备份：${restored} 个文件，原来的文件在 backups/ 里留了底`)
   } catch (error) { log.error('恢复备份失败：', error.message) }
+  migrateBilibili()
   migrateQzone()
   let cfg = loadConfig()
   debugSwitch.on = Boolean(cfg.debug)

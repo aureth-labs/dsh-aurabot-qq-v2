@@ -33,7 +33,7 @@ export function avatarSource(input) {
 /** 换头像前把图压到 QQ 能收下：1MB 以内原样，大了先缩到 640 以内、JPEG。缩不了返回 null。 */
 async function smallerForAvatar (buf, cfg) {
   if (buf.length <= 1024 * 1024) return buf
-  const ffmpeg = findFfmpeg(cfg && cfg.bili && cfg.bili.ffmpegPath)
+  const ffmpeg = findFfmpeg(cfg?.local?.ffmpegPath)
   let small = ffmpeg ? await shrinkImage(buf, AVATAR_MAX_SIDE, ffmpeg) : null
   if (!small) small = await shrinkWithSharp(await findSharp(), buf, AVATAR_MAX_SIDE)
   if (!small || small.length > AVATAR_MAX_BYTES) return null

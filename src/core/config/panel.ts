@@ -3,7 +3,7 @@ import { reconcileOwnerEdit } from './owners.ts'
 import { maskPools, restorePoolKeys } from './state/key-pool.ts'
 import type { RawPools } from './state/key-pool.ts'
 import { normalize } from './state/normalize.ts'
-import { allSecrets, getAt, HINTED, parentOf } from './state/secrets.ts'
+import { allSecrets, getAt, parentOf } from './state/secrets.ts'
 import { deepMerge, isObj } from './state/shared.ts'
 import type { AurabotConfig, ImageFallback } from './shape/defaults.ts'
 import type { RawConfig } from './state/shared.ts'
@@ -20,7 +20,6 @@ export function publicConfig(cfg, schemas: PluginFields = new Map()) {
   delete c.ownerAuthorization
   // 面板要能显示/修改「单个聊天的思考档位」（chatEfforts），所以回传这份配置；
   // 它本来就不含敏感内容，只是「聊天 → 模型 → 档位」的映射。
-  for (const [g, k] of HINTED) c[g][`${k}Hint`] = c[g][k] ? '…' + String(c[g][k]).slice(-4) : ''
   for (const path of allSecrets()) {
     const p = parentOf(c, path, false)
     if (!p) continue
@@ -79,9 +78,6 @@ export function mergeFromPanel (current: AurabotConfig, incoming: RawConfig | nu
   next.douyin.owner = { ...next.douyin.owner, ...Object.fromEntries(['secUid', 'uid', 'nickname', 'confirmedInput'].map((k) => [k, current.douyin?.owner?.[k] ?? ''])) }
   // 联动密钥只由插件生成，面板不能改
   next.bridge.token = current.bridge?.token || ''
-  // B 站：只改了其中一个值时，另一个保留；整串粘进来的会在 normalize 里拆开
-  const incomingBili = isObj(incoming?.bili) ? incoming.bili : {} as RawConfig
-  if (incomingBili.sessdata || incomingBili.biliJct) next.bili.cookie = ''
   const incomingGroup = isObj(incoming?.group) ? incoming.group : {} as RawConfig
   if (incomingGroup.overrides) next.group.overrides = incomingGroup.overrides as AurabotConfig['group']['overrides']
   // 按聊天选模型：两张表整张替换（deepMerge 会让删掉的条目又回来）

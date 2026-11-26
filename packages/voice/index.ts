@@ -183,7 +183,7 @@ export function apply(ctx, config) {
     const system = systemVoiceEngine()
     const { file } = await textToSpeech(text, system ? { engine: system } : {})
     const t = Date.now()
-    const spec = s0.resolve({ audio: new Uint8Array(toMono16k(asPcmWav(file, readFileSync(file), ctx.root.config.bili?.ffmpegPath || ''))) })
+    const spec = s0.resolve({ audio: new Uint8Array(toMono16k(asPcmWav(file, readFileSync(file), ctx.root.config.local?.ffmpegPath || ''))) })
     const r = await s0.transcribe(spec, AbortSignal.timeout(120000))
     const heard = typeof r === 'string' ? r : r?.text || r?.transcript || JSON.stringify(r)
     return { ok: Boolean(heard), said: text, heard, ms: Date.now() - t }

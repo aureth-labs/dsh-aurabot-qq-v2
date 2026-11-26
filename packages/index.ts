@@ -13,7 +13,6 @@ import * as qqApi from './qq-api/index.ts'
 import * as imagegen from './imagegen/index.ts'
 import * as purpose from './purpose/index.ts'
 import * as autotelic from './autotelic/index.ts'
-import * as bili from './bili/index.ts'
 import * as song from './song/index.ts'
 import * as profile from './profile/index.ts'
 import * as contacts from './contacts/index.ts'
@@ -35,7 +34,6 @@ const entries: Array<[string, Record<string, any>]> = [
   ['imagegen', imagegen],
   ['purpose', purpose],
   ['autotelic', autotelic],
-  ['bili', bili],
   ['song', song],
   ['profile', profile],
   ['contacts', contacts],
