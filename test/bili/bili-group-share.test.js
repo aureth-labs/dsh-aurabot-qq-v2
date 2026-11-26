@@ -13,10 +13,10 @@ let duty
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-group-share-'))
-  share = await import('../../src/bili/live/group-share.ts')
+  share = await import('../../packages/modules/bili/impl/live/group-share.ts')
   store = await import('../../src/core/store/index.ts')
   ;({ normalize } = await import('../../src/core/config/index.ts'))
-  duty = await import('../../src/bili/live/duty.ts')
+  duty = await import('../../packages/modules/bili/impl/live/duty.ts')
 })
 
 const file = () => store.dataDir('bili-group-share.json')

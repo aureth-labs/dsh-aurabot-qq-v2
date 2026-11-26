@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { lstatSync, readdirSync, realpathSync, readFileSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { stickerPath } from '../../../../src/features/stickers/index.ts'
-import { loadShots, shotPath } from '../../../../src/bili/media/shots.ts'
+import { loadShots, shotPath } from '../../bili/impl/media/shots.ts'
 import { dataDir } from '../../../../src/core/store/index.ts'
 import { clipText } from '../../../../src/core/support/util/text.ts'
 

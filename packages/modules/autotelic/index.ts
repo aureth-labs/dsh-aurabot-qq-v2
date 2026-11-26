@@ -19,22 +19,22 @@
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { readFile as readFileP, writeFile as writeFileP } from 'node:fs/promises'
 import { join } from 'node:path'
-import { verifyAuditChain, readAuditDay } from '../../../src/autotelic/observe/audit.ts'
-import { createObserve, createChatCollector, createEmotionBridge } from '../../../src/autotelic/observe/index.ts'
-import { resolveTags } from '../../../src/autotelic/feedback/tags.ts'
-import { createSchedule, scheduleConfig, quietOf } from '../../../src/autotelic/plan/schedule.ts'
-import { createPlanner, reviewRound, verifyDecisionLog } from '../../../src/autotelic/plan/index.ts'
-import { createConstraintWatcher, check as constraintCheck, rulesText as rulesTextOf } from '../../../src/autotelic/exec/constraint.ts'
-import { createExecV5 } from '../../../src/autotelic/exec/index.ts'
-import { createFeedback } from '../../../src/autotelic/feedback/index.ts'
-import { createSkillStore, createSkills, writeUserModule } from '../../../src/autotelic/feedback/skills.ts'
-import { createPrefixCache } from '../../../src/autotelic/feedback/prefix.ts'
-import { createBook } from '../../../src/autotelic/plan/book.ts'
-import { probePython, loadEnvCache, saveEnvCache, envUsable, runPython } from '../../../src/autotelic/exec/python.ts'
-import { probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView } from '../../../src/autotelic/exec/takeover.ts'
-import { reconcileDay, problemsText } from '../../../src/autotelic/feedback/reconcile.ts'
-import { createJournal } from '../../../src/autotelic/observe/reflect.ts'
-import { inQuietHours } from '../../../src/purpose/engine/index.ts'
+import { verifyAuditChain, readAuditDay } from './impl/observe/audit.ts'
+import { createObserve, createChatCollector, createEmotionBridge } from './impl/observe/index.ts'
+import { resolveTags } from './impl/feedback/tags.ts'
+import { createSchedule, scheduleConfig, quietOf } from './impl/plan/schedule.ts'
+import { createPlanner, reviewRound, verifyDecisionLog } from './impl/plan/index.ts'
+import { createConstraintWatcher, check as constraintCheck, rulesText as rulesTextOf } from './impl/exec/constraint.ts'
+import { createExecV5 } from './impl/exec/index.ts'
+import { createFeedback } from './impl/feedback/index.ts'
+import { createSkillStore, createSkills, writeUserModule } from './impl/feedback/skills.ts'
+import { createPrefixCache } from './impl/feedback/prefix.ts'
+import { createBook } from './impl/plan/book.ts'
+import { probePython, loadEnvCache, saveEnvCache, envUsable, runPython } from './impl/exec/python.ts'
+import { probeTakeovers, applyTakeover, restoreTakeover, findFlipped, repressTakeover, takeoverView } from './impl/exec/takeover.ts'
+import { reconcileDay, problemsText } from './impl/feedback/reconcile.ts'
+import { createJournal } from './impl/observe/reflect.ts'
+import { inQuietHours } from '../purpose/impl/engine/index.ts'
 import { dataDir } from '../../../src/core/store/index.ts'
 import { personaDataDir, personaNow, currentPersonaText } from '../../../src/persona/personas.ts'
 
@@ -49,10 +49,10 @@ export default {
   platforms: ['*'],
   description: '实验性。v5：她自己的日子——观察积累 → 定时回味/心念点火 → 三段决策环（生成/把关分离，全灭合法）→ 行动单执行（三级分级+硬禁区）→ 技能三层沉淀（score 锚真实复用终态）→ 反馈回路（抑制/冷度/熔断）+ constraintRules 强制约束 + 接管。默认关闭；实验性功能，行为与配置面可能随版本调整。',
   files: [
-    'src/autotelic/audit.js', 'src/autotelic/book.js', 'src/autotelic/observe.js', 'src/autotelic/tags.js',
-    'src/autotelic/schedule.js', 'src/autotelic/plan.js', 'src/autotelic/constraint.js', 'src/autotelic/prefix.js',
-    'src/autotelic/exec.js', 'src/autotelic/feedback.js', 'src/autotelic/skills.js', 'src/autotelic/reflect.js',
-    'src/autotelic/python.js', 'src/autotelic/takeover.js', 'src/autotelic/reconcile.js',
+    'packages/modules/autotelic/impl/audit.js', 'packages/modules/autotelic/impl/book.js', 'packages/modules/autotelic/impl/observe.js', 'packages/modules/autotelic/impl/tags.js',
+    'packages/modules/autotelic/impl/schedule.js', 'packages/modules/autotelic/impl/plan.js', 'packages/modules/autotelic/impl/constraint.js', 'packages/modules/autotelic/impl/prefix.js',
+    'packages/modules/autotelic/impl/exec.js', 'packages/modules/autotelic/impl/feedback.js', 'packages/modules/autotelic/impl/skills.js', 'packages/modules/autotelic/impl/reflect.js',
+    'packages/modules/autotelic/impl/python.js', 'packages/modules/autotelic/impl/takeover.js', 'packages/modules/autotelic/impl/reconcile.js',
   ],
   // 独立标签页「自驱引擎」（页面在 client/tabs/agent/autotelic.ts）。
   tab: 'autotelic',

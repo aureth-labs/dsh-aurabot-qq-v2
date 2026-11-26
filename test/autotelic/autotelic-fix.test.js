@@ -8,9 +8,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createSchedule } from '../../src/autotelic/plan/schedule.ts'
-import { TRANSIENT_RE, isForbidden } from '../../src/autotelic/exec/index.ts'
-import { createFeedback } from '../../src/autotelic/feedback/index.ts'
+import { createSchedule } from '../../packages/modules/autotelic/impl/plan/schedule.ts'
+import { TRANSIENT_RE, isForbidden } from '../../packages/modules/autotelic/impl/exec/index.ts'
+import { createFeedback } from '../../packages/modules/autotelic/impl/feedback/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const tmp = (t, name) => {

@@ -74,8 +74,8 @@ export interface ModuleError { message: string; at: number; source?: string; fal
 /** 磁盘上扫到的用户模块。 */
 export interface UserModule { id: string; dir: string; safe?: boolean; version?: string; [key: string]: unknown }
 
-export const SRC = fileURLToPath(new URL('../../', import.meta.url)) // 内核 src/（发布态是 lib/src/）
-export const REPO = fileURLToPath(new URL('../../../', import.meta.url)) // 插件根（发布态是 lib/）
+export const SRC = fileURLToPath(new URL('../..', import.meta.url)) // 内核 src/（发布态是 lib/src/）
+export const REPO = fileURLToPath(new URL('../../..', import.meta.url)) // 插件根（发布态是 lib/）
 export const PKG = join(REPO, 'packages') // 插件与适配器包（发布态是 lib/packages/）
 /** 内置模块目录：src 只放内核，内置插件全部住在 packages/modules。 */
 export const BUILTIN_DIR = join(PKG, 'modules')

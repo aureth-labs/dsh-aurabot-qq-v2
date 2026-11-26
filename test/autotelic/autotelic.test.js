@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../../src/autotelic/observe/audit.ts'
+import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../../packages/modules/autotelic/impl/observe/audit.ts'
 import module from '../../packages/modules/autotelic/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 

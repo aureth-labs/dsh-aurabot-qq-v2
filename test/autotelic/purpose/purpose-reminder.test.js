@@ -12,7 +12,7 @@ let normalize
 const OWNER = '10000001'
 
 before(async () => {
-  ;({ createPurpose } = await import('../../../src/purpose/module/index.ts'))
+  ;({ createPurpose } = await import('../../../packages/modules/purpose/impl/module/index.ts'))
   ;({ normalize } = await import('../../../src/core/config/index.ts'))
 })
 

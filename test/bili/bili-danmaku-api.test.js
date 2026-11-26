@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createBiliApi } from '../../src/bili/api.ts'
-import { videoPart, danmakuResponse } from '../../src/bili/live/danmaku.ts'
+import { createBiliApi } from '../../packages/modules/bili/impl/api.ts'
+import { videoPart, danmakuResponse } from '../../packages/modules/bili/impl/live/danmaku.ts'
 
 const video = 'BV1xx411c7mD'
 const info = { bvid: video, aid: '1', cid: '22', duration: 90, part: 2 }

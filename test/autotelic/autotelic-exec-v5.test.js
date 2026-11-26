@@ -1,4 +1,4 @@
-// 自驱引擎 v5 · 行动单执行器测试（src/autotelic/exec.js）。
+// 自驱引擎 v5 · 行动单执行器测试（packages/modules/autotelic/impl/exec.js）。
 // 全部走 fake 注入（hooks.execStep / hooks.selfCheck / hooks.sleep / now / book / skills），
 // 不打真模型、不碰真实数据目录（快照用临时目录，测完可清）。
 
@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, existsSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createExecV5, isForbidden, TRANSIENT_RE } from '../../src/autotelic/exec/index.ts'
+import { createExecV5, isForbidden, TRANSIENT_RE } from '../../packages/modules/autotelic/impl/exec/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 /** 造一张最小行动单。 */
@@ -331,7 +331,7 @@ test('预算传给 hub 自管超时，exec 侧 race 只兜底不抢跑（2026-11
 
 test('频控跨重启持久（lead 裁决 2026-11-17）：注入 feedback 后，换新执行器实例节流仍在', async () => {
   const { mkdtempSync: mtd, rmSync: rm, writeFileSync: dummy } = await import('node:fs')
-  const { createFeedback } = await import('../../src/autotelic/feedback/index.ts')
+  const { createFeedback } = await import('../../packages/modules/autotelic/impl/feedback/index.ts')
   const dir = mtd(join(tmpdir(), 'autotelic-exec-fb-'))
   const file = join(dir, 'feedback.json')
   dummy(file, '', 'utf8') // 落一个真实文件路径，走持久面

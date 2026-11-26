@@ -10,8 +10,8 @@ import { dataDir } from '../../src/core/store/index.ts'
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-'))
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-')) }
 
-const { clockOf, pickShot, createShotStore, loadShots } = await import('../../src/bili/media/shots.ts')
-const { createBili } = await import('../../src/bili/live/duty.ts')
+const { clockOf, pickShot, createShotStore, loadShots } = await import('../../packages/modules/bili/impl/media/shots.ts')
+const { createBili } = await import('../../packages/modules/bili/impl/live/duty.ts')
 const { normalize } = await import('../../src/core/config/index.ts')
 
 test('clockOf：秒数转 mm:ss', () => {

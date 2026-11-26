@@ -8,10 +8,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, existsSync, rmSync, writeFileSync, appendFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DEFAULT_TAGS, isValidTag, resolveTags, mergeTags, readUserTags } from '../../src/autotelic/feedback/tags.ts'
+import { DEFAULT_TAGS, isValidTag, resolveTags, mergeTags, readUserTags } from '../../packages/modules/autotelic/impl/feedback/tags.ts'
 import {
   createObserve, matchCorrection, salienceOf, createEmotionBridge, createChatCollector,
-} from '../../src/autotelic/observe/index.ts'
+} from '../../packages/modules/autotelic/impl/observe/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 function tmpDir(t, name = 'autotelic-obs-') {

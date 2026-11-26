@@ -1,15 +1,15 @@
 // 内置模块：B 站。别人发来链接时她能「看」视频（标题、简介、字幕、热评）；定时自己去刷、评论、回评论，看到好玩的分享给主人。
 
 import { readFileSync } from 'node:fs'
-import { createBili } from '../../../src/bili/live/duty.ts'
-import { createGroupShare } from '../../../src/bili/live/group-share.ts'
+import { createBili } from './impl/live/duty.ts'
+import { createGroupShare } from './impl/live/group-share.ts'
 import { defineTool, str } from '../../../src/tools/index.ts'
 import { permOf, profileToolVisible, profilePermits } from '../../../src/chat/policy/rules/access.ts'
 import { avatarSource } from '../profile/index.ts'
 import { resolvePainting } from '../../../src/features/media/generate/paintings.ts'
 import { segmentBytes } from '../../../src/core/net/index.ts'
 import { createDanmaku, danmakuPanelRequest } from './danmaku.ts'
-import { createQrLogin } from '../../../src/bili/login/qr-login.ts'
+import { createQrLogin } from './impl/login/qr-login.ts'
 import { dataDir } from '../../../src/core/store/index.ts'
 
 export default {
@@ -18,7 +18,7 @@ export default {
   version: '1.1.0',
   description: '看别人发的 B 站视频；定时自己刷、评论、回评论；可选发弹幕；抽帧看画面、发截图；按权限改自己的头像 / 签名（bili_watch / bili_comment / bili_danmaku / qq_send_shot / bili_set_avatar / bili_set_sign）',
   tab: 'bili',
-  files: ['src/bili/live/duty.js', 'src/bili/live/group-share.js', 'src/bili/api.js', 'src/bili/media/vision.js', 'src/bili/media/shots.js', 'src/bili/live/danmaku.js', 'src/bili/login/login-pause.js', 'src/bili/login/qr-login.js'],
+  files: ['packages/modules/bili/impl/live/duty.js', 'packages/modules/bili/impl/live/group-share.js', 'packages/modules/bili/impl/api.js', 'packages/modules/bili/impl/media/vision.js', 'packages/modules/bili/impl/media/shots.js', 'packages/modules/bili/impl/live/danmaku.js', 'packages/modules/bili/impl/login/login-pause.js', 'packages/modules/bili/impl/login/qr-login.js'],
   setup(api) {
     const { hub } = api.core
     const lastImage = new Map() // chatId → 最近一张图的网址（给 bili_set_avatar 的 last 用）

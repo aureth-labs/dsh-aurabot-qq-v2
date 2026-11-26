@@ -8,7 +8,7 @@
 //
 // 薄壳只做注册；引擎在 src/purpose/engine.js（纯函数），接线在 src/purpose/module.js。
 
-import { createPurpose } from '../../../src/purpose/module/index.ts'
+import { createPurpose } from './impl/module/index.ts'
 import { defineTool, str } from '../../../src/tools/index.ts'
 
 export default {
@@ -17,7 +17,7 @@ export default {
   version: '1.0.0',
   description: '像人一样主动找主人搭话：攒素材 → 记观察 → 立目标假设 → 挑一个候选，到点了才来找你。默认开启（主动搭话已并入目的引擎）；显式关过的不会被默认值洗回。',
   tab: 'speakup',
-  files: ['src/purpose/module/index.js', 'src/purpose/engine/index.js'],
+  files: ['packages/modules/purpose/impl/module/index.js', 'packages/modules/purpose/impl/engine/index.js'],
   defaults: {
     // P1/Q1 拍板：新装也默认开启。modules.js 的 defaults 填充只补「缺失键」，
     // 用户显式写过的 enabled:false 不会被这里的 true 洗掉（运行期语义在 purposeConfig 再兜一层：

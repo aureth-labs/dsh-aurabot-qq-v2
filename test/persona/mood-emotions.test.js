@@ -201,7 +201,7 @@ test('目的引擎：清单里不再有心情向量，旧向量在第一次 load
     moods: { lonely: 0.8, excited: 0.3 },
     moodsAt: Date.now() - 1000,
   }))
-  const { createPurpose, purposeConfig } = await import('../../src/purpose/module/index.ts')
+  const { createPurpose, purposeConfig } = await import('../../packages/modules/purpose/impl/module/index.ts')
   const { normalize } = await import('../../src/core/config/index.ts')
   const cfg = normalize({ mood: { enabled: true }, ext: { purpose: { enabled: true } }, speakUp: { enabled: false } })
   const felt = []

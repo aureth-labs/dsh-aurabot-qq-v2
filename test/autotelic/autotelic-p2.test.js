@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createAuditor, verifyAuditChain } from '../../src/autotelic/observe/audit.ts'
-import { createJournal, dayKey } from '../../src/autotelic/observe/reflect.ts'
+import { createAuditor, verifyAuditChain } from '../../packages/modules/autotelic/impl/observe/audit.ts'
+import { createJournal, dayKey } from '../../packages/modules/autotelic/impl/observe/reflect.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const tmp = (t, name) => {

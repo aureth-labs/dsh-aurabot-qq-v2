@@ -2,8 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
-import { frameTimes, pickVideoStream, findFfmpeg, visionState, lookWithVision, describeFrames, progressiveWindows, windowAt } from '../../src/bili/media/vision.ts'
-import { digestOf } from '../../src/bili/live/duty.ts'
+import { frameTimes, pickVideoStream, findFfmpeg, visionState, lookWithVision, describeFrames, progressiveWindows, windowAt } from '../../packages/modules/bili/impl/media/vision.ts'
+import { digestOf } from '../../packages/modules/bili/impl/live/duty.ts'
 
 test('frameTimes：跳过首尾 5%，均匀铺开，不重复', () => {
   const t = frameTimes(600, 6)

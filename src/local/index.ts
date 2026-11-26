@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dataDir } from '../core/store/index.ts'
 import { selfName } from '../persona/personas.ts'
 
-const TEMPLATES = fileURLToPath(new URL('./templates/', import.meta.url))
+const TEMPLATES = fileURLToPath(new URL('./templates', import.meta.url))
 const README = 'README-本地接口.md'
 
 export const SLOTS = {

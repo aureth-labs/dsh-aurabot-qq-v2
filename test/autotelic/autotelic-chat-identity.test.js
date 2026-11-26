@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, appendFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createObserve, createChatCollector } from '../../src/autotelic/observe/index.ts'
+import { createObserve, createChatCollector } from '../../packages/modules/autotelic/impl/observe/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
@@ -53,7 +53,7 @@ test('观察窗按来源分配额，情绪打点挤不掉聊天', () => {
 })
 
 test('schedule 透出真实 outcome，status 返回 running', () => {
-  assert.match(read('../../src/autotelic/plan/schedule.ts'), /result\.outcome/)
+  assert.match(read('../../packages/modules/autotelic/impl/plan/schedule.ts'), /result\.outcome/)
   assert.match(read('../../packages/modules/autotelic/index.ts'), /running:\s*!!schedule\.view\(\)\.inFlight/)
 })
 
