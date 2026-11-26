@@ -78,3 +78,19 @@ test('isSchema 只认自家节点', () => {
   assert.equal(isSchema({ type: 'object' }), false)
   assert.equal(isSchema(null), false)
 })
+
+test('表格字段描述元素类型，复合密码组不暴露默认凭据', () => {
+  const table = Schema.array(Schema.object({
+    platform: Schema.union(['qq', 'sandbox']),
+    age: Schema.natural().min(1).max(5),
+  })).default([])
+  const hidden = Schema.object({ token: Schema.string().role('secret').default('fixture-credential') })
+  const [targets, access] = Schema.object({ targets: table, access: hidden }).toSettings()
+  assert.equal(targets.type, 'array')
+  assert.equal(targets.item.type, 'object')
+  assert.deepEqual(targets.item.fields.map(f => f.type), ['select', 'number'])
+  assert.equal(targets.item.fields[1].step, 1)
+  assert.equal(access.type, 'password')
+  assert(!JSON.stringify(access).includes('fixture-credential'))
+  assert.equal(table.validate([{platform:'sandbox',age:6}]).ok,false)
+})

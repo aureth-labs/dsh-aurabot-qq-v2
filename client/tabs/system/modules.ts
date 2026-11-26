@@ -1,6 +1,7 @@
+import { SchemaField } from './schema-field.ts'
 import React, { useState, useEffect } from '../../core/ui/react.ts'
 import { API, get, post } from '../../core/api/api.ts'
-import { copy, getPath, setPath } from '../../core/ui/format.ts'
+import { copy } from '../../core/ui/format.ts'
 import { PanelBoundary } from '../../core/nav.ts'
 import { Btn, Card, Empty, Range, Row, Seg, Select, Switch, cx, h, useField } from '../../core/ui/ui.ts'
 
@@ -431,10 +432,9 @@ function ExtPanel({ m, settings, draftSettings, setSettings, toast, reload, save
  * 一份代码多份配置：每个实例自己一套参数，宿主按 instances 逐个 apply。
  * 没填的字段沿用主配置——所以这里只在实例上写「和主配置不一样」的值。
  */
-function InstanceEditor({ m, instances, setInstances, toast }) {
+function InstanceEditor({ m, settings: parent, instances, setInstances, toast }) {
   const [name, setName] = useState('')
   const settings = m.settings || []
-  const defaults = m.defaults || {}
   const setOne = (index, patch) => setInstances(instances.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   const patch = (index, key, value) => setOne(index, { config: { ...(instances[index].config || {}), [key]: value } })
   const add = () => {
@@ -444,15 +444,10 @@ function InstanceEditor({ m, instances, setInstances, toast }) {
     setInstances([...instances, { id, enabled: true, config: {} }])
     setName('')
   }
-  const field = (item, index, s) => {
-    const value = (item.config || {})[s.key] ?? ''
-    const hint = s.type === 'password' ? '留空 = 用主配置那一份' : (defaults[s.key] != null && value === '' ? '默认 ' + defaults[s.key] : (s.placeholder || ''))
-    if (s.type === 'switch') return h(Switch, { on: (item.config || {})[s.key] === true, onChange: (v) => patch(index, s.key, v) })
-    if (s.type === 'number') return h('input', { className: 'ab-input sm', type: 'number', value, min: s.min, max: s.max, step: s.step, onChange: (e) => patch(index, s.key, e.target.value === '' ? '' : Number(e.target.value)) })
-    if (s.type === 'select') return h(Select, { value, options: (s.options || []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o)), onChange: (v) => patch(index, s.key, v) })
-    if (s.type === 'textarea') return h('textarea', { className: 'ab-textarea', value, onChange: (e) => patch(index, s.key, e.target.value) })
-    return h('input', { className: 'ab-input', type: s.type === 'password' ? 'password' : 'text', value, placeholder: hint, onChange: (e) => patch(index, s.key, e.target.value) })
-  }
+  const field = (item, index, s) => h(SchemaField, {
+    field: s, value: item.config?.[s.key] ?? (s.type === 'password' ? '' : parent[s.key]), saved: item.config?.[s.key + 'Set'],
+    onChange: value => patch(index, s.key, value),
+  })
   return h(Card, { title: '实例', desc: '这份插件可以同时跑多份配置：每个实例一套参数，互不影响（适配器多账号就靠它）' },
     instances.length
       ? instances.map((item, index) => h('div', { key: String(item.id), className: 'ab-note', style: { marginBottom: 10 } },
@@ -460,8 +455,8 @@ function InstanceEditor({ m, instances, setInstances, toast }) {
           h('strong', null, '实例 · ' + item.id),
           h(Switch, { on: item.enabled !== false, onChange: (v) => setOne(index, { enabled: v }) }),
           h(Btn, { small: true, kind: 'danger', onClick: () => setInstances(instances.filter((_, i) => i !== index)) }, '删除')),
-        settings.map((s) => h(Row, { key: s.key, label: s.label || s.key, hint: s.hint }, field(item, index, s))),
-        settings.length ? h('div', { className: 'ab-small ab-muted' }, '没填的字段沿用上面主配置的值。') : null))
+        settings.filter(s => !s.hidden).map((s) => h(Row, { key: s.key, label: s.label || s.key, hint: s.hint }, field(item, index, s))),
+        settings.length ? h('div', { className: 'ab-small ab-muted' }, '普通字段沿用主配置，凭据由各实例单独保存。') : null))
       : h('div', { className: 'ab-small ab-muted' }, '还没有额外实例。上面那份是主实例；要同时跑第二个账号，就在下面加一个实例。'),
     h('div', { className: 'ab-flex', style: { marginTop: 8 } },
       h('input', { className: 'ab-input', value: name, placeholder: '新实例名，比如 second', onChange: (e) => setName(e.target.value) }),
@@ -470,30 +465,23 @@ function InstanceEditor({ m, instances, setInstances, toast }) {
 
 function ExtPage({ st, draft, setDraft, toast, reload, mod, embedded }) {
   const m = (st.modules || []).find((x) => x.id === mod)
-  const f = useField(draft, setDraft)
   if (!m) return h(Empty, { icon: '🧩', text: '这个模块没在跑了' })
-  const base = 'ext.' + m.id + '.'
   const settings = { ...(m.defaults || {}), ...((st.config.ext || {})[m.id] || {}) }
   const draftSettings = { ...(m.defaults || {}), ...((draft.ext || {})[m.id] || {}) }
   const setSettings = (patch) => setDraft((previous) => ({ ...previous, ext: { ...previous.ext, [m.id]: { ...(previous.ext || {})[m.id], ...patch } } }))
   // 实例列表整块替换：数组用点路径写会变成 {"0":…} 对象，不能走 setPath
   const instances = Array.isArray((draft.ext || {})[m.id]?.instances) ? draft.ext[m.id].instances : []
   const setInstances = (next) => setDraft((previous) => ({ ...previous, ext: { ...previous.ext, [m.id]: { ...(previous.ext || {})[m.id], instances: next } } }))
-  const field = (s) => {
-    const p = base + s.key
-    if (s.type === 'switch') return f.sw(p)
-    if (s.type === 'number') return f.num(p, { min: s.min, max: s.max, step: s.step })
-    if (s.type === 'select') return f.select(p, (s.options || []).map((o) => (typeof o === 'string' ? { value: o, label: o } : o)))
-    if (s.type === 'textarea') return h('textarea', { className: 'ab-textarea', value: getPath(draft, p) ?? '', placeholder: s.placeholder, onChange: (e) => setDraft(setPath(draft, p, e.target.value)) })
-    if (s.type === 'password') return f.text(p, { type: 'password', placeholder: getPath(draft, p + 'Set') ? '已保存（不改就留空）' : s.placeholder || '' })
-    return f.text(p, { placeholder: s.placeholder })
-  }
+  const field = (s) => h(SchemaField, {
+    field: s, value: draftSettings[s.key], saved: settings[s.key + 'Set'],
+    onChange: value => setSettings({ [s.key]: value }),
+  })
   return h('div', { className: 'ab-grid' },
     ((m.settings || []).length || (m.errors || []).length || !m.panel) ? h(Card, { title: m.name, desc: m.description, right: h('span', { className: 'ab-badge mine' }, embedded ? '扩展模块 · ' + m.id : m.id) },
-      (m.settings || []).map((s) => h(Row, { key: s.key, label: s.label || s.key, hint: s.hint }, field(s))),
+      (m.settings || []).filter(s => !s.hidden).map((s) => h(Row, { key: s.key, label: s.label || s.key, hint: s.hint }, field(s))),
       (m.settings || []).length ? h('div', { className: 'ab-small ab-muted' }, '改完点下面的「保存设置」。') : null,
       (m.errors || []).length ? h('div', { className: 'ab-note err', style: { marginTop: 8 } }, '最近的报错：' + m.errors[0].message) : null) : null,
-    m.reusable ? h(InstanceEditor, { m, instances, setInstances, toast }) : null,
+    m.reusable ? h(InstanceEditor, { m, settings: draftSettings, instances, setInstances, toast }) : null,
     m.panel ? h(ExtPanel, { m, settings, draftSettings, setSettings, toast, reload }) : null)
 }
 

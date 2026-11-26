@@ -7,7 +7,7 @@
 //     maxMinutes: Schema.natural().min(4).max(30).default(10),
 //   })
 
-export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'password'
+export type FieldType = 'text' | 'number' | 'boolean' | 'select' | 'password' | 'object' | 'array'
 
 export interface SettingsField {
   key: string
@@ -19,6 +19,8 @@ export interface SettingsField {
   max?: number
   step?: number
   options?: Array<{ value: string; label: string }>
+  fields?: SettingsField[]
+  item?: SettingsField
   hidden?: boolean
   deprecated?: boolean
   experimental?: boolean
@@ -217,7 +219,10 @@ export class SchemaNode<T = unknown> {
       label: this.desc || key,
       type: this.fieldType(),
     }
-    if (this.hasDefault) field.default = this.fallback
+    if (this.hasDefault && !this.containsSecret()) field.default = this.fallback
+    if (this.kind === 'object') field.fields = this.toSettings()
+    if (this.item) field.item = this.item.toField('')
+    if (this.intOnly) field.step = 1
     if (this.desc) field.hint = this.desc
     if (this.upper !== undefined) field.max = this.upper
     if (this.lower !== undefined) field.min = this.lower
@@ -242,6 +247,7 @@ export class SchemaNode<T = unknown> {
 
   private fieldType(): FieldType {
     if (this.containsSecret()) return 'password'
+    if (this.kind === 'object' || this.kind === 'array') return this.kind
     if (this.kind === 'boolean') return 'boolean'
     if (this.kind === 'number') return 'number'
     if (this.kind === 'union') return 'select'
