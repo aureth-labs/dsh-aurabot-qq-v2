@@ -11,7 +11,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../../../src/chat/hub/index.ts'
-import { createOutboundPolicy } from '../../../src/chat/policy/outbound.ts'
+import { createOutboundPolicy } from '../../../src/chat/policy/outbound/index.ts'
 import { scopeCoreForModule } from '../../../src/core/module/index.ts'
 
 // 这个测试会真调 hub.deliver，不隔离数据目录会把假消息（private:10001）写进真实聊天流水。

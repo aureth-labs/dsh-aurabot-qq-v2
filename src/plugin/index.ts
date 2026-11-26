@@ -74,7 +74,7 @@ import { setSsrpMode, assertPublicUrl, fetchGuarded } from '../core/net/index.ts
 import { BUILTINS } from '../modules/index.ts'
 import { ensureDevBuild, runUpdate, tcpOpen, updateExec } from './support.ts'
 import { createHttp } from './http.ts'
-import { createOutboundPolicy } from '../chat/policy/outbound.ts'
+import { createOutboundPolicy } from '../chat/policy/outbound/index.ts'
 import { createPurposePolicy, createSharedBudget } from '../features/proactive/policy.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

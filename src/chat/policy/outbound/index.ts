@@ -6,120 +6,49 @@
 //       本文件只依赖 Node 内置模块，**不 import 仓库内任何 src 文件**；全部 API 同步返回、不抛异常。
 // 边界：本文件只回答「能不能发 / 记没记账」，不自己发消息（发由 hub 做）。
 
-import fs from 'node:fs'
-import { join } from 'node:path'
+import { createLedger } from './ledger.ts'
+import { idempotentKey, isGovernedTarget, makeId, normalizeCause, normalizeTarget, readOwnerQQ, readTier, resolveConfig, textBytes } from './helpers.ts'
+import type { LedgerItem, OutboundStats } from './helpers.ts'
+import { ACTIVE_MODES, DEFAULT_TIER, KNOWN_STATES, LEGACY_ACTIVE_MODES, LEDGER_TTL_MS, MAX_TEXT_BYTES, POLICY_READY_STATE, RESERVE_REASONS } from './constants.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CreateOutboundPolicyOptions = Partial<Record<'getConfig' | 'dataDir' | 'log' | 'now' | 'hooks' | 'send' | 'hostDelegate', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type AdmitOptions = Partial<Record<'at' | 'to' | 'moduleId' | 'itemId' | 'cause' | 'origin' | 'allowDefer', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CommitOptions = Partial<Record<'outcome' | 'deliveryId' | 'reason', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ReleaseOptions = Partial<Record<'outcome' | 'deliveryId' | 'reason', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type SubmitOptions = Partial<Record<'at' | 'moduleId' | 'itemId' | 'to' | 'channel' | 'text' | 'link' | 'cause', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type Submit2Options = Partial<Record<'getConfig' | 'dataDir' | 'log' | 'now' | 'hooks' | 'send' | 'hostDelegate', any>>
-
-// ── 常量（契约第三节「账本」） ───────────────────────────────────────────────
-
-const LEDGER_FILE = 'ledger.json'
-const LEDGER_VERSION = 1
-const LEDGER_MAX_ITEMS = 200 // 最多 200 条
-const LEDGER_TTL_MS = 24 * 60 * 60 * 1000 // TTL 24h
-const MAX_TEXT_BYTES = 8 * 1024 // 单条文本 8KB
-
-const DEFAULT_TIER = 'pass' // 契约 L74：pass 是兼容旧行为的默认档
-const TIERS = ['pass', 'gate', 'broker']
-// P3（speakup → purpose 迁移）：speakup 策略源不再注册，活跃档收拢为 purpose/auto。
-// 存量 activePolicy:'speakup' 在 setActivePolicy 入口归一化为 'purpose'（不弹错）。
-const ACTIVE_MODES = ['purpose', 'auto']
-const LEGACY_ACTIVE_MODES = { speakup: 'purpose' } // 存量值 → 归一化值
-const POLICY_READY_STATE = 'ready'
-const CAUSES = ['reply', 'delegation', 'background', 'unknown']
-const KNOWN_STATES = ['pending', 'sending', 'sent', 'dropped', 'failed', 'uncertain', 'expired']
-
-// 策略源 reserve 失败原因 → 宿主对外 reason（策略源自报的原因优先保留）
-const RESERVE_REASONS = ['quiet', 'budget', 'cooldown', 'busy', 'error']
-
-// ── 内部小工具 ─────────────────────────────────────────────────────────────
-
-/** 从任意配置形状里取全局配置；外面传对象、函数、都没给都兜得住。 */
-function resolveConfig(getConfig) {
-  try {
-    if (typeof getConfig === 'function') return getConfig() || {}
-    return getConfig || {}
-  } catch {
-    return {}
-  }
+/** 出站治理的调用选项。 */
+export interface CreateOutboundPolicyOptions {
+  getConfig?: (() => Record<string, any>) | Record<string, any>
+  dataDir?: string | null
+  log?: (message: string) => void
+  now?: () => number
+  hooks?: { fsSync?: boolean; [key: string]: unknown }
+  send?: (to: string, text: string, extra?: Record<string, unknown>) => unknown
+  hostDelegate?: unknown
 }
 
-/** 读档位：只认 config.outboundPolicy.tier（兼容旧变量名 config.ext.outboundPolicy.tier），其余一律回落 pass。 */
-function readTier(cfg) {
-  const c = cfg || {}
-  const raw = (c.outboundPolicy && c.outboundPolicy.tier) ??
-    (c.ext && c.ext.outboundPolicy && c.ext.outboundPolicy.tier)
-  const tier = String(raw ?? DEFAULT_TIER).trim().toLowerCase()
-  return TIERS.includes(tier) ? tier : DEFAULT_TIER
+export interface AdmitOptions {
+  at?: number
+  to?: string
+  moduleId?: string
+  itemId?: string
+  cause?: { kind?: string; [key: string]: unknown }
+  origin?: string
+  allowDefer?: boolean
+  [key: string]: unknown
 }
 
-/** 读主人 QQ，统一成字符串去空格（保存值与快照比较都用它）。 */
-function readOwnerQQ(cfg) {
-  const c = cfg || {}
-  const raw = (c.outboundPolicy && c.outboundPolicy.ownerQQ) ?? c.ownerQQ
-  if (raw === null || raw === undefined) return ''
-  return String(raw).trim()
+export interface CommitOptions { outcome?: string; deliveryId?: string; reason?: string; [key: string]: unknown }
+export interface ReleaseOptions { outcome?: string; deliveryId?: string; reason?: string; [key: string]: unknown }
+
+export interface SubmitOptions {
+  at?: number
+  moduleId?: string
+  itemId?: string
+  to?: string
+  channel?: string
+  text?: string
+  link?: string
+  cause?: { kind?: string; [key: string]: unknown }
+  [key: string]: unknown
 }
 
-/** 把 to 规范化：'private:123456' / 'private: 123456 ' 都收敛成 'private:123456'。 */
-function normalizeTarget(to) {
-  if (to === null || to === undefined) return ''
-  const s = String(to).trim()
-  const m = /^private\s*:\s*(.*)$/i.exec(s)
-  if (m) return `private:${String(m[1]).trim()}`
-  return s
-}
-
-/** 幂等键：moduleId|itemId|to|channel（契约 L97）。 */
-function idempotentKey(moduleId, itemId, to, channel) {
-  return [moduleId, itemId, to, channel].map((x) => String(x ?? '')).join('|')
-}
-
-/** 文本字节数（按 UTF-8 计，8KB 上限用）。 */
-function textBytes(text) {
-  if (text === null || text === undefined) return 0
-  const s = String(text)
-  // Buffer 是 Node 内置全局，不额外 import
-  return Buffer.byteLength(s, 'utf8')
-}
-
-/** 生成一个稳定前缀的 id（不需要加密强度，够本地唯一即可）。 */
-let seq = 0
-function makeId(prefix, at) {
-  seq = (seq + 1) % 1e9
-  const stamp = Number.isFinite(at) ? Math.floor(at) : Date.now()
-  return `${prefix}_${stamp.toString(36)}_${seq.toString(36)}`
-}
-
-/** 因果分类：无 cause / unknown 一律按 background 保守处理（契约 L87）。 */
-function normalizeCause(cause) {
-  if (!cause || typeof cause !== 'object') return { kind: 'background', raw: null }
-  const kindRaw = typeof cause.kind === 'string' ? cause.kind.trim().toLowerCase() : ''
-  const kind = CAUSES.includes(kindRaw) ? kindRaw : 'background'
-  return { kind, raw: cause }
-}
-
-/**
- * 判定一次发送是否「在治理范围内」。
- * 治理范围：to === 'private:' + ownerQQ（规范化后比较）；delegation 与 reply 另有专门规则。
- * 返回 { managed, reason }：managed=false 表示不治理（直接放行且面板不算纳管）。
- */
-function isGovernedTarget(to, ownerQQ) {
-  if (!ownerQQ) return false
-  return normalizeTarget(to) === `private:${ownerQQ}`
-}
-
+export type SubmitHostOptions = Omit<CreateOutboundPolicyOptions, 'dataDir'>
 // ── 主工厂 ─────────────────────────────────────────────────────────────────
 
 /**
@@ -150,8 +79,6 @@ export function createOutboundPolicy(opts : CreateOutboundPolicyOptions = {}) {
   const sources = new Map()
   /** 活跃策略源选择：'purpose' | 'auto'（auto=取 ready 的那个）；存量 'speakup' 归一化为 'purpose' */
   let activeMode = 'auto'
-  /** 内存账本：deliveryId -> item */
-  let items = new Map()
   /** reserveId -> { policyName, key, deliveryId } —— 等待 commit/release 的预占 */
   const reservations = new Map()
   /** 已结算的 reserveId -> { outcome, at }（重复调用返回 settled，不抛错） */
@@ -176,134 +103,8 @@ export function createOutboundPolicy(opts : CreateOutboundPolicyOptions = {}) {
   }
   /** 上一次观察到的 ownerQQ（用于惰性比对，变了就作废旧 pending） */
   let lastOwnerQQ = ''
-
-  // ── 落盘 ────────────────────────────────────────────────────────────────
-
-  /** 读账本文件；任何异常都退回空账本（服务不因磁盘问题挂掉）。 */
-  function loadLedger() {
-    items = new Map()
-    if (!fsEnabled) return
-    try {
-      const file = join(dataDir, LEDGER_FILE)
-      if (!fs.existsSync(file)) return
-      const raw = fs.readFileSync(file, 'utf8')
-      const parsed = JSON.parse(raw)
-      const list = Array.isArray(parsed && parsed.items) ? parsed.items : []
-      for (const it of list) {
-        if (!it || !it.deliveryId) continue
-        const state = KNOWN_STATES.includes(it.state) ? it.state : 'pending'
-        items.set(String(it.deliveryId), { ...it, state })
-      }
-    } catch (err) {
-      stats.errors++
-      log(`[outbound-policy] 账本读取失败，按空账本继续：${err && err.message ? err.message : err}`)
-      items = new Map()
-    }
-  }
-
-  /** 同步落盘账本；失败只记日志不抛（契约：持久化不得阻塞/打断调用）。 */
-  function saveLedger() {
-    if (!fsEnabled) return
-    try {
-      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true })
-      const payload = { version: LEDGER_VERSION, items: ledgerArray() }
-      const file = join(dataDir, LEDGER_FILE)
-      const tmp = `${file}.tmp`
-      fs.writeFileSync(tmp, JSON.stringify(payload), 'utf8')
-      fs.renameSync(tmp, file)
-    } catch (err) {
-      stats.errors++
-      log(`[outbound-policy] 账本落盘失败：${err && err.message ? err.message : err}`)
-    }
-  }
-
-  loadLedger()
-
-  // ── 账本基础操作 ─────────────────────────────────────────────────────────
-
-  function getItem(deliveryId) {
-    if (deliveryId === null || deliveryId === undefined) return null
-    return items.get(String(deliveryId)) || null
-  }
-
-  function ledgerArray() {
-    return Array.from(items.values()).sort((a, b) => (a.at || 0) - (b.at || 0))
-  }
-
-  /** 记账：写一条 pending 条目。 */
-  function putItem(entry) {
-    items.set(entry.deliveryId, entry)
-    return entry
-  }
-
-  /** 状态迁移：只改内存，调用方决定何时落盘。 */
-  function setState(item, state, extra = {}) {
-    if (!item) return null
-    item.state = state
-    item.updatedAt = now()
-    Object.assign(item, extra)
-    return item
-  }
-
-  /** TTL 过期清理：pending 超 TTL 置 expired。 */
-  function sweepExpired() {
-    const t = now()
-    let dirty = false
-    for (const it of items.values()) {
-      if (it.state !== 'pending' || !it.ttl) continue
-      const exp = Number(it.at || 0) + Number(it.ttl)
-      if (Number.isFinite(exp) && t >= exp) {
-        setState(it, 'expired')
-        dirty = true
-      }
-    }
-    return dirty
-  }
-
-  /** 上限裁剪：超 200 条时优先清最老的非 pending（pending 受 TTL 保护）。 */
-  function trimLedger() {
-    if (items.size <= LEDGER_MAX_ITEMS) return false
-    const all = ledgerArray()
-    // 先清非 pending（按时间从老到新），仍超再清最老的 pending
-    const evictOrder = [
-      ...all.filter((it) => it.state !== 'pending'),
-      ...all.filter((it) => it.state === 'pending'),
-    ]
-    let removed = false
-    for (const it of evictOrder) {
-      if (items.size <= LEDGER_MAX_ITEMS) break
-      items.delete(it.deliveryId)
-      removed = true
-    }
-    return removed
-  }
-
-  /**
-   * 作废：模块卸载 / ownerQQ 变更 → 相关 pending 置 dropped。
-   * predicate 为真且仍 pending 的条目才动。
-   */
-  function dropPending(predicate, reason) {
-    let changed = 0
-    for (const it of items.values()) {
-      if (it.state !== 'pending') continue
-      if (!predicate(it)) continue
-      setState(it, 'dropped', { dropReason: reason })
-      changed++
-    }
-    return changed
-  }
-
-  /** 同源合并：同幂等键且旧条目仍 pending → 旧条目 dropped(superseded)。 */
-  function supersede(key) {
-    let dropped = 0
-    for (const it of items.values()) {
-      if (it.state !== 'pending') continue
-      if (it.key !== key) continue
-      setState(it, 'dropped', { dropReason: 'superseded' })
-      dropped++
-    }
-    return dropped
-  }
+  const ledger = createLedger({ dataDir, log, now, fsEnabled, stats })
+  const { items, saveLedger, getItem, ledgerArray, putItem, setState, sweepExpired, trimLedger, dropPending, supersede } = ledger
 
   // ── 策略源 ──────────────────────────────────────────────────────────────
 
@@ -676,7 +477,7 @@ export function createOutboundPolicy(opts : CreateOutboundPolicyOptions = {}) {
    * 幂等：同 moduleId+itemId+to+channel 的旧 pending 条目会被新条目顶掉（supersede），
    * 所以模块即使重试提交同一件事，也不会重复打扰主人。
    */
-  async function submit(input : SubmitOptions = {}, opts : Submit2Options = {}) {
+  async function submit(input : SubmitOptions = {}, opts : SubmitHostOptions = {}) {
     try {
       stats.submitted++
       const at = Number.isFinite(input.at) ? Number(input.at) : now()
