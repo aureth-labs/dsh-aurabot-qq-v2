@@ -226,6 +226,7 @@ export interface PageOptions {
 }
 
 export interface LlmFacade {
+  generate(options: { text: string; system?: string; sessionId?: string; maxTokens?: number; temperature?: number }): Promise<string>
   polish(text: string, options?: { instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
   rewrite(text: string, options?: { instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>
   summarize(text: string, options?: { maxLength?: number; instruction?: string; maxTokens?: number; temperature?: number }): Promise<string>

@@ -55,6 +55,7 @@ export function apply(ctx: Ctx, config: { reply: string }) {
 | `ctx.think(prompt, { title, key, timeoutMs })` | 以她的人格跑一轮后台会话，返回正文 |
 | `ctx.thinkCooldown(key?)` | 后台会话在退避期就给出 `retryAt` |
 | `ctx.ask(options)` | 裸问一次模型（无人格、无会话） |
+| `ctx.llm.generate({ text, system?, sessionId?, maxTokens? })` | 使用配置的模型生成回复，调用失败会抛错 |
 | `ctx.llm.polish / rewrite / summarize` | 文本小任务 |
 | `ctx.chatLog.read(day) / append(...)` | 她的聊天流水 |
 | `ctx.server.get/post/...` + `ctx.http.body/query/send` | 面板接口 |

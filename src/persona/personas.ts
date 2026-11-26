@@ -121,7 +121,7 @@ export function deletePersona(id) {
 }
 
 /** 名字和正文使用同一张人格卡；不缓存，保存或切换后下一次读取立即生效。 */
-function currentPersona(currentId) {
+export function currentPersona(currentId) {
   try {
     const selected = readPersona(currentId)
     if (selected) return selected

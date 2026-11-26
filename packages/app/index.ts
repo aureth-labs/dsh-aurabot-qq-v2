@@ -46,7 +46,7 @@ import { isOwner, groupResponseMode } from '../../src/chat/policy/rules/access.t
 import { createGroupRoles } from '../../src/chat/policy/rules/group.ts'
 import { changePermissions, changePrivateWhitelist, privatePermissionCatalog } from '../../src/chat/policy/rules/permission.ts'
 import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../../src/chat/commands/delegated-commands.ts'
-import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow } from '../../src/persona/personas.ts'
+import { listPersonas, readPersona, savePersona, deletePersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaDataDir, personaNow, personaScope } from '../../src/persona/personas.ts'
 import { readLook, lookImage, lookImages, lookReferences, configureLookImage, lookMime, saveLookImage, deleteLookImage, saveAppearance, appearanceBlock, describeLook } from '../../src/persona/persona-look.ts'
 import { createModules, API_VERSION, BUILTIN_DIR } from '../../src/core/module/index.ts'
 import { createCommunity, REGISTRY_URL, GITEE_MIRROR } from '../../src/core/module/market/community.ts'
@@ -298,7 +298,7 @@ export function apply(ctx) {
     }
     const session = inboundSession(bot, message, pipeline)
     if (!session.content.trim() && !session.elements.length) return
-    return pipeline.dispatch(session).then((result) => {
+    return personaScope.run(personaNow(getConfig()), () => pipeline.dispatch(session)).then((result) => {
       if (result.error) log.error(`处理消息出错（${result.by}）：`, result.error)
       return result
     }).catch((error) => {

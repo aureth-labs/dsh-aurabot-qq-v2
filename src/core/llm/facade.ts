@@ -11,6 +11,7 @@ import type { LlmFacade, LlmSummaryOptions, LlmTextOptions } from '../../types/p
 /** 后台问一次模型的函数（host 用 askModel 包出来）。 */
 export type AskText = (options: {
   text: string
+  sessionId?: string
   system?: string
   maxTokens?: number
   temperature?: number
@@ -72,6 +73,7 @@ export function createLlmFacade(deps: LlmFacadeDeps): LlmFacade {
   }
 
   return {
+    generate: ask,
     async polish(text, options = {}) {
       const source = String(text ?? '')
       return (await run(POLISH_SYSTEM, source, options)) ?? source

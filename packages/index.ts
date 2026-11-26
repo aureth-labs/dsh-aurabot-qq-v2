@@ -2,6 +2,7 @@
 
 import { namedModuleDef, type ModuleDef } from '../src/core/module/loader.ts'
 import * as logger from './logger/index.ts'
+import * as persona from './modules/persona/index.ts'
 import * as chatBridge from './chat-bridge/index.ts'
 import * as stickers from './stickers/index.ts'
 import * as voice from './voice/index.ts'
@@ -25,6 +26,7 @@ import * as sandbox from './sandbox/index.ts'
 
 const entries: Array<[string, Record<string, any>]> = [
   ['logger', logger],
+  ['persona', persona],
   ['chat-bridge', chatBridge],
   ['stickers', stickers],
   ['voice', voice],
