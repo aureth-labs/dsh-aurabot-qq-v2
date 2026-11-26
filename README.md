@@ -193,9 +193,9 @@ index.mjs              插件入口：只 re-export lib/host.js（DSH 只认根�
 dev.mjs                开发入口：re-export src/host.ts，Node 直接剥类型跑 TS
 src/host.ts            插件入口（宿主半边）：核心 + 面板接口 /aurabot/api/*
 src/core/              内核：模块加载、ctx / session / bot、元素模型、管线、适配器契约
+src/adapters/          平台适配器：现在有 qq/onebot-v11（QQ 官方机器人、QQ 频道留了位，未实现）
 src/modules/           内置模块 + 扩展接口 API.md + 类型 + 新模块模板
 src/chat/              消息中枢、群聊策略、回复解析、白名单与权限
-src/onebot/            OneBot v11 客户端（QQ 适配器用）
 src/song/  src/voice/  翻唱流水线、文字转语音
 client/**/*.ts         网页半边：侧栏入口 + 面板（打包成 dist/client.js）
 personas/dafeiyu.md    默认人格

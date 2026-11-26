@@ -4,7 +4,7 @@
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
-import { dataDir, ensureDir } from '../core/store.ts'
+import { dataDir, ensureDir } from '../../../core/store.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateOutboxOptions = Partial<Record<'file' | 'log' | 'now' | 'maxItems' | 'maxBytes', any>>

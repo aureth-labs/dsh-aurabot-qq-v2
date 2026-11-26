@@ -5,7 +5,7 @@ import net from 'node:net'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 
 const { endpointHostPort, portOpen, gatewayHealthy, waitPortFree } = await import('../src/snowluma/manager.ts')
-const { createOneBotClient, OneBotError, messageDedupeKey } = await import('../src/onebot/client.ts')
+const { createOneBotClient, OneBotError, messageDedupeKey } = await import('../src/adapters/qq/onebot-v11/client.ts')
 
 const silent = { info () {}, warn () {}, debug () {}, error () {} }
 

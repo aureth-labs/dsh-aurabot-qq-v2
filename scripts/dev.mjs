@@ -1,12 +1,16 @@
-// 开发期后台编译：只编前端（client -> dist），重复调用不会重复起进程。
+// 开发期后台编译：只编前端（client/**/*.ts -> dist/client.js），用 esbuild 增量 watch。
 //
-// 后端不需要编译：dev.mjs 直接 import src/ 里的 .ts，Node 原生剥离类型，
-// dsh-hmr 跟的是源码本身，保存即热重载。只有浏览器侧必须有 JS，所以留一条 tsc -w。
+// 后端不需要编译：dev 入口直接 import src/ 里的 .ts，Node 原生剥离类型，
+// dsh-hmr 跟的是源码本身，保存即热重载。只有浏览器侧必须是 JS，所以这里守一条 esbuild watch。
+//
+// 以前这里是 `tsc -w -p tsconfig.client.json`，而那份配置是 noEmit: true——
+// 于是编译链空转：文件不产出，面板改动永远看不到。前端真正的打包器是
+// scripts/bundle-client.mjs（esbuild 单文件 bundle），dev 期必须跟它用同一条链。
+//
 // 并发保护：host.ts 的目录监听一次保存会触发好几次 startCompiler，测试并发 import 更凶。
-// 没有锁的时候每触发一次就起一个 tsc -w，孤儿进程攒到几十个，机器直接被拖垮。
+// 没有锁的时候每触发一次就起一个编译器，孤儿进程攒到几十个，机器直接被拖垮。
 // 现在用独占锁文件，抢不到就说明别人正在起，直接退出。
-import { spawn } from 'node:child_process'
-import { closeSync, existsSync, openSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
+import { closeSync, openSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -16,6 +20,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const DATA_DIR = process.env.AURABOT_DATA_DIR || join(homedir(), '.dsh', 'plugins-data', 'aurabot')
 const PID_FILE = join(DATA_DIR, 'dev-build.pid')
 const LOCK_FILE = join(DATA_DIR, 'dev-build.lock')
+const OUT_FILE = join(ROOT, 'dist', 'client.js')
 
 function alive(pid) {
   try {
@@ -28,7 +33,11 @@ function alive(pid) {
 
 function runningPids() {
   try {
-    return readFileSync(PID_FILE, 'utf8').trim().split(/\s+/).map(Number).filter(Boolean)
+    return readFileSync(PID_FILE, 'utf8')
+      .trim()
+      .split(/\s+/)
+      .map(Number)
+      .filter(Boolean)
   } catch {
     return []
   }
@@ -41,6 +50,15 @@ function lockHeldByOther() {
     return pid > 0 && pid !== process.pid && alive(pid)
   } catch {
     return false
+  }
+}
+
+function writePidFile(pids) {
+  try {
+    if (pids.length) writeFileSync(PID_FILE, pids.join(' '), 'utf8')
+    else rmSync(PID_FILE, { force: true })
+  } catch {
+    // 写不进去不致命：下次启动会先清掉旧 PID 文件
   }
 }
 
@@ -84,38 +102,42 @@ function releaseLock() {
 }
 
 // 旧 PID 文件先清掉：里面记的可能是已经死掉的编译器，留着会误判「还活着」
+rmSync(PID_FILE, { force: true })
+
+// 打成插件市场包时没有 node_modules：拿不到 esbuild 就安静退出，不影响插件运行
+let watchClient
 try {
-  rmSync(PID_FILE, { force: true })
-} catch {
-  // 没有就算了
+  ;({ watchClient } = await import('./bundle-client.mjs'))
+} catch (error) {
+  releaseLock()
+  console.error('[dev] 前端打包器加载失败：' + error.message)
+  process.exit(1)
 }
 
-const bin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc')
-const children = ['tsconfig.client.json'].map((project) =>
-  spawn(process.execPath, [bin, '-w', '-p', project, '--preserveWatchOutput'], {
-    cwd: ROOT,
-    stdio: 'ignore',
-    detached: true,
-  }),
-)
-
-const started = []
-for (const child of children) {
-  child.on('error', (error) => console.error('[dev] 后台编译没起来：' + error.message))
-  // 编译器自己退了就把它从 PID 文件里划掉，免得下次误判「还活着」
-  child.on('exit', () => {
-    const rest = runningPids().filter((pid) => pid !== child.pid)
-    try {
-      if (rest.length) writeFileSync(PID_FILE, rest.join(' '), 'utf8')
-      else rmSync(PID_FILE, { force: true })
-    } catch {
-      // 写不进去也不影响下一次启动（它会清掉旧 PID 文件）
-    }
+let context
+try {
+  context = await watchClient(OUT_FILE, (size) => {
+    console.log(`[dev] dist/client.js 已更新（${size} 字节）`)
   })
-  child.unref()
-  if (child.pid) started.push(child.pid)
+} catch (error) {
+  releaseLock()
+  console.error('[dev] 前端 watch 没起来：' + error.message)
+  process.exit(1)
 }
 
-if (started.length) writeFileSync(PID_FILE, started.join(' '), 'utf8')
+writePidFile([process.pid])
 releaseLock()
 console.log('[dev] 已启动后台编译：client -> dist（后端走 dev 入口，直接跑 src 里的 TS）')
+
+async function stop() {
+  try {
+    await context.dispose()
+  } catch {
+    // 已经关掉就算了
+  }
+  writePidFile([])
+  process.exit(0)
+}
+
+process.on('SIGINT', stop)
+process.on('SIGTERM', stop)

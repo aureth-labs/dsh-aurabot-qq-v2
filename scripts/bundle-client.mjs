@@ -38,6 +38,9 @@ const baseOptions = {
   // 产物里不留注释；源码里该说的都说过了
   minify: false,
   legalComments: 'none',
+  // 默认 charset 是 ascii：中文会被逐字转成 \uXXXX，产物大一截、也没法直接搜。
+  // 宿主按 UTF-8 读这个文件，保持原样即可。
+  charset: 'utf8',
   logLevel: 'silent',
 }
 

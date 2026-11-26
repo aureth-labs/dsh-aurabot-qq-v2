@@ -184,7 +184,7 @@ src/host.js            plugin entry (host half): core + panel API /aurabot/api/*
 src/core/modules.js    module kernel: load, toggle, replace, hot reload, error isolation
 src/modules/           built-in modules + API.md + types + module template
 src/chat/              message hub, group policy, reply parsing, allow-list & permissions
-src/onebot/client.js   OneBot v11 client (HTTP + WS, auto reconnect)
+src/adapters/          platform adapters; qq/onebot-v11 is the only one implemented
 src/snowluma/          SnowLuma management (detect, start/stop, inject only the bot account)
 src/features/          stickers, Qzone, mood, memory, proactive chat, image gen
 src/song/              cover pipeline (NetEase → separation → RVC → mixdown)

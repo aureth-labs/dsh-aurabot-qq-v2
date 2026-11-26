@@ -41,6 +41,15 @@ export interface PipelineSession {
   sentCount?: number
   /** 过渡期：OneBot 原始事件的挂载位（S8 适配器收口后由适配器自己消化）。 */
   __ev?: unknown
+  /**
+   * 复制一份「同一身份、换内容」的会话，给 `session.execute()` 用。
+   *
+   * 会话实现方（`Session`）自己 new 一个实例返回，别让管线靠
+   * `Object.create(prototype) + Object.assign` 拼——那套写法一遇到私有字段、
+   * getter、不可枚举状态就会静默丢东西，中间件拿到残缺会话后报错被跳过，
+   * 消息就无声地掉进模型段。
+   */
+  withContent?(content: string): PipelineSession
 }
 
 export interface PipelineResult {

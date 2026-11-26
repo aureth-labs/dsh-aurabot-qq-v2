@@ -9,7 +9,7 @@ import { createHub } from '../src/chat/hub.ts'
 import { hasInvalidVoiceMarkup } from '../src/chat/reply.ts'
 import { normalize } from '../src/core/config.ts'
 import { scopeCoreForModule } from '../src/core/modules.ts'
-import { OneBotError } from '../src/onebot/client.ts'
+import { OneBotError } from '../src/adapters/qq/onebot-v11/client.ts'
 
 function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, hooks, level = 'full', kind = 'private' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-cross-voice-'))

@@ -157,10 +157,7 @@ export class Pipeline {
     if (this.depth >= 1) return { handled: false, by: null, error: 'execute 不允许递归调用' }
     this.depth++
     try {
-      // 保留原型：session 是 class 实例，展开会丢掉 send / sendMessage 这些方法
-      const child = Object.create(Object.getPrototypeOf(session)) as PipelineSession
-      Object.assign(child, session, { content: String(text ?? '') })
-      return await this.dispatch(child)
+      return await this.dispatch(forkSession(session, String(text ?? '')))
     } finally {
       this.depth--
     }
@@ -242,6 +239,17 @@ function messageOf(error: unknown): string {
 /** 这条消息有没有被发出去过（Session 会累加，测试桩没有就当没发）。 */
 function hasSent(session: PipelineSession): boolean {
   return Number((session as { sentCount?: number }).sentCount) > 0
+}
+
+/**
+ * 造一条「同身份、换内容」的会话。
+ *
+ * 优先让会话自己复制（`withContent`）：那是真构造实例，方法、getter、私有字段都在。
+ * 没实现的轻量会话（测试里的普通对象）退回浅拷贝——它们本来就没有原型状态可丢。
+ */
+function forkSession(session: PipelineSession, content: string): PipelineSession {
+  if (typeof session.withContent === 'function') return session.withContent(content)
+  return Object.assign(Object.create(Object.getPrototypeOf(session)) as PipelineSession, session, { content })
 }
 
 /** 拆出第一个词当指令名，剩下的原样当参数（内部空格保留，两端去掉）。 */

@@ -90,6 +90,28 @@ export class Session implements SessionLike {
     if (!this.pipeline) throw new Error('当前会话没有挂管线，execute 不可用')
     return this.pipeline.execute(this, text)
   }
+
+  /**
+   * 同一条身份、换一条内容。给 `execute()` 用。
+   *
+   * 必须是真构造：只复制字段（`{...session}` / `Object.assign`）会把类实例变成普通对象，
+   * 中间件拿到的 `send` / `platform` 之类全都没了。
+   */
+  withContent(content: string): Session {
+    return new Session({
+      bot: this.bot,
+      type: this.type,
+      channelId: this.channelId,
+      userId: this.userId,
+      userName: this.userName,
+      content,
+      messageId: this.messageId,
+      guildId: this.guildId,
+      elements: this.elements,
+      timestamp: this.timestamp,
+      pipeline: this.pipeline,
+    })
+  }
 }
 
 /** 定时任务等没有真实入站消息的场景，用这个造一个 Session。 */

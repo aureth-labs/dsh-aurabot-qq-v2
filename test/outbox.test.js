@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-outbox-'))
 
-const { createOutbox } = await import('../src/onebot/outbox.ts')
+const { createOutbox } = await import('../src/adapters/qq/onebot-v11/outbox.ts')
 const log = { info () {}, warn () {}, debug () {} }
 
 function make (o = {}) {

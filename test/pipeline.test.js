@@ -2,8 +2,26 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Pipeline } from '../src/core/pipeline.ts'
+import { Session } from '../src/core/session.ts'
 
 const s = (content) => ({ content })
+
+/** 真 Session + 记账 bot：execute 要验的就是「真实例复制」，用假对象测不出来。 */
+function realSession(pipeline, { type = 'group', content = '' } = {}) {
+  const sent = []
+  const bot = {
+    platform: 'onebot',
+    selfId: '10000',
+    async sendMessage(channelId, text) {
+      sent.push({ kind: 'group', channelId, text })
+    },
+    async sendPrivateMessage(userId, text) {
+      sent.push({ kind: 'private', userId, text })
+    },
+  }
+  const session = new Session({ bot, type, channelId: 'g1', userId: 'u1', content, pipeline })
+  return { session, sent }
+}
 
 test('没人接手 → 进模型段', async () => {
   const p = new Pipeline()
@@ -113,22 +131,40 @@ test('超时按 skip 处理，不卡住整条管线', async () => {
   assert.equal(r.by, 'llm')
 })
 
-test('session.execute 走完整管线并真的发出，递归限一层', async () => {
+test('session.execute 复制出真实例会话：中间件照常拦、照常发', async () => {
   const p = new Pipeline()
-  const sent = []
-  const session = { content: '', send: async (t) => sent.push(t) }
-  p.command('tell', async (sess, args) => {
-    await sess.send(`【转告】${args}`)
-    return 'sent'
+  p.use(async (session, next) => {
+    const hit = /\b(BV[0-9A-Za-z]{10})\b/.exec(String(session.content || ''))
+    if (!hit) return next()
+    await session.send(`bili:${hit[1]}`)
+  }, { name: 'bv-parse', before: 'llm' })
+  p.onLlm(() => 'llm-reply')
+
+  const { session, sent } = realSession(p, { content: '' })
+  const r = await session.execute('BV1xx411c7mD 看看这个')
+
+  // 中间件认领了这条消息，不落到模型段
+  assert.equal(r.by, 'middleware')
+  assert.deepEqual(sent, [{ kind: 'group', channelId: 'g1', text: 'bili:BV1xx411c7mD' }])
+  // 发的是复制出来的会话，原会话的计数不该被改写
+  assert.equal(session.sentCount, 0)
+})
+
+test('session.execute 递归限一层：handler 里再 execute 直接拒绝', async () => {
+  const p = new Pipeline()
+  const { session } = realSession(p, { content: '/outer' })
+  let inner
+  p.command('outer', async (sess) => {
+    inner = await sess.execute('inner')
+    return 'outer-done'
   })
+  p.command('inner', () => 'inner-done')
 
-  const r = await p.execute(session, '/tell 主人的插件坏了')
+  const r = await session.execute('outer')
   assert.equal(r.by, 'command')
-  assert.deepEqual(sent, ['【转告】主人的插件坏了'])
-
-  // execute 里再 execute：拒绝
-  const inner = await p.execute({ ...session, nested: true }, 'tell x')
-  assert.equal(inner.by, 'command')
+  assert.equal(r.value, 'outer-done')
+  assert.equal(inner.handled, false)
+  assert.match(inner.error, /递归/)
 })
 
 test('卸载中间件与指令', async () => {

@@ -22,8 +22,8 @@ import { quietWindowOf } from './core/time-window.ts'
 import { createLogger } from './core/logger.ts'
 import { encodeResponse } from './core/http-compress.ts'
 import { registerSecret, redact } from './core/redact.ts'
-import { createOneBotClient } from './onebot/client.ts'
-import { createOutbox } from './onebot/outbox.ts'
+import { createOneBotClient } from './adapters/qq/onebot-v11/client.ts'
+import { createOutbox } from './adapters/qq/onebot-v11/outbox.ts'
 import { createSnowLumaManager, DOWNLOAD_PAGE } from './snowluma/manager.ts'
 import { createHub, workspaceDirOf } from './chat/hub.ts'
 import { createPersonaMemoryRuntime } from './core/persona-memory-bridge.ts'
@@ -97,21 +97,21 @@ function underTest() {
  *
  * 后端（src/**）在 dev 入口下由 Node 直接剥离类型运行，改 .ts 就是改被 import 的文件本身，
  * dsh-hmr 直接热重载，没有任何编译产物参与——所以这里不需要管后端。
- * 前端（client/**）要交给浏览器，只能是 JS，所以后台挂一个 `tsc -w` 守着 dist/client.js。
+ * 前端（client/**）要交给浏览器，只能是 JS，所以后台挂一个 esbuild watch 守着 dist/client.js。
  *
  * - 重复调用无副作用：scripts/dev.mjs 会按 PID 文件判断已在跑就直接退出
- * - 装到插件市场里的包没有 scripts/ 和 node_modules/typescript，自动跳过
+ * - 装到插件市场里的包没有 scripts/ 和 node_modules/esbuild，自动跳过
  * - 不想要它：AURABOT_DEV_WATCH=0
  */
 function ensureDevBuild(log) {
   if (process.env.AURABOT_DEV_WATCH === '0') return
-  // 测试会并行 import 本模块：每个进程都去起一个 tsc -w，跑一轮就攒下几十个常驻编译器。
+  // 测试会并行 import 本模块：每个进程都去起一个编译器，跑一轮就攒下几十个常驻进程。
   // 后台编译只服务于「真在开面板写前端」，测试里一律不起。
   if (underTest()) return
   try {
     const devScript = join(ROOT, 'scripts', 'dev.mjs')
-    const tscBin = join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc')
-    if (!existsSync(devScript) || !existsSync(tscBin)) return
+    const esbuildPkg = join(ROOT, 'node_modules', 'esbuild', 'package.json')
+    if (!existsSync(devScript) || !existsSync(esbuildPkg)) return
     // 放插件数据目录，不放仓库根：仓库里不该出现运行时留下的垃圾文件
     ensureDir(dataDir())
     const pidFile = dataDir('dev-build.pid')
@@ -139,7 +139,7 @@ function ensureDevBuild(log) {
     }
     startCompiler()
     // 编译器被关掉 / 崩了以后没人重启它，前端就静默不更新了。
-    // 所以盯着 client/：一改就确认编译器还活着，不在就拉起来（tsc -w 会先全量编一遍）。
+    // 所以盯着 client/：一改就确认编译器还活着，不在就拉起来（watch 启动时会先全量打一次）。
     if (!globalThis.__aurabotDevWatch) {
       try {
         globalThis.__aurabotDevWatch = watch(join(ROOT, 'client'), { recursive: true, persistent: false }, () => startCompiler())
