@@ -1,7 +1,7 @@
 // 内置模块：心情。聊天让她开心或低落，心情影响她发表情、发语音的频率和回复快慢，也会写进她的上下文。
 // 导出 createMood 的返回值：nudge(变化, 原因, chatId?)、label()、state()、effects()、contextLine(chat)、observe()、judge()。
 
-import { createMood } from '../../../src/features/mood/index.ts'
+import { createMood } from './state.ts'
 
 /**
  * 事件里的说话人标签：主人用主人名，其他人用「群名片/昵称(QQ)」。
@@ -24,7 +24,9 @@ export const description = '她的心情：会随聊天起伏，影响表情 / �
 export const tab = 'mood'
 
 export function apply(ctx, config) {
-  const mood = createMood({ getConfig: ctx.root.read, dsh: ctx.harness, log: ctx.logger })
+  let active = true
+  ctx.effect(() => { active = false })
+  const mood = createMood({ getConfig: ctx.root.read, dsh: ctx.harness, log: ctx.logger, active: () => active })
   // 理由的相对时间每轮变化，和相关记忆一样放进本轮消息，避免上下文快照膨胀（#79）。
   // 带上当前 chat：只在原因所属的聊天里显示「因为…」，别的私聊/群不继承（#273）。
   ctx.on('prompt', (content, { chat }) => {

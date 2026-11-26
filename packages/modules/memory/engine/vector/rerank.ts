@@ -2,7 +2,7 @@
 // 统一走 OpenAI 兼容的 POST {baseUrl}/rerank（硅基 BAAI/bge-reranker-v2-m3 免费）。
 // 失败 / 超时一律由调用方回退原顺序，绝不阻塞回复。
 
-import { recordRetrievalUsage } from '../../../core/llm/usage/usage.ts'
+import { recordRetrievalUsage } from '../../../../../src/core/llm/usage/usage.ts'
 
 const DEFAULT_BASE = 'https://api.siliconflow.cn/v1'
 const DEFAULT_MODEL = 'BAAI/bge-reranker-v2-m3'

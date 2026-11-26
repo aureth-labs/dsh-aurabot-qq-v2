@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { dataDir, writeJson } from '../../../../../src/core/store/index.ts'
 import { existsSync, readFileSync } from 'node:fs'
-import { matchesMemoryKeyword } from '../../../../../src/features/memory/index.ts'
+import { matchesMemoryKeyword } from '../../../memory/engine/index.ts'
 import { createConversationArchive } from '../context/conversation-context.ts'
 import { createChatLog } from './chatlog.ts'
 import { createMessageLogScope } from '../../../../../src/core/store/messages.ts'

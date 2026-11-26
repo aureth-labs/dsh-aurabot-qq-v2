@@ -1,25 +1,5 @@
+type DeriveEmotionVectorOptions = Partial<Record<'vector' | 'at' | 'boost' | 'halfLifeHours' | 'now' | 'emotions', any>>
 
-
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type DeriveEmotionVectorOptions = Partial<Record<'vector' | 'at' | 'boost' | 'halfLifeHours' | 'now' | 'emotions', any>>/**
- * 心情项（情绪向量）的纯逻辑层：默认项、可配置归一化、跨轮衰减推导。
- *
- * 为什么单独一个文件：
- *   · 心情模块（src/features/mood.js）要在写状态前把向量衰减 + 抬升算完；
- *   · 目的引擎（src/purpose/engine.js）要用同一套键/标签/强弱画像做提示词与候选打分。
- *   两边如果各留一份「十种情绪」的写死表，就会重演「两份心情对不上」的老问题
- *   （2026-11-17 合并前：心情模块单标量 + 目的引擎十维向量，两个半衰期、两处面板）。
- *
- * 约定：
- *   · 键（key）只认小写字母开头、点划线组成的短标识，模型回包里也按它对齐；
- *   · 标签（label）是给人和模型看的名字，可随时改（不改键，历史数据不丢）；
- *   · 图标（icon）可空，面板没图标时用 💭 兜底；
- *   · valence（-1~1 正负倾向）与 arousal（0~1 强弱）只为「怎么说话」和桌宠辉光服务。
- *
- * 纯函数、零 import、零 I/O。
- */
-
-/** 心情项数量上限：面板是窄容器，再多也看不过来；同时兜住配置被手写炸掉的情况。 */
 export const MAX_EMOTIONS = 24
 
 /** 键名格式：小写字母开头，1~24 位，允许数字、下划线与短横线（允许单字母，用户可能就想叫「a」）。 */

@@ -13,7 +13,7 @@ before(async () => {
   process.env.AURABOT_DATA_DIR = join(ROOT, 'boot')
   mkdirSync(process.env.AURABOT_DATA_DIR, { recursive: true })
   ;({ normalize } = await import('../../src/core/config/index.ts'))
-  ;({ createMemoryStore } = await import('../../src/features/memory/index.ts'))
+  ;({ createMemoryStore } = await import('../../packages/modules/memory/engine/index.ts'))
 })
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const hhmm = (d = new Date()) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`

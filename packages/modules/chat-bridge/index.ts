@@ -1,3 +1,4 @@
+import { personaScope } from '../../../src/persona/personas.ts'
 import { modelImages } from './images.ts'
 import { currentTimeLine } from '../../../src/chat/reply/context/time-context.ts'
 import type { Element } from '../../../src/types/core/element.ts'
@@ -17,6 +18,7 @@ export const version = '2.0.0'
 export const description = '按会话身份接入人格、心情和短期记忆'
 
 interface Mood {
+  judge(input: { userText: string; reply: string; who: string; chatId: string }): Promise<unknown>
   contextLine(room: string): string
   observe(text: string, speaker: string, options: { direct: boolean; owner: boolean; chatId: string }): void
 }
@@ -97,7 +99,10 @@ export function apply(ctx: PluginContext) {
       const receipt = await session.send(reply)
       if (!active) return
       if (!receipt || (typeof receipt !== 'object' || !('ok' in receipt) || receipt.ok !== false)) {
-        lines.push({ role: 'assistant', speaker: persona.name, text: toText(reply) || h.stringify(reply) })
+        const text = toText(reply) || h.stringify(reply)
+        lines.push({ role: 'assistant', speaker: persona.name, text })
+        void mood?.judge?.({ userText: input, reply: text, who: speaker, chatId: room })
+          ?.catch(error => ctx.logger.debug('心情判断失败', String(error)))
       }
     }
     db.append(room, persona.id, lines, limit)
@@ -111,7 +116,7 @@ export function apply(ctx: PluginContext) {
     if (!input) return
     const room = JSON.stringify([session.platform, session.bot.id, session.type, session.isPrivate ? session.userId : session.channelId])
     const persona = ctx.get<PersonaService>('persona')?.current() ?? { id: '', name: 'AuraBot', body: '' }
-    const turn = (queued.get(room) ?? Promise.resolve()).then(() => respond(session, room, persona, input))
+    const turn = (queued.get(room) ?? Promise.resolve()).then(() => personaScope.run(persona.id, () => respond(session, room, persona, input)))
       .catch(error => ctx.logger.warn('跨平台对话失败', String(error?.message ?? error)))
       .finally(() => { if (queued.get(room) === turn) queued.delete(room) })
     queued.set(room, turn)

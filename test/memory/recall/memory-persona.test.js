@@ -6,7 +6,7 @@ import { readMemoryState, writeMemoryState } from '../../helpers/memory-state.js
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../../src/core/config/index.ts'
-import { createMemoryStore, memoryLine } from '../../../src/features/memory/index.ts'
+import { createMemoryStore, memoryLine } from '../../../packages/modules/memory/engine/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 
 const OWNER = '10000001'
@@ -354,7 +354,7 @@ test('触发式自动回忆不影响常驻画像和主动查记忆', (t) => {
 })
 
 test('永久档的事实不进记忆压缩', async () => {
-  const { compressionClusters } = await import('../../../src/features/memory/index.ts')
+  const { compressionClusters } = await import('../../../packages/modules/memory/engine/index.ts')
   const old = Date.now() - 30 * 86400_000
   const items = [1, 2, 3, 4, 5, 6].map((i) => ({ id: String(i), text: `事 ${i}`, source: 'auto', chatId: 'group:9', about: '5', at: old, tier: 0 }))
   assert.equal(compressionClusters(items, { afterDays: 14, minItems: 3 }).length, 0)

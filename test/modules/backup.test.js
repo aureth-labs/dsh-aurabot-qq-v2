@@ -19,7 +19,7 @@ const read = (rel) => readFileSync(join(root, rel), 'utf8')
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = root
-  api = await import('../../src/core/runtime/backup/backup.ts')
+  api = await import('../../packages/app/backup/backup.ts')
 })
 
 test('备份、暂存、启动时换上：内容一致，旧文件留底，排除项不进备份', async () => {

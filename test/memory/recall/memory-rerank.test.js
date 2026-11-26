@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize, publicConfig } from '../../../src/core/config/index.ts'
-import { createReranker } from '../../../src/features/memory/vector/rerank.ts'
+import { createReranker } from '../../../packages/modules/memory/engine/vector/rerank.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 
 const log = { info() {}, warn() {}, debug() {} }

@@ -3,7 +3,7 @@
 // 心情项（情绪字典）的唯一真相在心情模块那边：这里只借用出厂的默认十项做快照与兜底。
 import {
   DEFAULT_EMOTIONS, emotionLabels, emotionProfiles, profileOf, resolveEmotion,
-} from '../../../../../../src/features/mood/emotions.ts';
+} from '../../../../../../src/persona/emotions.ts';
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 export type NormalizePurposeConfigOptions = Partial<Record<'ownerQQ', any>>

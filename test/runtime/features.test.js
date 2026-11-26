@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { moodLabel, scoreText, decayed } from '../../src/features/mood/index.ts'
+import { moodLabel, scoreText, decayed } from '../../packages/modules/mood/state.ts'
 import { matchSticker, pickForReply } from '../../src/features/stickers/index.ts'
 import { join } from 'node:path'
 
@@ -37,7 +37,7 @@ test('WAV 转 16kHz 单声道（给 DSH 语音识别）', async () => {
 })
 
 test('记忆检索：切词、相关度、去重', async () => {
-  const { tokenize, buildIndex, search, similarity } = await import('../../src/features/memory/index.ts')
+  const { tokenize, buildIndex, search, similarity } = await import('../../packages/modules/memory/engine/index.ts')
   assert.deepEqual(tokenize('喜欢吃白米饭'), ['喜欢', '欢吃', '吃白', '白米', '米饭'])
   const items = [
     { id: 'a', text: '主人最爱吃白米饭', importance: 0.8, at: Date.now() },
@@ -60,7 +60,7 @@ test('心情：对她说的话、主人的话影响更大；心情明显时每�
   const prev = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-mood-'))
   try {
-    const { createMood, moodEffects } = await import('../../src/features/mood/index.ts')
+    const { createMood, moodEffects } = await import('../../packages/modules/mood/state.ts')
     const { normalize } = await import('../../src/core/config/index.ts')
     const m = createMood({ getConfig: () => normalize({}) })
     const v0 = m.current()
@@ -108,7 +108,7 @@ test('模型判心情：解析结果，没把握的不算，开了就不再按�
   const prev = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-judge-'))
   try {
-    const { createMood, parseMoodJudge } = await import('../../src/features/mood/index.ts')
+    const { createMood, parseMoodJudge } = await import('../../packages/modules/mood/state.ts')
     const { normalize } = await import('../../src/core/config/index.ts')
     assert.deepEqual(parseMoodJudge('好的 {"delta": 30, "reason": "被夸了", "confidence": 0.9}'), { delta: 15, reason: '被夸了', confidence: 0.9 })
     assert.equal(parseMoodJudge('不是 JSON'), null)

@@ -6,7 +6,7 @@ import {
   stageReceivedBackup,
   stageRestore,
   cancelRestore,
-} from '../../../../src/core/runtime/backup/backup.ts'
+} from '../../backup/backup.ts'
 import { dataDir } from '../../../../src/core/store/index.ts'
 import { workspaceDirOf } from '../../../modules/chat-bridge/qq/index.ts'
 import { mergeFromPanel } from '../../../../src/core/config/index.ts'
@@ -14,7 +14,7 @@ import {
   pushBackup,
   listWebdavBackups,
   downloadWebdavBackup,
-} from '../../../../src/core/runtime/backup/backup-push.ts'
+} from '../../backup/backup-push.ts'
 
 export function registerBackups({ http, VERSION, getConfig, log, openFolder, isUnloaded, setConfig }) {
   const { route, readRaw, readBody } = http

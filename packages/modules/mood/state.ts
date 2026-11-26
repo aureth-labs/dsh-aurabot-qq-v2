@@ -1,18 +1,18 @@
 // 陪伴类小功能：心情、主动搭话。
 
 import { randomUUID } from 'node:crypto'
-import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
-import { askModel } from '../../core/llm/index.ts'
-import { cleanText, clipText } from '../../core/support/util/text.ts'
-import { shouldDeferBackground } from '../../core/llm/usage/offpeak.ts'
-import { inHourWindow } from '../../core/support/time/time-window.ts'
-import { followUpHint } from '../memory/index.ts'
+import { dataDir, readJson, writeJson } from '../../../src/core/store/index.ts'
+import { askModel } from '../../../src/core/llm/index.ts'
+import { cleanText, clipText } from '../../../src/core/support/util/text.ts'
+import { shouldDeferBackground } from '../../../src/core/llm/usage/offpeak.ts'
+import { inHourWindow } from '../../../src/core/support/time/time-window.ts'
+import { followUpHint } from '../memory/engine/index.ts'
 import { moodReason } from './context.ts'
 import {
   DEFAULT_EMOTIONS, FALLBACK_EMOTION_ICON, deriveEmotionVector, emotionKeys,
   normalizeEmotionVector, normalizeEmotions, resolveEmotion, topEmotion,
-} from './emotions.ts'
-import { selfName, personaDataDir, personaNow } from '../../persona/personas.ts'
+} from '../../../src/persona/emotions.ts'
+import { selfName, personaDataDir, personaNow } from '../../../src/persona/personas.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type FeelOptions = Partial<Record<'weight' | 'now' | 'silent', any>>
@@ -85,7 +85,7 @@ export function parseMoodJudge(out) {
   }
 }
 
-export function createMood({ getConfig, dsh, log }) {
+export function createMood({ getConfig, dsh, log, active = () => true }) {
   let judgeDeferLogged = false
   // 心情是她自己的，跟着人格走（根目录人格还是老位置，见 personas.js）；主动搭话的次数是对主人的打扰频率，仍共用
   const file = () => personaDataDir(getConfig(), personaNow(getConfig()), 'mood.json')
@@ -125,7 +125,7 @@ export function createMood({ getConfig, dsh, log }) {
    */
   function nudge(d, reason, chatId = '') {
     if (getConfig().debug) return // 调试模式不动心情：心情是持久状态，调试不该留下痕迹
-    if (!getConfig().mood.enabled || !d) return
+    if (!active() || !getConfig().mood.enabled || !d) return
     const s = load()
     const before = current()
     s.value = Math.max(5, Math.min(100, before + d))
@@ -248,7 +248,7 @@ export function createMood({ getConfig, dsh, log }) {
     async judge({ userText, reply, who = '对方', origin = 'user', chatId = '' }) {
       const cfg = getConfig().mood
       if (getConfig().debug) return null // 调试模式不判心情（省一次模型调用，也不留下状态）
-      if (!cfg.enabled || !cfg.judge || !dsh) return null
+      if (!active() || !cfg.enabled || !cfg.judge || !dsh) return null
       // 峰谷省钱：峰时不跑这次额外模型调用，observe() 已经用关键词兜底；谷时恢复模型判断
       if (shouldDeferBackground(getConfig())) {
         if (!judgeDeferLogged) { log?.debug?.('峰时：心情模型判断推迟到谷时（先用关键词）'); judgeDeferLogged = true }
@@ -268,7 +268,7 @@ export function createMood({ getConfig, dsh, log }) {
         })
         const r = parseMoodJudge(out)
         if (!r) return null
-        if (r.confidence >= 0.6 && Math.abs(r.delta) >= 2) nudge(r.delta, r.reason || '刚才那一下', chatId)
+        if (getConfig().mood.judge && r.confidence >= 0.6 && Math.abs(r.delta) >= 2) nudge(r.delta, r.reason || '刚才那一下', chatId)
         return r
       } catch (error) {
         return null

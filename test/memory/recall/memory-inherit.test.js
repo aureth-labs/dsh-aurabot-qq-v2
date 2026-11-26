@@ -1,7 +1,7 @@
 // 记忆继承的纯函数：分块、分批、提示词、解析模型回复、写入目标人格。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BATCH, inheritBlocks, inheritBatches, inheritPrompt, inheritInput, parseInherit, applyInherit } from '../../../src/features/memory/store/inherit.ts'
+import { BATCH, inheritBlocks, inheritBatches, inheritPrompt, inheritInput, parseInherit, applyInherit } from '../../../packages/modules/memory/engine/store/inherit.ts'
 
 const OWNER = '10000001'
 const FRIEND = '30000001'

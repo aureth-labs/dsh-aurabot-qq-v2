@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 import { readMemoryState } from '../helpers/memory-state.js'
 import { cleanupDir } from '../helpers/cleanup.js'
 

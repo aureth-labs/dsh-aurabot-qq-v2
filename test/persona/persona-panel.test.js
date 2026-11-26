@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
 import { normalize } from '../../src/core/config/index.ts'
-import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 import { readMemoryState } from '../helpers/memory-state.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { createConversationArchive } from '../../packages/modules/chat-bridge/qq/context/conversation-context.ts'
@@ -330,7 +330,7 @@ test('说忘掉时相处经验和说话习惯里的也一起忘', (t) => {
 })
 
 test('人物关系：只认本人或主人说的，别人传的和规则都不记', async () => {
-  const { normalizeRelation } = await import('../../src/features/memory/index.ts')
+  const { normalizeRelation } = await import('../../packages/modules/memory/engine/index.ts')
   const names = new Map([['111', '小明'], ['222', '路人'], ['999', '主人']])
   const base = { chatId: 'group:1', names, owner: '999' }
   assert.equal(normalizeRelation({ subj: '小明', pred: '的女朋友是', obj: '阿花', speaker: '111' }, base).subj, '小明')

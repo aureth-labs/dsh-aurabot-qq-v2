@@ -9,7 +9,7 @@ import { cleanOutboundText } from '../../src/chat/reply/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 const dir = mkdtempSync(join(tmpdir(), 'ab-identity-'))
 process.env.AURABOT_DATA_DIR = dir
-const { createMemoryStore } = await import('../../src/features/memory/index.ts')
+const { createMemoryStore } = await import('../../packages/modules/memory/engine/index.ts')
 after(() => cleanupDir(dir))
 
 test('补读同名群友和机器人：账号、@ 对象及自身标识不丢失', () => {

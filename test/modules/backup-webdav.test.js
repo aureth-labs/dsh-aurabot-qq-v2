@@ -15,7 +15,7 @@ const calls = []
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = root
-  push = await import('../../src/core/runtime/backup/backup-push.ts')
+  push = await import('../../packages/app/backup/backup-push.ts')
   push.pushHooks.spawn = () => { throw new Error('WebDAV 不应该跑 git') }
   okFetch = async (url, init = {}) => {
     calls.push({ url, method: init.method || 'GET', headers: init.headers || {}, body: init.body })

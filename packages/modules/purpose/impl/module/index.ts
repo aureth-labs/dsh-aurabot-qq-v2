@@ -14,7 +14,7 @@ import { randomUUID } from 'node:crypto'
 import { quietWindowOf } from '../../../../../src/core/support/time/time-window.ts'
 import { cleanOutboundText } from '../../../../../src/chat/reply/index.ts'
 import { isSessionBackoff } from '../../../chat-bridge/qq/turn/session-backoff.ts'
-import { followUpHint } from '../../../../../src/features/memory/index.ts'
+import { followUpHint } from '../../../memory/engine/index.ts'
 import { selfName, selfNames, personaDataDir, personaNow } from '../../../../../src/persona/personas.ts'
 import { normalizeSelection } from '../../../../../src/core/config/chat-model.ts'
 import {
@@ -27,7 +27,7 @@ import {
   minePurposeSeeds, selectPurpose, buildPurposePrompt, parsePurposeMemo, emotionProfile,
   summarizePurposeState, recordOwnerReplyHours, formatMaterialLine,
 } from '../engine/index.ts'
-import { normalizeEmotions, resolveEmotion } from '../../../../../src/features/mood/emotions.ts'
+import { normalizeEmotions, resolveEmotion } from '../../../../../src/persona/emotions.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type PurposeConfigOptions = Partial<Record<'speakUp' | 'ext' | 'enabled' | 'ownerQQ' | 'ownerName', any>>

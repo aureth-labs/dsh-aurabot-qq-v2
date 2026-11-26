@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-h03-consolidate-'))
 const { normalize } = await import('../../src/core/config/index.ts')
-const { createMemoryStore } = await import('../../src/features/memory/index.ts')
+const { createMemoryStore } = await import('../../packages/modules/memory/engine/index.ts')
 
 const owner = '10000001'
 const group = '999999'

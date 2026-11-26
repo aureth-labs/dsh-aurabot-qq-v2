@@ -8,10 +8,11 @@ import { pathToFileURL } from 'node:url'
 import * as nodeModule from 'node:module'
 import { spawnSync } from 'node:child_process'
 import { normalize, DEFAULTS } from '../../src/core/config/index.ts'
-import { createMemoryStore, COMPRESS } from '../../src/features/memory/index.ts'
-import { createMemoryStorage, MEMORY_SCHEMA } from '../../src/features/memory/store/store.ts'
-import { createBackup, stageRestore, applyPendingRestore } from '../../src/core/runtime/backup/backup.ts'
-import memoryModule from '../../packages/modules/memory/index.ts'
+import { createMemoryStore, COMPRESS } from '../../packages/modules/memory/engine/index.ts'
+import { createMemoryStorage, MEMORY_SCHEMA } from '../../packages/modules/memory/engine/store/store.ts'
+import { createBackup, stageRestore, applyPendingRestore } from '../../packages/app/backup/backup.ts'
+import { createModules } from '../../src/core/module/index.ts'
+import * as memoryModule from '../../packages/modules/memory/index.ts'
 
 let Database
 try { ({ DatabaseSync: Database } = await import('node:sqlite')) } catch {}
@@ -188,22 +189,29 @@ for (const version of versions) {
 }
 
 for (const broken of [false, true]) {
-  test(`模块启动即处理旧数据，${broken ? 'SQLite 打不开仍能启动' : '无需第一条聊天就完成迁移'}`, { skip: !Database }, (t) => {
+  test(`模块启动即处理旧数据，${broken ? 'SQLite 打不开仍能启动' : '无需第一条聊天就完成迁移'}`, { skip: !Database }, async (t) => {
     const original = fixture(versions[0])
     const dir = setup(t, original)
     if (broken) writeFileSync(join(dir, 'memory.sqlite'), 'broken sqlite')
     const warnings = []
-    const cfg = normalize({})
-    const mem = memoryModule.setup({
-      core: { hub: {}, http: {} }, dsh: null, config: () => cfg,
-      log: { ...log, warn: (s) => warnings.push(s) },
-      context() {}, on() {}, every() {}, tool() {}, route() {},
+    let cfg = normalize({})
+    const host = createModules({
+      ctx: {}, core: { hub: {}, http: {} }, getConfig: () => cfg, setConfig: next => { cfg = next },
+      logger: { child: () => ({ ...log, warn: message => warnings.push(message) }) },
+      version: 'test', builtins: [{ ...memoryModule, id: 'memory' }],
     })
+    t.after(() => host.dispose())
+    await host.boot()
+    const mem = host.use('memory')
     assert.equal(mem.list('').length, original.items.length)
-    assert.ok(memoryModule.files.includes('src/features/memory/store/store.js'))
+    assert.equal(mem.setAutoRecall(false).ok, true)
+    assert.equal(cfg.memory.recallMode, 'trigger')
+    assert.equal(cfg.ext.memory?.memory, undefined)
     assert.equal(migratedFiles(dir).length, broken ? 0 : 1)
     assert.equal(warnings.length, broken ? 1 : 0)
     assert.deepEqual(storage(t, dir).load(), original)
+    host.stop('memory')
+    assert.throws(() => mem.list(''), /已关闭/)
   })
 }
 
@@ -216,7 +224,7 @@ test('beta.2 默认保留天数 0 有意升级为 7；显式保留 0 与 -1 仍�
 test('实际拦截动态 import node:sqlite：模块仍可加载并使用 JSON', { skip: typeof nodeModule.registerHooks !== 'function' }, (t) => {
   const original = fixture(versions[0])
   const dir = setup(t, original)
-  const moduleUrl = new URL('../../src/features/memory/store/store.ts', import.meta.url).href
+  const moduleUrl = new URL('../../packages/modules/memory/engine/store/store.ts', import.meta.url).href
   const script = `
     import { registerHooks } from 'node:module';
     import assert from 'node:assert/strict';

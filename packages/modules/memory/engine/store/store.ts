@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
-import { dataDir, readJson, writeJson } from '../../../core/store/index.ts'
+import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateMemoryStorageOptions = Partial<Record<'directory' | 'log' | 'Database', any>>
@@ -74,6 +74,7 @@ export function createMemoryStorage({ directory = () => dataDir(), log = console
   let snapshot
   let lastState
   let backend
+  let closed = false
   let warned = false
   let fallbackReason = ''
   const path = (name) => join(root, name)
@@ -149,6 +150,7 @@ export function createMemoryStorage({ directory = () => dataDir(), log = console
     lastState = structuredClone(state)
   }
   function openDatabase() {
+    if (closed) throw new Error('记忆库已关闭')
     selectDirectory()
     if (backend === 'json') return
     // 只有「库还在」时，回退标记才有意义：库被删掉后标记必须失效，否则会永久卡在 JSON 后端。
@@ -238,7 +240,7 @@ export function createMemoryStorage({ directory = () => dataDir(), log = console
     load, save,
     snapshot: () => backend && lastState ? structuredClone(lastState) : null,
     status: () => { openDatabase(); closeDatabase(); return { backend, schema: backend === 'sqlite' ? MEMORY_SCHEMA : null, reason: backend === 'json' ? fallbackReason : '' } },
-    close: () => { closeDatabase(); backend = undefined; snapshot = undefined },
+    close: () => { closed = true; closeDatabase(); backend = undefined; snapshot = undefined; lastState = undefined },
   }
 }
 

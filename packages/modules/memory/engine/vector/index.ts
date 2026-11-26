@@ -5,10 +5,10 @@
 import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import { STATUS_CODES } from 'node:http'
-import { recordRetrievalUsage } from '../../../core/llm/usage/usage.ts'
-import { dataDir, readJson, writeJson } from '../../../core/store/index.ts'
+import { recordRetrievalUsage } from '../../../../../src/core/llm/usage/usage.ts'
+import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 import { createLocalVectorIndex } from './vector-local.ts'
-import type { VectorIndex } from '../../../types/memory.ts'
+import type { VectorIndex } from '../../../../../src/types/memory.ts'
 
 // 一批多少条：方舟等服务的单次 input 上限比 OpenAI 小，默认 10 最稳；面板可调。
 const DEFAULT_BATCH = 10

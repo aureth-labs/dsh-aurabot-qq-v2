@@ -6,7 +6,7 @@ import { readMemoryState, writeMemoryState } from '../helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const OWNER = '10000001'

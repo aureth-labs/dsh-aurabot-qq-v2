@@ -12,7 +12,7 @@ process.env.AURABOT_DATA_DIR = join(ROOT, 'boot')
 mkdirSync(process.env.AURABOT_DATA_DIR, { recursive: true })
 
 const { normalize } = await import('../../../src/core/config/index.ts')
-const { createMemoryStore } = await import('../../../src/features/memory/index.ts')
+const { createMemoryStore } = await import('../../../packages/modules/memory/engine/index.ts')
 
 const OWNER = '10000001'
 const GUEST = '10000111'

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMood } from '../../src/features/mood/index.ts'
+import { createMood } from '../../packages/modules/mood/state.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { moodReason } from '../../src/features/mood/context.ts'
-import moodModule from '../../packages/modules/mood/index.ts'
+import { moodReason } from '../../packages/modules/mood/context.ts'
+import * as moodModule from '../../packages/modules/mood/index.ts'
 
 const HOUR = 3600_000
 const now = new Date(2026, 10, 4, 14, 0).getTime()
@@ -104,7 +104,8 @@ test('心情衰减回基线、平常状态、关闭模块时都不注入理由�
 test('普通聊天和主动搭话共用有时效的心情提示，只放本轮消息，不注册上下文快照', (t) => {
   const { cfg } = setup(t)
   const handlers = new Map()
-  const mood = moodModule.setup({ config: () => cfg, log: {}, dsh: null,
+  const mood = moodModule.apply({ root: { config: cfg, read: () => cfg }, logger: {}, harness: null,
+    effect: () => {}, server: { get() {} },
     on: (event, handler) => handlers.set(event, handler),
     route: () => {},
     context: () => assert.fail('动态心情不得进入常驻上下文'),

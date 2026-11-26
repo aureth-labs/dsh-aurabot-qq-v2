@@ -1,6 +1,6 @@
 import { DatabaseSync } from 'node:sqlite'
 import { createHash } from 'node:crypto'
-import { tokenize } from '../../../src/features/memory/query/query.ts'
+import { tokenize } from './engine/query/query.ts'
 import type { TurnTool } from '../../../src/core/llm/tool-turn.ts'
 
 interface Where {

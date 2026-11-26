@@ -7,7 +7,7 @@
 //   - sync 只重算新增/改写的条目（靠 sig 比对），不整库重算
 
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createVecStore } from './vector-store.ts'
 import { createEmbedder } from './embed.ts'
@@ -26,11 +26,14 @@ const BATCH = 10
  *   3. 插件自带的 models/（开发者本地或离线安装时放这儿）
  */
 export function resolveAssets(dataDir) {
-  const here = fileURLToPath(new URL('../../models', import.meta.url))
+  const assets = (relative: string) => fileURLToPath(new URL(relative, import.meta.url))
+  const buildRoot = assets('../../../../..')
+  const packageRoot = basename(buildRoot) === 'lib' ? dirname(buildRoot) : buildRoot
   const cands = [
     join(dataDir, 'models'),
     join(dataDir, 'memory-assets'),
-    here,
+    assets('../../models'),
+    join(packageRoot, 'models'),
   ]
   for (const dir of cands) {
     if (existsSync(join(dir, 'model_int8.onnx')) && existsSync(join(dir, 'vocab.txt'))) return dir

@@ -1,14 +1,5 @@
-// 记忆的纯规则；配置、业务和面板派生值共用，不包含存储。
-// 旧 1/2/3/0 的含义保留，补档使用新编号，读取老库无需改写时间或迁移。
-export const FACT_TIERS = [
-  { id: 4, label: '短暂', days: 1 },
-  { id: 1, label: '琐碎', days: 7 },
-  { id: 5, label: '小事', days: 15 },
-  { id: 2, label: '一般', days: 30, followUp: true },
-  { id: 3, label: '重要', days: 90, followUp: true },
-  { id: 0, label: '永久', days: null },
-]
-export const DEFAULT_TIER_DAYS = Object.fromEntries(FACT_TIERS.filter((t) => t.days !== null).map((t) => [t.id, t.days]))
+import { FACT_TIERS, DEFAULT_TIER_DAYS } from '../../../../../src/persona/memory-tiers.ts'
+export { FACT_TIERS }
 export const isFactTier = (tier) => FACT_TIERS.some((t) => t.id === tier)
 export const isPermanentTier = (tier) => tier === 0 || tier === 'core'
 export const followUpTier = (tier) => FACT_TIERS.some((t) => t.id === tier && t.followUp)

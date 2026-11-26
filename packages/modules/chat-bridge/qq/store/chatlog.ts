@@ -4,7 +4,7 @@
 import { mkdirSync } from 'node:fs'
 import type { MessageLog } from '../../../../../src/core/store/messages.ts'
 import { redact } from '../../../../../src/core/support/log/redact.ts'
-import { parseMemoryCommand } from '../../../../../src/features/memory/index.ts'
+import { parseMemoryCommand } from '../../../memory/engine/index.ts'
 import { cleanOutboundText } from '../../../../../src/chat/reply/index.ts'
 import { simulationStore } from '../context/context.ts'
 import { chatImageRefs } from '../context/context.ts'

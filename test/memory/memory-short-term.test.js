@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
-import { createMemoryStore } from '../../src/features/memory/index.ts'
+import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 
 const QQ = '10000001'
 const OTHER = '10000002'

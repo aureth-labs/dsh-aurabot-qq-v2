@@ -1,30 +1,16 @@
-// 索引记忆库：本地 JSON 存储 + 倒排索引（中文按二元字组切词，英文数字按词）+ BM25 打分，
-// 再叠加「关于当前说话人」「重要程度」「新近程度」的加权。可选向量检索按意思补充召回。
-//
-// 记忆来源：她自己调 remember 工具记的、后台从聊天里自动提炼的、主人在面板里手动加的。
-// 召回时机：每一轮回复前，用「这一轮对方说的话」（太短就连上一句）检索最相关的几条，作为上下文悄悄告诉她。
-//
-// 时间：at 是最后改动时间（算遗忘用），saidAt 是这件事在聊天里说出来的时间（给她看的是这个）。
-//
-// 借鉴的做法：
-// - 遗忘曲线（MemoryBank）：记得多牢按「多久没想起 + 被想起过几天 + 重要程度」算，常聊到的忘得慢。
-// - 整理时先比对旧记忆（Mem0）：新事实是新增、补充旧的，还是说明旧的过时了。
-// - 过时不删（Graphiti）：旧记忆保留成立时间段，问起当时的事才能想起，面板里能恢复。
-// - 常驻的人物小档案（Letta 的 memory block）：每个人一小段印象，聊天时一直带着，不靠关键词碰运气。
-
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
-import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
-import { askModel, lastEmptyInfo } from '../../core/llm/index.ts'
-import { clipText } from '../../core/support/util/text.ts'
+import { dataDir, readJson, writeJson } from '../../../../src/core/store/index.ts'
+import { askModel, lastEmptyInfo } from '../../../../src/core/llm/index.ts'
+import { clipText } from '../../../../src/core/support/util/text.ts'
 import { createVectorIndexByMode } from './vector/index.ts'
 import { createReranker } from './vector/rerank.ts'
 import { createMemoryStorage } from './store/store.ts'
 import { inheritBlocks, inheritBatches, inheritPrompt, inheritInput, parseInherit, applyInherit } from './store/inherit.ts'
-import { shouldDeferBackground } from '../../core/llm/usage/offpeak.ts'
-import { selfName, selfNames, isSelfName } from '../../persona/personas.ts'
+import { shouldDeferBackground } from '../../../../src/core/llm/usage/offpeak.ts'
+import { selfName, selfNames, isSelfName } from '../../../../src/persona/personas.ts'
 import { FACT_TIERS, isFactTier, isPermanentTier, followUpTier, tierDays, factTiers, strongerTier, memoryPlatforms } from './query/rules.ts'
-import type { MemoryGist, MemoryInput, MemoryItem, MemoryState } from '../../types/memory.ts'
+import type { MemoryGist, MemoryInput, MemoryItem, MemoryState } from '../../../../src/types/memory.ts'
 import { createPanelViews } from './panel.ts'
 import { createContextBuilder } from './context.ts'
 
@@ -54,6 +40,7 @@ export function createMemoryStore({ dsh, getConfig, hub, log, fetchImpl, setConf
     indexCache = null
     noMemoryCache = null
   }
+  let closed = false
   let forgetVersion = 0
   let indexCache: { stamp: string; idx: any } | null = null
   // 「不再记住」的 QQ 集合。rememberedItem/Row 会按聊天流水的每一行调用；
@@ -1398,6 +1385,7 @@ export function createMemoryStore({ dsh, getConfig, hub, log, fetchImpl, setConf
 
   const digest = (value) => createHash('sha256').update(JSON.stringify(value) ?? 'null').digest('hex')
   function deleteLogAndProgress(day) {
+    if (closed) return false
     hub.deleteChatLog(day)
     if ((hub.chatLogDays?.() || []).includes(day)) return false
     const state = load()
@@ -2357,7 +2345,7 @@ export function createMemoryStore({ dsh, getConfig, hub, log, fetchImpl, setConf
     /** 设了「不再记住」的 QQ 号：别的人格据此也不记这些人。 */
     noMemoryIds: () => Object.entries<Record<string, any>>(load().profiles || {}).filter(([, p]) => p?.noMemory === true).map(([qq]) => qq),
     /** 关掉记忆库文件（删除人格数据前要先关，不然 Windows 上删不掉打开着的 SQLite）。 */
-    close: () => storage.close(),
+    close: () => { closed = true; forgetVersion++; storage.close() },
     dueFollowUp, markFollowUpAsked,
     noteVia, contextVia, recallHint, recallHintAsync, handleCommand, vectorHits, shouldAutoRecall,
     rerankStatus: () => ({ configured: reranker.configured(), ...(reranker.settings() || {}) }),
@@ -2458,11 +2446,7 @@ export function createMemoryStore({ dsh, getConfig, hub, log, fetchImpl, setConf
      */
     setAutoRecall: (on) => {
       if (typeof setConfig !== 'function') return { ok: false, message: '当前环境不支持改配置' }
-      setConfig((cfg) => {
-        if (!cfg.memory) cfg.memory = {}
-        cfg.memory.recallMode = on ? 'always' : 'trigger'
-        return cfg
-      })
+      setConfig(cfg => ({ ...cfg, memory: { ...cfg.memory, recallMode: on ? 'always' : 'trigger' } }))
       return { ok: true, message: on ? '自动回忆已打开（每轮都查）' : '自动回忆已关（只在提到过去时查）' }
     },
     // 星图点「还记得」时用：整理一份命中，让她真的复习一次（会涨 hitDays / 刷新 lastHit）

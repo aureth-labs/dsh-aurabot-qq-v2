@@ -2,9 +2,9 @@
 // 不碰存储、不碰模型；createMemoryStore 负责持久化，这里只做计算。
 
 import { randomUUID } from 'node:crypto'
-import { isSelfName, selfNames } from '../../../persona/personas.ts'
+import { isSelfName, selfNames } from '../../../../../src/persona/personas.ts'
 import { FACT_TIERS, isFactTier, isPermanentTier, followUpTier, tierDays, factTiers, strongerTier, memoryPlatforms } from './rules.ts'
-import type { MemoryGist, MemoryInput, MemoryItem, MemoryState } from '../../../types/memory.ts'
+import type { MemoryGist, MemoryInput, MemoryItem, MemoryState } from '../../../../../src/types/memory.ts'
 /** 检索/可见性调用的参数：字段名固定，值由调用方传。 */
 export type MemoryVisibleOptions = Partial<Record<'gistChatId' | 'includeGroup' | 'groupChatId' | 'ownerScope' | 'scopeChatId' | 'excludeAbout' | 'onlyAbout' | 'requireAbout' | 'now' | 'about' | 'minRelevance' | 'vectorHits' | 'period' | 'includeInvalid' | 'allowAboutOnly' | 'preferPersonal' | 'minScore' | 'rrf' | 'limit' | 'related' | 'assocLimit' | 'assocMap' | 'assocHops' | 'assocHopDecay' | 'assoc' | 'includeToday' | 'background', any>>
 export type SearchOptions = MemoryVisibleOptions

@@ -3,9 +3,9 @@
 // 别的模块（空间日记、B 站、翻唱）会往这里记她的经历；记忆模块关着时它们自己跳过。
 
 import { roomMemory } from './rooms.ts'
-import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, parseMemoryCommand, NATIVE_MEMORY_VIEW } from '../../../src/features/memory/index.ts'
-export { looksLikeRuleMemory } from '../../../src/features/memory/index.ts'
-import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../../src/features/memory/store/graph.ts'
+import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, parseMemoryCommand, NATIVE_MEMORY_VIEW } from './engine/index.ts'
+export { looksLikeRuleMemory } from './engine/index.ts'
+import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from './engine/store/graph.ts'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dataDir } from '../../../src/core/store/index.ts'
@@ -42,19 +42,26 @@ export const description = '长期记忆：记事、想起、每日整理、小�
 export const tab = 'memory'
 
 export function apply(ctx, config) {
-  const fetchImpl = undefined
+  let active = true
   const rooms = roomMemory(() => ctx.dataDir('rooms.sqlite'), () => ctx.root.config.memory?.enabled !== false)
   ctx.provide('room-memory', rooms)
   ctx.effect(() => rooms.close())
   const registerNativePreview = ctx.nativePreview
   const { hub, http } = ctx.host
   const stores = new Map() // 目录 → 记忆库
-  const scoped = new Map() // 人格|目录 → 固定在这个人格下的记忆库
+  const scoped = new Map()
+  ctx.effect(() => {
+    active = false
+    for (const store of stores.values()) store.close()
+    stores.clear()
+    scoped.clear()
+  })
   let noMemory = null // 所有人格里设了「不再记住」的 QQ 号，任何一个人格都不记这些人
   const blocked = (qq) => (noMemory ||= new Set(personaDataRoots(ctx.root.config).flatMap(({ id }) => storeOf(id).noMemoryIds()))).has(qq)
   function storeOf(pid) {
+    if (!active) throw new Error('记忆模块已关闭')
     const directory = personaDataDir(ctx.root.config, pid)
-    if (!stores.has(directory)) stores.set(directory, createMemoryStore({ dsh: ctx.harness, getConfig: ctx.root.read, hub, log: ctx.logger, fetchImpl, setConfig: ctx.updateConfig, directory, blocked }))
+    if (!stores.has(directory)) stores.set(directory, createMemoryStore({ dsh: ctx.harness, getConfig: ctx.root.read, hub, log: ctx.logger, fetchImpl: undefined, setConfig: ctx.root.update, directory, blocked }))
     const key = pid + '|' + directory
     if (!scoped.has(key)) scoped.set(key, new Proxy(stores.get(directory), { get: (t, k) => (typeof t[k] === 'function' ? (...args) => personaScope.run(pid, () => t[k](...args)) : t[k]) }))
     return scoped.get(key)
@@ -85,7 +92,7 @@ export function apply(ctx, config) {
   }
   const extra = { handleCommand, setNoMemory, closePersona }
   const memory: MemoryStore = new Proxy({} as MemoryStore, {
-    get: (_, k) => k === NATIVE_MEMORY_VIEW ? undefined : (extra as unknown as Record<string | symbol, any>)[k] || (current() as unknown as Record<string | symbol, any>)[k],
+    get: (_, k) => k === NATIVE_MEMORY_VIEW || k === 'dispose' ? undefined : (extra as unknown as Record<string | symbol, any>)[k] || (current() as unknown as Record<string | symbol, any>)[k],
     has: (_, k) => k !== NATIVE_MEMORY_VIEW && (k in extra || k in current()),
   })
   memory.list('') // 启动时完成旧 JSON 迁移，不必等第一条聊天或打开面板。

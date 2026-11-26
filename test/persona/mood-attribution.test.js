@@ -5,9 +5,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMood } from '../../src/features/mood/index.ts'
+import { createMood } from '../../packages/modules/mood/state.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import moodModule from '../../packages/modules/mood/index.ts'
+import * as moodModule from '../../packages/modules/mood/index.ts'
 
 const now = new Date(2026, 10, 4, 14, 0).getTime()
 
@@ -58,7 +58,8 @@ test('旧存档没有来源聊天：按聊天注入时不猜原因，面板/无 
 test('模块事件把聊天和带 QQ 的说话人传给心情：主人私聊的原因不会出现在别人的私聊或群里', (t) => {
   const { cfg } = setup(t)
   const handlers = new Map()
-  const mood = moodModule.setup({ config: () => cfg, log: {}, dsh: null,
+  const mood = moodModule.apply({ root: { config: cfg, read: () => cfg }, logger: {}, harness: null,
+    effect: () => {}, server: { get() {} },
     on: (event, handler) => handlers.set(event, handler),
     route: () => {},
   })

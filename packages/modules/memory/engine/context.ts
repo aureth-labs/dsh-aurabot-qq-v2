@@ -1,6 +1,6 @@
 // 上下文注入：每轮回复前按这一轮对方说的话检索记忆，拼成一小段提示词交给她；也拼群背景与流水尾巴。
 
-import { clipText } from '../../core/support/util/text.ts'
+import { clipText } from '../../../../src/core/support/util/text.ts'
 import { agoText, buildIndex, eventText, memoryLine, parseMemoryCommand, pastWindow, relationHas, relationText, search, stamp, tokenize } from './query/query.ts'
 
 export interface ContextDeps {

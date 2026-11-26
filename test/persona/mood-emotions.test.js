@@ -12,12 +12,12 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMood } from '../../src/features/mood/index.ts'
+import { createMood } from '../../packages/modules/mood/state.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import {
   DEFAULT_EMOTIONS, MAX_EMOTIONS, defaultEmotions, deriveEmotionVector,
   emotionLabels, normalizeEmotionVector, normalizeEmotions, profileOf, resolveEmotion, topEmotion,
-} from '../../src/features/mood/emotions.ts'
+} from '../../src/persona/emotions.ts'
 
 const HOUR = 3600_000
 
