@@ -6,7 +6,7 @@ import { readMemoryState } from '../helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 
 const QQ = '10000001'

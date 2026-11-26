@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dataDir } from '../../store/index.ts'
 import { findFfmpeg } from './img.ts'
-import { mimeOf } from '../../../chat/inbound/index.ts'
+import { mimeOf } from './inspect.ts'
 import { parseWav, toMono16k } from './wav.ts'
 import { stickerPath } from '../../../features/stickers/index.ts'
 

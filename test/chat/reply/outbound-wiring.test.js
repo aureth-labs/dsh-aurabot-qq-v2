@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../../../src/chat/hub/index.ts'
+import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
 import { createOutboundPolicy } from '../../../src/chat/policy/outbound/index.ts'
 import { scopeCoreForModule } from '../../../src/core/module/index.ts'
 

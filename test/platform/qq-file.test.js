@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { gifFrames, isStickerSegment, parseMessageEvent } from '../../src/chat/inbound/index.ts'
+import { isStickerSegment, parseMessageEvent } from '../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
+import { gifFrames } from '../../src/core/message/media/inspect.ts'
 import { readQqFile } from '../../src/features/platform/qq/file.ts'
 
 const file = (over = {}) => ({ name: 'a.txt', size: 5, id: 'f1', url: 'https://x/a', hash: '', busid: 0, ...over })

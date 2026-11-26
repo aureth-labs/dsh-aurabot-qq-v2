@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { mimeOf } from '../../../chat/inbound/index.ts'
+import { mimeOf } from './inspect.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type ShrinkImageOptions = Partial<Record<'timeoutMs', any>>

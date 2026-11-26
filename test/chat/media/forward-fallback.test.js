@@ -7,8 +7,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   FORWARD_NOT_EXPANDED, forwardBody, readForward,
-} from '../../../src/chat/inbound/hooks/forward.ts'
-import { parseMessageEvent } from '../../../src/chat/inbound/index.ts'
+} from '../../../packages/adapters/qq/onebot-v11/src/message/forward.ts'
+import { parseMessageEvent } from '../../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
 
 const node = (name, message) => ({ sender: { nickname: name, user_id: 2 }, message })
 const text = (t) => ({ type: 'text', data: { text: t } })

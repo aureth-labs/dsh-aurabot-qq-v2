@@ -1,8 +1,8 @@
 // QQ 系统表情（小黄脸）：<face:名字> 换成消息段、认不出的去掉；网关目录只要数字编号、同名优先普通表情；收到的按名字给她看；提示词按开关教她。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { textToSegments, stripFaceTags, buildFaceIndex, createFaces, COMMON_FACES, splitSpeakable, speakableText } from '../../../src/chat/media/face/index.ts'
-import { parseMessageEvent } from '../../../src/chat/inbound/index.ts'
+import { textToSegments, stripFaceTags, buildFaceIndex, createFaces, COMMON_FACES, splitSpeakable, speakableText } from '../../../packages/adapters/qq/onebot-v11/src/face/index.ts'
+import { parseMessageEvent } from '../../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
 import { rulesText } from '../../../src/persona/personas.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 

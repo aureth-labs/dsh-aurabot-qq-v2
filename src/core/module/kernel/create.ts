@@ -11,7 +11,7 @@ import { readManifest, entryOf as entryOfManifest } from '../manifest.ts'
 import { join, relative, resolve, isAbsolute } from 'node:path'
 import { dataDir } from '../../store/index.ts'
 import type { SettingsField } from '../../config/shape/schema.ts'
-import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
+import { PERSONA_MEMORY_MODULE } from '../privileged.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 interface StartOptions {

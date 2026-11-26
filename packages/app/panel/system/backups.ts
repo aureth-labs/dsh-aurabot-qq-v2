@@ -8,7 +8,7 @@ import {
   cancelRestore,
 } from '../../../../src/core/runtime/backup/backup.ts'
 import { dataDir } from '../../../../src/core/store/index.ts'
-import { workspaceDirOf } from '../../../../src/chat/hub/index.ts'
+import { workspaceDirOf } from '../../../modules/chat-bridge/qq/index.ts'
 import { mergeFromPanel } from '../../../../src/core/config/index.ts'
 import {
   pushBackup,

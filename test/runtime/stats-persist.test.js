@@ -9,7 +9,7 @@ import { cleanupDir } from '../helpers/cleanup.js'
 const dir = mkdtempSync(join(tmpdir(), 'aurabot-stats-'))
 process.env.AURABOT_DATA_DIR = dir
 
-const { createHub } = await import('../../src/chat/hub/index.ts')
+const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
 
 const today = () => new Date().toDateString()
 

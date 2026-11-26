@@ -1,4 +1,4 @@
-import { createHub } from '../../../src/chat/hub/index.ts'
+import { createHub } from '../../modules/chat-bridge/qq/index.ts'
 import { commandList, parseCommand, runCommand } from '../../modules/commands/dispatch.ts'
 import {
   canUseDelegatedCommand,

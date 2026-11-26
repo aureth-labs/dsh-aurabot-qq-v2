@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSyn
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { createImageGen, customRequest, resolveDrawImage } from '../../src/features/media/generate/imagegen.ts'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { createLocal } from '../../src/local/index.ts'
 import { savePainting } from '../../src/features/media/generate/paintings.ts'

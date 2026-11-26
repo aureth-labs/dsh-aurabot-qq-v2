@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
 import { updateExec, runUpdate } from '../../support.ts'
 import { moveWorkspace, grantOwner } from '../../../../src/core/runtime/workspace-move.ts'
-import { workspaceDirOf } from '../../../../src/chat/hub/index.ts'
+import { workspaceDirOf } from '../../../modules/chat-bridge/qq/index.ts'
 
 export function registerUpdateRoutes({ PKG, log, getConfig, http, ROOT, VERSION }) {
   const { route, query, readBody } = http

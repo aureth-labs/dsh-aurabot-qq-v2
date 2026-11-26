@@ -8,7 +8,7 @@ import { normalize } from '../../src/core/config/index.ts'
 import { checkAllowed, shouldObserveGroup } from '../../src/chat/policy/rules/access.ts'
 import { decideGroupReply, policyFor } from '../../src/chat/policy/rules/group.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { createMemoryStore } from '../../src/features/memory/index.ts'
 
 const G = '30000003', U = '10000002', BOT = '20000002'

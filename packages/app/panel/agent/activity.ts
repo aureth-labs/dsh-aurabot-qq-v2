@@ -1,6 +1,6 @@
 import { loadConfig, mergeFromPanel } from '../../../../src/core/config/index.ts'
 import { normalizeWorkspace } from '../../../../src/features/notices/index.ts'
-import { normalizeSelection } from '../../../../src/chat/hub/store/chat-model.ts'
+import { normalizeSelection } from '../../../../src/core/config/chat-model.ts'
 
 export function registerActivityRoutes({
   http,

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { identityNote, flatHistory } from '../../src/chat/inbound/parse/identity.ts'
+import { identityNote, flatHistory } from '../../packages/modules/chat-bridge/qq/context/identity.ts'
 import { cleanOutboundText } from '../../src/chat/reply/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 const dir = mkdtempSync(join(tmpdir(), 'ab-identity-'))
@@ -55,7 +55,7 @@ test('历史补读兼容 CQ 字符串，带昵称的 @ 仍保留目标账号', (
     { user_id: 10002, message: [{ type: 'at', data: { qq: '10003', name: '同名用户' } }, { type: 'text', data: { text: '你做的' } }] },
   ], '10001')
   assert.match(rows[0], /@10003/)
-  assert.match(rows[0], /CQ:reply,id=77/)
+  assert.match(rows[0], /引用消息 77/)
   assert.match(rows[1], /@了机器人/)
   assert.match(rows[2], /@同名用户\(10003\)/)
 })

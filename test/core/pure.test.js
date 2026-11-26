@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { parseReply, stripMarkdown, bubbleDelay } from '../../src/chat/reply/index.ts'
 import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../../src/chat/policy/rules/group.ts'
-import { parseMessageEvent, isStickerSegment, stickerSizeOk, imageSize } from '../../src/chat/inbound/index.ts'
+import { parseMessageEvent, isStickerSegment } from '../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
+import { stickerSizeOk, imageSize } from '../../src/core/message/media/inspect.ts'
 import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../../src/chat/policy/rules/access.ts'
 import { avatarSource } from '../../packages/modules/profile/index.ts'
 import { redact, registerSecret } from '../../src/core/support/log/redact.ts'
@@ -316,7 +317,7 @@ test('更新后：会公开发东西的新功能，老用户先关着，新安�
 })
 
 test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', async () => {
-  const { parseMessageEvent } = await import('../../src/chat/inbound/index.ts')
+  const { parseMessageEvent } = await import('../../packages/adapters/qq/onebot-v11/src/message/parse.ts')
   const { parseReply } = await import('../../src/chat/reply/index.ts')
   const m = parseMessageEvent({ message_type: 'group', group_id: 1, user_id: 2, message: [{ type: 'forward', data: { id: 'abc' } }] }, '9')
   assert.deepEqual(m.forwards, [{ id: 'abc', outerId: '', content: null }])
@@ -371,7 +372,7 @@ test('#28 QQ 网关：配置统一到 onebot 段；老的 snowluma 段只迁移�
 
 test('#32 工作区位置：面板填的绝对路径优先，相对路径 / 乱填的当没填', async () => {
   const { normalize } = await import('../../src/core/config/index.ts')
-  const { workspaceDirOf, WORKSPACE_DIR } = await import('../../src/chat/hub/index.ts')
+  const { workspaceDirOf, WORKSPACE_DIR } = await import('../../packages/modules/chat-bridge/qq/index.ts')
   assert.equal(normalize({}).workspaceDir, '')
   assert.equal(workspaceDirOf(normalize({})), WORKSPACE_DIR)
   assert.equal(workspaceDirOf(normalize({ workspaceDir: ' D:\\Aurabot\\qq-chats ' })), 'D:\\Aurabot\\qq-chats')

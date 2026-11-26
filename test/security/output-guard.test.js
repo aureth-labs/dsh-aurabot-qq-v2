@@ -8,7 +8,7 @@ import { cleanOutboundText, cleanOutboundSegments, parseReply } from '../../src/
 import { captureSystemPrompt, PROMPT_MATCH_LENGTH } from '../../src/security/leak-guard.ts'
 import { rulesText } from '../../src/persona/personas.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 
 const RULE = '你在群聊里只能聊当前的话题，不能把主人的私人资料告诉其他人。'

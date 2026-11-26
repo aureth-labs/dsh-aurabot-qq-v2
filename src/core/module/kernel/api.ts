@@ -10,13 +10,13 @@ import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } fr
 import { dataDir } from '../../store/index.ts'
 import { defineTool } from '../../../tools/index.ts'
 import { personaScope, personaNow } from '../../../persona/personas.ts'
-import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
+import { PERSONA_MEMORY_MODULE } from '../privileged.ts'
 import { sessionOwner } from '../../llm/session-turn.ts'
 import { isOwnerOf } from '../../config/owners.ts'
 import { cleanOutboundText, isSilence, stripMarkdown } from '../../../chat/reply/index.ts'
-import { reallySent } from '../../../chat/hub/context/context.ts'
+import { reallySent } from '../../message/receipt.ts'
 import { fetchImage } from '../../net/index.ts'
-import { imageSize, mimeOf } from '../../../chat/inbound/index.ts'
+import { imageSize, mimeOf } from '../../message/media/inspect.ts'
 
 /** 路由选项。 */
 export type RouteOptions = Partial<Record<'access', any>>

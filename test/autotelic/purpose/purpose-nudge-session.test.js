@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../../helpers/fake-dsh.js'
-import { createHub } from '../../../src/chat/hub/index.ts'
+import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 

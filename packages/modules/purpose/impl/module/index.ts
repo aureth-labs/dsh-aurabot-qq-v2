@@ -13,10 +13,10 @@ import { dataDir, readJson, writeJson } from '../../../../../src/core/store/inde
 import { randomUUID } from 'node:crypto'
 import { quietWindowOf } from '../../../../../src/core/support/time/time-window.ts'
 import { cleanOutboundText } from '../../../../../src/chat/reply/index.ts'
-import { isSessionBackoff } from '../../../../../src/chat/hub/turn/session-backoff.ts'
+import { isSessionBackoff } from '../../../chat-bridge/qq/turn/session-backoff.ts'
 import { followUpHint } from '../../../../../src/features/memory/index.ts'
 import { selfName, selfNames, personaDataDir, personaNow } from '../../../../../src/persona/personas.ts'
-import { normalizeSelection } from '../../../../../src/chat/hub/store/chat-model.ts'
+import { normalizeSelection } from '../../../../../src/core/config/chat-model.ts'
 import {
   DEFAULT_PURPOSE_CONFIG, PURPOSE_NEEDS, NEED_LABELS,
   normalizePurposeConfig, createPurposeState, normalizePurposeState,

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../../../src/chat/hub/index.ts'
+import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 import { cleanupDir } from '../../helpers/cleanup.js'
 

@@ -10,7 +10,7 @@ import { clearVisionCache, clearReasoningCache } from '../../src/core/llm/index.
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-merge-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../../src/chat/hub/index.ts')
+const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
 const OWNER = '10000001'
 const BOT = '20000002'
 const CHAT = `private:${OWNER}`

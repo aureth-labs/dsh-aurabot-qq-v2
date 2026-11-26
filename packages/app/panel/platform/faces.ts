@@ -1,5 +1,5 @@
-import { FACE_TABLE } from '../../../../src/chat/media/face/table.ts'
-import { buildFaceIndex } from '../../../../src/chat/media/face/index.ts'
+import { FACE_TABLE } from '../../../adapters/qq/onebot-v11/src/face/table.ts'
+import { buildFaceIndex } from '../../../adapters/qq/onebot-v11/src/face/index.ts'
 
 export function registerFaceRoutes({ http, onebot, logger }) {
   const { route } = http

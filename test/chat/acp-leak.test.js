@@ -21,7 +21,7 @@ import { cleanOutboundText, cleanOutboundSegments, parseReply, stripAcpLeak, has
 import { stripHtmlFragments } from '../../src/chat/reply/format/html-fragments.ts'
 import { guardOutgoing } from '../../src/chat/inbound/hooks/guard.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 
 // 2026-11-22 真机实况三条样本（逐字，勿改）
 const SAMPLE_ATTR_TAIL = '="text" time="2026-11-22 17:26:47">>'

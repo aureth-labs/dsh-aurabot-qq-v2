@@ -12,7 +12,7 @@ import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { cleanupDir } from '../helpers/cleanup.js'
 const root = mkdtempSync(join(tmpdir(), 'aurabot-group-mode-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../../src/chat/hub/index.ts')
+const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
 after(() => cleanupDir(root))
 const G = '30000003', H = '40000004', OWNER = '10000001', BOT = '20000002'
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }

@@ -9,7 +9,7 @@ import { currentTimeLine } from '../../src/chat/reply/context/time-context.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-time-poke-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../../src/chat/hub/index.ts')
+const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
 const OWNER = '10000001', BOT = '20000002', GROUP = '30000003'
 const CHAT = `private:${OWNER}`
 const deferred = () => {

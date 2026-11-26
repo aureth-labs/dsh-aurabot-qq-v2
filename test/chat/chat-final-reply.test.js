@@ -2,7 +2,7 @@
 // 否则模型在调工具前写的计划/心里话（例如「我先想想怎么回」）会被原样发到 QQ。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { assistantReplyText } from '../../src/chat/hub/index.ts'
+import { assistantReplyText } from '../../packages/modules/chat-bridge/qq/index.ts'
 
 const msg = (content) => ({ content })
 

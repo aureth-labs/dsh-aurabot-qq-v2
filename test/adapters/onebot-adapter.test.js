@@ -33,3 +33,10 @@ test('网关就绪：connect 返回已上线的 bot，disconnect 让它离线', 
   assert.equal(bot.status, 'offline')
   connected = false
 })
+
+test('CQ 字符串与数组使用同一元素语义，转义过的 CQ 保持纯文字', async () => {
+  const { fromOneBot } = await import('../../packages/adapters/qq/onebot-v11/src/element.ts')
+  assert.deepEqual(fromOneBot('前&amp;后&#91;CQ:face,id=1&#93;[CQ:at,qq=7][CQ:image,file=a&#44;b]'), fromOneBot([
+    { type:'text', data:{text:'前&后[CQ:face,id=1]'} }, { type:'at',data:{qq:'7'} }, { type:'image', data:{file:'a,b'} },
+  ]))
+})

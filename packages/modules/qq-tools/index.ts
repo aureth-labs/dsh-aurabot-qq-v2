@@ -2,7 +2,7 @@
 
 import { defineTool, str, int, bool } from '../../../src/tools/index.ts'
 import { readQqFile } from '../../../src/features/platform/qq/file.ts'
-import { parseMessageEvent } from '../../../src/chat/inbound/index.ts'
+import { parseMessageEvent } from '../../adapters/qq/onebot-v11/src/message/parse.ts'
 import { hasInvalidVoiceMarkup } from '../../../src/chat/reply/index.ts'
 
 /** 真实网关对不在群里的人也回成功、角色写 member，只有 join_time 是空的：没有它就不算成员。 */

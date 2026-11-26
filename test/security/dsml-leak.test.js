@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { cleanOutboundText, cleanOutboundSegments, stripToolText, parseReply } from '../../src/chat/reply/index.ts'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { cleanReply } from '../../packages/modules/purpose/impl/module/index.ts'
 

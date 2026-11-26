@@ -1,9 +1,7 @@
 import { h, normalize, type Element, type ElementSource } from '../../../../../src/core/message/element/element.ts'
 
-export interface OneBotSegment {
-  type: string
-  data: Record<string, unknown>
-}
+import { oneBotSegments, type OneBotSegment } from './cq.ts'
+export type { OneBotSegment } from './cq.ts'
 
 const ONEBOT_TO_TYPE: Record<string, string> = {
   text: 'text',
@@ -31,15 +29,8 @@ const TYPE_TO_ONEBOT: Record<string, string> = {
 }
 
 export function fromOneBot(segments: unknown): Element[] {
-  if (!Array.isArray(segments)) return segments == null ? [] : [h.text(String(segments))]
   const out: Element[] = []
-  for (const segment of segments) {
-    if (typeof segment === 'string') {
-      out.push(h.text(segment))
-      continue
-    }
-    if (!segment || typeof segment !== 'object') continue
-    const raw = segment as { type?: string; data?: Record<string, unknown> }
+  for (const raw of oneBotSegments(segments)) {
     const type = ONEBOT_TO_TYPE[String(raw.type)] || String(raw.type || 'text')
     const data = { ...(raw.data || {}) }
     if (type === 'text') {

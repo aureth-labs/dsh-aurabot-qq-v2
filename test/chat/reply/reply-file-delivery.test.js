@@ -1,7 +1,7 @@
 // <file> 条目要真的落到发文件链路（deliver → sendFile），而不是当文字发出去。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createDeliver } from '../../../src/chat/hub/delivery/deliver.ts'
+import { createDeliver } from '../../../packages/modules/chat-bridge/qq/delivery/deliver.ts'
 import { parseReply, itemsToLine, tidyPunctuation, cleanOutboundText, cleanOutboundSegments, bubbleDelay } from '../../../src/chat/reply/index.ts'
 import { guardOutgoing } from '../../../src/chat/inbound/hooks/guard.ts'
 import { hasSuspectTagShape } from '../../../src/chat/reply/index.ts'

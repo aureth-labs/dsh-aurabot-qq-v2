@@ -1,6 +1,6 @@
 import { dataDir, ensureDir } from '../../../../src/core/store/index.ts'
 import { statSync, existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs'
-import { mimeOf } from '../../../../src/chat/inbound/index.ts'
+import { mimeOf } from '../../../../src/core/message/media/inspect.ts'
 import { join } from 'node:path'
 
 export function registerAvatarRoutes({ http, ROOT, log, onebot }) {

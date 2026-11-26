@@ -7,7 +7,7 @@ import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removeP
 import { defineTool, str, int } from '../../../src/tools/index.ts'
 import { SIZE_OPTIONS } from '../../../src/features/media/image/shape.ts'
 import { dataDir } from '../../../src/core/store/index.ts'
-import { mimeOf } from '../../../src/chat/inbound/index.ts'
+import { mimeOf } from '../../../src/core/message/media/inspect.ts'
 import { drawFormat, gifFrameCount } from '../../../src/features/media/image/format.ts'
 import { mergeFromPanel } from '../../../src/core/config/index.ts'
 import { redact } from '../../../src/core/support/log/redact.ts'

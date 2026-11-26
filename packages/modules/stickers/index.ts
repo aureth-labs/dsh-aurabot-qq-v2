@@ -6,7 +6,7 @@ import { createStickerStore, stickerPath, MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BY
 import { defineTool, int, str } from '../../../src/tools/index.ts'
 import { fetchImage, segmentBytes, formatBytes } from '../../../src/core/net/index.ts'
 import { resolvePainting } from '../../../src/features/media/generate/paintings.ts'
-import { imageSize } from '../../../src/chat/inbound/index.ts'
+import { imageSize } from '../../../src/core/message/media/inspect.ts'
 
 export const name = '表情包'
 

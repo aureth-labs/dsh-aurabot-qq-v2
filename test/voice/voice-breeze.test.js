@@ -27,7 +27,7 @@ const base = `http://127.0.0.1:${server.address().port}`
 const { breezeSynth, textToSpeech } = await import('../../src/voice/tts/index.ts')
 const { breezeBalance, breezeLogin, breezeClaim, breezeSession, shouldAutoClaim, clearBreezeSession, breezeVoices } = await import('../../src/voice/asr/breeze.ts')
 const { DEFAULTS, normalize, publicConfig, mergeFromPanel } = await import('../../src/core/config/index.ts')
-const { splitSpeakable } = await import('../../src/chat/media/face/index.ts')
+const { splitSpeakable } = await import('../../packages/adapters/qq/onebot-v11/src/face/index.ts')
 
 after(() => {
   server.close()

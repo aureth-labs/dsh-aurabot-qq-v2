@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../../../src/chat/inbound/hooks/forward.ts'
+import { applyForwardBodies, readForward, FORWARD_PLACEHOLDER } from '../../../packages/adapters/qq/onebot-v11/src/message/forward.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 import { readClientSource } from '../../helpers/client-source.js'
 
@@ -101,7 +101,7 @@ const groupEvent = (extra = []) => ({
 
 let createHubRef = null
 test('早展开开着：消息一进来就拉一次（哪怕这条不回她）', async (t) => {
-  const { createHub } = await import('../../../src/chat/hub/index.ts')
+  const { createHub } = await import('../../../packages/modules/chat-bridge/qq/index.ts')
   createHubRef = createHub
   const { hub, calls } = setup(t, { forward: { expandEarly: true } })
   await hub.onMessage(groupEvent())
@@ -111,7 +111,7 @@ test('早展开开着：消息一进来就拉一次（哪怕这条不回她）',
 })
 
 test('早展开关着：不叫她的时候一次都不拉', async (t) => {
-  const { createHub } = await import('../../../src/chat/hub/index.ts')
+  const { createHub } = await import('../../../packages/modules/chat-bridge/qq/index.ts')
   createHubRef = createHub
   const { hub, calls } = setup(t, { forward: { expandHistory: true } })
   await hub.onMessage(groupEvent())

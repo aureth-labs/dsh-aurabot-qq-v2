@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { ignoredGroupMember, validMemberFilter } from '../../src/chat/inbound/filter/member-filter.ts'
-import { createHub } from '../../src/chat/hub/index.ts'
+import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 const U = '50000005', G = '30000003', H = '40000004', OWNER = '10000001', BOT = '20000002'
 const rule = (scope = 'groups', groups = [G]) => ({ enabled: true, rules: [{ userId: U, scope, groups }] })
