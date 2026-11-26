@@ -40,8 +40,8 @@ export function createMessageMedia({
   async function groupName(gid) {
     if (groupNames.has(gid)) return groupNames.get(gid)
     try {
-      const info = await onebot.call('get_group_info', { group_id: Number(gid) }, { retries: 0 })
-      if (info?.group_name) groupNames.set(gid, info.group_name)
+      const info = await onebot.bot?.getGuild(String(gid))
+      if (info?.name) groupNames.set(gid, info.name)
     } catch (error) {}
     return groupNames.get(gid) || gid
   }
@@ -172,7 +172,8 @@ export function createMessageMedia({
     groupName,
     expandForwards,
     isDisposed: isDisposed,
-    getSelfId: () => activity.selfId,
+    platform: () => onebot.bot?.platform,
+    getSelfId: () => onebot.bot?.selfId || activity.selfId,
     getConfig,
     quotedInfo,
     quoteInline,

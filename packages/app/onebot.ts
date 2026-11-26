@@ -30,6 +30,7 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
 
 export function primaryOneBot(service: () => Connection | null, botOf?: () => BotLike, events?: ReturnType<typeof createSendEvents>) {
   return {
+    get bot() { return botOf?.() },
     get state() { return service()?.client.state ?? 'stopped' },
     get verified() { return service()?.verified ?? false },
     get login() { return service()?.login ?? { uin: '', nickname: '', at: 0 } },

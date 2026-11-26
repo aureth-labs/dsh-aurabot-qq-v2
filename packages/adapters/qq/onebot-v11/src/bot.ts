@@ -153,7 +153,7 @@ export class OneBotBot extends Bot {
     return (Array.isArray(list) ? list : []).map((item) => {
       const role = String(item?.role ?? '')
       return {
-        user: { id: String(item?.user_id ?? ''), name: String(item?.card || item?.nickname || '') },
+        user: { id: String(item?.user_id ?? ''), name: String(item?.card || item?.nickname || ''), nick: String(item?.nickname || '') },
         nick: String(item?.card || ''),
         roles: role === 'owner' ? ['owner'] : role === 'admin' ? ['admin'] : [],
         joinedAt: Number(item?.join_time) ? Number(item.join_time) * 1000 : undefined,
@@ -246,13 +246,13 @@ export class OneBotBot extends Bot {
 
 
 
-function mapMessage(raw: any, channelId: string): Message {
+export function mapMessage(raw: any, channelId: string): Message {
   const elements = fromOneBot(raw?.message ?? raw?.raw_message ?? '')
   return {
     id: String(raw?.message_id ?? ''),
     channelId: String(channelId),
     userId: String(raw?.user_id ?? raw?.sender?.user_id ?? ''),
-    userName: String(raw?.sender?.card || raw?.sender?.nickname || ''),
+    userName: String(raw?.sender?.card || raw?.sender?.nickname || raw?.nickname || ''),
     content: toText(elements),
     elements,
     createdAt: Number(raw?.time) ? Number(raw.time) * 1000 : undefined,

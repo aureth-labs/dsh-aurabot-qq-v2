@@ -578,7 +578,7 @@ export function apply(ctx) {
   registerOutboundPolicyRoutes({ http, getConfig, setConfig, outbound, log })
   registerPetControls({ http, setConfig, getConfig, log, petStatus, use, redactTokens, publicBaseUrlOf, ctx, PREFIX })
   registerPetBehavior({ http, use, redactTokens, getConfig, setConfig, log })
-  registerPermissionRoutes({ http, logger, mods, getConfig, setConfig, onebot })
+  registerPermissionRoutes({ http, logger, mods, getConfig, setConfig, bots: botRegistry, defaultBot: () => onebot.bot })
   registerUpdateRoutes({ PKG, log, getConfig, http, ROOT, VERSION })
   const { connectionProblem } = registerDiagnostics({ http, getConfig, endpoint, onebot, warmSince, warmPhase, mods, hub })
   registerPersonaRoutes({ http, ctx, generate, getConfig, bridge, use, hub, setConfig, log })

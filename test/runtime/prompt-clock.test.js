@@ -1,8 +1,10 @@
+import { mapMessage } from '../../packages/adapters/qq/onebot-v11/src/bot.ts'
+const flatHistory = (rows, ...args) => formatHistory(rows.filter(Boolean).map(row => mapMessage(row, 'room')), ...args)
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { clockAt, clockLabel } from '../../src/chat/reply/index.ts'
-import { flatHistory } from '../../packages/modules/chat-bridge/qq/context/identity.ts'
+import { flatHistory as formatHistory } from '../../packages/modules/chat-bridge/history.ts'
 import { hubSource } from '../helpers/hub-source.js'
 
 test('钟点统一按东八区压成 HH:MM', () => {
@@ -45,7 +47,7 @@ test('跨天时补日期：昨天 / 更早 / 跨年', async () => {
 test('补看历史与跨会话转达也带时间标签', () => {
   const hub = hubSource()
   // 补读已提取到 identity.js：检查调用方传入时钟，并直接验证历史日期行为。
-  assert.match(hub, /flatHistory\(filterHistory\(chat.chatId, list\), activity.selfId \|\| cfg.botQQ, \{\s*clockLabel,?\s*\}\)/)
+  assert.match(hub, /flatHistory\(filterHistory\(chat.chatId, list\), bot.selfId, \{\s*clockLabel,?\s*\}\)/)
   const now = Date.UTC(2026, 10, 9, 15, 34)
   const rows = flatHistory([
     { user_id: 10002, time: Date.UTC(2026, 10, 8, 15, 5) / 1000, message: '昨天的消息' },

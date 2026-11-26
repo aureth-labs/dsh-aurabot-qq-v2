@@ -36,7 +36,7 @@ export function createSessionStore({ getConfig }: CreateSessionStoreOptions) {  
     return !isBeforeMemoryReset(chatId, uid, at < 1e12 ? at * 1000 : at)
   }
   function filterHistory(chatId, messages) {
-    return messages.filter((message) => message && historyVisible(chatId, message.sender?.user_id ?? message.user_id, message.time))
+    return messages.filter((message) => message && historyVisible(chatId, message.userId, message.createdAt))
   }
 
   return { pnow, mapFile, map, saveMap, chatDir, sessionPersona, memoryCutoffs, memoryResetAt, chatMemoryCutoff, isBeforeMemoryReset, historyVisible, filterHistory }

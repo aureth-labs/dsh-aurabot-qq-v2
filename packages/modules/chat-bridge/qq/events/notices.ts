@@ -1,32 +1,6 @@
-export interface MemberLookupDeps {
-  onebot: any
-  log: any
-}
-
-export function createMemberLookup (deps: MemberLookupDeps) {
-  const groupMembers = new Map<string, { at: number; list: any[] }>()
-
-  async function membersOf (groupId: string | number) {
-    const key = String(groupId)
-    const hit = groupMembers.get(key)
-    if (hit && Date.now() - hit.at < 10 * 60_000) return hit.list
-    try {
-      const r = await deps.onebot.call('get_group_member_list', { group_id: Number(groupId) }, { timeoutMs: 15000 })
-      const list = Array.isArray(r) ? r : r?.data || []
-      groupMembers.set(key, { at: Date.now(), list })
-      return list
-    } catch (error) {
-      deps.log.debug('拉群成员失败，@ 按文字发：', error.message)
-      return hit?.list || []
-    }
-  }
-
-  return { membersOf }
-}
-
 export interface NoticeHandlerDeps {
   getConfig: () => any
-  onebot: any
+  userName(userId: string, guildId?: string): Promise<string>
   log: any
   isDisposed: () => boolean
   sentIds: Set<unknown>
@@ -44,8 +18,8 @@ export function createNoticeHandler (deps: NoticeHandlerDeps) {
     const names = new Map<string, string>()
     for (const qq of new Set([ev.user_id, ev.operator_id, ev.sender_id].filter(Boolean))) {
       try {
-        const m = groupId ? await deps.onebot.call('get_group_member_info', { group_id: Number(groupId), user_id: Number(qq) }, { timeoutMs: 3000, retries: 0 }) : null
-        names.set(String(qq), `${m?.card || m?.nickname || 'QQ 用户'}(${qq})`)
+        const name = await deps.userName(String(qq), groupId)
+        names.set(String(qq), (name || '用户') + '(' + qq + ')')
       } catch (error) { names.set(String(qq), `QQ 用户(${qq})`) }
     }
     if (deps.isDisposed()) return

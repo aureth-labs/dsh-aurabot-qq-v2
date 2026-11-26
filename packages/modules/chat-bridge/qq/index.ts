@@ -32,10 +32,10 @@ import { createTurnState } from './turn/turn-state.ts'
 import { createStats } from './store/stats.ts'
 import { createStickerStash } from './format/sticker.ts'
 import { createGroupEvents } from './events/group.ts'
-import { createMemberLookup, createNoticeHandler } from './events/notices.ts'
+import { createNoticeHandler } from './events/notices.ts'
 import { createSubagent } from './subagent/index.ts'
 import { createOutboundGuard } from './delivery/guard.ts'
-import { createFriends } from './events/friends.ts'
+import { createDirectory } from '../directory.ts'
 import { createReact } from './media/react.ts'
 import { createSessionQuery } from './session/query.ts'
 import { createTyping } from './media/typing.ts'
@@ -97,7 +97,8 @@ export function createHub({
   const { groupBuf, groupInterjects, groupSaid, groupRefs, groupEngaged, groupEngagedRun, groupNames } =
     groups
   const ENGAGE_MS = 3 * 60_000
-  const { refreshFriends, friendIds } = createFriends({ onebot, log }) // 好友列表缓存（5 分钟）
+  const botOf = () => onebot?.bot
+  const { refreshFriends, isFriend, membersOf, userName } = createDirectory(botOf, log)
   const privateSources = new Map()
 
   const stickerStash = createStickerStash()
@@ -123,9 +124,8 @@ export function createHub({
     return next
   }
   const faces = createFaces({ onebot, log }) // QQ 系统表情：<face:名字> ↔ 编号
-  const { maybeReact } = createReact({ getConfig, log, onebot, faces, mood })
+  const { maybeReact } = createReact({ getConfig, log, botOf, faces, mood })
   const titleFilter = createTitleFilter({ getConfig, onebot, log }) // 勾选的群里，头衔是某个词的成员（别的机器人）不理
-  const { membersOf } = createMemberLookup({ onebot, log })
   const noticesFor = new Map() // chatId → [一句话]  下次交给她时带上的群事件（撤回、禁言、进群……）
   const saidElsewhere = new Map() // chatId → [{ at, text }]  别处安排她在这里发的话，下次这个聊天交给她时补进去
   const proactiveLogAt = new Map() // chatId → 已从流水补进过一次的最大时间戳（重启后回捞用，避免同一批重复注入）
@@ -175,7 +175,7 @@ export function createHub({
     chatLog
   const { onNotice } = createNoticeHandler({
     getConfig,
-    onebot,
+    userName,
     log,
     isDisposed,
     sentIds,
@@ -361,7 +361,7 @@ export function createHub({
     isDisposed,
     getConfig,
     getSelfId: () => activity.selfId,
-    onebot,
+    userName,
     hooks,
     titleFilter,
     lastPoker,
@@ -664,7 +664,7 @@ export function createHub({
     logChat,
     chatLogRevision: () => chatLog.revision(),
     refreshFriends,
-    isFriend: (qq) => friendIds.has(String(qq)),
+    isFriend: (id) => isFriend(String(id)),
     localTranscribe,
     ensureWorkspace,
     chatLogOf,

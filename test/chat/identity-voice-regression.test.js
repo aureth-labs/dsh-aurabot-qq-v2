@@ -1,10 +1,12 @@
+import { mapMessage } from '../../packages/adapters/qq/onebot-v11/src/bot.ts'
+const flatHistory = (rows, ...args) => formatHistory(rows.filter(Boolean).map(row => mapMessage(row, 'room')), ...args)
 import { test, after } from 'node:test'
 import { cleanupDir } from '../helpers/cleanup.js'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { identityNote, flatHistory } from '../../packages/modules/chat-bridge/qq/context/identity.ts'
+import { identityNote, flatHistory as formatHistory } from '../../packages/modules/chat-bridge/history.ts'
 import { cleanOutboundText } from '../../src/chat/reply/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 const dir = mkdtempSync(join(tmpdir(), 'ab-identity-'))
@@ -20,7 +22,7 @@ test('补读同名群友和机器人：账号、@ 对象及自身标识不丢失
   assert.match(rows[2], /@了机器人/)
   assert.match(flatHistory([{user_id:123,nickname:'旧格式',raw_message:'旧消息'}], '10001')[0], /旧格式\(123\)：旧消息/)
   assert.deepEqual(flatHistory([null], '10001'), [])
-  assert.match(identityNote('10001'), /你的 QQ 号是 10001/)
+  assert.match(identityNote('sandbox', '10001'), /当前平台是 sandbox，你的账号 ID 是 10001/)
 })
 
 test('用户选择保留 replace 字面量，不新增清理规则', () => {

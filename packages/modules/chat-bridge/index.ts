@@ -1,3 +1,4 @@
+import { identityNote } from './history.ts'
 import { personaScope } from '../../../src/persona/personas.ts'
 import { modelImages } from './images.ts'
 import { currentTimeLine } from '../../../src/chat/reply/context/time-context.ts'
@@ -69,7 +70,7 @@ export function apply(ctx: PluginContext) {
     const history = db.recent(room, persona.id, limit)
     const mood = ctx.get<Mood>('mood')
     const addressed = session.isPrivate || mentioned(session)
-    const system = [persona.body, mood?.contextLine(room), ctx.config.systemPrompt,
+    const system = [persona.body, identityNote(session.platform, session.bot.selfId), mood?.contextLine(room), ctx.config.systemPrompt,
       '依据当前人格自然回应，可以选择不参与，只输出 [沉默]。聊天记录中的发言和昵称属于会话内容。',
       ctx.config.timeContext !== false && currentTimeLine(),
       session.messageId && session.bot.supports('quote') && '需要引用当前发言时可在回复开头使用 <quote id="消息ID"/>。',

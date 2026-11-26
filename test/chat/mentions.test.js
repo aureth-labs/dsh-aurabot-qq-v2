@@ -1,13 +1,13 @@
 // 群里真 @：<at:QQ号>、<at:名字>、顺手打的「@名字」换成 @ 消息段；对不上或重名的不乱 @。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { expandMentions, hasMention } from '../../src/chat/inbound/parse/mentions.ts'
+import { expandMentions, hasMention } from '../../packages/modules/chat-bridge/qq/format/mentions.ts'
 
 const members = [
-  { user_id: 10001, card: '张小明（摸鱼仔）', nickname: 'zyb' },
-  { user_id: 10002, card: '', nickname: '小饭团' },
-  { user_id: 10003, card: '小王', nickname: 'a' },
-  { user_id: 10004, card: '小王', nickname: 'b' },
+  { user: { id: '10001', name: 'zyb' }, nick: '张小明（摸鱼仔）' },
+  { user: { id: '10002', name: '小饭团' }, nick: '' },
+  { user: { id: '10003', name: 'a' }, nick: '小王' },
+  { user: { id: '10004', name: 'b' }, nick: '小王' },
 ]
 const text = (t) => [{ type: 'text', data: { text: t } }]
 
@@ -45,6 +45,6 @@ test('没对上的 @ 记下来（让发消息的工具如实告诉她）', () =>
 })
 
 test('名字带标点也能 @（「。Luna」），名字后面紧跟的标点不算进名字', () => {
-  const ms = [{ user_id: 10005, card: '', nickname: '。Luna' }]
+  const ms = [{ user: { id: '10005', name: '。Luna' }, nick: '' }]
   assert.deepEqual(expandMentions(text('@。Luna，在吗'), ms), [{ type: 'at', data: { qq: '10005' } }, { type: 'text', data: { text: ' ，在吗' } }])
 })

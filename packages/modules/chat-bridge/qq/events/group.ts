@@ -2,7 +2,7 @@ export interface GroupEventDeps {
   isDisposed: () => boolean
   getConfig: () => any
   getSelfId: () => string
-  onebot: any
+  userName(userId: string, guildId?: string): Promise<string>
   hooks: any
   titleFilter: any
   lastPoker: Map<string, string>
@@ -23,8 +23,7 @@ export function createGroupEvents (deps: GroupEventDeps) {
     if (deps.ignoredGroupMember(deps.getConfig(), { kind: 'group', groupId: ev.group_id, userId: ev.user_id })) return
     let nickname = String(ev.user_id)
     try {
-      const m = await deps.onebot.call('get_group_member_info', { group_id: ev.group_id, user_id: ev.user_id }, { timeoutMs: 5000 })
-      nickname = String(m?.card || m?.nickname || nickname)
+      nickname = await deps.userName(String(ev.user_id), String(ev.group_id)) || nickname
     } catch (error) {}
     await deps.onMessage({
       post_type: 'message', message_type: 'group', sub_type: 'normal', self_id: ev.self_id, group_id: ev.group_id, user_id: ev.user_id, message_id: 0,
@@ -54,8 +53,7 @@ export function createGroupEvents (deps: GroupEventDeps) {
     pokeAt.set(chatId, Date.now())
     let nickname = poker
     try {
-      const info = group ? await deps.onebot.call('get_group_member_info', { group_id: Number(group), user_id: Number(poker) }, { timeoutMs: 5000 }) : await deps.onebot.call('get_stranger_info', { user_id: Number(poker) }, { timeoutMs: 5000 })
-      nickname = info?.card || info?.nickname || poker
+      nickname = await deps.userName(poker, group) || poker
     } catch (error) {}
     if (deps.isDisposed()) return
     deps.log.info(`${chatId}：${nickname} 戳了戳她`)

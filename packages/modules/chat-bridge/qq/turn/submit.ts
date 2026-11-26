@@ -1,5 +1,6 @@
 import { sessionKey, SOURCE_KIND } from '../context/context.ts'
-import { flatHistory, requestIdentity } from '../context/identity.ts'
+import { requestIdentity } from '../context/identity.ts'
+import { flatHistory } from '../../history.ts'
 import { clockLabel } from '../../../../../src/chat/reply/index.ts'
 import { type PushToSessionOptions } from './options.ts'
 import { packEvidence } from '../context/conversation-context.ts'
@@ -65,20 +66,10 @@ export function createTurnSubmission({
       const count = Math.min(50, Math.max(1, Number(cfg.chat?.seedHistoryCount) || 20))
       const tgt = targetOf(chat.chatId)
       if (!tgt) return content
-      const r =
-        tgt.kind === 'group'
-          ? await onebot.call(
-              'get_group_msg_history',
-              { group_id: Number(tgt.id), count },
-              { timeoutMs: 8000 },
-            )
-          : await onebot.call(
-              'get_friend_msg_history',
-              { user_id: Number(tgt.id), count },
-              { timeoutMs: 8000 },
-            )
-      const list = Array.isArray(r) ? r : r?.messages || []
-      const lines = flatHistory(filterHistory(chat.chatId, list), activity.selfId || cfg.botQQ, {
+      const bot = onebot.bot
+      if (!bot) return content
+      const list = await bot.getMessageList(tgt.id, { channelType: tgt.kind, limit: count })
+      const lines = flatHistory(filterHistory(chat.chatId, list), bot.selfId, {
         clockLabel,
       }).slice(-count)
       if (!lines.length) return content

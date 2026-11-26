@@ -10,7 +10,7 @@ import { cleanupDir } from '../helpers/cleanup.js'
 
 const ON = { stickers: { enabled: true, react: true, reactChance: 1, reactMaxPerHour: 10 } }
 
-function setup(t, patch = {}, { failure = false } = {}) {
+function setup(t, patch = {}, { failure = false, supported = true } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-react-'))
   const old = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
@@ -21,13 +21,13 @@ function setup(t, patch = {}, { failure = false } = {}) {
     dsh: {},
     getConfig: () => cfg,
     log: Object.fromEntries(['info', 'warn', 'debug', 'error'].map((k) => [k, (...v) => logs.push(v.join(' '))])),
-    onebot: {
-      async call(action, params) {
-        calls.push({ action, params })
+    onebot: { bot: {
+      supports: () => supported,
+      async createReaction(channelId, messageId, emoji) {
+        calls.push({ channelId, messageId, emoji })
         if (failure) throw new Error('网关炸了')
-        return {}
       },
-    },
+    } },
   })
   t.after(() => {
     hub.dispose()
@@ -35,7 +35,7 @@ function setup(t, patch = {}, { failure = false } = {}) {
     else process.env.AURABOT_DATA_DIR = old
     cleanupDir(dir)
   })
-  return { hub, cfg, logs, reacts: () => calls.filter((c) => c.action === 'set_msg_emoji_like') }
+  return { hub, cfg, logs, reacts: () => calls }
 }
 
 const msg = { chatId: 'private:1', messageId: '1001' }
@@ -57,16 +57,15 @@ test('打开开关后按自己的概率贴一次', async (t) => {
   await s.hub.maybeReact(msg)
   const calls = s.reacts()
   assert.equal(calls.length, 1)
-  assert.equal(calls[0].params.message_id, '1001')
-  assert.equal(calls[0].params.set, true)
-  assert.ok(String(calls[0].params.emoji_id).length <= 3)
+  assert.equal(calls[0].messageId, '1001')
+  assert.equal(calls[0].channelId, '1')
+  assert.ok(String(calls[0].emoji).length <= 3)
 })
 
-test('试运行开着：只记一笔，不往 QQ 上真贴', async (t) => {
-  const s = setup(t, { ...ON, dryRun: true })
+test('适配器未提供表态能力时跳过', async (t) => {
+  const s = setup(t, ON, { supported: false })
   await s.hub.maybeReact(msg)
   assert.equal(s.reacts().length, 0)
-  assert.ok(s.logs.some((l) => l.includes('试运行')), s.logs.join('\n'))
 })
 
 test('总开关关掉：什么都不做', async (t) => {
