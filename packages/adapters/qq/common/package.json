@@ -1,0 +1,8 @@
+{
+  "name": "@aurabot/adapter-qq-common",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "QQ 开放平台公共设施：AccessToken / WebSocket 网关 / HTTP 调用",
+  "main": "src/index.ts"
+}

@@ -11,8 +11,8 @@ import { validMemberFilter } from './chat/inbound/member-filter.ts'
 // ⚠ 安全默认：总开关关、试运行开。不手动打开，一句都不会真的发到 QQ。
 
 import { readFileSync, existsSync, writeFileSync, unlinkSync, statSync, mkdirSync, rmSync, watch } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
+import { ROOT as packageRoot } from './core/support/root.ts'
 import { spawn } from 'node:child_process'
 import net from 'node:net'
 import { isDeepStrictEqual } from 'node:util'
@@ -22,8 +22,8 @@ import { quietWindowOf } from './core/support/time-window.ts'
 import { createLogger } from './core/support/logger.ts'
 import { encodeResponse } from './core/net/http-compress.ts'
 import { registerSecret, redact } from './core/support/redact.ts'
-import { createOneBotClient } from './adapters/qq/onebot-v11/client.ts'
-import { createOutbox } from './adapters/qq/onebot-v11/outbox.ts'
+import { createOneBotClient } from '../packages/adapters/qq/onebot-v11/src/client.ts'
+import { createOutbox } from '../packages/adapters/qq/onebot-v11/src/outbox.ts'
 import { createSnowLumaManager, DOWNLOAD_PAGE } from './snowluma/manager.ts'
 import { createHub, workspaceDirOf } from './chat/hub/index.ts'
 import { createPersonaMemoryRuntime } from './core/support/persona-memory-bridge.ts'
@@ -46,7 +46,7 @@ import { AdapterRegistry } from './core/bot/adapter-registry.ts'
 import { wrapAdapterBot } from './core/bot/adapter-bot.ts'
 import type { BotLike } from './types/bot.ts'
 import type { InboundMessage } from './types/adapter.ts'
-import { OneBotBot } from './adapters/qq/onebot-v11/index.ts'
+import { OneBotBot } from '../packages/adapters/qq/onebot-v11/src/index.ts'
 import { Pipeline } from './core/pipeline/index.ts'
 import { Session } from './core/pipeline/session.ts'
 import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from './core/runtime/update.ts'
@@ -81,7 +81,7 @@ type SendOptions = Partial<Record<'item', any>>
 export const name = 'aurabot'
 export const inject = ['agents', 'sessions', 'webServer', 'timer', 'workspaceRegistry', 'attachments', 'systemPrompt', 'llm']
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+const ROOT = packageRoot
 const PKG = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) } catch (error) { return { version: '?' } }
 })()
@@ -3000,7 +3000,7 @@ export function apply(ctx) {
     try { return { ok: true, ...(await community.list({ force: query(req).force === '1' })) } } catch (error) { return { ok: false, message: error.message, list: [] } }
   })
   route('/modules/tutorial', async () => {
-    try { return { ok: true, text: readFileSync(join(ROOT, 'docs', 'MODULE-TUTORIAL.md'), 'utf8') } } catch (error) { return { ok: false, message: '教程文件不见了' } }
+    try { return { ok: true, text: readFileSync(join(ROOT, 'src', 'modules', 'API.md'), 'utf8') } } catch (error) { return { ok: false, message: '教程文件不见了' } }
   })
   route('/modules/community/progress', async () => ({ ok: true, progress: community.progress() }))
   route('/modules/community/install', async (req) => {

@@ -8,7 +8,7 @@ import http from 'node:http'
 import crypto from 'node:crypto'
 import { startAdapter } from '../src/core/bot/adapter.ts'
 import { BotRegistry } from '../src/core/bot/bot-registry.ts'
-import { satoriAdapter } from '../src/adapters/satori/index.ts'
+import { satoriAdapter } from '../packages/adapters/satori/src/index.ts'
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 

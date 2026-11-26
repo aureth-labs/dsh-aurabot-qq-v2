@@ -5,8 +5,8 @@
  * 所以这里按能力表降级：发不出去的元素变成 `[图片]` 这类占位符，正文照发。
  */
 
-import { degrade, normalize, type Element } from '../../core/message/element.ts'
-import type { Capability } from '../../types/bot.ts'
+import { degrade, normalize, type Element } from '../../../../../src/core/message/element.ts'
+import type { Capability } from '../../../../../src/types/bot.ts'
 
 export interface RenderQQTextOptions {
   supports: (capability: Capability) => boolean

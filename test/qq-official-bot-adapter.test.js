@@ -1,7 +1,7 @@
 // QQ 官方机器人适配器：群 @ 事件 → 群消息 API；单聊事件 → 用户消息 API。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createQQOfficialBotSpec } from '../src/adapters/qq/qq-official-bot/index.ts'
+import { createQQOfficialBotSpec } from '../packages/adapters/qq/qq-official/src/index.ts'
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })

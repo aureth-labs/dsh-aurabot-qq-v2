@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { SatoriClient, satoriEndpoints } from '../src/core/message/satori-client.ts'
-import { inboundOf } from '../src/adapters/satori/index.ts'
+import { inboundOf } from '../packages/adapters/satori/src/index.ts'
 
 const silentLog = { debug() {}, info() {}, warn() {}, error() {} }
 

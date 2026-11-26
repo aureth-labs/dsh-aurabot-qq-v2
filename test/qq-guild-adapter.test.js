@@ -1,7 +1,7 @@
 // QQ 频道适配器：网关握手 → READY → 收消息 → 发送 → 断开。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createQQGuildSpec } from '../src/adapters/qq/qq-guild/index.ts'
+import { createQQGuildSpec } from '../packages/adapters/qq/qq-guild/src/index.ts'
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })

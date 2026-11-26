@@ -5,4 +5,4 @@
 //
 // 开发期想直接跑 TS 源码、不产出 JS：起 dsh 时带 AURABOT_DEV=1，
 // cordis.patch.yml 会把这一项换成 aurabot-dev（dev.mjs -> src/host.ts）。
-export * from './lib/host.js'
+export * from './lib/src/host.js'

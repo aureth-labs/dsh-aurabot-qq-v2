@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 import { normalize, ownerAuthorizationRevision, saveConfig } from '../src/core/config/index.ts'
-import { OneBotError } from '../src/adapters/qq/onebot-v11/client.ts'
+import { OneBotError } from '../packages/adapters/qq/onebot-v11/src/client.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-lifecycle-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
@@ -505,7 +505,7 @@ test('注销函数重复调用不会删掉后来注册的同名工具和上下�
   assert.equal(agent.denied.has('shared'), false)
 })
 test('网关明确没连上时，发送失败的消息进补发队列', { timeout: 5000 }, async (t) => {
-  const { createOutbox } = await import('../src/adapters/qq/onebot-v11/outbox.ts')
+  const { createOutbox } = await import('../packages/adapters/qq/onebot-v11/src/outbox.ts')
   const dir = mkdtempSync(join(root, 'outbox-'))
   const outbox = createOutbox({ log: { info() {}, warn() {}, debug() {} }, file: join(dir, 'queue.json') })
   let calls = 0
@@ -524,7 +524,7 @@ test('网关明确没连上时，发送失败的消息进补发队列', { timeou
 })
 
 test('LA-27 敏感命令发送失败时不记录参数、回执和网关错误，也不补发', async (t) => {
-  const { createOutbox } = await import('../src/adapters/qq/onebot-v11/outbox.ts')
+  const { createOutbox } = await import('../packages/adapters/qq/onebot-v11/src/outbox.ts')
   const dir = mkdtempSync(join(root, 'outbox-'))
   const outbox = createOutbox({ log: { info() {}, warn() {}, debug() {} }, file: join(dir, 'queue.json') })
   const onebot = {

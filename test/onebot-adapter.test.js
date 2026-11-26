@@ -1,7 +1,7 @@
 // QQ · OneBot v11 适配器 spec：网关没连上不许假装上线。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createOneBotV11Spec } from '../src/adapters/qq/onebot-v11/index.ts'
+import { createOneBotV11Spec } from '../packages/adapters/qq/onebot-v11/src/index.ts'
 
 test('网关没连上：connect 抛错', async () => {
   const spec = createOneBotV11Spec({ call: async () => ({}), isConnected: () => false })

@@ -6,10 +6,10 @@
   "private": true,
   "type": "module",
   "main": "index.mjs",
-  "types": "./lib/types/index.d.ts",
+  "types": "./lib/src/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./lib/types/index.d.ts",
+      "types": "./lib/src/types/index.d.ts",
       "default": "./index.mjs"
     },
     "./dev": "./dev.mjs",
@@ -49,6 +49,7 @@
   "files": [
     "dev.mjs",
     "src",
+    "packages",
     "client",
     "lib",
     "dist",

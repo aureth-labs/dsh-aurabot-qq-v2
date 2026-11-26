@@ -49,7 +49,8 @@ tsc('tsconfig.json', STAGE.lib)
 tsc('tsconfig.types.json', STAGE.lib)
 await bundleClient(join(STAGE.dist, 'client.js'))
 
-copyAssets(join(ROOT, 'src'), STAGE.lib)
+copyAssets(join(ROOT, 'src'), join(STAGE.lib, 'src'))
+copyAssets(join(ROOT, 'packages'), join(STAGE.lib, 'packages'))
 copyAssets(join(ROOT, 'client'), STAGE.dist)
 
 /** 把 stage 里的文件逐个覆盖到 target，再删掉 target 里已经没有的旧文件。 */

@@ -1,0 +1,12 @@
+{
+  "name": "@aurabot/adapter-qq-official",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "QQ 官方机器人适配器（QQ 开放平台 · 群 / 单聊）",
+  "main": "src/index.ts",
+  "aurabot": {
+    "kind": "adapter",
+    "platform": "qq"
+  }
+}

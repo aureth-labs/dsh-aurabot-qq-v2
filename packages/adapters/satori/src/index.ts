@@ -7,11 +7,11 @@
 //
 // 业务插件对它是无感的：`ctx.command` / `ctx.middleware` / `session.send` 照旧。
 
-import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../types/adapter.ts'
-import type { BotLike, BotStatus, Capability, SendOptions } from '../../types/bot.ts'
-import { isElement, toText } from '../../core/message/element.ts'
-import { fromSatori, toSatoriBody } from '../../core/message/satori.ts'
-import { SatoriClient, type SatoriEvent, type SatoriLogin } from '../../core/message/satori-client.ts'
+import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../src/types/adapter.ts'
+import type { BotLike, BotStatus, Capability, SendOptions } from '../../../../src/types/bot.ts'
+import { isElement, toText } from '../../../../src/core/message/element.ts'
+import { fromSatori, toSatoriBody } from '../../../../src/core/message/satori.ts'
+import { SatoriClient, type SatoriEvent, type SatoriLogin } from '../../../../src/core/message/satori-client.ts'
 
 export interface SatoriAdapterConfig {
   /** Satori 服务地址，`http://127.0.0.1:5140` / `ws://…` 都行。 */

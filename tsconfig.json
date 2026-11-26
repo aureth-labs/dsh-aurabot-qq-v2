@@ -9,7 +9,7 @@
     "verbatimModuleSyntax": true,
     "lib": ["ES2024"],
     "types": ["node"],
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "lib",
     "allowJs": false,
     "strict": true,
@@ -26,6 +26,6 @@
     "sourceMap": false,
     "noEmitOnError": false
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "packages/**/*.ts"],
   "exclude": ["src/**/*.d.ts", "node_modules", "lib", "dist", "test"]
 }

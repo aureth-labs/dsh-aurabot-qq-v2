@@ -3,16 +3,16 @@
 // 当前人格通过 DSH 的提示词变量 {{aurabot_persona}} 注入到 Aurabot 两个 preset 的系统提示词最前面。
 
 import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, unlinkSync } from 'node:fs'
-import { join, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { dataDir } from '../core/config/store.ts'
 import { deleteLook } from './persona-look.ts'
+import { ROOT } from '../core/support/root.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RulesTextOptions = Partial<Record<'off' | 'extra', any>>
 
-const BUNDLED = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'personas')
+const BUNDLED = join(ROOT, 'personas')
 const dir = () => dataDir('personas')
 
 export function seedPersonas() {

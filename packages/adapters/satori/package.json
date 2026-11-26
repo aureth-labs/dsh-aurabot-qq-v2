@@ -1,0 +1,12 @@
+{
+  "name": "@aurabot/adapter-satori",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Satori 协议适配器：任意 Satori 服务端接入为一个平台",
+  "main": "src/index.ts",
+  "aurabot": {
+    "kind": "adapter",
+    "platform": "satori"
+  }
+}

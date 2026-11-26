@@ -4,16 +4,16 @@
  * 与频道机器人共用网关和 AccessToken，只是 intents 与事件名不同。
  */
 
-import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../types/adapter.ts'
-import type { BotLike } from '../../../types/bot.ts'
-import { AccessTokenProvider } from '../access-token.ts'
-import { QQGateway, type GatewaySocket } from '../gateway.ts'
-import { QQOpenApi } from '../openapi.ts'
+import type { AdapterRuntime, AdapterSpec, InboundMessage } from '../../../../../src/types/adapter.ts'
+import type { BotLike } from '../../../../../src/types/bot.ts'
+import { AccessTokenProvider } from '../../common/src/access-token.ts'
+import { QQGateway, type GatewaySocket } from '../../common/src/gateway.ts'
+import { QQOpenApi } from '../../common/src/openapi.ts'
 import { QQOfficialBot } from './bot.ts'
 
 export { QQOfficialBot }
 export type { QQOfficialBotInit } from './bot.ts'
-export type { QQOfficialMessageParams } from '../../../types/adapter.ts'
+export type { QQOfficialMessageParams } from '../../../../../src/types/adapter.ts'
 
 export interface QQOfficialBotSpecOptions {
   appId?: string
