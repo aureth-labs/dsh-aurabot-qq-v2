@@ -2,9 +2,9 @@
 // 只做「平台动作 → OneBot action」的翻译，不碰业务逻辑，也不改消息内容。
 
 import type { BotLike, BotStatus, Capability, SendOptions } from '../../../types/bot.ts'
-import { BotStateError } from '../../../core/bot.ts'
-import { toOneBot, isElement, normalize, degrade } from '../../../core/element.ts'
-import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../core/voice-element.ts'
+import { BotStateError } from '../../../core/bot/index.ts'
+import { toOneBot, isElement, normalize, degrade } from '../../../core/message/element.ts'
+import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../core/message/voice-element.ts'
 
 export interface OneBotCall {
   (action: string, params?: Record<string, unknown>, options?: { retries?: number; timeoutMs?: number }): Promise<any>

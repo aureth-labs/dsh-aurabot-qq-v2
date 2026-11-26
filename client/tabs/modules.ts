@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from './../core/react.ts'
-import { API, get, post } from './../core/api.ts'
-import { copy, getPath, setPath } from './../core/format.ts'
-import { PanelBoundary } from './../core/nav.ts'
-import { Btn, Card, Empty, Range, Row, Seg, Select, Switch, cx, h, useField } from './../core/ui.ts'
+import React, { useState, useEffect } from '../core/react.ts'
+import { API, get, post } from '../core/api.ts'
+import { copy, getPath, setPath } from '../core/format.ts'
+import { PanelBoundary } from '../core/nav.ts'
+import { Btn, Card, Empty, Range, Row, Seg, Select, Switch, cx, h, useField } from '../core/ui.ts'
 
 // ---------------- 扩展：模块 ----------------
 const MOD_STATE = (m) => {

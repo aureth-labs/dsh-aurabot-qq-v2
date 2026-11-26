@@ -8,12 +8,12 @@ const root = mkdtempSync(join(tmpdir(), 'aurabot-diary-media-'))
 process.env.AURABOT_DATA_DIR = root
 after(() => rmSync(root, { recursive: true, force: true }))
 
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 const { createQzone } = await import('../src/features/qzone/index.ts')
 const { collectSources, localPictures, clip } = await import('../src/modules/diary/sources.ts')
 const { createDiaryAssets, downloadImage } = await import('../src/modules/diary/assets.ts')
 const { createDiaryMedia, parseDraft, reselectPictures, withCredits } = await import('../src/modules/diary/media.ts')
-const { readJson, writeJson, dataDir } = await import('../src/core/store.ts')
+const { readJson, writeJson, dataDir } = await import('../src/core/config/store.ts')
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jXioAAAAASUVORK5CYII=', 'base64')
 const log = { info() {}, warn() {} }
 

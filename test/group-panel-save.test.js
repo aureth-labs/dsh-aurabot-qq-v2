@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { runCommand, parseCommand } from '../src/chat/commands.ts'
+import { runCommand, parseCommand } from '../src/chat/commands/index.ts'
 
 let fake, app, dir
 const G = '30000003'

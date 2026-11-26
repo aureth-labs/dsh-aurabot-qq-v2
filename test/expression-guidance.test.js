@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { rulesText } from '../src/persona/personas.ts'
-import { normalize } from '../src/core/config.ts'
-import { COMMON_FACES, textToSegments } from '../src/chat/faces.ts'
-import { parseReply } from '../src/chat/reply.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { COMMON_FACES, textToSegments } from '../src/chat/media/faces.ts'
+import { parseReply } from '../src/chat/reply/index.ts'
 
 for (const kind of ['social', 'private', 'group-owner']) {
   test(`${kind}：表情语法不越过人格的场景和频率规则，也不撤销明确请求`, () => {

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply, stripToolText } from '../src/chat/reply.ts'
-import { normalize } from '../src/core/config.ts'
+import { parseReply, stripToolText } from '../src/chat/reply/index.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { rulesText } from '../src/persona/personas.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)

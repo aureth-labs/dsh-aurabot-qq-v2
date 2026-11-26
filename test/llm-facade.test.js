@@ -1,7 +1,7 @@
 // ctx.llm：润色 / 改写 / 摘要的契约（失败退回原文、摘要不超字数上限）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createLlmFacade } from '../src/core/llm-facade.ts'
+import { createLlmFacade } from '../src/core/llm/facade.ts'
 
 test('polish 把 system 与原文一起交给模型，返回模型输出', async () => {
   const calls = []

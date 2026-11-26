@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from './../core/react.ts'
-import { API, bustCache, get, getCached, post } from './../core/api.ts'
-import { pct, setPath } from './../core/format.ts'
-import { Btn, Card, Empty, FaceMapCard, Range, Row, Select, cx, h, useField } from './../core/ui.ts'
+import { useState, useEffect, useRef } from '../core/react.ts'
+import { API, bustCache, get, getCached, post } from '../core/api.ts'
+import { pct, setPath } from '../core/format.ts'
+import { Btn, Card, Empty, FaceMapCard, Range, Row, Select, cx, h, useField } from '../core/ui.ts'
 import { REACT_MOOD_BANDS } from './model.ts'
 
 function Stickers({ draft, setDraft, toast }) {

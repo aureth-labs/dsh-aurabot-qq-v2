@@ -1,7 +1,7 @@
-import { useState, useEffect, Fragment } from './../core/react.ts'
-import { API, bustCache, get, getCached, post } from './../core/api.ts'
-import { setPath, timeAgo } from './../core/format.ts'
-import { Btn, Card, Empty, Row, cx, h, useField } from './../core/ui.ts'
+import { useState, useEffect, Fragment } from '../core/react.ts'
+import { API, bustCache, get, getCached, post } from '../core/api.ts'
+import { setPath, timeAgo } from '../core/format.ts'
+import { Btn, Card, Empty, Row, cx, h, useField } from '../core/ui.ts'
 import { BiliCookie } from './system.ts'
 
 const CONTENT_PLATFORMS = [

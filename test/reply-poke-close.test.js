@@ -2,7 +2,7 @@
 // 旧实现只识别 <poke> / <poke/> 动作，</poke> 会原样进文字气泡。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanOutboundText, parseReply } from '../src/chat/reply.ts'
+import { cleanOutboundText, parseReply } from '../src/chat/reply/index.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)
 

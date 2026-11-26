@@ -1,8 +1,8 @@
 // 语音条变声（用翻唱里导入的 RVC 音色）：配置归一化 + 组合逻辑（不跑真 RVC）。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize } from '../src/core/config.ts'
-import { createSongVoice } from '../src/voice/rvc.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { createSongVoice } from '../src/voice/convert/rvc.ts'
 
 test('语音变声配置：默认不变声；变调夹在 ±24 半音', () => {
   const d = normalize({})

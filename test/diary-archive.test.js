@@ -7,7 +7,7 @@ import { join } from 'node:path'
 const root = mkdtempSync(join(tmpdir(), 'aurabot-diary-archive-'))
 process.env.AURABOT_DATA_DIR = root
 after(() => rmSync(root, { recursive: true, force: true }))
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 const { createDiaryArchive, archiveDate } = await import('../src/modules/diary/archive.ts')
 const { createDiaryAssets } = await import('../src/modules/diary/assets.ts')
 const { localPictures } = await import('../src/modules/diary/sources.ts')

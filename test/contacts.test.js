@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const { default: contacts, planWhitelist, cleanId } = await import('../src/modules/contacts/index.ts')
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 
 const OWNER = '10001'
 const BOT = '20002'

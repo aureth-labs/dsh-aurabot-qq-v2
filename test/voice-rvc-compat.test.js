@@ -5,9 +5,9 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import voiceModule from '../src/modules/voice/index.ts'
-import { voiceConverters } from '../src/voice/tts.ts'
-import { buildWav } from '../src/voice/wav.ts'
-import { normalize } from '../src/core/config.ts'
+import { voiceConverters } from '../src/voice/tts/index.ts'
+import { buildWav } from '../src/voice/audio/wav.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { seedPersonas } from '../src/persona/personas.ts'
 
 function fixture(t, config = {}) {

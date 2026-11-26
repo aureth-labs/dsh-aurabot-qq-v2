@@ -1,7 +1,7 @@
-import { useState, useEffect, Fragment } from './../core/react.ts'
-import { get, post } from './../core/api.ts'
-import { getPath, setPath, timeAgo } from './../core/format.ts'
-import { Btn, Card, Empty, Row, Select, Switch, cx, h, useField } from './../core/ui.ts'
+import { useState, useEffect, Fragment } from '../core/react.ts'
+import { get, post } from '../core/api.ts'
+import { getPath, setPath, timeAgo } from '../core/format.ts'
+import { Btn, Card, Empty, Row, Select, Switch, cx, h, useField } from '../core/ui.ts'
 
 // 「自驱引擎」独立页（少爷定的：不属于主动搭话，单独一页）。
 // P0 只有地基（审计哈希链 + 状态），引擎闭环（立项/做事/做梦）在 P1 之后逐期点亮；

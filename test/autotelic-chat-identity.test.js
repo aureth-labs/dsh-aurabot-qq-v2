@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, appendFileSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createObserve, createChatCollector } from '../src/autotelic/observe.ts'
+import { createObserve, createChatCollector } from '../src/autotelic/observe/index.ts'
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
 

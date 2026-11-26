@@ -1,10 +1,10 @@
 // QQ 空间：发说说 + 空间日记（每天 N 次，时间窗里随机，结合当天聊天）。
 
-import { dataDir, readJson, writeJson } from '../../core/store.ts'
-import { fetchImage } from '../../core/net.ts'
-import { windowMinutes } from '../../core/time-window.ts'
+import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { fetchImage } from '../../core/net/index.ts'
+import { windowMinutes } from '../../core/support/time-window.ts'
 import { resolveAudience } from './audience.ts'
-import { cleanOutboundText } from '../../chat/reply.ts'
+import { cleanOutboundText } from '../../chat/reply/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type PostOptions = Partial<Record<'images' | 'visibility' | 'beforeSend', any>>

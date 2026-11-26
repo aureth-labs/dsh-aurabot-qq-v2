@@ -6,7 +6,7 @@ import { readMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMemoryStore } from '../src/features/memory/index.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const log = { info() {}, warn() {}, debug() {} }

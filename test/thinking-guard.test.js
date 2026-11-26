@@ -1,7 +1,7 @@
 // 正文污染闸：真实泄露样本 + 正常话不能误伤。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { guardOutgoing, stripThinkingPrefix, isDegenerate } from '../src/chat/guard.ts'
+import { guardOutgoing, stripThinkingPrefix, isDegenerate } from '../src/chat/inbound/guard.ts'
 
 // 这两条是从万事屋群（group:941644689，2026-11-11）chatlog 里原样抄来的真实泄露。
 const LEAK_1 = 'NSFW image + 筹集 joke. Not addressed to me. Silence.[沉默]'

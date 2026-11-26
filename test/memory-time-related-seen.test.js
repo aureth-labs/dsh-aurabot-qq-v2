@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { Script } from 'node:vm'
 import { clientBundleText } from './helpers/client-bundle.js'
 import { readClientSource } from './helpers/client-source.js'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { createMemoryStore, buildIndex, search, memoryLine, parseValidityDate, pastWindow, compressionClusters, shouldForget, SEEN_META_LIMITS, RELATED_LIMIT } from '../src/features/memory/index.ts'
 import memoryModule from '../src/modules/memory/index.ts'
 

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { identityNote, flatHistory } from '../src/chat/identity.ts'
-import { cleanOutboundText } from '../src/chat/reply.ts'
-import { normalize } from '../src/core/config.ts'
+import { identityNote, flatHistory } from '../src/chat/inbound/identity.ts'
+import { cleanOutboundText } from '../src/chat/reply/index.ts'
+import { normalize } from '../src/core/config/index.ts'
 const dir = mkdtempSync(join(tmpdir(), 'ab-identity-'))
 process.env.AURABOT_DATA_DIR = dir
 const { createMemoryStore } = await import('../src/features/memory/index.ts')

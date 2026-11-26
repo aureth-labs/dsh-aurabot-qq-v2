@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
-import { normalize, mergeFromPanel } from '../src/core/config.ts'
+import { normalize, mergeFromPanel } from '../src/core/config/index.ts'
 import { createMemoryStore, buildIndex, search, memoryLine } from '../src/features/memory/index.ts'
 import { FACT_TIERS, tierDays, strongerTier, memoryPlatforms } from '../src/features/memory/rules.ts'
 import memoryModule from '../src/modules/memory/index.ts'

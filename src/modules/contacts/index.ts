@@ -7,7 +7,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { defineTool, str, bool, int } from '../../tools/tools.ts'
-import { profileToolVisible, profilePermits } from '../../chat/access.ts'
+import { profileToolVisible, profilePermits } from '../../chat/policy/access.ts'
 import { groupSettingsTool } from './group-settings.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

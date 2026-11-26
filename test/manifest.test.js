@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { readManifest, entryOf, assertEsm } from '../src/core/manifest.ts'
+import { readManifest, entryOf, assertEsm } from '../src/core/config/manifest.ts'
 
 function tempModule(files) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-manifest-'))

@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { gunzipSync } from 'node:zlib'
-import { encodeResponse } from '../src/core/http-compress.ts'
+import { encodeResponse } from '../src/core/net/http-compress.ts'
 
 const big = { ok: true, items: Array.from({ length: 200 }, (_, i) => ({ id: i, text: '记忆内容' + i })) }
 

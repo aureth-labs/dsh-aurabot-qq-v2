@@ -1,10 +1,10 @@
 // S1 契约：v1 的 api 一行不改照样用；v2 的 ctx 只是别名视图。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createPluginContext } from '../src/core/plugin-context.ts'
-import { checkDef } from '../src/core/modules.ts'
-import { Pipeline } from '../src/core/pipeline.ts'
-import { Session } from '../src/core/session.ts'
+import { createPluginContext } from '../src/core/module/plugin-context.ts'
+import { checkDef } from '../src/core/module/index.ts'
+import { Pipeline } from '../src/core/pipeline/index.ts'
+import { Session } from '../src/core/pipeline/session.ts'
 
 function fakeApi() {
   const calls = []

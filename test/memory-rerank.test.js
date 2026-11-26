@@ -1,8 +1,8 @@
 // Reranker：配置收敛、OpenAI 兼容 /rerank 请求、排序、失败回退。全部假 fetch，不联网。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize, publicConfig } from '../src/core/config.ts'
-import { createReranker } from '../src/features/memory/rerank.ts'
+import { normalize, publicConfig } from '../src/core/config/index.ts'
+import { createReranker } from '../src/features/memory/vector/rerank.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const hits = () => [
@@ -84,7 +84,7 @@ test('重排接口失败后退避：下一条消息不再等满超时，直接�
 
 test('检索排序、手动测试各记一次服务上报的数值', async () => {
   const {mkdtempSync,rmSync}=await import('node:fs'),{tmpdir}=await import('node:os'),{join}=await import('node:path')
-  const u=await import('../src/core/usage.ts'); const dir=mkdtempSync(join(tmpdir(),'rerank-usage-'))
+  const u=await import('../src/core/llm/usage.ts'); const dir=mkdtempSync(join(tmpdir(),'rerank-usage-'))
   const old=process.env.AURABOT_DATA_DIR; process.env.AURABOT_DATA_DIR=dir; u.initUsage()
   try {
     const cfg=normalize({memory:{rerank:{enabled:true,baseUrl:'https://example.test/v1',model:'rank'}}})

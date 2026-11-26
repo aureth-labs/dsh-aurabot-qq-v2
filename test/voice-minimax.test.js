@@ -24,8 +24,8 @@ const server = createServer((req, res) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done))
 const base = `http://127.0.0.1:${server.address().port}`
 
-const { minimaxSynth, textToSpeech } = await import('../src/voice/tts.ts')
-const { normalize, publicConfig, mergeFromPanel, DEFAULTS } = await import('../src/core/config.ts')
+const { minimaxSynth, textToSpeech } = await import('../src/voice/tts/index.ts')
+const { normalize, publicConfig, mergeFromPanel, DEFAULTS } = await import('../src/core/config/index.ts')
 
 const mp3 = Buffer.alloc(900, 0x55)
 mp3.write('ID3', 0, 'ascii')

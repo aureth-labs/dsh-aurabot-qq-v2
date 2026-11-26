@@ -1,7 +1,7 @@
 // S2 契约：一份 Schema 同时产出默认值、面板字段和校验结果。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Schema, isSchema } from '../src/core/schema.ts'
+import { Schema, isSchema } from '../src/core/config/schema.ts'
 
 const config = Schema.object({
   enabled: Schema.boolean().default(true).description('总开关'),

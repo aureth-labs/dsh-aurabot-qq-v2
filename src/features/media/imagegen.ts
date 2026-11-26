@@ -4,14 +4,14 @@
 // 地址和密钥由主人在面板里填；生成结果统一成 Buffer 交给 QQ 发出。
 
 import { lstatSync, readFileSync } from 'node:fs'
-import { fetchImage } from '../../core/net.ts'
+import { fetchImage } from '../../core/net/index.ts'
 import { paintingPath } from './paintings.ts'
 import { createCodexAuth } from '../codex/auth.ts'
 import { createCodexImage } from '../codex/image.ts'
-import { mimeOf } from '../../chat/inbound.ts'
+import { mimeOf } from '../../chat/inbound/index.ts'
 import { drawFormat, gifError, gifSizeFor, gifFrameCount, GIF_FIELDS } from './format.ts'
-import { imageToolBlock } from '../../core/img.ts'
-import { canSeeImages } from '../../core/llm.ts'
+import { imageToolBlock } from '../../core/message/img.ts'
+import { canSeeImages } from '../../core/llm/index.ts'
 import { imageSizeFor, normalizeRequestedSize } from './shape.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

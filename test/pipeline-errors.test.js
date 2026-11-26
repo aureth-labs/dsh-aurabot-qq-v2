@@ -1,7 +1,7 @@
 // 管线出错要「跳过但不静默」：onError 收到段名和原始错误。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Pipeline } from '../src/core/pipeline.ts'
+import { Pipeline } from '../src/core/pipeline/index.ts'
 
 /** 最小会话：中间件会调 send，给它一个空实现。 */
 const sessionOf = (content) => ({ content, sent: [], async send(text) { this.sent.push(text) } })

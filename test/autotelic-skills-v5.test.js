@@ -10,8 +10,8 @@ import { mkdtempSync, rmSync, existsSync, readFileSync, mkdirSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createSkillStore } from '../src/autotelic/skills.ts'
-import { buildPrefix, hashPrefix, createPrefixCache } from '../src/autotelic/prefix.ts'
+import { createSkillStore } from '../src/autotelic/feedback/skills.ts'
+import { buildPrefix, hashPrefix, createPrefixCache } from '../src/autotelic/feedback/prefix.ts'
 
 let root
 let t0 // 固定时间源：快照目录名可预测

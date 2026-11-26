@@ -1,9 +1,9 @@
 // S0 地基的行为契约：Bot 状态机、注册表取法、Session 的发送路由。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { BotRegistry, createBotsAccessor } from '../src/core/bot-registry.ts'
-import { Session } from '../src/core/session.ts'
-import { BotStateError, assertOnline } from '../src/core/bot.ts'
+import { BotRegistry, createBotsAccessor } from '../src/core/bot/bot-registry.ts'
+import { Session } from '../src/core/pipeline/session.ts'
+import { BotStateError, assertOnline } from '../src/core/bot/index.ts'
 import { OneBotBot } from '../src/adapters/qq/onebot-v11/bot.ts'
 
 function fakeBot(overrides = {}) {
@@ -126,7 +126,7 @@ test('元素树发出前会被序列化成 OneBot 消息段', async () => {
   })
   bot.markOnline()
 
-  const { h } = await import('../src/core/element.ts')
+  const { h } = await import('../src/core/message/element.ts')
   await bot.sendMessage('123', [h.at('456'), h.text(' 你好'), h.image('http://x/y.png')])
 
   assert.deepEqual(calls[0].params.message, [

@@ -6,8 +6,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createHub } from '../src/chat/hub.ts'
-import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-chatlog-cache-'))

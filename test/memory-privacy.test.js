@@ -11,7 +11,7 @@ const ROOT = mkdtempSync(join(tmpdir(), 'aurabot-mempriv-'))
 process.env.AURABOT_DATA_DIR = join(ROOT, 'boot')
 mkdirSync(process.env.AURABOT_DATA_DIR, { recursive: true })
 
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 const { createMemoryStore } = await import('../src/features/memory/index.ts')
 
 const OWNER = '10000001'

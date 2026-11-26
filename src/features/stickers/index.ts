@@ -4,10 +4,10 @@
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'node:fs'
 import { join } from 'node:path'
-import { dataDir, readJson, writeJson } from '../../core/store.ts'
-import { imageSize, mimeOf, stickerSizeOk } from '../../chat/inbound.ts'
-import { segmentBytes, fetchImage } from '../../core/net.ts'
-import { askModel, canSeeImages } from '../../core/llm.ts'
+import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { imageSize, mimeOf, stickerSizeOk } from '../../chat/inbound/index.ts'
+import { segmentBytes, fetchImage } from '../../core/net/index.ts'
+import { askModel, canSeeImages } from '../../core/llm/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type SaveFromSegmentOptions = Partial<Record<'name' | 'tags' | 'from', any>>

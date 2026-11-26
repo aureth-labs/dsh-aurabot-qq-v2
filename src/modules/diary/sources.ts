@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto'
 import { lstatSync, readdirSync, realpathSync, readFileSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { stickerPath } from '../../features/stickers/index.ts'
-import { loadShots, shotPath } from '../../bili/shots.ts'
-import { dataDir } from '../../core/store.ts'
-import { clipText } from '../../core/text.ts'
+import { loadShots, shotPath } from '../../bili/media/shots.ts'
+import { dataDir } from '../../core/config/store.ts'
+import { clipText } from '../../core/support/text.ts'
 
 export const clip = (value, max = 160) => clipText(String(value || '').replace(/[\r\n\t]+/g, ' ').trim(), max)
 export const sourceId = (value) => createHash('sha256').update(String(value)).digest('hex').slice(0, 28)

@@ -4,15 +4,15 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { dataDir } from '../src/core/store.ts'
+import { dataDir } from '../src/core/config/store.ts'
 
 // dataDir() 每次调用都读这个环境变量，所以测试之间换目录就能隔离
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-'))
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shots-')) }
 
-const { clockOf, pickShot, createShotStore, loadShots } = await import('../src/bili/shots.ts')
-const { createBili } = await import('../src/bili/duty.ts')
-const { normalize } = await import('../src/core/config.ts')
+const { clockOf, pickShot, createShotStore, loadShots } = await import('../src/bili/media/shots.ts')
+const { createBili } = await import('../src/bili/live/duty.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 
 test('clockOf：秒数转 mm:ss', () => {
   assert.equal(clockOf(0), '0:00')

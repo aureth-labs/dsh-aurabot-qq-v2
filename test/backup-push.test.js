@@ -35,7 +35,7 @@ const notFoundApi = async () => ({ ok: false, status: 404 })
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = root
-  push = await import('../src/core/backup-push.ts')
+  push = await import('../src/core/runtime/backup-push.ts')
   push.pushHooks.spawn = fakeSpawn
   push.pushHooks.fetch = okApi
 })

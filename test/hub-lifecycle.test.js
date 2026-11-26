@@ -5,12 +5,12 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { normalize, ownerAuthorizationRevision, saveConfig } from '../src/core/config.ts'
+import { normalize, ownerAuthorizationRevision, saveConfig } from '../src/core/config/index.ts'
 import { OneBotError } from '../src/adapters/qq/onebot-v11/client.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-lifecycle-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../src/chat/hub.ts')
+const { createHub } = await import('../src/chat/hub/index.ts')
 const { apply } = await import('../src/host.ts')
 const OWNER = '10000001'
 const OTHER = '10000002'
@@ -618,7 +618,7 @@ test('敏感命令执行前发现授权代次已变化', async (t) => {
 
 test('用量接入：真实会话事件记一次，失败重试分别记，非 Aurabot 会话不记', async (t) => {
   const s = setup(t)
-  const usage = await import('../src/core/usage.ts')
+  const usage = await import('../src/core/llm/usage.ts')
   usage.initUsage()
   t.after(() => usage.closeUsage())
   await s.hub.onMessage(event('建立用量测试会话'))

@@ -10,9 +10,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.ts'
-import { createOutboundPolicy } from '../src/chat/outbound-policy.ts'
-import { scopeCoreForModule } from '../src/core/modules.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { createOutboundPolicy } from '../src/chat/policy/outbound-policy.ts'
+import { scopeCoreForModule } from '../src/core/module/index.ts'
 
 // 这个测试会真调 hub.deliver，不隔离数据目录会把假消息（private:10001）写进真实聊天流水。
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-outbound-wiring-'))
@@ -698,7 +698,7 @@ async function startProbeModule(t, coreExtra = {}, id = 'probe-mod') {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-probe-'))
   const old = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const { createModules } = await import('../src/core/modules.ts')
+  const { createModules } = await import('../src/core/module/index.ts')
   let captured = null
   const sends = []
   const hubStub = {

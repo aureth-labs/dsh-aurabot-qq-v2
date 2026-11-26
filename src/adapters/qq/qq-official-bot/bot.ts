@@ -8,7 +8,7 @@
 import type { BotLike, BotStatus, Capability, SendOptions } from '../../../types/bot.ts'
 import type { QQOfficialMessageParams } from '../../../types/adapter.ts'
 import type { QQOpenApi } from '../openapi.ts'
-import { BotStateError } from '../../../core/bot.ts'
+import { BotStateError } from '../../../core/bot/index.ts'
 import { renderQQText } from '../render.ts'
 
 export interface QQOfficialBotInit {

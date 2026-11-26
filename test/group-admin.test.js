@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 const groupAdmin = (await import('../src/modules/group-admin/index.ts')).default
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 
 const GROUP = '555'
 

@@ -2,7 +2,7 @@
 // 旧实现只在整条/整行只有沉默标记时拦截，混在正文里的标记会原样发出。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanOutboundText, isSilence, parseReply } from '../src/chat/reply.ts'
+import { cleanOutboundText, isSilence, parseReply } from '../src/chat/reply/index.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)
 

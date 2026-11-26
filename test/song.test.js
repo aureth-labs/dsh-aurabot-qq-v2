@@ -15,8 +15,8 @@ before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-song-'))
   studio = await import('../src/song/studio.ts')
   netease = await import('../src/song/netease.ts')
-  commands = await import('../src/chat/commands.ts')
-  ;({ normalize } = await import('../src/core/config.ts'))
+  commands = await import('../src/chat/commands/index.ts')
+  ;({ normalize } = await import('../src/core/config/index.ts'))
 })
 
 /** 合成一段 16-bit 单声道 PCM：每段给振幅（可传函数），方波让 RMS 等于振幅。 */
@@ -407,7 +407,7 @@ test('下载源：自动模式下官方源慢就用国内镜像；老配置自�
 })
 
 test('检查更新：Release Atom 连不上就走 GitHub API', async () => {
-  const u = await import('../src/core/update.ts')
+  const u = await import('../src/core/runtime/update.ts')
   const seen = []
   const check = u.createUpdateChecker({ pkg: { version: '0.2.0', repository: 'https://github.com/a/b' }, fetchImpl: async (url) => { seen.push(url); if (url.includes('releases.atom')) throw new Error('reset'); return { ok: true, json: async () => [{ tag_name: 'v0.3.0', draft: false }] } } })
   const r = await check({ force: true })

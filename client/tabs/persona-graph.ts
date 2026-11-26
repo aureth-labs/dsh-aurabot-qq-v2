@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from './../core/react.ts'
-import { bustCache, get, getCached, post } from './../core/api.ts'
-import { timeAgo } from './../core/format.ts'
-import { PERSON_FIELDS, PersonFace, faceColor, gistLevel, gistSource, memoryDate, memoryEnded, personName } from './../core/memory-model.ts'
-import { Btn, Card, Empty, Row, Seg, Select, cx, h } from './../core/ui.ts'
+import { useState, useEffect, useMemo } from '../core/react.ts'
+import { bustCache, get, getCached, post } from '../core/api.ts'
+import { timeAgo } from '../core/format.ts'
+import { PERSON_FIELDS, PersonFace, faceColor, gistLevel, gistSource, memoryDate, memoryEnded, personName } from '../core/memory-model.ts'
+import { Btn, Card, Empty, Row, Seg, Select, cx, h } from '../core/ui.ts'
 import { InsightCard } from './memory-parts.ts'
 
 function PersonaMemory({ toast }) {

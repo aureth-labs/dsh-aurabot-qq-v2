@@ -1,16 +1,16 @@
 // 内置模块：生图。她能画图发到聊天里（OpenAI 兼容的生图服务，或「本地接口」里接的 SD WebUI / ComfyUI）。
 
 import { readFileSync } from 'node:fs'
-import { privateCapabilityAllowed } from '../../chat/access.ts'
+import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
 import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from '../../features/media/imagegen.ts'
 import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removePainting, savePainting } from '../../features/media/paintings.ts'
 import { defineTool, str, int } from '../../tools/tools.ts'
 import { SIZE_OPTIONS } from '../../features/media/shape.ts'
-import { dataDir } from '../../core/store.ts'
-import { mimeOf } from '../../chat/inbound.ts'
+import { dataDir } from '../../core/config/store.ts'
+import { mimeOf } from '../../chat/inbound/index.ts'
 import { drawFormat, gifFrameCount } from '../../features/media/format.ts'
-import { mergeFromPanel } from '../../core/config.ts'
-import { redact } from '../../core/redact.ts'
+import { mergeFromPanel } from '../../core/config/index.ts'
+import { redact } from '../../core/support/redact.ts'
 
 function reason(error) { if (error?.gifRequestError) return error.message; if (error?.imageStatus) return `接口返回 HTTP ${error.imageStatus}`; if (error?.imageNetworkFailure) return error.name === 'TimeoutError' ? '连接超时' : '连接失败'; const m = String(error?.message || ''); if (m.includes('不支持参考图')) return '该模型不支持参考图'; if (m.includes('登录')) return '订阅登录不可用'; return '生图请求失败' }
 

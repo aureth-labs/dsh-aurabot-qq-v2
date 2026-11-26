@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../src/autotelic/audit.ts'
+import { createAuditor, verifyAuditChain, isAutotelicChat, AUTOTELIC_CHAT_PREFIX } from '../src/autotelic/observe/audit.ts'
 import module from '../src/modules/autotelic/index.ts'
 
 function tmpDir(t, name) {

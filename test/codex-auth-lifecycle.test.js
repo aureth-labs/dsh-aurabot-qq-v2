@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import { createCodexAuth } from '../src/features/codex/auth.ts'
 import { createImageGen } from '../src/features/media/imagegen.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 const log = { info() {}, debug() {}, warn() {} }
 const jwt = (body) => 'e30.' + Buffer.from(JSON.stringify(body)).toString('base64url') + '.signature'

@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fetchOpenAIModels } from '../src/features/media/imagegen.ts'
-import { normalize, mergeFromPanel } from '../src/core/config.ts'
+import { normalize, mergeFromPanel } from '../src/core/config/index.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }

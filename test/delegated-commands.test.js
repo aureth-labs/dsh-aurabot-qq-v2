@@ -4,8 +4,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../src/chat/delegated-commands.ts'
-import { normalize } from '../src/core/config.ts'
+import { canUseDelegatedCommand, delegatedCommandKey, runPersonalModelCommand } from '../src/chat/commands/delegated-commands.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 const owner = '10000001'
 const guest = '10000002'

@@ -5,7 +5,7 @@ import { createQzone } from '../../features/qzone/index.ts'
 import { resolveAudience } from '../../features/qzone/audience.ts'
 import { pickDiaryImage } from '../../features/media/diary-image.ts'
 import { defineTool, str } from '../../tools/tools.ts'
-import { mimeOf } from '../../chat/inbound.ts'
+import { mimeOf } from '../../chat/inbound/index.ts'
 import { createDiaryMedia } from './media.ts'
 import { createDiaryArchive } from './archive.ts'
 

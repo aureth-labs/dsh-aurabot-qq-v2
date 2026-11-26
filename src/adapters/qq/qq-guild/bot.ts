@@ -10,7 +10,7 @@
 import type { BotLike, BotStatus, Capability, SendOptions } from '../../../types/bot.ts'
 import type { QQGuildMessageParams } from '../../../types/adapter.ts'
 import type { QQOpenApi } from '../openapi.ts'
-import { BotStateError } from '../../../core/bot.ts'
+import { BotStateError } from '../../../core/bot/index.ts'
 import { renderQQText } from '../render.ts'
 
 /** `PUT /users/@me/dms` 的入参：开一个私信频道。 */

@@ -4,9 +4,9 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { createStickerStore, stickerPath, MAX_STICKER_BYTES, PANEL_UPLOAD_MAX_BYTES } from '../../features/stickers/index.ts'
 import { defineTool, int, str } from '../../tools/tools.ts'
-import { fetchImage, segmentBytes, formatBytes } from '../../core/net.ts'
+import { fetchImage, segmentBytes, formatBytes } from '../../core/net/index.ts'
 import { resolvePainting } from '../../features/media/paintings.ts'
-import { imageSize } from '../../chat/inbound.ts'
+import { imageSize } from '../../chat/inbound/index.ts'
 
 export default {
   id: 'stickers',

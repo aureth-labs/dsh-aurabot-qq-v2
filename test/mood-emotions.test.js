@@ -13,7 +13,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMood } from '../src/features/mood/index.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import {
   DEFAULT_EMOTIONS, MAX_EMOTIONS, defaultEmotions, deriveEmotionVector,
   emotionLabels, normalizeEmotionVector, normalizeEmotions, profileOf, resolveEmotion, topEmotion,
@@ -202,7 +202,7 @@ test('目的引擎：清单里不再有心情向量，旧向量在第一次 load
     moodsAt: Date.now() - 1000,
   }))
   const { createPurpose, purposeConfig } = await import('../src/purpose/module.ts')
-  const { normalize } = await import('../src/core/config.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
   const cfg = normalize({ mood: { enabled: true }, ext: { purpose: { enabled: true } }, speakUp: { enabled: false } })
   const felt = []
   const p = createPurpose({

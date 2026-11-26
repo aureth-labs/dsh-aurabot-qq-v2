@@ -9,14 +9,14 @@
 // （ext.purpose.enabled 缺省=开、显式 false 尊重）；旧的「主动搭话」模块（speakup）在迁移期
 // （P1~P3）仍在，companion 会见目的引擎开着而自动让位，迁移说明见 docs/PURPOSE_MODULE_API.md。
 
-import { dataDir, readJson, writeJson } from '../core/store.ts'
+import { dataDir, readJson, writeJson } from '../core/config/store.ts'
 import { randomUUID } from 'node:crypto'
-import { quietWindowOf } from '../core/time-window.ts'
-import { cleanOutboundText } from '../chat/reply.ts'
-import { isSessionBackoff } from '../chat/session-backoff.ts'
+import { quietWindowOf } from '../core/support/time-window.ts'
+import { cleanOutboundText } from '../chat/reply/index.ts'
+import { isSessionBackoff } from '../chat/hub/session-backoff.ts'
 import { followUpHint } from '../features/memory/index.ts'
 import { selfName, selfNames, personaDataDir, personaNow } from '../persona/personas.ts'
-import { normalizeSelection } from '../chat/chat-model.ts'
+import { normalizeSelection } from '../chat/hub/chat-model.ts'
 import {
   DEFAULT_PURPOSE_CONFIG, PURPOSE_NEEDS, NEED_LABELS,
   normalizePurposeConfig, createPurposeState, normalizePurposeState,

@@ -16,7 +16,7 @@ let compressionClusters
 let parseAbstract
 let checkAbstractText
 before(async () => {
-  ;({ normalize } = await import('../src/core/config.ts'))
+  ;({ normalize } = await import('../src/core/config/index.ts'))
   ;({ createMemoryStore, compressionClusters, parseAbstract, checkAbstractText } = await import('../src/features/memory/index.ts'))
 })
 

@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { readClientSource } from './helpers/client-source.js'
 
 const CLIENT = () => readClientSource()

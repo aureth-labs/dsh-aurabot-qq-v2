@@ -1,8 +1,8 @@
 // S7：元素树 ⇄ Satori 片段
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { h } from '../src/core/element.ts'
-import { toSatori, fromSatori } from '../src/core/satori.ts'
+import { h } from '../src/core/message/element.ts'
+import { toSatori, fromSatori } from '../src/core/message/satori.ts'
 
 test('toSatori：文本 / 图片 / @ 都映射成 Satori 标签', () => {
   const xml = toSatori([

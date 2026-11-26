@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { findBrowser, findBrowsers } from '../src/core/browser.ts'
+import { findBrowser, findBrowsers } from '../src/core/runtime/browser.ts'
 
 function withFakeChrome() {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-browser-'))

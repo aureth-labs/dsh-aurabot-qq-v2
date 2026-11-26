@@ -4,9 +4,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.ts'
-import { normalize } from '../src/core/config.ts'
-import { tidyPunctuation, parseReply } from '../src/chat/reply.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { tidyPunctuation, parseReply } from '../src/chat/reply/index.ts'
 
 function setup(t, { hooks, synthFails = false } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-voice-order-'))

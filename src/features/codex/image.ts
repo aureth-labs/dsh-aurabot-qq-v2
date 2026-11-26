@@ -1,6 +1,6 @@
 // 实验性订阅接法：使用非公开端点，账号 / 工作区是否可用由服务端决定。
 import { randomUUID } from 'node:crypto'
-import { fetchImage } from '../../core/net.ts'
+import { fetchImage } from '../../core/net/index.ts'
 import { pickShape } from '../media/shape.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

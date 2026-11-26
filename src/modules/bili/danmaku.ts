@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
-import { loginSessionKey } from '../../bili/login-pause.ts'
-import { prepareDanmaku } from '../../bili/api.ts'
-import { readJson, writeJson } from '../../core/store.ts'
-import { clipText } from '../../core/text.ts'
-import { cleanOutboundText } from '../../chat/reply.ts'
+import { loginSessionKey } from '../../bili/login/login-pause.ts'
+import { prepareDanmaku } from '../../bili/api/index.ts'
+import { readJson, writeJson } from '../../core/config/store.ts'
+import { clipText } from '../../core/support/text.ts'
+import { cleanOutboundText } from '../../chat/reply/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type DanmakuInputOptions = Partial<Record<'video' | 'text' | 'seconds' | 'part' | 'position', any>>

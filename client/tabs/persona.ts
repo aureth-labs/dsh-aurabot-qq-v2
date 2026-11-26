@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from './../core/react.ts'
-import { API, get, post } from './../core/api.ts'
-import { setPath } from './../core/format.ts'
-import { navIcon } from './../core/icons.ts'
-import { Btn, Card, Empty, Row, Seg, Select, Switch, cx, h } from './../core/ui.ts'
+import { useState, useEffect, useRef } from '../core/react.ts'
+import { API, get, post } from '../core/api.ts'
+import { setPath } from '../core/format.ts'
+import { navIcon } from '../core/icons.ts'
+import { Btn, Card, Empty, Row, Seg, Select, Switch, cx, h } from '../core/ui.ts'
 import { AvatarCard } from './connect.ts'
 
 // 人格按【标题】分节：面板里拆开逐节编辑，保存时按原来的写法拼回一整段（文件格式不变）

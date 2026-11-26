@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 import { Script } from 'node:vm'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 const source=clientBundleText()
 const publicPanel=source.includes('function GroupPermissions(')
 const entry=publicPanel?'GroupPermissions':'Access'

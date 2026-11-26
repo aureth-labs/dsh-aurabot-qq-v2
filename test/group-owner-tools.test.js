@@ -4,8 +4,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { groupOwnerTools, levelFor, presetFor } from '../src/chat/access.ts'
-import { normalize, DEFAULTS } from '../src/core/config.ts'
+import { groupOwnerTools, levelFor, presetFor } from '../src/chat/policy/access.ts'
+import { normalize, DEFAULTS } from '../src/core/config/index.ts'
 import { rulesText } from '../src/persona/personas.ts'
 import { readClientSource } from './helpers/client-source.js'
 
@@ -114,7 +114,7 @@ test('闸门：群里非主人说话时本机工具被收走', async () => {
   const { join } = await import('node:path')
   process.env.AURABOT_WORKSPACE = mkdtempSync(join(tmpdir(), 'aurabot-group-gate-'))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-  const { createHub } = await import('../src/chat/hub.ts')
+  const { createHub } = await import('../src/chat/hub/index.ts')
 
   const OWNER = '10001'
   const OTHER = '20002'
@@ -147,7 +147,7 @@ test('工具闸：新会话第一条消息就按说话人判定（首轮不再�
   const { join } = await import('node:path')
   process.env.AURABOT_WORKSPACE = mkdtempSync(join(tmpdir(), 'aurabot-group-tools-first-'))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-  const { createHub } = await import('../src/chat/hub.ts')
+  const { createHub } = await import('../src/chat/hub/index.ts')
 
   const OWNER = '10001'
   const OTHER = '30003'

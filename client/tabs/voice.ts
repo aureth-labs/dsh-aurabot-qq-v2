@@ -1,8 +1,8 @@
-import { useState, useEffect, Fragment } from './../core/react.ts'
-import { get, post } from './../core/api.ts'
-import { getPath, setPath } from './../core/format.ts'
-import { PinIcon } from './../core/icons.ts'
-import { Btn, Card, Range, Row, Select, cx, h, useField, usePersisted } from './../core/ui.ts'
+import { useState, useEffect, Fragment } from '../core/react.ts'
+import { get, post } from '../core/api.ts'
+import { getPath, setPath } from '../core/format.ts'
+import { PinIcon } from '../core/icons.ts'
+import { Btn, Card, Range, Row, Select, cx, h, useField, usePersisted } from '../core/ui.ts'
 import { VoiceSongModel, pitchLabel, pitchNum, pitchText } from './model.ts'
 import { ExtPage } from './modules.ts'
 

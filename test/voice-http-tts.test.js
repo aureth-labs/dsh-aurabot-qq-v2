@@ -12,8 +12,8 @@ const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-http-tts-'))
 process.env.AURABOT_DATA_DIR = dataDir
 process.env.AURABOT_PYENV = join(dataDir, 'no-edge-installed')
 
-const { httpSynth, textToSpeech } = await import('../src/voice/tts.ts')
-const { normalize } = await import('../src/core/config.ts')
+const { httpSynth, textToSpeech } = await import('../src/voice/tts/index.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 
 const wav = Buffer.alloc(800)
 wav.write('RIFF', 0, 'ascii')

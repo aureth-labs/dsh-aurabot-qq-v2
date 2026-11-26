@@ -23,10 +23,10 @@ const server = createServer((req, res) => {
 await new Promise((done) => server.listen(0, '127.0.0.1', done))
 const base = `http://127.0.0.1:${server.address().port}`
 
-const { breezeSynth, textToSpeech } = await import('../src/voice/tts.ts')
-const { breezeBalance, breezeLogin, breezeClaim, breezeSession, shouldAutoClaim, clearBreezeSession, breezeVoices } = await import('../src/voice/breeze.ts')
-const { DEFAULTS, normalize, publicConfig, mergeFromPanel } = await import('../src/core/config.ts')
-const { splitSpeakable } = await import('../src/chat/faces.ts')
+const { breezeSynth, textToSpeech } = await import('../src/voice/tts/index.ts')
+const { breezeBalance, breezeLogin, breezeClaim, breezeSession, shouldAutoClaim, clearBreezeSession, breezeVoices } = await import('../src/voice/asr/breeze.ts')
+const { DEFAULTS, normalize, publicConfig, mergeFromPanel } = await import('../src/core/config/index.ts')
+const { splitSpeakable } = await import('../src/chat/media/faces.ts')
 
 after(() => {
   server.close()

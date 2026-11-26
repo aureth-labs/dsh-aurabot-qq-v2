@@ -1,9 +1,9 @@
 // S5 出站回写：中间件 / 指令先发的话要能被这一轮的模型看到，且条数与字数有上限。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Pipeline } from '../src/core/pipeline.ts'
-import { Session, SENT_LOG_MAX, SENT_TEXT_MAX } from '../src/core/session.ts'
-import { h } from '../src/core/element.ts'
+import { Pipeline } from '../src/core/pipeline/index.ts'
+import { Session, SENT_LOG_MAX, SENT_TEXT_MAX } from '../src/core/pipeline/session.ts'
+import { h } from '../src/core/message/element.ts'
 
 function fakeBot(overrides = {}) {
   const sent = []

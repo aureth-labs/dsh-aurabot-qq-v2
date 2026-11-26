@@ -1,11 +1,11 @@
 // 陪伴类小功能：心情、主动搭话。
 
 import { randomUUID } from 'node:crypto'
-import { dataDir, readJson, writeJson } from '../../core/store.ts'
-import { askModel } from '../../core/llm.ts'
-import { cleanText, clipText } from '../../core/text.ts'
-import { shouldDeferBackground } from '../../core/offpeak.ts'
-import { inHourWindow } from '../../core/time-window.ts'
+import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { askModel } from '../../core/llm/index.ts'
+import { cleanText, clipText } from '../../core/support/text.ts'
+import { shouldDeferBackground } from '../../core/llm/offpeak.ts'
+import { inHourWindow } from '../../core/support/time-window.ts'
 import { followUpHint } from '../memory/index.ts'
 import { moodReason } from './context.ts'
 import {

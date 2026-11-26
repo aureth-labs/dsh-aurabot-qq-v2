@@ -1,8 +1,8 @@
-import { useState, useEffect } from './../core/react.ts'
-import { get, getCached, post } from './../core/api.ts'
-import { getPath, setPath } from './../core/format.ts'
-import { fmtNextChange, isPeakAt, nextChangeAt } from './../core/offpeak.ts'
-import { Btn, Card, Empty, Row, Seg, Select, h, useField } from './../core/ui.ts'
+import { useState, useEffect } from '../core/react.ts'
+import { get, getCached, post } from '../core/api.ts'
+import { getPath, setPath } from '../core/format.ts'
+import { fmtNextChange, isPeakAt, nextChangeAt } from '../core/offpeak.ts'
+import { Btn, Card, Empty, Row, Seg, Select, h, useField } from '../core/ui.ts'
 
 // 和 src/features/companion.js 的 moodEffects 严丝合缝：心情区间 → 贴表情系数
 const REACT_MOOD_BANDS = [['85 以上', 1.6], ['70–84', 1.25], ['50–69', 1], ['35–49', 0.5], ['35 以下', 0.3]]

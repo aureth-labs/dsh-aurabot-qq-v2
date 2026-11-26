@@ -4,7 +4,7 @@ import { readFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Script } from 'node:vm'
-import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config.ts'
+import { normalize, mergeFromPanel, saveConfig, loadConfig } from '../src/core/config/index.ts'
 import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 
 const label = '使用学来的语气与相处建议'

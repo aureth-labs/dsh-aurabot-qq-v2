@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, writeFileSync, unlinkSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createMediaAccess } from '../src/core/media.ts'
-import { buildWav } from '../src/voice/wav.ts'
+import { createMediaAccess } from '../src/core/message/media.ts'
+import { buildWav } from '../src/voice/audio/wav.ts'
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=', 'base64')
 test('模块读取当前头像和当前表情库字节；不接受任意路径、不泄漏路径，模块切换即时生效', (t) => {

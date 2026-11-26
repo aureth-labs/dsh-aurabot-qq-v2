@@ -4,13 +4,13 @@
 
 import { existsSync, readFileSync, unlinkSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { textToSpeech, edgeInstalled, installEdge, voiceConverters, volcanoResourceFor, volcanoSynth, systemVoiceEngine } from '../../voice/tts.ts'
-import { fishBalances, fishPrimary } from '../../voice/fish.ts'
-import { runCloud } from '../../voice/tts.ts'
-import { VOLCANO_VOICES } from '../../voice/volcano-voices.ts'
-import { breezeBalance, breezeClaim, breezeSession, autoClaimOnce, breezeVoices } from '../../voice/breeze.ts'
-import { createSongVoice } from '../../voice/rvc.ts'
-import { toMono16k } from '../../voice/wav.ts'
+import { textToSpeech, edgeInstalled, installEdge, voiceConverters, volcanoResourceFor, volcanoSynth, systemVoiceEngine } from '../../voice/tts/index.ts'
+import { fishBalances, fishPrimary } from '../../voice/tts/fish.ts'
+import { runCloud } from '../../voice/tts/index.ts'
+import { VOLCANO_VOICES } from '../../voice/tts/volcano-voices.ts'
+import { breezeBalance, breezeClaim, breezeSession, autoClaimOnce, breezeVoices } from '../../voice/asr/breeze.ts'
+import { createSongVoice } from '../../voice/convert/rvc.ts'
+import { toMono16k } from '../../voice/audio/wav.ts'
 import { fileOf } from '../../local/local.ts'
 
 /** 识别链路只吃 PCM16 WAV：自检拿到 mp3 时先用 ffmpeg 转一道（#255）。 */
@@ -36,9 +36,9 @@ export function asPcmWav (file, buf, ffmpegPath = '', { platform = process.platf
   return converted
 }
 
-import { asrConfigured, transcribeAudio } from '../../voice/asr.ts'
-import { mergeFromPanel, normalize } from '../../core/config.ts'
-import { findFfmpeg } from '../../core/img.ts'
+import { asrConfigured, transcribeAudio } from '../../voice/asr/index.ts'
+import { mergeFromPanel, normalize } from '../../core/config/index.ts'
+import { findFfmpeg } from '../../core/message/img.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type AsPcmWavOptions = Partial<Record<'platform' | 'findFfmpegFn' | 'runFn', any>>

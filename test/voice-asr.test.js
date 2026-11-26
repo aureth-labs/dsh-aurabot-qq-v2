@@ -1,9 +1,9 @@
 // 云端语音识别：配置收敛、预置默认值、multipart 请求、密钥遮罩。全部假 fetch，不联网。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize, publicConfig, mergeFromPanel } from '../src/core/config.ts'
-import { asrConfigured, asrSettings, transcribeAudio, ASR_PRESETS } from '../src/voice/asr.ts'
-import { buildWav } from '../src/voice/wav.ts'
+import { normalize, publicConfig, mergeFromPanel } from '../src/core/config/index.ts'
+import { asrConfigured, asrSettings, transcribeAudio, ASR_PRESETS } from '../src/voice/asr/index.ts'
+import { buildWav } from '../src/voice/audio/wav.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const wav = () => buildWav(new Int16Array(24000), 24000)

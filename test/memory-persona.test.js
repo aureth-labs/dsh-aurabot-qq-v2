@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { readMemoryState, writeMemoryState } from './helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { createMemoryStore, memoryLine } from '../src/features/memory/index.ts'
 
 const OWNER = '10000001'

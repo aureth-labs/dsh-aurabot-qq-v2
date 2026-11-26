@@ -13,7 +13,7 @@ import { dirname } from 'node:path'
 import { createServer } from 'node:http'
 import { createServer as createNetServer } from 'node:net'
 import { spawn } from 'node:child_process'
-import { dataDir, readJson } from '../../core/store.ts'
+import { dataDir, readJson } from '../../core/config/store.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type OpenInBrowserOptions = Partial<Record<'run' | 'platform', any>>

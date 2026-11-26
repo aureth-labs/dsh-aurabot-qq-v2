@@ -8,7 +8,7 @@ import { join } from 'node:path'
 const dir = mkdtempSync(join(tmpdir(), 'aurabot-stats-'))
 process.env.AURABOT_DATA_DIR = dir
 
-const { createHub } = await import('../src/chat/hub.ts')
+const { createHub } = await import('../src/chat/hub/index.ts')
 
 const today = () => new Date().toDateString()
 

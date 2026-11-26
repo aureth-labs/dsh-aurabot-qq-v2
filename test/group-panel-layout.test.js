@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 import { readClientSource } from './helpers/client-source.js'
 import { Script } from 'node:vm'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 const source = clientBundleText()
 // 文本契约看源码（打包会把单引号换成双引号、把注释去掉），行为跑产物

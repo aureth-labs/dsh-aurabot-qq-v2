@@ -6,8 +6,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.ts'
-import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 // 假环境：onebot.call 可脚本化（第 N 次调用可抛错），hooks 可注入 reply/items。
 function setup(t, { dryRun = false, enabled = true, onebotCall = null, hooks = null } = {}) {

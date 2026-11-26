@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalize } from '../src/core/config.ts'
-import { parseCommand, runCommand } from '../src/chat/commands.ts'
-import { parseGroupSettingsCommand, runGroupSettingsCommand } from '../src/chat/group-settings-command.ts'
-import { canUseDelegatedCommand, delegatedCommandKey } from '../src/chat/delegated-commands.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { parseCommand, runCommand } from '../src/chat/commands/index.ts'
+import { parseGroupSettingsCommand, runGroupSettingsCommand } from '../src/chat/commands/group-settings-command.ts'
+import { canUseDelegatedCommand, delegatedCommandKey } from '../src/chat/commands/delegated-commands.ts'
 const OWNER = '10000001', G = '30000003', H = '40000004', OTHER = '10000002'
 const owner = { kind: 'private', userId: OWNER }
 function setup(patch = {}) {

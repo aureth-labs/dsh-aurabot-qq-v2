@@ -2,8 +2,8 @@
 
 import { defineTool, str, int, bool } from '../../tools/tools.ts'
 import { readQqFile } from '../../features/qq/file.ts'
-import { parseMessageEvent } from '../../chat/inbound.ts'
-import { hasInvalidVoiceMarkup } from '../../chat/reply.ts'
+import { parseMessageEvent } from '../../chat/inbound/index.ts'
+import { hasInvalidVoiceMarkup } from '../../chat/reply/index.ts'
 
 /** 真实网关对不在群里的人也回成功、角色写 member，只有 join_time 是空的：没有它就不算成员。 */
 async function isGroupMember(onebot, groupId, userId) {

@@ -7,8 +7,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, existsSync, rmSync, readFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { probeOne, probePython, runPython, cleanEnv, envUsable } from '../src/autotelic/python.ts'
-import { createSkills, writeUserModule } from '../src/autotelic/skills.ts'
+import { probeOne, probePython, runPython, cleanEnv, envUsable } from '../src/autotelic/exec/python.ts'
+import { createSkills, writeUserModule } from '../src/autotelic/feedback/skills.ts'
 import module from '../src/modules/autotelic/index.ts'
 
 const runOf = (map) => async (bin) => {

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from './../core/react.ts'
-import { API, get, post } from './../core/api.ts'
-import { fmtBytes, fmtDur, setPath, timeAgo } from './../core/format.ts'
-import { LogLine } from './../core/log-line.ts'
-import { Btn, Card, Empty, Row, Seg, Select, Switch, cx, h, useField } from './../core/ui.ts'
+import { useState, useEffect, useRef, useCallback, Fragment } from '../core/react.ts'
+import { API, get, post } from '../core/api.ts'
+import { fmtBytes, fmtDur, setPath, timeAgo } from '../core/format.ts'
+import { LogLine } from '../core/log-line.ts'
+import { Btn, Card, Empty, Row, Seg, Select, Switch, cx, h, useField } from '../core/ui.ts'
 import { VoiceImport } from './memory.ts'
 
 function RootPicker({ draft, setDraft, s }) {

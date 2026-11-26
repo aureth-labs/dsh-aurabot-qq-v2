@@ -14,8 +14,8 @@ import {
   buildSystemPrefix, assembleIntentInput, buildIntentPrompt, parseIntents,
   shuffle, buildGatePrompt, parseGateVerdicts, buildTicket,
   createDecisionLog, verifyDecisionLog, createPlanner, reviewRound,
-} from '../src/autotelic/plan.ts'
-import { parseConstraintRules } from '../src/autotelic/constraint.ts'
+} from '../src/autotelic/plan/index.ts'
+import { parseConstraintRules } from '../src/autotelic/exec/constraint.ts'
 
 // —— 测试用观察窗口（带不同时间戳） ——
 const T1 = 1_700_000_000_000
@@ -189,7 +189,7 @@ test('全灭合法：模型输出 [] 时省把关，gate 只记一行 skipped', 
 test('约束前置否决：意图文本撞上约束词时，决策环链路上 check 直接否决（不进把关）', async (t) => {
   // 集成口径：decideRound 前由调用方（集成层）对候选先跑 constraint.check；
   // 这里验证「候选层面被约束否决后不进把关」的链路行为。
-  const { check } = await import('../src/autotelic/constraint.ts')
+  const { check } = await import('../src/autotelic/exec/constraint.ts')
   const { rules } = parseConstraintRules('不许半夜说话')
   const veto = check(rules, { ...GOOD_CANDIDATE, title: '半夜说话问候主人', evidence: ['obs:1', 'obs:2'] })
   assert.equal(veto.vetoed, true)

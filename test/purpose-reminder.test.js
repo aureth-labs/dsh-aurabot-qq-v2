@@ -13,7 +13,7 @@ const OWNER = '10000001'
 
 before(async () => {
   ;({ createPurpose } = await import('../src/purpose/module.ts'))
-  ;({ normalize } = await import('../src/core/config.ts'))
+  ;({ normalize } = await import('../src/core/config/index.ts'))
 })
 
 beforeEach(() => {

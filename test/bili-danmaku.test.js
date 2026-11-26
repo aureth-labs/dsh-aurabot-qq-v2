@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createDanmaku, danmakuInput, danmakuPanelRequest } from '../src/modules/bili/danmaku.ts'
 import definition from '../src/modules/bili/index.ts'
-import { bangumiEpisode } from '../src/bili/danmaku.ts'
+import { bangumiEpisode } from '../src/bili/live/danmaku.ts'
 const video = 'BV1xx411c7mD'
 const input = { video, text: '这一段好有意思😀', seconds: 8.25, position: 'bottom' }
 
@@ -167,7 +167,7 @@ test('模块停止后不继续发送', async () => {
 })
 
 test('新安装、旧配置和非法配置的两个弹幕开关都默认关闭', async () => {
-  const { normalize } = await import('../src/core/config.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
   for (const raw of [{}, { bili: {} }, { bili: { danmakuEnabled: 'true', autoDanmaku: 'true' } }]) {
     assert.equal(normalize(raw).bili.danmakuEnabled, false)
     assert.equal(normalize(raw).bili.autoDanmaku, false)

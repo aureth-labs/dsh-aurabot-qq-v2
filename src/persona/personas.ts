@@ -6,7 +6,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync, copyFi
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { dataDir } from '../core/store.ts'
+import { dataDir } from '../core/config/store.ts'
 import { deleteLook } from './persona-look.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

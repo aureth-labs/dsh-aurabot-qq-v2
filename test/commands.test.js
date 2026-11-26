@@ -12,8 +12,8 @@ let normalize
 
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-cmd-'))
-  ;({ parseCommand, runCommand, createMutes } = await import('../src/chat/commands.ts'))
-  ;({ normalize } = await import('../src/core/config.ts'))
+  ;({ parseCommand, runCommand, createMutes } = await import('../src/chat/commands/index.ts'))
+  ;({ normalize } = await import('../src/core/config/index.ts'))
 })
 
 test('解析：英文、中文别名、全角斜杠、中文命令不加空格', () => {

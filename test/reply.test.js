@@ -2,7 +2,7 @@
 // 得在解析入口剥掉，不然编号会当成正文发到 QQ。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply } from '../src/chat/reply.ts'
+import { parseReply } from '../src/chat/reply/index.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)
 
@@ -72,7 +72,7 @@ test('半角竖线的特殊 token 也认，普通尖括号文本不能误伤', (
 })
 
 test('isSilence：沉默标记重复/带空白/带标点仍算沉默，正文里出现“沉默”不误伤', async () => {
-  const { isSilence } = await import('../src/chat/reply.ts')
+  const { isSilence } = await import('../src/chat/reply/index.ts')
   for (const s of ['[沉默]', '[沉默][沉默]', '[沉默] [沉默]', '[沉默]\n[沉默]', '（沉默）', '', '  \n\t', '[沉默]。', '[沉默]……']) {
     assert.equal(isSilence(s), true, `应判沉默: ${JSON.stringify(s)}`)
   }

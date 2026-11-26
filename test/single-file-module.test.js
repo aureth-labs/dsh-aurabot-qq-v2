@@ -22,7 +22,7 @@ test('scanUser：认 modules/<id>.mjs，其他一律不认', async () => {
   })
   process.env.AURABOT_DATA_DIR = root
   try {
-    const { scanUser } = await import('../src/core/modules.ts')
+    const { scanUser } = await import('../src/core/module/index.ts')
     const found = scanUser()
 
     assert.deepEqual(found.map((item) => item.id), ['echo'])
@@ -40,7 +40,7 @@ test('scanUser：文件夹模块和单文件模块可以共存', async () => {
   writeFileSync(join(dir, 'folder-mod', 'index.mjs'), 'export default function apply() {}', 'utf8')
   process.env.AURABOT_DATA_DIR = root
   try {
-    const { scanUser } = await import('../src/core/modules.ts')
+    const { scanUser } = await import('../src/core/module/index.ts')
     const ids = scanUser().map((item) => item.id).sort()
     assert.deepEqual(ids, ['folder-mod', 'quick'])
   } finally {

@@ -1,7 +1,7 @@
 // 正文标记：模型用 ⟦REPLY⟧ 包住要发的话，插件只取标记内。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { extractMarkedReply, stripMarkers, markerInstruction, markerApplies, REPLY_OPEN, REPLY_CLOSE } from '../src/chat/reply-marker.ts'
+import { extractMarkedReply, stripMarkers, markerInstruction, markerApplies, REPLY_OPEN, REPLY_CLOSE } from '../src/chat/reply/reply-marker.ts'
 
 test('正常：标记内的话取出来', () => {
   const r = extractMarkedReply(`${REPLY_OPEN}今天好累啊${REPLY_CLOSE}`)

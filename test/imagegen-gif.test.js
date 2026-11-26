@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os'
 import { join, extname } from 'node:path'
 import { createImageGen } from '../src/features/media/imagegen.ts'
 import { gifFrameCount } from '../src/features/media/format.ts'
-import { normalize, mergeFromPanel } from '../src/core/config.ts'
-import { imageToolBlock, findFfmpeg } from '../src/core/img.ts'
+import { normalize, mergeFromPanel } from '../src/core/config/index.ts'
+import { imageToolBlock, findFfmpeg } from '../src/core/message/img.ts'
 import imagegen from '../src/modules/imagegen/index.ts'
 const GIF = Buffer.from('R0lGODlhEAAQAIEAAP8AAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQAFAAAACwAAAAAEAAQAAAIHQABCBxIsKDBgwgTKlzIsKHDhxAjSpxIsaLFgQEBACH5BAEUAAEALAAAAAAQABAAgQAA/wAAAAAAAAAAAAgdAAEIHEiwoMGDCBMqXMiwocOHECNKnEixosWBAQEAOw==', 'base64')
 const PNG = Buffer.concat([Buffer.from('89504e470d0a1a0a','hex'), Buffer.alloc(64)])

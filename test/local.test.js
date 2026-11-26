@@ -14,7 +14,7 @@ const log = { info: (...a) => logs.push(a.join(' ')), warn: (...a) => logs.push(
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-local-'))
   L = await import('../src/local/local.ts')
-  ;({ normalize } = await import('../src/core/config.ts'))
+  ;({ normalize } = await import('../src/core/config/index.ts'))
   cfg = normalize({})
 })
 

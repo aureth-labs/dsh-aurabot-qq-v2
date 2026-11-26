@@ -9,7 +9,7 @@ let createMemoryStore, normalize
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-memretry-'))
   ;({ createMemoryStore } = await import('../src/features/memory/index.ts'))
-  ;({ normalize } = await import('../src/core/config.ts'))
+  ;({ normalize } = await import('../src/core/config/index.ts'))
 })
 
 function setup(answer, idle = false) {

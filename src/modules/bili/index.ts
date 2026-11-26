@@ -1,16 +1,16 @@
 // 内置模块：B 站。别人发来链接时她能「看」视频（标题、简介、字幕、热评）；定时自己去刷、评论、回评论，看到好玩的分享给主人。
 
 import { readFileSync } from 'node:fs'
-import { createBili } from '../../bili/duty.ts'
-import { createGroupShare } from '../../bili/group-share.ts'
+import { createBili } from '../../bili/live/duty.ts'
+import { createGroupShare } from '../../bili/live/group-share.ts'
 import { defineTool, str } from '../../tools/tools.ts'
-import { permOf, profileToolVisible, profilePermits } from '../../chat/access.ts'
+import { permOf, profileToolVisible, profilePermits } from '../../chat/policy/access.ts'
 import { avatarSource } from '../profile/index.ts'
 import { resolvePainting } from '../../features/media/paintings.ts'
-import { segmentBytes } from '../../core/net.ts'
+import { segmentBytes } from '../../core/net/index.ts'
 import { createDanmaku, danmakuPanelRequest } from './danmaku.ts'
-import { createQrLogin } from '../../bili/qr-login.ts'
-import { dataDir } from '../../core/store.ts'
+import { createQrLogin } from '../../bili/login/qr-login.ts'
+import { dataDir } from '../../core/config/store.ts'
 
 export default {
   id: 'bili',

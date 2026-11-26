@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { normalize } from '../src/core/config.ts'
-import { presetFor } from '../src/chat/access.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { presetFor } from '../src/chat/policy/access.ts'
 import { rulesText } from '../src/persona/personas.ts'
 import { createDangerGuard } from '../src/security/danger.ts'
 

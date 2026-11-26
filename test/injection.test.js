@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-injection-'))
 
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 const { rulesText } = await import('../src/persona/personas.ts')
 const { createMemoryStore } = await import('../src/features/memory/index.ts')
 

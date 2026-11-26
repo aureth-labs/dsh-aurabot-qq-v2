@@ -1,6 +1,6 @@
-import { useState, useEffect } from './../core/react.ts'
-import { post } from './../core/api.ts'
-import { Btn, h } from './../core/ui.ts'
+import { useState, useEffect } from '../core/react.ts'
+import { post } from '../core/api.ts'
+import { Btn, h } from '../core/ui.ts'
 
 function StyleEditor({ k, label, list, toast, onSaved }) {
   const [text, setText] = useState(list.join('\n'))

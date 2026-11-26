@@ -2,7 +2,7 @@
 // 旧实现只认工具协议标签，state 标签会原样发进群。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanOutboundText, parseReply } from '../src/chat/reply.ts'
+import { cleanOutboundText, parseReply } from '../src/chat/reply/index.ts'
 
 const texts = (r) => r.items.filter((i) => i.kind === 'text').map((i) => i.value)
 

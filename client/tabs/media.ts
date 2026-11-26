@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, Fragment } from './../core/react.ts'
-import { post } from './../core/api.ts'
-import { setPath } from './../core/format.ts'
-import { Btn, Card, Row, Seg, Select, h, useField } from './../core/ui.ts'
+import { useState, useEffect, useRef, Fragment } from '../core/react.ts'
+import { post } from '../core/api.ts'
+import { setPath } from '../core/format.ts'
+import { Btn, Card, Row, Seg, Select, h, useField } from '../core/ui.ts'
 import { CodexSub, PaintGallery } from './content.ts'
 import { ExtPanel } from './modules.ts'
 

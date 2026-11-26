@@ -108,7 +108,7 @@ test('切回「她挑」后又不拦了（owner 模式才有这道闸）', async
 })
 
 test('配置归一化：owner 是合法值，乱写回落 ask', async () => {
-  const { normalize } = await import('../src/core/config.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
   assert.equal(normalize({ stickers: { collectMode: 'owner' } }).stickers.collectMode, 'owner')
   assert.equal(normalize({ stickers: { collectMode: 'ask' } }).stickers.collectMode, 'ask')
   assert.equal(normalize({ stickers: { collectMode: 'auto' } }).stickers.collectMode, 'auto')

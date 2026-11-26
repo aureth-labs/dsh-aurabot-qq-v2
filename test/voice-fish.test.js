@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { normalize, publicConfig, mergeFromPanel } from '../src/core/config.ts'
+import { normalize, publicConfig, mergeFromPanel } from '../src/core/config/index.ts'
 import voiceModule from '../src/modules/voice/index.ts'
-import { fishSpeech } from '../src/voice/fish.ts'
+import { fishSpeech } from '../src/voice/tts/fish.ts'
 
 test('Fish：面板不回传 Key，保存空框不覆盖；试听、发语音和旧凭据都用同一免费型号', async t => {
   const dir=mkdtempSync(join(tmpdir(),'fish-voice-')); process.env.AURABOT_DATA_DIR=dir
@@ -30,7 +30,7 @@ test('Fish：无 Key 或音色无效时不出网，失败不重投收费型号�
 })
 
 test('余额只读已保存的账号：保留零值、分开处理套餐和 API、错误不回显凭据', async t => {
-  const { fishBalances } = await import('../src/voice/fish.ts')
+  const { fishBalances } = await import('../src/voice/tts/fish.ts')
   const voice = { keyPools: { 'fish-free': { accounts: [{ apiKey: 'first' }, { name: '备用', apiKey: 'second' }] } } }
   const calls = []
   const result = await fishBalances(voice, () => ({ resolve: async () => ({ value: 'first' }) }), async (url, options) => {

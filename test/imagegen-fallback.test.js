@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createImageGen } from '../src/features/media/imagegen.ts'
-import { normalize, publicConfig, mergeFromPanel } from '../src/core/config.ts'
+import { normalize, publicConfig, mergeFromPanel } from '../src/core/config/index.ts'
 const log = { info() {}, debug() {}, warn() {} }
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aS0AAAAASUVORK5CYII=', 'base64')
 const config = () => normalize({ imageGen: { enabled: true, baseUrl: 'https://one.invalid/v1', model: 'one', fallbackEnabled: true, fallbacks: [{id:'a',baseUrl:'https://two.invalid/v1',model:'two',apiKey:'sample-secret'}, {id:'b',baseUrl:'https://three.invalid/v1',model:'three'}] } })

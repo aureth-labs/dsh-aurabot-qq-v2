@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import profileModule from '../src/modules/profile/index.ts'
 import { createQqProfile } from '../src/features/qq/profile.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 
 const OWNER = '10000001'

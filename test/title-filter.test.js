@@ -1,8 +1,8 @@
 // 按群头衔不理：只在勾选的群生效；优先用事件里的头衔，没有再查（有缓存）；查不到这条先不回；拉取头衔按人数排。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { createTitleFilter, normTitle } from '../src/chat/title-filter.ts'
-import { normalize } from '../src/core/config.ts'
+import { createTitleFilter, normTitle } from '../src/chat/inbound/title-filter.ts'
+import { normalize } from '../src/core/config/index.ts'
 
 function setup({ rule = { enabled: true, groups: ['10001'], title: '大肥鱼' }, member = {}, fail = false, lists = {} } = {}) {
   const calls = []

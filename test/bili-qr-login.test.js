@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-const { splitBiliCookie, normalize } = await import('../src/core/config.ts')
+const { splitBiliCookie, normalize } = await import('../src/core/config/index.ts')
 
 test('扫码登录拿到的五个字段按顺序拼进 cookie，设备指纹一并回写', () => {
   const r = splitBiliCookie({

@@ -6,7 +6,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMood } from '../src/features/mood/index.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import moodModule from '../src/modules/mood/index.ts'
 
 const now = new Date(2026, 10, 4, 14, 0).getTime()

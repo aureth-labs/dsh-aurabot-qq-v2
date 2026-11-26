@@ -3,8 +3,8 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, realpathSync, lstatSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { assertPublicUrl, fetchImage } from '../../core/net.ts'
-import { imageSize, mimeOf } from '../../chat/inbound.ts'
+import { assertPublicUrl, fetchImage } from '../../core/net/index.ts'
+import { imageSize, mimeOf } from '../../chat/inbound/index.ts'
 import { insideFolder } from './sources.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

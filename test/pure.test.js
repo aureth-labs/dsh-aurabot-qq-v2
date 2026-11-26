@@ -1,11 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply, stripMarkdown, bubbleDelay } from '../src/chat/reply.ts'
-import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../src/chat/group-policy.ts'
-import { parseMessageEvent, isStickerSegment, stickerSizeOk, imageSize } from '../src/chat/inbound.ts'
-import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../src/chat/access.ts'
+import { parseReply, stripMarkdown, bubbleDelay } from '../src/chat/reply/index.ts'
+import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../src/chat/policy/group-policy.ts'
+import { parseMessageEvent, isStickerSegment, stickerSizeOk, imageSize } from '../src/chat/inbound/index.ts'
+import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../src/chat/policy/access.ts'
 import { avatarSource } from '../src/modules/profile/index.ts'
-import { redact, registerSecret } from '../src/core/redact.ts'
+import { redact, registerSecret } from '../src/core/support/redact.ts'
 
 test('parseReply 拆 ||| 成多条', () => {
   const r = parseReply('在呢|||刚睡醒 嗯…|||你呢')
@@ -150,7 +150,7 @@ test('群聊：刚说完被追问「人呢」也算叫她，但要防 A/B 聊天
 })
 
 test('topicRelevance', async () => {
-  const { topicRelevance } = await import('../src/chat/group-policy.ts')
+  const { topicRelevance } = await import('../src/chat/policy/group-policy.ts')
   assert.equal(topicRelevance(['今天天气不错', '中午吃啥'], ['白米饭', '天气']), 0.3)
   assert.equal(topicRelevance(['量子力学'], ['白米饭']), 0)
   assert.equal(topicRelevance(['量子力学'], ['白米饭'], 1), 0.5)
@@ -252,13 +252,13 @@ test('脱敏', () => {
 })
 
 test('wantsVoice：明确要语音才算', async () => {
-  const { wantsVoice } = await import('../src/chat/reply.ts')
+  const { wantsVoice } = await import('../src/chat/reply/index.ts')
   for (const t of ['用语音跟我发晚安', '发个语音呗', '语音说一下', '给我来段语音', '录个语音']) assert.equal(wantsVoice(t), true, t)
   for (const t of ['晚安', '你的语音好好听', '不要语音', '刚才那条语音是啥']) assert.equal(wantsVoice(t), false, t)
 })
 
 test('引用回复：<reply:编号> 挂到下一条气泡上，一轮最多一条，写坏的标签去掉', async () => {
-  const { parseReply } = await import('../src/chat/reply.ts')
+  const { parseReply } = await import('../src/chat/reply/index.ts')
   assert.deepEqual(parseReply('<reply:3>粮收到 省着花\n刷视频那摊我少刷两条').items, [
     { kind: 'text', value: '粮收到 省着花', replyTo: '3' },
     { kind: 'text', value: '刷视频那摊我少刷两条' },
@@ -271,7 +271,7 @@ test('引用回复：<reply:编号> 挂到下一条气泡上，一轮最多一�
 
 test('规则：画画、唱歌只在功能真的能用时告诉她', async () => {
   const { rulesText } = await import('../src/persona/personas.ts')
-  const { normalize } = await import('../src/core/config.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
   const off = rulesText('social', normalize({ imageGen: { enabled: true } }))
   assert.doesNotMatch(off, /你会画画|你会唱歌/, '没配生图服务就不说会画')
   const on = rulesText('social', normalize({ imageGen: { enabled: true, baseUrl: 'https://x/v1', model: 'm' }, song: { enabled: true } }))
@@ -308,7 +308,7 @@ test('空间互动：一串评论里没回的新消息', async () => {
 })
 
 test('更新：版本比较、仓库名、更新命令、更新说明', async () => {
-  const u = await import('../src/core/update.ts')
+  const u = await import('../src/core/runtime/update.ts')
   assert.ok(u.compareVersions('0.3.0', '0.2.9') > 0)
   assert.ok(u.compareVersions('0.10.0', '0.9.0') > 0)
   assert.equal(u.compareVersions('1.0.0', '1.0.0'), 0)
@@ -332,7 +332,7 @@ test('更新后：会公开发东西的新功能，老用户先关着，新安�
   const prev = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
   try {
-    const { loadConfig } = await import('../src/core/config.ts')
+    const { loadConfig } = await import('../src/core/config/index.ts')
     assert.equal(loadConfig().qzoneSocial.enabled, true, '新安装（还没走完向导）默认开')
     writeFileSync(join(dir, 'config.json'), JSON.stringify({ setupDone: true, botQQ: '1', ownerQQ: '2' }))
     assert.equal(loadConfig().qzoneSocial.enabled, false, '老用户更新：先关着')
@@ -355,8 +355,8 @@ test('空间互动：说说下的评论整理成上下文', async () => {
 })
 
 test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', async () => {
-  const { parseMessageEvent } = await import('../src/chat/inbound.ts')
-  const { parseReply } = await import('../src/chat/reply.ts')
+  const { parseMessageEvent } = await import('../src/chat/inbound/index.ts')
+  const { parseReply } = await import('../src/chat/reply/index.ts')
   const m = parseMessageEvent({ message_type: 'group', group_id: 1, user_id: 2, message: [{ type: 'forward', data: { id: 'abc' } }] }, '9')
   assert.deepEqual(m.forwards, [{ id: 'abc', outerId: '', content: null }])
   assert.match(m.text, /合并转发/)
@@ -365,7 +365,7 @@ test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', asy
 })
 
 test('#6 改资料权限：默认仅主人私聊；所有人含群；关了都不行；执行时再查', async () => {
-  const { normalize } = await import('../src/core/config.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
   const d = normalize({ ownerQQ: '1' })
   assert.deepEqual(d.profilePerms, { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', biliSign: 'owner', biliAvatar: 'owner', biliComment: 'owner', qqFriendRequest: 'owner', whitelist: 'owner', douyinBrowse: 'owner', douyinLike: 'owner', douyinComment: 'owner', douyinShareOwner: 'owner', douyinDm: 'owner', heyboxBrowse: 'owner', heyboxLike: 'owner', heyboxComment: 'owner', heyboxPost: 'owner' })
   assert.equal(normalize({ profilePerms: { qqAvatar: 'boss', biliSign: 'all' } }).profilePerms.qqAvatar, 'owner', '乱填的回到默认')
@@ -396,7 +396,7 @@ test('#6 头像来源：显式网址直接给网关；「刚才那张」和「�
 })
 
 test('#28 QQ 网关：默认 SnowLuma；接自己的 OneBot 机器人时用 onebot；乱填的回到 SnowLuma', async () => {
-  const { normalize } = await import('../src/core/config.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
   assert.equal(normalize({}).gateway, 'snowluma')
   assert.equal(normalize({ gateway: 'onebot', snowluma: { wsUrl: 'ws://napcat:3001' } }).gateway, 'onebot')
   assert.equal(normalize({ gateway: 'onebot', snowluma: { wsUrl: 'ws://napcat:3001' } }).snowluma.wsUrl, 'ws://napcat:3001')
@@ -404,8 +404,8 @@ test('#28 QQ 网关：默认 SnowLuma；接自己的 OneBot 机器人时用 oneb
 })
 
 test('#32 工作区位置：面板填的绝对路径优先，相对路径 / 乱填的当没填', async () => {
-  const { normalize } = await import('../src/core/config.ts')
-  const { workspaceDirOf, WORKSPACE_DIR } = await import('../src/chat/hub.ts')
+  const { normalize } = await import('../src/core/config/index.ts')
+  const { workspaceDirOf, WORKSPACE_DIR } = await import('../src/chat/hub/index.ts')
   assert.equal(normalize({}).workspaceDir, '')
   assert.equal(workspaceDirOf(normalize({})), WORKSPACE_DIR)
   assert.equal(workspaceDirOf(normalize({ workspaceDir: ' D:\\Aurabot\\qq-chats ' })), 'D:\\Aurabot\\qq-chats')
@@ -424,7 +424,7 @@ test('群聊：没人叫她时接话有上限，叫她就重新开始', () => {
 })
 
 test('人设识图模型：旧配置、脏值、两半选择与面板合并', async () => {
-  const { normalize, publicConfig, mergeFromPanel } = await import('../src/core/config.ts')
+  const { normalize, publicConfig, mergeFromPanel } = await import('../src/core/config/index.ts')
   const empty = { provider: '', model: '' }
   for (const raw of [{}, { personaLook: null }, { personaLook: { visionModel: [] } }, { personaLook: { visionModel: { provider: 'p' } } }, { personaLook: { visionModel: { provider: {}, model: 'm' } } }]) {
     assert.deepEqual(normalize(raw).personaLook.visionModel, empty)

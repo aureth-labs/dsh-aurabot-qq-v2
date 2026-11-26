@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { once } from 'node:events'
-import { findFfmpeg, grabFrame } from '../src/bili/vision.ts'
+import { findFfmpeg, grabFrame } from '../src/bili/media/vision.ts'
 
 const ffmpeg = findFfmpeg()
 

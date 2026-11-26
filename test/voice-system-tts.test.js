@@ -2,9 +2,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { systemVoiceEngine, edgeAllowed } from '../src/voice/tts.ts'
+import { systemVoiceEngine, edgeAllowed } from '../src/voice/tts/index.ts'
 import { asPcmWav } from '../src/modules/voice/index.ts'
-import { buildWav } from '../src/voice/wav.ts'
+import { buildWav } from '../src/voice/audio/wav.ts'
 
 test('系统语音兜底：Windows 用系统语音、macOS 用 say、其它平台没有', () => {
   assert.equal(systemVoiceEngine('win32'), 'windows')

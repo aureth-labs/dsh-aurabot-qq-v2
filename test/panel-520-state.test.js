@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
-import { commitConfig, loadConfig, mergeFromPanel, normalize, publicConfig, saveConfig } from '../src/core/config.ts'
+import { commitConfig, loadConfig, mergeFromPanel, normalize, publicConfig, saveConfig } from '../src/core/config/index.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readClientSource } from './helpers/client-source.js'

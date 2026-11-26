@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createImageGen, minimaxImageBody, minimaxBaseUrl, minimaxImageKey, MINIMAX_IMAGE_MODELS } from '../src/features/media/imagegen.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }

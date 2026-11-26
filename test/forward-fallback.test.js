@@ -7,8 +7,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   FORWARD_NOT_EXPANDED, forwardBody, readForward,
-} from '../src/chat/forward.ts'
-import { parseMessageEvent } from '../src/chat/inbound.ts'
+} from '../src/chat/media/forward.ts'
+import { parseMessageEvent } from '../src/chat/inbound/index.ts'
 
 const node = (name, message) => ({ sender: { nickname: name, user_id: 2 }, message })
 const text = (t) => ({ type: 'text', data: { text: t } })

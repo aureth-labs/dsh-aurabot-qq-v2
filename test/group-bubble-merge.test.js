@@ -10,9 +10,9 @@ const root = mkdtempSync(join(tmpdir(), 'aurabot-groupmerge-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(root, 'data-'))
 
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 const { createFakeDsh } = await import('./helpers/fake-dsh.js')
-const { createHub } = await import('../src/chat/hub.ts')
+const { createHub } = await import('../src/chat/hub/index.ts')
 
 const OWNER = '10000001'
 const OTHER = '10000002'

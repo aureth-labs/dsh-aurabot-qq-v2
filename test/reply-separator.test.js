@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseReply } from '../src/chat/reply.ts'
+import { parseReply } from '../src/chat/reply/index.ts'
 
 for (const count of [3, 4, 5, 6, 7]) test(`连续 ${count} 个竖线都作为一个气泡分隔符，不留下单独消息`, () => {
   const { items } = parseReply(`<voice>第一条</voice>${'|'.repeat(count)}<voice>第二条</voice>`)

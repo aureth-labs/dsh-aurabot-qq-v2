@@ -10,7 +10,7 @@ process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-addsticker-')
 const freshDir = () => { process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-addsticker-')) }
 
 const { createStickerStore } = await import('../src/features/stickers/index.ts')
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 
 function fakePng (salt = 0) {
   const b = Buffer.alloc(80)

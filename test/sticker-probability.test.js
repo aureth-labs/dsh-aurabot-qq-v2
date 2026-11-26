@@ -3,8 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../src/chat/hub.ts'
-import { normalize, mergeFromPanel } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { normalize, mergeFromPanel } from '../src/core/config/index.ts'
 import { rulesText } from '../src/persona/personas.ts'
 
 const item = { name: '开心', md5: '1234567890abcdef' }

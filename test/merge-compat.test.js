@@ -5,12 +5,12 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { normalize } from '../src/core/config.ts'
-import { clearVisionCache, clearReasoningCache } from '../src/core/llm.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { clearVisionCache, clearReasoningCache } from '../src/core/llm/index.ts'
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-merge-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../src/chat/hub.ts')
+const { createHub } = await import('../src/chat/hub/index.ts')
 const OWNER = '10000001'
 const BOT = '20000002'
 const CHAT = `private:${OWNER}`

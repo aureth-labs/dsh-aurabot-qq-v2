@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createFeedback } from '../src/autotelic/feedback.ts'
+import { createFeedback } from '../src/autotelic/feedback/index.ts'
 
 const HOUR = 3600_000
 const DAY = 24 * HOUR

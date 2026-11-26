@@ -4,9 +4,9 @@ import { mkdtempSync, readFileSync, existsSync, readdirSync, writeFileSync } fro
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { normalize } from '../src/core/config.ts'
-import { createHub } from '../src/chat/hub.ts'
-import { createConversationArchive, queriesFor, retrieve } from '../src/chat/conversation-context.ts'
+import { normalize } from '../src/core/config/index.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { createConversationArchive, queriesFor, retrieve } from '../src/chat/hub/conversation-context.ts'
 import { memoryPromptRanges, promptFingerprint } from '../src/security/leak-guard.ts'
 
 const OWNER = '10000001', OTHER = '10000002', BOT = '20000002'

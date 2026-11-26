@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
-import { dataDir, readJson, writeJson } from '../../core/store.ts'
+import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateMemoryStorageOptions = Partial<Record<'directory' | 'log' | 'Database', any>>

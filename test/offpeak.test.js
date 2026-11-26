@@ -3,9 +3,9 @@
 // 换成北京时间 = 工作日 09:00–12:00、14:00–18:00；周末和法定节假日全天谷价。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isPeak, isOffPeak, nextChange, shouldDeferBackground } from '../src/core/offpeak.ts'
-import { offpeakSkipReason } from '../src/bili/duty.ts'
-import { normalize } from '../src/core/config.ts'
+import { isPeak, isOffPeak, nextChange, shouldDeferBackground } from '../src/core/llm/offpeak.ts'
+import { offpeakSkipReason } from '../src/bili/live/duty.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { readClientSource } from './helpers/client-source.js'
 
 // 2026-11-02 是周一，2026-11-06 周五，2026-11-07 周六，2026-11-08 周日。

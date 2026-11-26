@@ -1,8 +1,8 @@
 // `<voice>文字</voice>` 出站：有 TTS 就换成音频，没有就降级成文字。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { h, toText } from '../src/core/element.ts'
-import { hasVoiceText, needsVoiceResolve, resolveVoice } from '../src/core/voice-element.ts'
+import { h, toText } from '../src/core/message/element.ts'
+import { hasVoiceText, needsVoiceResolve, resolveVoice } from '../src/core/message/voice-element.ts'
 
 test('<voice>文字</voice> 解析成带正文的 voice 元素', () => {
   const tree = h.parse('<voice>说话语音啦</voice>')

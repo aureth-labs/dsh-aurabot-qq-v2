@@ -6,10 +6,10 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import * as nodeModule from 'node:module'
 import { spawnSync } from 'node:child_process'
-import { normalize, DEFAULTS } from '../src/core/config.ts'
+import { normalize, DEFAULTS } from '../src/core/config/index.ts'
 import { createMemoryStore, COMPRESS } from '../src/features/memory/index.ts'
 import { createMemoryStorage, MEMORY_SCHEMA } from '../src/features/memory/store.ts'
-import { createBackup, stageRestore, applyPendingRestore } from '../src/core/backup.ts'
+import { createBackup, stageRestore, applyPendingRestore } from '../src/core/runtime/backup.ts'
 import memoryModule from '../src/modules/memory/index.ts'
 
 let Database

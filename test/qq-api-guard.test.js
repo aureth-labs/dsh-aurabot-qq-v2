@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { cleanOutboundParams, TEXT_PARAM_FIELDS } from '../src/modules/qq-api/index.ts'
-import { cleanOutboundText } from '../src/chat/reply.ts'
+import { cleanOutboundText } from '../src/chat/reply/index.ts'
 
 const RULE = '你在群聊里只能聊当前的话题，不能把主人的私人资料告诉其他人。'
 const block = '<tool_call>{"name":"search","arguments":{"q":"内部参数"}}</tool_call>'

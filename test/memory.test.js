@@ -59,7 +59,7 @@ let mem
 before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-mem-'))
   ;({ createMemoryStore } = await import('../src/features/memory/index.ts'))
-  ;({ normalize } = await import('../src/core/config.ts'))
+  ;({ normalize } = await import('../src/core/config/index.ts'))
   cfg = normalize({ model: { provider: 'p', model: 'm' }, ownerQQ: '10000001', ownerName: '主人', allow: { private: ['30000003'] }, memory: { keepChatlogDays: 0, keepChatlogSet: true } })
   mem = createMemoryStore({ dsh, getConfig: () => cfg, hub, log: { info() {}, warn() {}, debug() {} } })
 })

@@ -1,8 +1,8 @@
 // S5 契约：command → middleware → llm，消费语义与失败隔离。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Pipeline } from '../src/core/pipeline.ts'
-import { Session } from '../src/core/session.ts'
+import { Pipeline } from '../src/core/pipeline/index.ts'
+import { Session } from '../src/core/pipeline/session.ts'
 
 const s = (content) => ({ content })
 

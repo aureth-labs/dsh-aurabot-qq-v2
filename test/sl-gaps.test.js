@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { parseMessageEvent, cardText } from '../src/chat/inbound.ts'
-import { decideGroupReply } from '../src/chat/group-policy.ts'
-import { normalize } from '../src/core/config.ts'
+import { parseMessageEvent, cardText } from '../src/chat/inbound/index.ts'
+import { decideGroupReply } from '../src/chat/policy/group-policy.ts'
+import { normalize } from '../src/core/config/index.ts'
 import contacts from '../src/modules/contacts/index.ts'
 import qqTools from '../src/modules/qq-tools/index.ts'
 import { QQ_API, paramsOf } from '../src/modules/qq-api/actions.ts'
@@ -159,7 +159,7 @@ test('临时私聊保存来源群，普通好友不带来源群', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-sl-temp-'))
   process.env.AURABOT_DATA_DIR = join(root, 'data')
   process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-  const { createHub } = await import('../src/chat/hub.ts')
+  const { createHub } = await import('../src/chat/hub/index.ts')
   const fake = createFakeDsh({ brain: async () => '' })
   const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: OWNER, botQQ: BOT, allow: { private: [OTHER], groups: [] }, stickers: { collect: false } })
   const calls = []

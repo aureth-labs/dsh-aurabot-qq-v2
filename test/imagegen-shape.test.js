@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { SHAPE_SIZE, imageSizeFor } from '../src/features/media/shape.ts'
 import { createImageGen } from '../src/features/media/imagegen.ts'
-import { normalize } from '../src/core/config.ts'
+import { normalize } from '../src/core/config/index.ts'
 import imagegenModule from '../src/modules/imagegen/index.ts'
 
 process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-shape-'))

@@ -7,7 +7,7 @@
 // 所以这里的适配器**不自己拉起进程**：传输层（call / isConnected）由宿主或插件提供。
 
 import type { AdapterSpec } from '../../../types/adapter.ts'
-import type { VoiceResolver } from '../../../core/voice-element.ts'
+import type { VoiceResolver } from '../../../core/message/voice-element.ts'
 import { OneBotBot, type OneBotBotInit, type OneBotCall } from './bot.ts'
 
 export { OneBotBot }

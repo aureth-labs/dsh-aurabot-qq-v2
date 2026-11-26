@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanOutboundText, cleanOutboundSegments } from '../src/chat/reply.ts'
+import { cleanOutboundText, cleanOutboundSegments } from '../src/chat/reply/index.ts'
 import { promisify } from 'node:util'
 
 test('无标记思考块：显式【思考】/括号内心段不发出', () => {

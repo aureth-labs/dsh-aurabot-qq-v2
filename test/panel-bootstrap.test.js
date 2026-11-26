@@ -143,7 +143,7 @@ test('/panel/config 走 publicConfig 脱敏：密钥不回原文，只回 *Set �
   assert.equal(config.imageGen.apiKeySet, true)
   assert.equal(Object.hasOwn(config, 'ownerAuthorization'), false, '主人授权内部记录不能回面板')
   // 脱敏结果与直接调 publicConfig 一致（面板草稿的唯一来源就是它）
-  const { publicConfig } = await import('../src/core/config.ts')
+  const { publicConfig } = await import('../src/core/config/index.ts')
   assert.deepEqual(config, publicConfig(api.getConfig()))
 })
 
@@ -250,7 +250,7 @@ test('保存回执：部分失败（控制台密码没改成）→ 回执仍含�
 // ================= 5. 版本语义 =================
 
 test('configRevision：api.setConfig 写入推进版本；值相同不递增（单调不回退）', async () => {
-  const { configRevision } = await import('../src/core/config.ts')
+  const { configRevision } = await import('../src/core/config/index.ts')
   const r0 = configRevision()
   assert.equal((await jsonOf('/panel/pulse')).configRevision, r0, '面板接口报的版本要和 configRevision() 一致')
   api.setConfig({ ...api.getConfig(), ownerName: '版本递增主人' })
@@ -273,7 +273,7 @@ test('重启语义：新实例（新 bootId）版本从 0 重算', async () => {
   fresh.commitConfig({ ownerName: '新实例乙' }, c1)
   assert.equal(fresh.configRevision(), 2, '变化继续递增')
   // 宿主实例自己的版本不受新实例影响（各自独立计数）
-  const host = await import('../src/core/config.ts')
+  const host = await import('../src/core/config/index.ts')
   const rev = host.configRevision()
   assert.ok(rev >= 0)
   assert.equal((await jsonOf('/panel/pulse')).configRevision, rev)

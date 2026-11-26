@@ -5,8 +5,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { createHub } from '../src/chat/hub.ts'
-import { normalize } from '../src/core/config.ts'
+import { createHub } from '../src/chat/hub/index.ts'
+import { normalize } from '../src/core/config/index.ts'
 import { OneBotError } from '../src/adapters/qq/onebot-v11/client.ts'
 
 function setup(t, failure, { ttsFailure = false, files = { enabled: true } } = {}) {

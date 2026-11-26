@@ -4,7 +4,7 @@
 //   < 2.3.4   已知问题：私聊引用解析会把引用接到很久以前的同号消息（2.3.4 修复）
 //   2.3.4–2.4.1  可用；2.4.1 是当前验证过的版本
 //   > 2.4.1   没验证过，遇到问题先回退
-import { compareVersions } from '../core/update.ts'
+import { compareVersions } from '../core/runtime/update.ts'
 
 export const SNOWLUMA_MIN = '2.3.4'
 export const SNOWLUMA_RECOMMENDED = '2.4.1'

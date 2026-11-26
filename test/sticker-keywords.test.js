@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { hasReplyStickerKeywords, preserveReplyStickers } from '../src/chat/sticker-policy.ts'
-import { parseReply } from '../src/chat/reply.ts'
-import { normalize, mergeFromPanel } from '../src/core/config.ts'
+import { hasReplyStickerKeywords, preserveReplyStickers } from '../src/chat/policy/sticker-policy.ts'
+import { parseReply } from '../src/chat/reply/index.ts'
+import { normalize, mergeFromPanel } from '../src/core/config/index.ts'
 
 const match = text => hasReplyStickerKeywords(parseReply(text).items)
 

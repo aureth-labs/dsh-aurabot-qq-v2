@@ -13,7 +13,7 @@ mkdirSync(dataDir, { recursive: true })
 
 const { createCodexAuth, createPkce, buildAuthUrl, parseAuthInput, accountIdOf, emailOf, decodeJwt, openInBrowser } = await import('../src/features/codex/auth.ts')
 const { createImageGen } = await import('../src/features/media/imagegen.ts')
-const { normalize } = await import('../src/core/config.ts')
+const { normalize } = await import('../src/core/config/index.ts')
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])
 const b64 = PNG.toString('base64')
