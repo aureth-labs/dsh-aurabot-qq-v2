@@ -169,6 +169,7 @@ import { createStickerStash } from './format/sticker.ts'
 import { createQuoteResolver } from './format/quote.ts'
 import { createGroupPromptBuilder } from './context/group-prompt.ts'
 import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from './context/group-media.ts'
+import { createGroupEvents } from './events/group.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -1671,58 +1672,19 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return applyForwardBodies(text, bodies)
   }
 
-  // ---------- 戳一戳 ----------
-  const pokeAt = new Map() // chatId → 上次处理戳一戳的时间
-  /** 有人戳了她：当成一条对她说的话交给她（群里也一定回），同一个聊天 20 秒内只算一次。 */
-  /** 群文件是单独的通知，不是消息：转成一条文件消息走正常流程（白名单、头衔过滤都照旧）。 */
-  async function onGroupFile(ev) {
-    if (disposed || !ev.file?.name) return
-    if (ignoredGroupMember(getConfig(), { kind: 'group', groupId: ev.group_id, userId: ev.user_id })) return
-    let nickname = String(ev.user_id)
-    try {
-      const m = await onebot.call('get_group_member_info', { group_id: ev.group_id, user_id: ev.user_id }, { timeoutMs: 5000 })
-      nickname = String(m?.card || m?.nickname || nickname)
-    } catch (error) {}
-    await onMessage({
-      post_type: 'message', message_type: 'group', sub_type: 'normal', self_id: ev.self_id, group_id: ev.group_id, user_id: ev.user_id, message_id: 0,
-      sender: { user_id: ev.user_id, nickname },
-      message: [{ type: 'file', data: { name: ev.file.name, size: ev.file.size, id: ev.file.id, busid: ev.file.busid } }],
-    })
-  }
-
-  async function onPoke(ev) {
-    if (disposed) return
-    const self = String(ev.self_id || selfId || getConfig().botQQ)
-    if (String(ev.target_id) !== self) return
-    if (ignoredGroupMember(getConfig(), { kind: ev.group_id ? 'group' : 'private', groupId: ev.group_id, userId: ev.user_id })) return
-    if (hooks?.poke) {
-      try { if (await hooks.poke(ev)) return } catch (error) {}
-    }
-    if (disposed) return
-    const group = ev.group_id ? String(ev.group_id) : ''
-    if (group && groupResponseMode(getConfig(), group) !== 'chat') return
-    const poker = String(group ? ev.user_id : ev.sender_id ?? ev.user_id)
-    if (!poker || poker === self) return
-    if (group && await titleFilter.shouldIgnore({ group_id: group, user_id: poker })) return
-    if (disposed) return
-    const chatId = group ? `group:${group}` : `private:${poker}`
-    lastPoker.set(chatId, poker)
-    if (Date.now() - (pokeAt.get(chatId) || 0) < 20_000) return
-    pokeAt.set(chatId, Date.now())
-    let nickname = poker
-    try {
-      const info = group ? await onebot.call('get_group_member_info', { group_id: Number(group), user_id: Number(poker) }, { timeoutMs: 5000 }) : await onebot.call('get_stranger_info', { user_id: Number(poker) }, { timeoutMs: 5000 })
-      nickname = info?.card || info?.nickname || poker
-    } catch (error) {}
-    if (disposed) return
-    log.info(`${chatId}：${nickname} 戳了戳她`)
-    await onMessage({
-      post_type: 'message', message_type: group ? 'group' : 'private', sub_type: group ? 'normal' : 'friend',
-      self_id: Number(self), user_id: Number(poker), ...(group ? { group_id: Number(group) } : {}), message_id: 0,
-      sender: { user_id: Number(poker), nickname, card: nickname },
-      message: [{ type: 'at', data: { qq: self } }, { type: 'text', data: { text: ev.action ? ' [' + ev.action + (ev.suffix || '') + '（这是戳一戳的动作）]' : ' [戳了戳你]' } }],
-    })
-  }
+  const { onGroupFile, onPoke } = createGroupEvents({
+    isDisposed: () => disposed,
+    getConfig,
+    getSelfId: () => selfId,
+    onebot,
+    hooks,
+    titleFilter,
+    lastPoker,
+    ignoredGroupMember,
+    groupResponseMode,
+    onMessage,
+    log,
+  })
 
   /** 没触发回复的群消息带的图：如果正有一段在等她回，把图也带上（最多 4 张）。 */
   async function addGroupImages(msg, entry = null) {
