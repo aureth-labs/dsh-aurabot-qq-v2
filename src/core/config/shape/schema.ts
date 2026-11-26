@@ -262,5 +262,8 @@ export const Schema = {
 }
 
 export function isSchema(value: unknown): value is SchemaNode {
-  return value instanceof SchemaNode
+  if (value instanceof SchemaNode) return true
+  if (!value || typeof value !== 'object') return false
+  const node = value as Partial<SchemaNode>
+  return typeof node.validate === 'function' && typeof node.toSettings === 'function' && typeof node.defaults === 'function'
 }

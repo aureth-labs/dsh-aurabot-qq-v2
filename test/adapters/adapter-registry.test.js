@@ -56,14 +56,15 @@ test('start 之后列表里有它，dispose 之后消失', async () => {
   assert.equal(bots.get('dc-1'), undefined)
 })
 
-test('adopt 进来的内置 bot 也在列表里，且没有 handle（不会被 stopAll 断掉）', async () => {
-  const { registry } = makeRegistry()
-  const qq = fakeBot('qq', '1787850032')
-  registry.adopt(qq)
-
-  assert.equal(registry.list()[0].name, 'QQ（OneBot v11）')
+test('所有已注册连接都归宿主释放，未声明显示名时使用平台名', async () => {
+  const { registry, bots } = makeRegistry()
+  const { spec, state } = fakeSpec('qq', '42')
+  await registry.start({ ...spec, name: undefined })
+  assert.equal(registry.list()[0].name, 'qq')
   await registry.stopAll()
-  assert.equal(registry.list().length, 1)
+  assert.equal(state.disconnected, 1)
+  assert.deepEqual(bots.list(), [])
+  assert.deepEqual(registry.list(), [])
 })
 
 test('同一个 id 再次 start：旧的被断开，列表里只留新的', async () => {
@@ -131,7 +132,8 @@ test('每次增删都通知监听者', async () => {
   const handle = await registry.start(spec, {})
   await handle.dispose()
   off()
-  registry.adopt(fakeBot('qq', 'qq-2'))
+  await registry.start(fakeSpec('qq', 'qq-2').spec)
+  await registry.stopAll()
 
   assert.equal(calls, 2)
 })

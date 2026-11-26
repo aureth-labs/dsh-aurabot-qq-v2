@@ -4,9 +4,9 @@ import { createOneBotConnection } from './connection.ts'
 import { inboundOf, isMessageEvent } from './inbound.ts'
 import type { OneBotBot } from './bot.ts'
 
-declare const Schema: typeof import('../../../../../src/core/config/shape/schema.ts').Schema
+import { Schema } from '../../../../../src/core/config/shape/schema.ts'
 
-interface Config {
+export interface Config {
   wsUrl: string
   httpUrl: string
   wsToken: string
@@ -14,6 +14,9 @@ interface Config {
   selfId: string
 }
 
+export const kind = 'adapter'
+export const reusable = true
+export const reloadOnConfig = true
 export const name = 'QQ · OneBot v11'
 export const config = Schema.object({
   wsUrl: Schema.string().description('OneBot WebSocket 地址'),
@@ -23,7 +26,7 @@ export const config = Schema.object({
   selfId: Schema.string().description('限定登录的机器人 QQ 号（可选）'),
 })
 
-export async function apply(ctx: PluginContext, config: Config) {
+export function apply(ctx: PluginContext, config: Config) {
   if (!config.wsUrl) return
   let connection: ReturnType<typeof createOneBotConnection>
   const spec: AdapterSpec = {
@@ -39,7 +42,9 @@ export async function apply(ctx: PluginContext, config: Config) {
         log: ctx.logger,
         onOnline: ready.resolve,
         onOffline: (_, reason) => runtime.log(reason),
-        onState(state) {
+        onReady: async () => ctx.emit('onebot/ready', ctx.instanceId),
+        onState(state, detail) {
+          ctx.emit('onebot/connection', ctx.instanceId, state, detail)
           if (state === 'stopped') ready.reject(new Error(connection.wrongAccount ? '网关登录账号不匹配' : 'OneBot 连接已停止'))
         },
         onEvent(event) {
@@ -47,10 +52,13 @@ export async function apply(ctx: PluginContext, config: Config) {
           else runtime.emitEvent?.('onebot', event)
         },
       })
-      const cancel = () => connection.client.stop()
+      ctx.provide('onebot/' + ctx.instanceId, connection)
+      const cancel = () => {
+        connection.client.stop()
+        ready.reject(new Error('OneBot 连接已停止'))
+      }
       runtime.signal?.throwIfAborted()
       runtime.signal?.addEventListener('abort', cancel, { once: true })
-      const timeout = setTimeout(() => ready.reject(new Error('等待 OneBot 登录超时，请检查网关状态')), 30_000)
       try {
         connection.client.start()
         return await ready.promise
@@ -58,11 +66,13 @@ export async function apply(ctx: PluginContext, config: Config) {
         cancel()
         throw error
       } finally {
-        clearTimeout(timeout)
         runtime.signal?.removeEventListener('abort', cancel)
       }
     },
     async disconnect() { connection.client.stop() },
   }
-  await ctx.adapter(spec, config)
+  const ready = ctx.adapter(spec, config).catch(error => {
+    if (error?.name !== 'AbortError') ctx.logger.warn('OneBot 连接结束', error.message)
+  })
+  return { ready }
 }

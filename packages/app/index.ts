@@ -11,7 +11,7 @@ import { quietWindowOf } from '../../src/core/support/time/time-window.ts'
 import { createLogger } from '../../src/core/support/log/logger.ts'
 import { encodeResponse } from '../../src/core/net/http-compress.ts'
 import { registerSecret, redact } from '../../src/core/support/log/redact.ts'
-import { createOneBotConnection } from '../adapters/qq/onebot-v11/src/connection.ts'
+import { defaultOneBot, defaultOneBotId, primaryOneBot } from './onebot.ts'
 import { createOutbox } from '../adapters/qq/onebot-v11/src/outbox.ts'
 import { createHub, workspaceDirOf } from '../../src/chat/hub/index.ts'
 import { createPersonaMemoryRuntime } from '../../src/core/support/bridge/persona-memory-bridge.ts'
@@ -31,13 +31,14 @@ import { closeMessageLogsUnder } from '../../src/core/store/messages.ts'
 import { createUsageFx } from '../../src/core/llm/usage/fx.ts'
 import { initUsage, usageReport, closeUsage } from '../../src/core/llm/usage/usage.ts'
 import { BotRegistry, createBotsAccessor } from '../../src/core/bot/instance/registry.ts'
-import { botApiStubs } from '../../src/core/bot/index.ts'
+import { registerDebugRoutes } from './debug.ts'
 import { AdapterRegistry } from '../../src/core/bot/adapter/registry.ts'
 import { wrapAdapterBot } from '../../src/core/bot/instance/bot.ts'
 import type { BotLike } from '../../src/types/adapter/bot.ts'
 import type { InboundMessage } from '../../src/types/adapter/adapter.ts'
-import { inboundOf, eventForHub } from '../adapters/qq/onebot-v11/src/index.ts'
+import { eventForHub } from '../adapters/qq/onebot-v11/src/index.ts'
 import { Pipeline } from '../../src/core/pipeline/index.ts'
+import { toText } from '../../src/core/message/element/element.ts'
 import { Session, inboundSession } from '../../src/core/pipeline/session.ts'
 import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from '../../src/core/runtime/update.ts'
 import { parseCommand, runCommand, createMutes, commandList } from '../commands/dispatch.ts'
@@ -139,10 +140,8 @@ export function apply(ctx) {
     // 值与已发布配置完全一致时不落盘不递增（面板「只提交没变化字段」回执取接纳时版本）。
     cfg = commitConfig(next, before)
     debugSwitch.on = Boolean(cfg.debug)
-    // 改机器人号后旧连接的核对结果立刻失效，必须重新核对才能处理消息或完成向导。
-    if (before.botQQ !== cfg.botQQ) {
-      connection.clearMismatch()
-      if (onebot.state === 'connected') onebot.restart()
+    if (before.botQQ !== cfg.botQQ || before.enabled !== cfg.enabled || !isDeepStrictEqual(before.onebot, cfg.onebot)) {
+      mods?.reload(defaultOneBotId).catch(error => log.warn('刷新 OneBot 连接失败', error.message))
     }
     secrets()
     if (bridge && (before.bridge.dshTools !== cfg.bridge.dshTools || before.persona.current !== cfg.persona.current)) bridge.refresh()
@@ -183,33 +182,23 @@ export function apply(ctx) {
   })
 
   // ---------- QQ 网关 ----------
-  const endpoint = () => ({
-    httpUrl: cfg.onebot.httpUrl,
-    wsUrl: cfg.onebot.wsUrl,
-    httpToken: cfg.onebot.httpToken,
-    wsToken: cfg.onebot.wsToken,
-  })
+  const endpoint = () => ({ ...cfg.onebot, ...cfg.ext?.[defaultOneBotId] })
+  const onebot = primaryOneBot(() => mods?.services.get('onebot/' + defaultOneBotId))
   let hub = null
   let dangerGuard = null // 危险命令确认（security.dangerConfirm 开着才生效）
   let approvalRelay = null // DSH 要授权时在 QQ 私聊问主人（approvalViaQQ 开着才生效）
   let noticeRelay = null // DSH 要授权 / 要选选项时通知到主人私聊（config.notice，按工作区开关）
-  function handleEvent(ev) {
-    if (!hub) return
-    // 模块能看到所有原始事件（加群、撤回、好友申请……），只看不拦
+  function claimPrimaryMessage(ev, message: InboundMessage) {
     mods?.emit('onebot', ev)
-    if (ev.post_type === 'message' || ev.post_type === 'message_sent') {
-      if (ev.post_type === 'message') {
-        // 危险命令确认：主人的「确认 / 取消」回复先在这里截住，不交给聊天中枢
-        if (dangerGuard && ev.message_type === 'private') {
-          const text = Array.isArray(ev.message)
-            ? ev.message.filter((seg) => seg && seg.type === 'text').map((seg) => String(seg.data?.text || '')).join('')
-            : ''
-          if (dangerGuard.handleReply(`private:${ev.user_id}`, ev.user_id, text)) return
-          if (approvalRelay?.handleReply(`private:${ev.user_id}`, ev.user_id, text)) return
-        }
-        void dispatchInbound(onebotBot, inboundOf(ev))
-      }
-    } else if (ev.post_type === 'notice' && ev.notice_type === 'bot_offline') {
+    if (message.type !== 'private') return false
+    const text = message.content ?? toText(message.elements)
+    const chat = 'private:' + message.userId
+    return dangerGuard?.handleReply(chat, message.userId, text) || approvalRelay?.handleReply(chat, message.userId, text)
+  }
+
+  function handleNotice(ev) {
+    mods?.emit('onebot', ev)
+    if (ev.post_type === 'notice' && ev.notice_type === 'bot_offline') {
       log.warn(`QQ 账号离线${ev.tag ? '（' + String(ev.tag).slice(0, 100) + '）' : ''}${ev.message ? '：' + String(ev.message).slice(0, 300) : ''}`)
     } else if (ev.post_type === 'notice' && ev.notice_type === 'notify' && ev.sub_type === 'poke') {
       hub.onPoke(ev).catch((error) => log.error('处理戳一戳出错：', error.message))
@@ -228,44 +217,34 @@ export function apply(ctx) {
   let warmupPhase = { phase: '', label: '' }
   let warmupProbing = false
   const botRegistry = new BotRegistry()
-  const connection = createOneBotConnection({
-    endpoint,
-    expectedAccount: () => cfg.botQQ,
-    enabled: () => Boolean(cfg.enabled),
-    log: logger.child('onebot'),
-    speak: async text => String((await tts.speak(text))?.file ?? ''),
-    onOnline: bot => botRegistry.emit('online', bot),
-    onOffline: (bot, reason) => botRegistry.emit('offline', bot, reason),
-    onEvent: handleEvent,
-    onReady: flushOutbox,
-    onState: (s, d) => {
-      if (s === 'connected' || s === 'stopped' || s === 'unconfigured') { gatewayWarmSince = 0; warmupPhase = { phase: '', label: '' } }
-      else if (!gatewayWarmSince && cfg.enabled) gatewayWarmSince = Date.now()
-      // 预热阶段 connecting/disconnected 会每 3 秒来回刷：首次和每 20 秒记一条 info，其余进 debug
-      const line = `QQ 网关：${s}${d ? '（' + d + '）' : ''}`
-      const now = Date.now()
-      if (s === 'connected' || s === 'stopped' || s === 'unconfigured' || now - gatewayLastLogAt > 20_000) {
-        logger.child('onebot').info(line)
-        gatewayLastLogAt = now
-      } else {
-        logger.child('onebot').debug(line)
-      }
-      mods?.emit('onebot/state', s)
-    },
-  })
-  const { bot: onebotBot, client: onebot } = connection
+  function connectionChanged(id: string, s: string, d?: string) {
+    if (id !== defaultOneBotId) return
+    if (s === 'connected' || s === 'stopped' || s === 'unconfigured') { gatewayWarmSince = 0; warmupPhase = { phase: '', label: '' } }
+    else if (!gatewayWarmSince && cfg.enabled) gatewayWarmSince = Date.now()
+    // 预热阶段 connecting/disconnected 会每 3 秒来回刷：首次和每 20 秒记一条 info，其余进 debug
+    const line = `QQ 网关：${s}${d ? '（' + d + '）' : ''}`
+    const now = Date.now()
+    if (s === 'connected' || s === 'stopped' || s === 'unconfigured' || now - gatewayLastLogAt > 20_000) {
+      logger.child('onebot').info(line)
+      gatewayLastLogAt = now
+    } else {
+      logger.child('onebot').debug(line)
+    }
+    mods?.emit('onebot/state', s)
+  }
   let flushingOutbox = false
-  botRegistry.add(onebotBot)
-  // 面板「机器人列表」的数据源：QQ 是内置适配器，用 adopt 挂进来；
-  // 插件用 ctx.adapter(spec) 拉起来的走 start()，两边一起在这里列出来。
   const adapterRegistry = new AdapterRegistry({
     bots: botRegistry,
     log: (message) => logger.child('adapter').info(message),
     // 适配器投进来的消息走和 OneBot 同一条管线：建 Session → command → middleware → llm
-    onMessage: (bot, message) => dispatchInbound(bot, message),
-    onEvent: (platform, event, payload) => {
+    onMessage: (bot, message) => {
+      if (bot.platform === 'qq' && bot.id === defaultOneBotId && claimPrimaryMessage(message.raw, message)) return
+      return dispatchInbound(bot, message)
+    },
+    onEvent: (platform, event, payload, bot) => {
+      if (platform === 'qq' && bot.id === defaultOneBotId && event === 'onebot') handleNotice(payload)
       try {
-        mods?.emit(`adapter/${event}`, { platform, payload })
+        mods?.emit(`adapter/${event}`, { platform, botId: bot.id, payload })
       } catch (error) {
         logger.child('adapter').warn(`适配器事件「${event}」处理出错：`, String((error as Error)?.message ?? error))
       }
@@ -282,7 +261,6 @@ export function apply(ctx) {
     }),
     speak: async (text) => String((await tts.speak(text))?.file ?? ''),
   })
-  adapterRegistry.adopt(onebotBot)
   ctx.effect(() => () => { adapterRegistry.stopAll().catch(() => {}) }, 'aurabot: 适配器下线')
 
   // ---------- S5：入站管线 ----------
@@ -295,7 +273,7 @@ export function apply(ctx) {
     onError: ({ stage, error }) => log.warn(`管线「${stage}」出错：${String((error as Error)?.message ?? error)}`),
   })
   pipeline.onLlm((session) => {
-    const event = session instanceof Session && session.bot === onebotBot ? eventForHub(session) : undefined
+    const event = session instanceof Session && session.bot.platform === 'qq' && session.bot.id === defaultOneBotId && adapterRegistry.get(defaultOneBotId, 'qq') === session.bot ? eventForHub(session) : undefined
     if (event && hub) {
       if (session.sentLog?.length) {
         const chatId = session.type === 'private' ? `private:${session.userId}` : `group:${session.channelId}`
@@ -330,7 +308,7 @@ export function apply(ctx) {
   }
 
   async function flushOutbox () {
-    if (flushingOutbox || onebot.state !== 'connected' || !connection.verified) return
+    if (flushingOutbox || onebot.state !== 'connected' || !onebot.verified) return
     flushingOutbox = true
     try {
       const r = await outbox.flush((action, params, opts) => onebot.call(action, params, { ...opts, retries: 0 }),
@@ -341,7 +319,7 @@ export function apply(ctx) {
             try { hub.noteProactive(item.chatId, item.params?.message || [], { proactiveCause: item.proactive }) } catch (error) { logger.child('outbox').warn('补发后补记主动发言失败：', error.message) }
           }
           if (item.action !== 'send_private_msg' || item.chatId !== `private:${item.params?.user_id}` ||
-              (item.deliveryScope as any)?.botQQ !== connection.login.uin || (result as any)?.queued) return
+              (item.deliveryScope as any)?.botQQ !== onebot.login.uin || (result as any)?.queued) return
           personaMemoryRuntime.confirmDelivery(item.chatId, (result as any)?.message_id, item.deliveryScope)
         })
       if (r.sent || r.dropped || r.left) log.info(`补发队列：成功 ${r.sent}，丢弃 ${r.dropped}，剩余 ${r.left}`)
@@ -493,7 +471,7 @@ export function apply(ctx) {
       model: (sel, chat) => mods.filterSync('model', sel, chat),
       poke: (ev) => mods.claim('poke', ev),
       journal: (row) => mods?.emit('chat/log', row),
-      deliveryScope: (chatId, personaId, botQQ) => connection.verified && connection.login.uin === botQQ
+      deliveryScope: (chatId, personaId, botQQ) => onebot.verified && onebot.login.uin === botQQ
         ? personaMemoryRuntime.captureDelivery(chatId, personaId, botQQ)
         : null,
       delivery: personaMemoryRuntime.confirmDelivery,
@@ -555,7 +533,6 @@ export function apply(ctx) {
     hub, onebot, local, groupRoles, mutes, logger, bridge: null as unknown,
     // S0：v2 发送面。ctx.bots[0] / ctx.bots('号') / ctx.bots.list()
     bots: createBotsAccessor(botRegistry),
-    bot: onebotBot,
     // S5：入站管线（ctx.middleware / ctx.command 挂在这上面）
     pipeline,
     // S8：适配器插件化。插件调 ctx.adapter(spec, config) 就能挂一个平台上来
@@ -591,7 +568,7 @@ export function apply(ctx) {
     autotelicAudit: undefined as unknown,
     autotelicAuditOn: false,
   }
-  mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION, builtins: BUILTINS, personaMemoryRuntime })
+  mods = createModules({ ctx, core, getConfig, setConfig, logger, version: VERSION, builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime })
   bridge = createBridge({ ctx, getConfig, setConfig, hub, mods, log: logger.child('bridge'), version: String(VERSION), apiVersion: API_VERSION, overview: () => overview() })
   core.bridge = bridge
   core.modules = mods
@@ -609,12 +586,12 @@ export function apply(ctx) {
   // 原因码只给可公开的机器值（reason），不给内部细节。
   const connectionsView = () => {
     const connected = onebot.state === 'connected'
-    const verified = connected && connection.verified
+    const verified = connected && onebot.verified
     let stage = 'connecting'
     let reason = 'gateway_connecting'
     if (!cfg.enabled) { stage = 'disabled'; reason = 'disabled_in_config' }
     else if (connected && verified) { stage = 'connected'; reason = 'ok' }
-    else if (connected) { stage = 'verifying'; reason = connection.wrongAccount ? 'wrong_account' : 'verifying_login' }
+    else if (connected) { stage = 'verifying'; reason = onebot.wrongAccount ? 'wrong_account' : 'verifying_login' }
     else if (onebot.state === 'unconfigured') { stage = 'unconfigured'; reason = 'gateway_unconfigured' }
     else if (onebot.state === 'stopped') { stage = 'disconnected'; reason = 'gateway_disconnected' }
     else if (gatewayWarmSince) { reason = 'gateway_warming' }
@@ -625,7 +602,7 @@ export function apply(ctx) {
       stage, // connected | verifying | connecting | disconnected | unconfigured | disabled
       verified,
       reason, // ok | wrong_account | verifying_login | gateway_warming | gateway_connecting | gateway_disconnected | gateway_unconfigured | disabled_in_config
-      login: verified ? { uin: connection.login.uin, nickname: connection.login.nickname } : null,
+      login: verified ? { uin: onebot.login.uin, nickname: onebot.login.nickname } : null,
       warmupSeconds: gatewayWarmSince ? Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)) : 0,
     }]
   }
@@ -846,6 +823,8 @@ export function apply(ctx) {
 
   let unloaded = false
   const community = createCommunity({ mods, getConfig, setConfig, log, version: VERSION, alive: () => !unloaded })
+  mods.listen('onebot/connection', connectionChanged)
+  mods.listen('onebot/ready', id => { if (id === defaultOneBotId) return flushOutbox() })
   const booted = mods.boot()
   booted.then(() => { modsReady = true /* 模块目录就绪：bootstrap 的 modulesReady 转 true */ }).catch(() => {})
   booted.then(() => injectPetPort()).catch(() => {})
@@ -1010,23 +989,8 @@ export function apply(ctx) {
     return () => { try { if (typeof off === 'function') off() } catch (error) {} }
   }, 'aurabot: 盯会话')
 
-  // ---------- 启动 / 看门狗 ----------
-  async function watchdog() {
-    if (!cfg.enabled) {
-      if (onebot.state !== 'stopped') onebot.stop()
-      return
-    }
-    // 上次连上的不是机器人号：等主人改设置再连
-    if (connection.wrongAccount) return
-    if (onebot.state === 'stopped') onebot.start()
-  }
-  const safe = (fn, label) => () => { Promise.resolve().then(fn).catch((error) => log.warn(`${label}出错：`, error.message)) }
-  ctx.effect(() => ctx.interval(safe(watchdog, '看门狗'), 30_000), 'aurabot: 看门狗')
-  const firstWatch = setTimeout(safe(watchdog, '看门狗'), 3000)
-  firstWatch.unref?.()
   ctx.effect(() => () => {
     unloaded = true
-    clearTimeout(firstWatch)
     if (pushTimer) { clearTimeout(pushTimer); pushTimer = null } // 云备份的每日定时也要收尾，别留悬空回调
     dangerGuard?.dispose()
     approvalRelay?.dispose()
@@ -1034,7 +998,6 @@ export function apply(ctx) {
     closeUsage()
     bridge.dispose()
     mods.dispose()
-    onebot.stop()
   }, 'aurabot: 收尾')
 
   // ---------- 面板接口 ----------
@@ -1056,7 +1019,7 @@ export function apply(ctx) {
       startedAt: STARTED_AT,
       apiVersion: API_VERSION,
       config: publicConfig(cfg),
-      onebot: { state: onebot.state, login, endpoint: { httpUrl: endpoint().httpUrl, wsUrl: endpoint().wsUrl }, problem: onebot.state === 'connected' && connection.verified ? '' : await connectionProblem(), warmup: gatewayWarmSince ? { since: gatewayWarmSince, seconds: Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)), phase: warmupPhase.phase || '', label: warmupPhase.label || '' } : null },
+      onebot: { state: onebot.state, login, endpoint: { httpUrl: endpoint().httpUrl, wsUrl: endpoint().wsUrl }, problem: onebot.state === 'connected' && onebot.verified ? '' : await connectionProblem(), warmup: gatewayWarmSince ? { since: gatewayWarmSince, seconds: Math.max(0, Math.round((Date.now() - gatewayWarmSince) / 1000)), phase: warmupPhase.phase || '', label: warmupPhase.label || '' } : null },
       outbox: outbox.status(),
       stats: hub.stats(),
       // 模块关着时给个空壳，面板照常显示
@@ -1190,14 +1153,9 @@ export function apply(ctx) {
     // 版本 = 本次请求触发的全部同步提交后的最高版本；
     // 异步回执不得借用别的请求版本，所以在这里闭包当场取值。
     const saveReceipt = () => ({ bootId, configRevision: configRevision(), committedPaths, unchangedPaths })
-    const changedConn = ['httpUrl', 'wsUrl', 'httpToken', 'wsToken'].some((k) => before.onebot[k] !== cfg.onebot[k])
     // 换了模型：思考强度和「能不能看图」的探测结果都得重来，不然要等 10 分钟缓存过期
     const changedModel = before.model.provider !== cfg.model.provider || before.model.model !== cfg.model.model
     if (changedModel) { clearReasoningCache(); clearVisionCache() }
-    if (changedConn || before.botQQ !== cfg.botQQ) connection.clearMismatch()
-    if (changedConn && onebot.state !== 'stopped') onebot.restart()
-    if (!before.enabled && cfg.enabled) setTimeout(safe(watchdog, '看门狗'), 100)
-    if (before.enabled && !cfg.enabled) onebot.stop()
     log.info(`设置已保存｜总开关 ${cfg.enabled ? '开' : '关'}｜调试 ${cfg.debug ? '开' : '关'}`)
     await mods.sync().catch(() => {})
     // 模块启停 / 生图开关变化后工具清单可能变了：已挂载的会话重新挂一遍
@@ -1231,78 +1189,7 @@ export function apply(ctx) {
     }
   })
 
-  // S5 调试：把一段文本当作本地入站消息跑一遍管线（command → middleware → llm）。
-  // 不走网关，用来在没有 QQ 连接时验证指令/中间件是否生效（和 /debug/say 一样仅本机可调）。
-  route('/debug/dispatch', async (req) => {
-    const b = await readBody(req)
-    const text = String(b.text || '')
-    if (!text.trim()) return { ok: false, message: 'text 不能为空' }
-    const type = b.type === 'private' ? 'private' : 'group'
-    const userId = String(b.userId || 'debug')
-    const session = new Session({
-      bot: onebotBot,
-      type,
-      channelId: type === 'private' ? userId : String(b.chatId || 'debug'),
-      userId,
-      userName: String(b.userName || '调试'),
-      content: text,
-      pipeline,
-    })
-    const result = await pipeline.dispatch(session)
-    let value
-    try {
-      value = result.value === undefined ? null : JSON.parse(JSON.stringify(result.value))
-    } catch {
-      value = String(result.value)
-    }
-    return { ok: true, order: pipeline.order(), result: { handled: result.handled, by: result.by, error: result.error ?? null, value } }
-  })
-
-  // S7/S8 调试：把一条消息当作「某个适配器投进来的」跑一遍，验证非 QQ 平台的插件复用。
-  // 没指定已注册的 bot 时用一个只记发送的桩，回执里能看到插件到底发出去了什么。
-  route('/debug/adapter', async (req) => {
-    const body = await readBody(req)
-    const text = String(body.text || '')
-    if (!text.trim()) return { ok: false, message: 'text 不能为空' }
-    const platform = String(body.platform || 'satori')
-    const sent: Array<{ method: string; target: string; content: unknown }> = []
-    const stub: BotLike = {
-      ...botApiStubs(`${platform}:debug`),
-      id: `${platform}:debug`,
-      platform,
-      selfId: 'debug',
-      status: 'online',
-      supports: () => true,
-      async sendMessage(channelId: string, content: unknown) {
-        sent.push({ method: 'sendMessage', target: String(channelId), content })
-        return { ok: true, message_id: `debug-${sent.length}` }
-      },
-      async sendPrivateMessage(userId: string, content: unknown) {
-        sent.push({ method: 'sendPrivateMessage', target: String(userId), content })
-        return { ok: true, message_id: `debug-${sent.length}` }
-      },
-    }
-    const bot = adapterRegistry.get(String(body.botId || ''), platform) ?? stub
-    const type = body.type === 'channel' ? 'channel' : body.type === 'private' ? 'private' : 'group'
-    const userId = String(body.userId || 'debug-user')
-    const result = await dispatchInbound(bot, {
-      type,
-      channelId: String(body.channelId || (type === 'private' ? userId : 'debug-channel')),
-      userId,
-      userName: String(body.userName || '调试用户'),
-      content: text,
-    })
-    return {
-      ok: true,
-      platform,
-      order: pipeline.order(),
-      bot: { id: bot.id, platform: bot.platform, registered: bot !== stub },
-      sent,
-      result: result
-        ? { handled: result.handled, by: result.by, error: result.error ?? null }
-        : { handled: false, by: null, error: null },
-    }
-  })
+  registerDebugRoutes(http, pipeline, adapterRegistry, dispatchInbound)
 
   // ---------- 面板代理：目的引擎 / 桌宠 ----------
   // 统一走 /panel/* 前缀，避免和模块自注册的 /purpose/*、/pet/* 路由撞名；模块缺新接口时降级返回 available:false。
@@ -1910,7 +1797,7 @@ export function apply(ctx) {
     if (!cfg.botQQ) return '还没填机器人 QQ 号'
     const ep = endpoint()
     if (!ep.wsUrl) return '还没填 OneBot 的 WebSocket 地址：在「连接」页填你的 OneBot v11 正向 WebSocket 地址（收消息要靠它；HTTP 可以不填）'
-    if (connection.wrongAccount) return `连上的是 ${connection.wrongAccount}，不是机器人号 ${cfg.botQQ}，已经断开：让你的 OneBot 服务登录机器人号，再点「重新连接」`
+    if (onebot.wrongAccount) return `连上的是 ${onebot.wrongAccount}，不是机器人号 ${cfg.botQQ}，已经断开：让你的 OneBot 服务登录机器人号，再点「重新连接」`
     if (gatewayWarmSince && Date.now() - gatewayWarmSince < 300_000) {
       const sec = Math.max(1, Math.round((Date.now() - gatewayWarmSince) / 1000))
       const label = warmupPhase.label || '正在等 OneBot 会话'
@@ -1920,11 +1807,11 @@ export function apply(ctx) {
   }
   route('/onebot/reconnect', async () => {
     if (!cfg.enabled) return { ok: false, message: await connectionProblem() }
-    connection.clearMismatch()
-    onebot.restart()
+    if (cfg.modules?.[defaultOneBotId]?.enabled === false) return { ok: false, message: 'OneBot 适配器已停用' }
+    if (onebot.verified || onebot.state === 'stopped' || onebot.state === 'unconfigured') await mods.reload(defaultOneBotId)
     // 等几秒看结果，别只回一句「正在重连」
-    for (let i = 0; i < 16 && !(onebot.state === 'connected' && connection.verified); i++) await new Promise((r) => setTimeout(r, 500))
-    if (onebot.state === 'connected' && connection.verified) return { ok: true, message: '连上了' }
+    for (let i = 0; i < 16 && !(onebot.state === 'connected' && onebot.verified); i++) await new Promise((r) => setTimeout(r, 500))
+    if (onebot.state === 'connected' && onebot.verified) return { ok: true, message: '连上了' }
     return { ok: false, message: '没连上：' + (await connectionProblem()) }
   })
   route('/onebot/test', async () => {

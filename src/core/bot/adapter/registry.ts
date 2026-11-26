@@ -1,11 +1,3 @@
-// 适配器注册表：面板「机器人列表」的数据源，也是 `ctx.adapter()` 的落地处。
-//
-// 和 BotRegistry 的分工：
-// - BotRegistry 只管「现在哪些 bot 在线」（发送时用）
-// - 这里多记一层「这个 bot 是哪个平台、谁拉起来的、什么时候上线的」，给面板用
-//
-// 内置 QQ 不是插件拉起来的，用 `adopt()` 挂进来；插件走 `start()`。
-
 import type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec, InboundMessage } from '../../../types/adapter/adapter.ts'
 import type { BotLike } from '../../../types/adapter/bot.ts'
 import { startAdapter } from './contract.ts'
@@ -18,7 +10,7 @@ export interface AdapterRegistryDeps {
   /** 适配器投递入站消息：宿主建 Session 跑管线。 */
   onMessage?: (bot: BotLike, message: InboundMessage) => void
   /** 适配器的非消息事件（加群、撤回……）。 */
-  onEvent?: (platform: string, event: string, payload: unknown) => void
+  onEvent?: (platform: string, event: string, payload: unknown, bot: BotLike) => void
   /** 宿主统一包装 bot 的发送方法。 */
   wrapBot?: (bot: BotLike, spec: AdapterSpec) => BotLike
   /** 文字转语音，给 `<voice>要念的话</voice>` 用。 */
@@ -30,14 +22,7 @@ interface Entry {
   name: string
   bot: BotLike
   startedAt: number
-  /** 插件拉起来的才有 handle；内置适配器（QQ）没有。 */
-  handle?: AdapterHandle
-}
-
-const PLATFORM_LABELS: Record<string, string> = {
-  qq: 'QQ（OneBot v11）',
-  discord: 'Discord',
-  telegram: 'Telegram',
+  handle: AdapterHandle
 }
 
 export class AdapterRegistry {
@@ -77,7 +62,7 @@ export class AdapterRegistry {
       speak: this.deps.speak,
       supports: capability => entry?.bot.supports(capability) ?? false,
       emitMessage: message => deliver(bot => this.deps.onMessage?.(bot, message)),
-      emitEvent: (event, payload) => deliver(() => this.deps.onEvent?.(platform, event, payload)),
+      emitEvent: (event, payload) => deliver(bot => this.deps.onEvent?.(platform, event, payload, bot)),
     }
     const connection = await startAdapter(this.deps.bots, spec, config, runtime, {
       platform, wrapBot: this.deps.wrapBot,
@@ -102,7 +87,7 @@ export class AdapterRegistry {
         await connection.dispose()
       },
     }
-    entry = { platform, bot, handle, name: spec.name || PLATFORM_LABELS[platform] || platform, startedAt: Date.now() }
+    entry = { platform, bot, handle, name: spec.name || platform, startedAt: Date.now() }
     this.entries.set(key, entry)
     this.changed()
     try {
@@ -114,18 +99,6 @@ export class AdapterRegistry {
       await previous?.handle?.dispose()
     }
     return handle
-  }
-
-  /** 内置适配器（QQ）登记进来，让面板里也看得见它。 */
-  adopt(bot: BotLike, meta: { platform?: string; name?: string } = {}): void {
-    const platform = meta.platform || bot.platform
-    this.entries.set(botKey(platform, bot.id), {
-      platform,
-      name: meta.name || PLATFORM_LABELS[platform] || platform,
-      bot,
-      startedAt: Date.now(),
-    })
-    this.changed()
   }
 
   /** 面板用：只读快照，字段都转成字符串，免得前端拿到 undefined。 */
@@ -153,7 +126,7 @@ export class AdapterRegistry {
   async stopAll(): Promise<void> {
     this.lifetime.abort()
     this.lifetime = new AbortController()
-    const handles = [...this.entries.values()].map((entry) => entry.handle).filter(Boolean) as AdapterHandle[]
+    const handles = [...this.entries.values()].map(entry => entry.handle)
     for (const handle of handles) await handle.dispose().catch(() => {})
   }
 

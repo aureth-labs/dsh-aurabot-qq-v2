@@ -218,13 +218,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     for (const f of def.settings || []) if (f && f.type === 'password' && f.key) registerSecretField(['ext', id, f.key])
     // 设置的默认值补进配置（面板表单直接有值可改；已经填过的不动）。
     // 只有主实例落盘：额外实例的默认值由 api.settings() 在读取时合并，不往共享配置里写。
-    if (!instance && def.defaults && typeof def.defaults === 'object') {
+    if (source === 'user' && !instance && def.defaults && typeof def.defaults === 'object') {
       const cur = getConfig().ext?.[id] || {}
       const missing = Object.keys(def.defaults).filter((k) => !(k in cur))
       if (missing.length) setConfig({ ...getConfig(), ext: { ...getConfig().ext, [id]: { ...Object.fromEntries(missing.map((k) => [k, def.defaults[k]])), ...cur } } })
     }
     live.set(key, rec)
-    errors.delete(key)
+    if (source !== 'builtin' || errors.get(key)?.source !== 'user') errors.delete(key)
     generation++ // 新实例：会话里的工具要在下一轮重挂（issue #73）
     try {
       const api = makeApi(id, source, rec)
@@ -278,46 +278,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       log.warn(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}启动失败：`, error.message)
     }
     return live.get(key)
-  }
-
-  /** 同步启动（内置模块的 apply 都是同步的，插件一加载就要能用）。 */
-  function startSync(def) {
-    if (disposed) return
-    def = prepareDef(def, 'builtin')
-    const id = def.id
-    const rec: ModuleRecord = { key: id, moduleId: id, id, def, source: 'builtin', exports: null, offs: [], tools: [], contexts: [], rules: [], commands: [], dshTools: [], errors: [], startedAt: Date.now() }
-    live.set(id, rec)
-    generation++ // 内置模块（重）启动也换代际：会话里的工具要在下一轮重挂
-    if (errors.get(id)?.source !== 'user') errors.delete(id) // 替换版的报错留着给面板看
-    try {
-      const api = makeApi(id, 'builtin', rec)
-      const ctx = createPluginContext(api, {
-        bots: core.bots,
-        bot: core.bot,
-        Schema,
-        h,
-        pipeline: core.pipeline,
-        llm: core.llm,
-        tts: core.tts,
-        startAdapter: core.adapters?.start,
-        services,
-        registerPage: (page) => registerPage(rec, page),
-        nativePreview: id === 'memory' && personaMemoryRuntime
-          ? (read) => api.onDispose(personaMemoryRuntime.registerNativePreview(read))
-          : undefined,
-      })
-      if (typeof def.apply !== 'function') throw new Error('内置模块没有 apply(ctx, config)')
-      const passed = api.settings()
-      const r = def.apply(ctx, passed)
-      if (r && typeof r.then === 'function') throw new Error('内置模块的 apply 要同步返回')
-      rec.exports = r ?? {}
-      bumpNavigation() // 内置模块（重）启动：导航摘要可能变
-    } catch (error) {
-      stop(id, { quiet: true })
-      errors.set(id, { message: String(error.message || error).slice(0, 800), at: Date.now(), source: 'builtin' })
-      bumpNavigation() // 启动失败也进导航（availability=error）
-      log.error(`内置模块「${def.name || id}」启动失败：`, error.message)
-    }
   }
 
   /** 停一个实例（key 是注册表键）。 */
@@ -469,8 +429,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function boot() {
     if (disposed) return Promise.resolve()
     const users = isUserOn() ? scanUser() : []
-    for (const def of builtins) if (wanted(def.id, users) === 'builtin') startSync(def)
+    const starting = builtins.filter(def => wanted(def.id, users) === 'builtin').map(def => start(def, 'builtin'))
     return (async () => {
+      await Promise.all(starting)
+      if (disposed) return
       await loadLib()
       if (disposed) return
       globalThis.aurabot = { lib, src: pathToFileURL(SRC).href, version, apiVersion: API_VERSION, modules: publicHandle, Schema, h }
@@ -535,7 +497,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         if (rec && rec.source === 'builtin') { await syncInstances(id, users); continue }
         if (hasModule(id)) stopModule(id)
         if (errors.get(id)?.source === 'builtin' && !rec) continue // 内置的启动失败过，别每 3 秒重试
-        startSync(builtinDefs.get(id))
+        await start(builtinDefs.get(id), 'builtin')
         await syncInstances(id, users)
         continue
       }
@@ -555,7 +517,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       if ((revisions.get(id) || 0) !== revision || resyncRequested) continue
       // 替换版加载失败：先用回内置的，免得这项功能直接没了
       if (!ok && builtinDefs.has(id)) {
-        startSync(builtinDefs.get(id))
+        await start(builtinDefs.get(id), 'builtin')
         const back = live.get(id)
         if (back) { back.fallback = true; log.warn(`模块「${id}」：你的版本没加载成功，先用内置的`) }
       }
@@ -571,26 +533,13 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     }
   }
 
-  /**
-   * 把 `ext.<id>.instances` 和正在跑的额外实例对齐。
-   *
-   * 只给用户模块开多实例（内置模块的 apply 是同步单例，没有可重复调用的入口）；
-   * 清单没写 `reusable: true` 时，残留的实例一律停掉。
-   */
   async function syncInstances(id, users) {
     const rec = live.get(id)
     const def = rec?.def || builtinDefs.get(id)
     const u = users.find((x) => x.id === id)
     const reusable = Boolean(def?.reusable)
-    if (reusable && !u) {
-      const key = `${id}@`
-      if (!instanceSeen.has(key)) {
-        instanceSeen.set(key, '')
-        log.debug?.(`模块「${id}」声明了 reusable，但它不是用户模块，额外实例暂不支持`)
-      }
-      return
-    }
-    const wanted = reusable && isEnabled(id) && u ? instancesOf(id).filter((item) => item.enabled) : []
+    const source = rec?.source
+    const wanted = reusable && isEnabled(id) && source ? instancesOf(id).filter((item) => item.enabled) : []
     // 1) 配置里已经没有的实例：停掉
     for (const key of [...live.keys()]) {
       const running = live.get(key)
@@ -607,10 +556,12 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const key = instanceKey(id, item.id)
       const snapshot = JSON.stringify(item.config || {})
       const running = live.get(key)
-      if (running && running.source === 'user' && instanceSeen.get(key) === snapshot) continue
+      if (running && running.source === source && instanceSeen.get(key) === snapshot) continue
       if (running) stop(key, { quiet: true })
       errors.delete(key)
-      const started = await startUser(u, item.id)
+      const started = source === 'builtin'
+        ? await start(def, 'builtin', { instance: item.id })
+        : await startUser(u, item.id)
       if (started) {
         instanceSeen.set(key, snapshot)
       } else if (!errors.has(key)) {
@@ -839,7 +790,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         tools: rec ? toolNames(rec) : [],
         commands: rec ? rec.commands.map((c) => c.name) : [],
         routes: [...routes].filter(([, r]) => r.id === id).map(([p]) => p.replace('/aurabot/api', '')),
-        settings: rec?.source === 'user' || instanceRecs.length || (!rec && u) ? (def.settings || []) : [],
+        settings: def.settings || [],
         defaults: def.defaults || {},
         // 内置模块也能带面板：内置和用户模块走同一条加载链路，面板只按「定义里有没有声明 panel」判断。
         // 不再要求 rec.source === 'user'，否则内置模块写了 panel.js 也永远显示不出来。

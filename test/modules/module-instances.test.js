@@ -10,7 +10,7 @@ import { createModules } from '../../src/core/module/index.ts'
 
 const silent = { info() {}, debug() {}, warn() {}, error() {} }
 
-function fixture(t, ext = {}) {
+function fixture(t, ext = {}, builtins = []) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-instances-'))
   const previousDir = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
@@ -23,7 +23,7 @@ function fixture(t, ext = {}) {
     setConfig: (next) => { cfg = next },
     logger: { child: () => ({ ...silent, warn: (...args) => warnings.push(args.join(' ')) }) },
     version: 'test',
-    builtins: [],
+    builtins,
   })
   t.after(() => {
     modules.dispose()
@@ -53,8 +53,8 @@ function multiModuleSource(key, { reusable = true } = {}) {
     export const kind = 'adapter'
     export const settings = [{ key: 'tag', label: 'Tag' }]
     export function apply(ctx, config) {
-      state.runs.push({ id: ctx.id, tag: ctx.settings().tag, dir: ctx.dataDir() })
-      ctx.route('/who', () => ({ tag: ctx.settings().tag }))
+      state.runs.push({ id: ctx.id, tag: ctx.config.tag, dir: ctx.dataDir() })
+      ctx.server.get('/who', () => ({ tag: ctx.config.tag }))
       return { dispose() { state.disposed++ } }
     }
   `
@@ -70,6 +70,23 @@ function state(t, modules, key) {
   })
   return { value, get: () => globalThis[key] }
 }
+
+test('内置适配器与独立包共用异步启动、实例配置及卸载', async t => {
+  const stopped = []
+  const plugin = {
+    id: 'transport', name: 'Transport', kind: 'adapter', reusable: true,
+    async apply(ctx, config) {
+      await Promise.resolve()
+      return { tag: config.tag, dispose: () => stopped.push(ctx.instanceId) }
+    },
+  }
+  const f = fixture(t, { transport: { tag: 'main', instances: [{ id: 'other', config: { tag: 'other' } }] } }, [plugin])
+  await f.modules.boot()
+  assert.equal(f.modules.use('transport').tag, 'main')
+  assert.deepEqual(f.modules.instances('transport'), ['other'])
+  f.modules.stop('transport')
+  assert.deepEqual(stopped.sort(), ['transport', 'transport@other'])
+})
 
 test('reusable 插件：ext.<id>.instances 里的每个实例各跑一遍 apply', async (t) => {
   const f = fixture(t)

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMockOneBot } from '../helpers/mock-onebot.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { normalize, ownerAuthorizationRevision, saveConfig } from '../../src/core/config/index.ts'
 import { OneBotError } from '../../packages/adapters/qq/onebot-v11/src/client.ts'
@@ -184,7 +185,10 @@ function setup(t, { cfg = config(), brain = async () => '', hooks, buildTools, s
 test('同一会话连续重载两轮：工具、上下文、限制全部清理，并读取新主人状态和新表情', { timeout: 5000 }, async (t) => {
   const data = mkdtempSync(join(root, 'host-'))
   process.env.AURABOT_DATA_DIR = data
-  writeFileSync(join(data, 'config.json'), JSON.stringify(config({ bridge: { dshTools: true } })))
+  const gateway = await startMockOneBot({ selfId: BOT })
+  t.after(() => gateway.close())
+  const onebot = { wsUrl: gateway.wsUrl, httpUrl: gateway.httpUrl, wsToken: gateway.token, httpToken: gateway.token }
+  writeFileSync(join(data, 'config.json'), JSON.stringify(config({ bridge: { dshTools: true }, onebot })))
   const fake = createFakeDsh({ brain: async ({ text, callTool }) => {
     if (text.includes('collect')) await callTool('qq_collect_sticker', { index: 1, name: '新表情' })
     else {
@@ -200,6 +204,7 @@ test('同一会话连续重载两轮：工具、上下文、限制全部清理�
   for (let round = 0; round < 3; round++) {
     const api = apply(fake.ctx)
     await api.ready
+    await api.modules.use('adapter-qq-onebot-v11').ready
     await api.hub.pushToSession(ownerChat, [{ type: 'text', text: '修改资料' }], OWNER)
     const agent = fake.agents.get(api.hub.sessions()[CHAT].sessionId)
     if (round === 0) {
