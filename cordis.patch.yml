@@ -19,8 +19,11 @@
     # 开发态：dev.mjs 静态 re-export src/host.js，Node 原生剥离类型直接跑 .ts。
     # 没有编译产物参与，dsh-hmr 跟的就是源码本身，改哪个 .ts 立刻热重载。
     # 市场安装的包不会带这个环境变量，这一项永远 disabled。
+    # 必须写成路径式入口（./dev.mjs），不能写 `dsh-aurabot-qq/dev`：
+    # DSH 的客户端扫描只认「精确包名」或路径式入口，子路径 specifier 会被直接跳过，
+    # 结果是服务端热加载正常、但网页半边永远不进启动清单（侧栏没有 Aurabot 入口）。
     - id: aurabot-dev
-      name: dsh-aurabot-qq/dev
+      name: ./dev.mjs
       disabled: !!js process.env.AURABOT_DEV !== '1'
     - id: preset-aurabot-private
       name: '@deepseek-ai/dsh-agent-preset'

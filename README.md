@@ -233,6 +233,10 @@ AURABOT_DEV=1 dsh web --no-open --port 8787
 不带 `AURABOT_DEV=1` 时走发布态 `index.mjs → lib/`：改完要 `npm run build` 才生效，
 HMR 重载的是上次构建出来的 `lib/`。
 
+> 开发入口在 `cordis.patch.yml` 里写成路径式 `name: ./dev.mjs`，**不要**改成
+> `dsh-aurabot-qq/dev`。DSH 扫描前端半边（`dsh.client`）时只认「精确包名」或路径式入口，
+> 子路径 specifier 会被直接跳过：服务端能热加载，但侧栏永远不出现 Aurabot 入口。
+
 
 ## 🤝 参与贡献
 
