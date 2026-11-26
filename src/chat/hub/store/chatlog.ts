@@ -2,12 +2,12 @@
 // 只依赖传进来的取配置 / 取目录 / 清理规则，不碰 hub 的其他状态。
 
 import { mkdirSync } from 'node:fs'
-import { messageLogOf } from '../../core/store/messages.ts'
-import { redact } from '../../core/support/log/redact.ts'
-import { parseMemoryCommand } from '../../features/memory/index.ts'
-import { cleanOutboundText } from '../reply/index.ts'
-import { simulationStore } from './context/context.ts'
-import { chatImageRefs } from './context/context.ts'
+import { messageLogOf } from '../../../core/store/messages.ts'
+import { redact } from '../../../core/support/log/redact.ts'
+import { parseMemoryCommand } from '../../../features/memory/index.ts'
+import { cleanOutboundText } from '../../reply/index.ts'
+import { simulationStore } from '../context/context.ts'
+import { chatImageRefs } from '../context/context.ts'
 
 /** 写一条聊天流水。 */
 export interface LogChatOptions {

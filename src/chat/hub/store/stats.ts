@@ -1,5 +1,5 @@
 // 今日统计：按日期落盘，同一天重启继续累计，跨天自动重置；只在脏了时节流写盘。
-import { readJson, writeJson } from '../../core/store/index.ts'
+import { readJson, writeJson } from '../../../core/store/index.ts'
 
 export interface HubStats {
   received: number

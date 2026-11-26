@@ -1,5 +1,5 @@
-import { parseMessageEvent } from '../inbound/index.ts'
-import { QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
+import { parseMessageEvent } from '../../inbound/index.ts'
+import { QUOTE_FORWARD_MAX_CHARS } from '../context/context.ts'
 
 /** 引用消息解析：QQ 的引用段只有 message_id，正文要再取一次；取不到也留一笔，让她能如实说没看到。 */
 export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, historyVisible, expandForwards, imagesOf }) {
