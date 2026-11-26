@@ -22,12 +22,6 @@ export type ElementSource = string | Element | Element[] | null | undefined
 /** `h.select()` 的选择器：类型名，或自定义断言。 */
 export type Selector = string | ((element: Element) => boolean)
 
-/** OneBot v11 的消息段。QQ 侧专用，核心不直接依赖它。 */
-export interface OneBotSegment {
-  type: string
-  data: Record<string, any>
-}
-
 /**
  * 宿主注入的全局 `h`（和 Koishi 一样，不用 import）。
  *
@@ -51,6 +45,4 @@ export interface ElementFactory {
   /** 按平台能力把发不出去的元素换成文字占位符。 */
   degrade(source: ElementSource, supports: (capability: import('../adapter/bot.ts').Capability) => boolean): Element[]
   isElement(value: unknown): value is Element
-  fromOneBot(segments: unknown): Element[]
-  toOneBot(source: ElementSource): OneBotSegment[]
 }

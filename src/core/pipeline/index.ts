@@ -10,6 +10,7 @@
 // 顺序按名字定位，不用数字：before / after 指向已注册的中间件名，或三个段名本身。
 // 类型声明在 src/types/plugin/pipeline.ts，这里只留实现。
 
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type {
   CommandHandler,
   CommandOptions,
@@ -63,7 +64,7 @@ export class Pipeline {
   private llmHandler: LlmHandler | null = null
   private readonly onError?: (info: PipelineErrorInfo) => void
   private seq = 0
-  private depth = 0
+  private readonly executing = new AsyncLocalStorage<boolean>()
   config: PipelineConfig = { ...DEFAULT_CONFIG }
 
   constructor(options: PipelineOptions = {}) {
@@ -166,13 +167,8 @@ export class Pipeline {
    * 递归深度限 1 —— execute 里再 execute 直接拒绝。
    */
   async execute(session: PipelineSession, text: string): Promise<PipelineResult> {
-    if (this.depth >= 1) return { handled: false, by: null, error: 'execute 不允许递归调用' }
-    this.depth++
-    try {
-      return await this.dispatch(forkSession(session, String(text ?? '')))
-    } finally {
-      this.depth--
-    }
+    if (this.executing.getStore()) return { handled: false, by: null, error: 'execute 不允许递归调用' }
+    return this.executing.run(true, () => this.dispatch(forkSession(session, String(text ?? ''))))
   }
 
   private findCommand(session: PipelineSession): { command: string; args: string } | null {
@@ -209,18 +205,17 @@ export class Pipeline {
   private async run(index: number, session: PipelineSession): Promise<PipelineResult> {
     if (index >= this.entries.length) return NOT_CONSUMED
     const entry = this.entries[index]
-    let advanced = false
-    const next: Next = async () => {
-      advanced = true
-      return this.run(index + 1, session)
-    }
+    let downstream: Promise<PipelineResult> | undefined
+    let active = true
+    const next: Next = () => downstream ??= active
+      ? this.run(index + 1, session)
+      : Promise.resolve(NOT_CONSUMED)
 
     try {
       const value = await withTimeout(entry.fn(session, next), entry.options.timeoutMs)
       // 没调 next() = 这条我处理完了
-      if (!advanced) return { handled: true, by: 'middleware', value }
-      // 调了 next()：下一段的结果就是这一段的结果
-      return value as PipelineResult
+      if (!downstream) return { handled: true, by: 'middleware', value }
+      return downstream
     } catch (error) {
       // 失败隔离：默认跳过这一段，继续往后走
       this.report(entry.name, error)
@@ -228,7 +223,9 @@ export class Pipeline {
       // 炸之前已经往会话里发过东西，说明这条它已经认领了。
       // 这时候再交给模型，用户就会收到两条——所以按「处理完了」收口。
       if (hasSent(session)) return { handled: true, by: 'middleware', error: messageOf(error) }
-      return this.run(index + 1, session)
+      return downstream ?? this.run(index + 1, session)
+    } finally {
+      active = false
     }
   }
 
@@ -286,11 +283,8 @@ function splitWord(source: string): { command: string; args: string } {
 
 function withTimeout<T>(value: T | Promise<T>, timeoutMs?: number): Promise<T> {
   if (!timeoutMs || timeoutMs <= 0) return Promise.resolve(value)
-  return Promise.race([
-    Promise.resolve(value),
-    new Promise<T>((_, reject) => {
-      const timer = setTimeout(() => reject(new Error(`中间件超时（${timeoutMs}ms）`)), timeoutMs)
-      timer.unref?.()
-    }),
-  ])
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`中间件超时（${timeoutMs}ms）`)), timeoutMs)
+    Promise.resolve(value).then(resolve, reject).finally(() => clearTimeout(timer))
+  })
 }

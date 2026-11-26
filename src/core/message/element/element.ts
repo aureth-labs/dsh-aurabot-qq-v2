@@ -8,10 +8,10 @@
 //
 // 不认识的类型照样能构造，能不能发出去由适配器能力表决定。
 
-import type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../../../types/core/element.ts'
+import type { Element, ElementFactory, ElementSource, Selector } from '../../../types/core/element.ts'
 import type { Capability } from '../../../types/adapter/bot.ts'
 
-export type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../../../types/core/element.ts'
+export type { Element, ElementFactory, ElementSource, Selector } from '../../../types/core/element.ts'
 
 // voice 不在这里：`<voice>要念的话</voice>` 需要保留里面的文字，交给 TTS 换成音频。
 // 自闭合的 `<voice url="…"/>` 走 selfClose 分支，照样是空元素。
@@ -70,8 +70,6 @@ export const h: ElementFactory = Object.assign(
     normalize,
     degrade,
     isElement,
-    fromOneBot,
-    toOneBot,
   },
 ) as unknown as ElementFactory
 
@@ -334,77 +332,4 @@ export function degrade(source: ElementSource, supports: (capability: Capability
     out.push(element)
   }
   return normalize(out)
-}
-
-// ── OneBot v11 消息段互转 ───────────────────────────────────────────
-
-const ONEBOT_TO_TYPE: Record<string, string> = {
-  text: 'text',
-  at: 'at',
-  image: 'image',
-  record: 'voice',
-  video: 'video',
-  file: 'file',
-  face: 'face',
-  reply: 'quote',
-  forward: 'forward',
-  node: 'forward',
-}
-
-const TYPE_TO_ONEBOT: Record<string, string> = {
-  text: 'text',
-  at: 'at',
-  image: 'image',
-  voice: 'record',
-  video: 'video',
-  file: 'file',
-  face: 'face',
-  quote: 'reply',
-  forward: 'forward',
-}
-
-export function fromOneBot(segments: unknown): Element[] {
-  if (!Array.isArray(segments)) return segments == null ? [] : normalize(String(segments))
-  const out: Element[] = []
-  for (const segment of segments) {
-    if (typeof segment === 'string') {
-      out.push(text(segment))
-      continue
-    }
-    if (!segment || typeof segment !== 'object') continue
-    const raw = segment as { type?: string; data?: Record<string, unknown> }
-    const type = ONEBOT_TO_TYPE[String(raw.type)] || String(raw.type || 'text')
-    const data = { ...(raw.data || {}) }
-    if (type === 'text') {
-      out.push(text(String(data.text ?? '')))
-      continue
-    }
-    if (type === 'image' || type === 'voice' || type === 'video' || type === 'file') {
-      const url = String(data.url ?? data.file ?? '')
-      const attrs: Record<string, unknown> = { url }
-      if (data.file && data.url) attrs.file = data.file
-      if (data.name) attrs.name = data.name
-      out.push(create(type, attrs))
-      continue
-    }
-    if (type === 'at') {
-      out.push(create('at', { id: String(data.qq ?? ''), ...(data.name ? { name: data.name } : {}) }))
-      continue
-    }
-    out.push(create(type, data))
-  }
-  return normalize(out)
-}
-
-export function toOneBot(source: ElementSource): OneBotSegment[] {
-  return normalize(source).map((element) => {
-    const type = TYPE_TO_ONEBOT[element.type] || element.type
-    if (element.type === 'text') return { type: 'text', data: { text: String(element.attrs.content ?? '') } }
-    if (element.type === 'at') return { type: 'at', data: { qq: String(element.attrs.id ?? '') } }
-    if (element.type === 'image' || element.type === 'voice' || element.type === 'video' || element.type === 'file') {
-      return { type, data: { file: String(element.attrs.url ?? element.attrs.file ?? '') } }
-    }
-    if (element.type === 'quote') return { type: 'reply', data: { id: String(element.attrs.id ?? '') } }
-    return { type, data: { ...element.attrs } }
-  })
 }

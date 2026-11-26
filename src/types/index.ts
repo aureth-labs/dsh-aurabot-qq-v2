@@ -6,7 +6,7 @@
  */
 
 export type { Target, TargetType } from './core/target.ts'
-export type { Element, ElementSource, ElementFactory, OneBotSegment, Selector } from './core/element.ts'
+export type { Element, ElementSource, ElementFactory, Selector } from './core/element.ts'
 export type {
   BotLike,
   BotStatus,

@@ -8,7 +8,8 @@ import type { PipelineResult, PipelineRunner } from '../../types/plugin/pipeline
 import type { SessionInit, SessionLike } from '../../types/core/session.ts'
 import type { Target, TargetType } from '../../types/core/target.ts'
 import { targetOfBot } from '../bot/index.ts'
-import { isElement, toText } from '../message/element/element.ts'
+import type { InboundMessage } from '../../types/adapter/adapter.ts'
+import { h, isElement, normalize, toText } from '../message/element/element.ts'
 
 export type { SessionInit, SessionLike } from '../../types/core/session.ts'
 
@@ -45,8 +46,8 @@ export class Session implements SessionLike {
   readonly guildId?: string
   readonly elements: Element[]
   readonly timestamp: number
-  /** 过渡期：OneBot 原始事件的挂载位（S8 收口后删）。 */
-  __ev?: unknown
+  readonly raw?: unknown
+  readonly parent?: Session
   readonly target: Target
   readonly pipeline?: PipelineRunner
 
@@ -66,7 +67,9 @@ export class Session implements SessionLike {
    */
   readonly sentLog: Array<{ text: string; at: number }> = []
 
-  constructor(init: SessionInit) {
+  constructor(init: SessionInit, parent?: Session) {
+    this.raw = init.raw
+    this.parent = parent
     this.bot = init.bot
     this.type = init.type
     this.channelId = init.channelId
@@ -75,7 +78,7 @@ export class Session implements SessionLike {
     this.content = init.content
     this.messageId = init.messageId
     this.guildId = init.guildId
-    this.elements = init.elements ?? []
+    this.elements = init.elements ?? (init.content ? [h.text(init.content)] : [])
     this.timestamp = init.timestamp ?? Date.now()
     this.target = targetOfBot(init.bot, init.type, init.type === 'private' ? init.userId : init.channelId)
     this.pipeline = init.pipeline
@@ -146,13 +149,16 @@ export class Session implements SessionLike {
       userId: this.userId,
       userName: this.userName,
       content,
-      messageId: this.messageId,
       guildId: this.guildId,
-      elements: this.elements,
-      timestamp: this.timestamp,
       pipeline: this.pipeline,
-    })
+    }, this)
   }
+}
+
+export function inboundSession(bot: BotLike, message: InboundMessage, pipeline: PipelineRunner): Session {
+  const elements = message.elements?.length ? normalize(message.elements) : undefined
+  const content = message.content ?? (elements ? toText(elements) : '')
+  return new Session({ ...message, bot, pipeline, elements, content, userName: message.userName ?? message.userId })
 }
 
 /** 定时任务等没有真实入站消息的场景，用这个造一个 Session。 */

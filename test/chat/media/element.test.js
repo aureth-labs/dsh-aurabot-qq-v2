@@ -1,7 +1,8 @@
 // S4 契约：默认写法是 h('text', { content })，坏 XML 只丢标签、不吞正文。
+import { fromOneBot, toOneBot } from '../../../packages/adapters/qq/onebot-v11/src/element.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { h, parse, stringify, select, normalize, toText, degrade, fromOneBot, toOneBot } from '../../../src/core/message/element/element.ts'
+import { h, parse, stringify, select, normalize, toText, degrade } from '../../../src/core/message/element/element.ts'
 
 test('默认写法：h(text, { content })', () => {
   const el = h('text', { content: '你好' })

@@ -686,6 +686,12 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       try { const r = fn(...args); if (r && typeof r.catch === 'function') r.catch(() => {}) } catch (error) {}
     }
   }
+  async function emitAsync(event: string, ...args: unknown[]) {
+    if (disposed || event === 'chat/delivery') return
+    await Promise.all(Array.from(listeners.get(event) || [], async ({ id, fn }) => {
+      try { await fn(...args) } catch (error) { note(id, event, error) }
+    }))
+  }
   /** 依次问每个模块，第一个返回真值的接管（收到消息时用）。 */
   async function claim(event, ...args) {
     for (const { fn } of listeners.get(event) || []) {
@@ -1049,7 +1055,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     capabilitiesOf,
     // 面板首屏提速：导航摘要（纯内存）与导航版本号（安装/启停/失败/重载时递增）
     summarizeModules, navigationRevision: () => navigationRevisionCounter,
-    emit, claim, filter, filterSync, buildTools,
+    emit, emitAsync, claim, filter, filterSync, buildTools,
     // 插件核心自己听事件（不属于任何模块，不会被撤掉）
     listen: (event, fn) => { const item = { id: '@core', fn }; listeners.set(event, [...(listeners.get(event) || []), item]); return () => listeners.set(event, (listeners.get(event) || []).filter((x) => x !== item)) }, contextFor, rules, commands, dshTools, builtinOff, handle,
     hasRoute: (path) => routes.has(path),

@@ -47,9 +47,9 @@ import { AdapterRegistry } from '../core/bot/adapter/registry.ts'
 import { wrapAdapterBot } from '../core/bot/instance/bot.ts'
 import type { BotLike } from '../types/adapter/bot.ts'
 import type { InboundMessage } from '../types/adapter/adapter.ts'
-import { OneBotBot } from '../../packages/adapters/qq/onebot-v11/src/index.ts'
+import { OneBotBot, inboundOf, eventForHub } from '../../packages/adapters/qq/onebot-v11/src/index.ts'
 import { Pipeline } from '../core/pipeline/index.ts'
-import { Session } from '../core/pipeline/session.ts'
+import { Session, inboundSession } from '../core/pipeline/session.ts'
 import { createUpdateChecker, changelogSection, hostEnv, updatePlan, repoOf } from '../core/runtime/update.ts'
 import { parseCommand, runCommand, createMutes, commandList } from '../chat/commands/index.ts'
 import { isOwner, groupResponseMode } from '../chat/policy/rules/access.ts'
@@ -66,7 +66,6 @@ import { captureSystemPrompt } from '../security/leak-guard.ts'
 import { applyPendingRestore, cancelRestore, createBackup, listBackups, pendingModules, pendingRestore, setPendingModules, stageReceivedBackup, stageRestore } from '../core/runtime/backup/backup.ts'
 import { pushBackup, listWebdavBackups, downloadWebdavBackup } from '../core/runtime/backup/backup-push.ts'
 import { cleanText } from '../core/support/util/text.ts'
-import { fromOneBot, normalize, toText } from '../core/message/element/element.ts'
 import { createBridge } from '../core/runtime/bridge.ts'
 import { createDangerGuard, safeOwnedSession } from '../security/danger.ts'
 import { createAuditor } from '../../packages/autotelic/impl/observe/audit.ts'
@@ -274,16 +273,7 @@ export function apply(ctx) {
           if (dangerGuard.handleReply(`private:${ev.user_id}`, ev.user_id, text)) return
           if (approvalRelay?.handleReply(`private:${ev.user_id}`, ev.user_id, text)) return
         }
-        // S5：入站消息先过管线（command → middleware → llm）。
-        // 没被指令/中间件消费，才交给聊天中枢（管线的 llm 段就是 hub.onMessage）。
-        const session = sessionOf(ev)
-        if (!session) {
-          hub.onMessage(ev).catch((error) => log.error('处理消息出错：', error.message))
-        } else {
-          pipeline.dispatch(session).then((result) => {
-            if (result.error) log.error(`处理消息出错（${result.by}）：`, result.error)
-          }).catch((error) => log.error('处理消息出错：', error.message))
-        }
+        void dispatchInbound(onebotBot, inboundOf(ev))
       }
     } else if (ev.post_type === 'notice' && ev.notice_type === 'bot_offline') {
       log.warn(`QQ 账号离线${ev.tag ? '（' + String(ev.tag).slice(0, 100) + '）' : ''}${ev.message ? '：' + String(ev.message).slice(0, 300) : ''}`)
@@ -405,14 +395,9 @@ export function apply(ctx) {
     // 但插件作者得看得见自己那段炸了，否则表现就是「我写的中间件没生效」。
     onError: ({ stage, error }) => log.warn(`管线「${stage}」出错：${String((error as Error)?.message ?? error)}`),
   })
-  // 管线末段就是聊天中枢：非指令、非中间件消费的消息照旧进 AI。
-  // 适配器来的消息没有 OneBot 事件，交给模块总线（`ctx.on('llm', session => …)`），
-  // 谁能接谁接；QQ 这条链路行为完全不变。
   pipeline.onLlm((session) => {
-    const fromOneBot = Boolean(session.__ev) && session.bot?.platform === 'qq'
-    if (fromOneBot && hub) {
-      // 出站回写（S5）：中间件 / 指令在交给她之前已经发过的话，先记进聊天流水和「刚才说过」，
-      // 这一轮她就能看到自己说过了，不会同一句话再说一遍。回写条数与字数在 Session 里封顶。
+    const event = session instanceof Session && session.bot === onebotBot ? eventForHub(session) : undefined
+    if (event && hub) {
       if (session.sentLog?.length) {
         const chatId = session.type === 'private' ? `private:${session.userId}` : `group:${session.channelId}`
         for (const item of session.sentLog.splice(0)) {
@@ -423,64 +408,19 @@ export function apply(ctx) {
           }
         }
       }
-      return hub.onMessage(session.__ev)
+      return hub.onMessage(event)
     }
-    mods?.emit('llm', session)
-    return undefined
+    return mods?.emitAsync('llm', session)
   })
 
-  /** OneBot 事件 → Session。没有文本内容的事件（纯图片等）仍交给中枢，不走管线。 */
-  function sessionOf(ev) {
-    const elements = fromOneBot(ev.message)
-    const content = toText(elements)
-    if (!content.trim()) return null
-    const type = ev.message_type === 'private' ? 'private' : 'group'
-    const session = new Session({
-      bot: onebotBot,
-      type,
-      channelId: String(type === 'private' ? ev.user_id : ev.group_id),
-      userId: String(ev.user_id),
-      userName: String(ev.sender?.card || ev.sender?.nickname || ev.user_id),
-      content,
-      messageId: ev.message_id != null ? String(ev.message_id) : undefined,
-      guildId: type === 'group' ? String(ev.group_id) : undefined,
-      elements,
-      timestamp: Number(ev.time) ? Number(ev.time) * 1000 : Date.now(),
-      pipeline,
-    })
-    session.__ev = ev
-    return session
-  }
-
-  /**
-   * 适配器投递的入站消息：和 OneBot 走同一条管线。
-   *
-   * 纯媒体消息（没文本）不进管线——那是适配器 / 业务插件自己的事，
-   * 核心不会拿空字符串去喂模型。
-   */
   function dispatchInbound(bot: BotLike, message: InboundMessage) {
     try {
       mods?.emit('adapter/message', { platform: bot.platform, ...message })
     } catch (error) {
       log.warn('适配器消息广播出错：', String((error as Error)?.message ?? error))
     }
-    const elements = message.elements?.length ? normalize(message.elements) : []
-    const content = String(message.content ?? (elements.length ? toText(elements) : ''))
-    if (!content.trim()) return
-    const session = new Session({
-      bot,
-      type: message.type,
-      channelId: String(message.channelId),
-      userId: String(message.userId),
-      userName: String(message.userName ?? message.userId),
-      content,
-      messageId: message.messageId != null ? String(message.messageId) : undefined,
-      guildId: message.guildId != null ? String(message.guildId) : undefined,
-      elements,
-      timestamp: Number(message.timestamp) || Date.now(),
-      pipeline,
-    })
-    session.__ev = message.raw
+    const session = inboundSession(bot, message, pipeline)
+    if (!session.content.trim() && !session.elements.length) return
     return pipeline.dispatch(session).then((result) => {
       if (result.error) log.error(`处理消息出错（${result.by}）：`, result.error)
       return result
@@ -1403,7 +1343,7 @@ export function apply(ctx) {
     const session = new Session({
       bot: onebotBot,
       type,
-      channelId: type === 'private' ? `private:${userId}` : String(b.chatId || 'debug'),
+      channelId: type === 'private' ? userId : String(b.chatId || 'debug'),
       userId,
       userName: String(b.userName || '调试'),
       content: text,

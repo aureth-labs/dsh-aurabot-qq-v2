@@ -13,7 +13,8 @@ import type {
   User,
 } from '../../../../../src/types/adapter/bot.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
-import { toOneBot, isElement, normalize, degrade, fromOneBot, toText } from '../../../../../src/core/message/element/element.ts'
+import { toOneBot, fromOneBot } from './element.ts'
+import { isElement, normalize, degrade, toText } from '../../../../../src/core/message/element/element.ts'
 import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
 
 export interface OneBotCall {

@@ -21,6 +21,7 @@ export interface SessionInit {
   guildId?: string
   /** 入站元素树；取不到就留空，`content` 是它的纯文本投影。 */
   elements?: Element[]
+  raw?: unknown
   timestamp?: number
   /** 挂了管线之后，`session.execute()` 才能用。 */
   pipeline?: PipelineRunner

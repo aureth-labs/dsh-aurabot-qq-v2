@@ -44,8 +44,6 @@ export interface PipelineSession {
   sentCount?: number
   /** 已经发出去的内容（出站回写），新的在末尾；宿主进模型前读走并清空。 */
   sentLog?: Array<{ text: string; at: number }>
-  /** 过渡期：OneBot 原始事件的挂载位（S8 适配器收口后由适配器自己消化）。 */
-  __ev?: unknown
   /**
    * 复制一份「同一身份、换内容」的会话，给 `session.execute()` 用。
    *
