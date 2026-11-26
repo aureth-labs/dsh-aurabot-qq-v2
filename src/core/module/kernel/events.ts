@@ -28,7 +28,12 @@ export function createModuleEvents(note: Note) {
   }
   async function emitAsync(event: string, ...args: unknown[]) {
     if (event === 'chat/delivery') return
-    await Promise.all((subscriptions.get(event) ?? []).map((item) => invoke(item, event, args)))
+    const listeners = subscriptions.get(event) ?? []
+    if (event === 'before-parse') {
+      for (const item of listeners) await invoke(item, event, args)
+    } else {
+      await Promise.all(listeners.map(item => invoke(item, event, args)))
+    }
   }
   async function claim(event: string, ...args: unknown[]) {
     for (const item of subscriptions.get(event) ?? []) if (await invoke(item, event, args)) return true
@@ -58,6 +63,7 @@ export function createModuleEvents(note: Note) {
   }
   return {
     subscribe,
+    has: (event: string) => Boolean(subscriptions.get(event)?.length),
     emit,
     emitAsync,
     claim,

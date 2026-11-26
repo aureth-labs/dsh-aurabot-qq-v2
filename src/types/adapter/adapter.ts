@@ -25,6 +25,7 @@ export interface InboundMessage {
   content?: string
   elements?: Element[]
   messageId?: string
+  sn?: number
   guildId?: string
   timestamp?: number
   /** 平台原始事件：核心不解析，原样转给模块。 */

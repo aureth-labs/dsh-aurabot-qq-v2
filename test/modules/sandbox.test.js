@@ -28,6 +28,7 @@ test('聊天沙盒：网页发消息进适配器，机器人回复回到网页',
   const server = createSandboxServer({ port: 0, token: 'sandbox-token', platform: 'sandbox' })
   await server.start()
   const registry = new BotRegistry()
+  const notices = []
   const inbound = []
   let handle = null
   t.after(async () => {
@@ -39,7 +40,7 @@ test('聊天沙盒：网页发消息进适配器，机器人回复回到网页',
     registry,
     satoriAdapter(),
     { endpoint: server.url, token: 'sandbox-token', platform: 'sandbox' },
-    { platform: 'sandbox', log: () => {}, emitMessage: (message) => inbound.push(message) },
+    { platform: 'sandbox', log: () => {}, emitMessage: (message) => inbound.push(message), emitEvent: (type, data) => notices.push({ type, data }) },
   )
   assert.equal(handle.bot.id, 'sandbox-bot')
   assert.equal(handle.bot.status, 'online')
@@ -51,6 +52,9 @@ test('聊天沙盒：网页发消息进适配器，机器人回复回到网页',
   assert.equal(message.channelId, 'sandbox-1')
   assert.equal(message.userId, 'u1')
   assert.equal(message.content, '你好')
+  assert.deepEqual(notices.map(n => n.type), ['guild-member-added'])
+  assert.equal(notices[0].data.member.user.id, 'u1')
+  assert.equal(message.sn, notices[0].data.sn + 1)
 
   await handle.bot.sendMessage('sandbox-1', '<text>收到啦</text>')
   const state = await waitFor(async () => {

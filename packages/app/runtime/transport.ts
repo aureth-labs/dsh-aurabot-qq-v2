@@ -1,3 +1,7 @@
+import { isDeepStrictEqual } from 'node:util'
+import { h, isElement, normalize, toText } from '../../../src/core/message/element/element.ts'
+import type { createSendEvents } from '../../../src/core/bot/send-events.ts'
+import { platformNotice } from '../../../src/core/pipeline/notice.ts'
 import { dataDir, ensureDir } from '../../../src/core/store/index.ts'
 import { createQuoteHistory, type MessageDeletion } from '../../../src/core/pipeline/quotes.ts'
 import { AdapterRegistry } from '../../../src/core/bot/adapter/registry.ts'
@@ -17,6 +21,9 @@ interface TransportOptions {
   log: AreaLogger
   speak(text: string): Promise<string>
   emit(event: string, payload: unknown): void
+  hasListeners(event: string): boolean
+  emitAsync(event: string, data: unknown): Promise<void>
+  sendEvents: ReturnType<typeof createSendEvents>
   beforeMessage(bot: BotLike, message: InboundMessage): unknown
   beforeEvent(event: string, payload: unknown, bot: BotLike): void
   respond: LlmHandler
@@ -27,7 +34,7 @@ export function createTransport({
   log,
   speak,
   emit,
-  beforeMessage,
+  beforeMessage, hasListeners, emitAsync, sendEvents,
   beforeEvent,
   respond,
 }: TransportOptions) {
@@ -44,6 +51,18 @@ export function createTransport({
   async function dispatchInbound(bot: BotLike, message: InboundMessage) {
     try {
       emit('adapter/message', { ...message, platform: bot.platform, botId: bot.id })
+      let reparsed = false
+      if (hasListeners('before-parse')) {
+        const elements = message.elements ?? (message.content ? [h.text(message.content)] : [])
+        const draft = { platform: bot.platform, botId: bot.id, type: message.type, channelId: message.channelId,
+          guildId: message.guildId, userId: message.userId, elements: structuredClone(elements) }
+        await emitAsync('before-parse', draft)
+        if (Array.isArray(draft.elements) && draft.elements.every(isElement) && !isDeepStrictEqual(elements, draft.elements)) {
+          const parsed = normalize(draft.elements)
+          message = { ...message, elements: parsed, content: toText(parsed) }
+          reparsed = true
+        }
+      }
       let quote
       if (getConfig().enabled || bot.platform === 'sandbox') {
         try { quote = await quotes.receive(bot, message) }
@@ -52,8 +71,12 @@ export function createTransport({
       if (closed) return
       const session = inboundSession(bot, message, pipeline, quote)
       if (!session.content.trim() && !session.elements.length) return
-      const result = await personaScope.run(personaNow(getConfig()), () => pipeline.dispatch(session))
-      if (result.error) log.error('处理消息出错', result.by, result.error)
+      session.reparsed = reparsed
+      const result = await personaScope.run(personaNow(getConfig()), async () => {
+        if (hasListeners('message')) await emitAsync('message', session)
+        if (!closed) return pipeline.dispatch(session)
+      })
+      if (result?.error) log.error('处理消息出错', result.by, result.error)
       return result
     } catch (error) {
       log.error('处理消息出错', String(error))
@@ -71,15 +94,20 @@ export function createTransport({
     },
     onEvent(platform, event, payload, bot) {
       try {
-        if (event === 'message-deleted') quotes.recall(bot, payload as MessageDeletion)
-        beforeEvent(event, payload, bot)
-        emit('adapter/' + event, { platform, botId: bot.id, payload })
+        const notice = platformNotice(event, payload, bot)
+        const detail = event === 'message-deleted' && notice?.channelId && notice.messageId
+          ? { type: notice.type, channelId: notice.channelId, messageId: notice.messageId, raw: payload } : payload
+        if (event === 'message-deleted') quotes.recall(bot, detail as MessageDeletion)
+        beforeEvent(event, detail, bot)
+        if (notice) emit(event, notice)
+        emit('adapter/' + event, { platform, botId: bot.id, payload: detail })
       } catch (error) {
         log.warn('适配器事件 ' + event + ' 处理出错', String(error))
       }
     },
     wrapBot: (bot) =>
       wrapAdapterBot(bot, {
+        events: sendEvents,
         allowed: () => Boolean(getConfig().enabled) || bot.platform === 'sandbox',
         log: (message) => log.info(message),
         speak,

@@ -38,7 +38,10 @@ export function inboundOf(event: MessageEvent): InboundMessage {
 
 /** 旧聊天中枢仍消费原生事件。execute 只沿用身份和来源，重建消息段。 */
 export function eventForHub(session: Session): unknown {
-  if (!session.parent) return session.raw
+  if (!session.parent) {
+    if (!session.reparsed || !session.raw || typeof session.raw !== 'object') return session.raw
+    return { ...session.raw, raw_message: session.content, message: toOneBot(session.elements) }
+  }
   const source = session.parent.raw
   if (!source || typeof source !== 'object') return
   return {

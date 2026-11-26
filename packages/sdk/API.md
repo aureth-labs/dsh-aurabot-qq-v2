@@ -136,3 +136,17 @@ export async function apply(ctx, config) {
 插件可导出 `export const inject = ['llm']`，也可以在 package.json 中声明 `aurabot.inject`。宿主等待这些服务就绪后调用 `apply`。提供者退出时，依赖它的实例会释放命令、定时器和监听器。服务恢复后，仍启用的实例会重新启动。
 
 用 `ctx.provide('服务名', 实现对象)` 提供服务。同一个服务名只能由一个实例持有；面板会显示冲突双方的实例名。可选功能通过 `ctx.services.get(name)` 查询。默认的 `llm` 插件提供 `ctx.llm.generate`、`polish`、`rewrite` 和 `summarize`。替换模型实现时，先停用原提供者，再启用实现同一接口的插件。
+
+## 消息和平台事件
+
+| `ctx.on` 事件 | 参数与调用时机 |
+| --- | --- |
+| `before-parse` | 解析入站消息前按注册顺序调用，可异步替换 `draft.elements`。 |
+| `message` | 指令和中间件运行前收到 `Session`。`userId` 是发送者，`id` 是消息 ID，`sn` 是适配器给出的事件序号。 |
+| `before-send` | 参数含 `bot`、`target` 和待发送的 `elements`。监听器返回 `true` 即取消此次发送。 |
+| `send` | 发送成功后触发。平台返回消息 ID 时写入 `messageId`。平台将一条内容拆为多条消息时，每个 ID 触发一次。 |
+| `guild-member-added`、`guild-member-removed`、`guild-member-updated` | 成员变更。事件提供 `botId`、`guildId`、`userId` 与平台资源 `data`。 |
+| `friend-request`、`guild-request`、`guild-member-request` | 好友、邀请或入群申请。申请标识和附言可从 `data.message` 读取。 |
+| `message-deleted`、`message-updated` | 撤回或编辑。按 `platform`、`botId`、`channelId` 与 `messageId` 定位消息。 |
+
+对支持撤回且返回频道和消息 ID 的适配器，可在 `send` 监听器里调用 `await event.bot.deleteMessage(event.channelId, event.messageId)`。主动私信时频道 ID 取决于平台回执。试运行、入队和被取消的发送不会触发成功事件。

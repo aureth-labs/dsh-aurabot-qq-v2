@@ -7,6 +7,7 @@ import type { Element } from '../../types/core/element.ts'
 import type { PipelineResult, PipelineRunner } from '../../types/plugin/pipeline.ts'
 import type { MessageQuote, SessionInit, SessionLike } from '../../types/core/session.ts'
 import type { Target, TargetType } from '../../types/core/target.ts'
+import { acknowledged, withSendSession } from '../bot/send-events.ts'
 import { targetOfBot } from '../bot/index.ts'
 import type { InboundMessage } from '../../types/adapter/adapter.ts'
 import { h, isElement, normalize, toText } from '../message/element/element.ts'
@@ -42,7 +43,10 @@ export class Session implements SessionLike {
   readonly userId: string
   readonly userName: string
   readonly content: string
+  reparsed = false
+  readonly sn?: number
   readonly messageId?: string
+  get id() { return this.messageId }
   readonly guildId?: string
   readonly elements: Element[]
   readonly timestamp: number
@@ -79,6 +83,7 @@ export class Session implements SessionLike {
     this.userName = init.userName ?? ''
     this.content = init.content
     this.messageId = init.messageId
+    this.sn = init.sn
     this.guildId = init.guildId
     this.elements = init.elements ?? (init.content ? [h.text(init.content)] : [])
     this.timestamp = init.timestamp ?? Date.now()
@@ -97,10 +102,10 @@ export class Session implements SessionLike {
   /** 发回当前会话（群发群、私聊发私聊）。可以多次调用，每次都是一条独立消息。 */
   async send(content: unknown, options?: SendOptions): Promise<unknown> {
     this.sentCount += 1
-    const result = this.type === 'private'
-      ? await this.bot.sendPrivateMessage(this.userId, content, options)
-      : await this.bot.sendMessage(this.channelId, content, options)
-    this.rememberSent(content)
+    const result = await withSendSession(this, () => this.type === 'private'
+      ? this.bot.sendPrivateMessage(this.userId, content, options)
+      : this.bot.sendMessage(this.channelId, content, options))
+    if (acknowledged(result)) this.rememberSent(content)
     return result
   }
 
@@ -108,7 +113,7 @@ export class Session implements SessionLike {
   async sendPrivateMessage(userId: string, content: unknown, options?: SendOptions): Promise<unknown> {
     this.sentCount += 1
     const result = await this.bot.sendPrivateMessage(userId, content, options)
-    this.rememberSent(content)
+    if (acknowledged(result)) this.rememberSent(content)
     return result
   }
 
@@ -116,7 +121,7 @@ export class Session implements SessionLike {
   async sendMessage(channelId: string, content: unknown, options?: SendOptions): Promise<unknown> {
     this.sentCount += 1
     const result = await this.bot.sendMessage(channelId, content, options)
-    this.rememberSent(content)
+    if (acknowledged(result)) this.rememberSent(content)
     return result
   }
 

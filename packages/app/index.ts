@@ -40,6 +40,7 @@ import { createPersonaMemoryRuntime } from './runtime/persona-memory.ts'
 import { realWorkspace } from '../../src/core/runtime/workspace-move.ts'
 import { createLocal } from '../../src/local/index.ts'
 
+import { createSendEvents } from '../../src/core/bot/send-events.ts'
 import { defaultModel, type AskModelOptions, modelReasoning, modelVision } from '../../src/core/llm/index.ts'
 import { isOwnerOf } from '../../src/core/config/owners.ts'
 import { createDialogue } from '../../src/core/llm/session-turn.ts'
@@ -177,7 +178,12 @@ export function apply(ctx) {
 
   // ---------- QQ 网关 ----------
   const endpoint = () => ({ ...cfg.onebot, ...cfg.ext?.[defaultOneBotId] })
-  const onebot = primaryOneBot(() => mods?.services.get('onebot/' + defaultOneBotId))
+  const sendEvents = createSendEvents(
+    (name, data) => mods?.claim(name, data) ?? Promise.resolve(false),
+    (name, data) => mods?.emit(name, data),
+  )
+  const onebot = primaryOneBot(() => mods?.services.get('onebot/' + defaultOneBotId),
+    () => botRegistry.get(defaultOneBotId, 'qq'), sendEvents)
   let hub = null
   let dangerGuard = null // 危险命令确认（security.dangerConfirm 开着才生效）
   let approvalRelay = null // DSH 要授权时在 QQ 私聊问主人（approvalViaQQ 开着才生效）
@@ -192,6 +198,8 @@ export function apply(ctx) {
     getConfig, log: logger.child('adapter'),
     speak: async text => { const voice = await tts.speak(text); return typeof voice === 'string' ? voice : String(voice?.file ?? '') },
     emit: (event, payload) => mods?.emit(event, payload),
+    hasListeners: event => mods?.hasListeners(event) ?? false,
+    emitAsync: (event, data) => mods?.emitAsync(event, data) ?? Promise.resolve(), sendEvents,
     beforeMessage: gateway.beforeMessage, beforeEvent: gateway.beforeEvent,
     respond: session => {
       const claimed = gateway.respond(session, adapterRegistry)

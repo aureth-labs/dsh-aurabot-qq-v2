@@ -72,7 +72,7 @@ export function createQQOfficialBotSpec(defaults: QQOfficialBotSpecOptions = {})
           bot.markOffline(reason)
           runtime.statusChanged?.(reason)
         },
-        onDispatch: (type, data) => {
+        onDispatch: (type, data, sn) => {
           if (type === 'READY') {
             const selfId = String((data.user as { id?: string } | undefined)?.id ?? '')
             if (!selfId || (bot.selfId && selfId !== bot.selfId)) {
@@ -91,8 +91,15 @@ export function createQQOfficialBotSpec(defaults: QQOfficialBotSpecOptions = {})
           if (bot.status !== 'online') return
           const message = inboundOf(type, data)
           if (message) {
-            runtime.emitMessage(message)
+            runtime.emitMessage({ ...message, sn })
             return
+          }
+          const memberEvents = { GUILD_MEMBER_ADD: 'guild-member-added', GUILD_MEMBER_UPDATE: 'guild-member-updated', GUILD_MEMBER_REMOVE: 'guild-member-removed' }
+          const event = memberEvents[type]
+          if (event && data.guild_id && data.user?.id) {
+            const user = { id: String(data.user.id), name: data.user.username }
+            runtime.emitEvent?.(event, { type: event, sn, timestamp: Date.now(), guild: { id: String(data.guild_id) },
+              user, member: { user, nick: data.nick }, operator: data.op_user_id ? { id: String(data.op_user_id) } : undefined })
           }
           runtime.emitEvent?.(type, data)
         },

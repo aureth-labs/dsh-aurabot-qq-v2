@@ -659,6 +659,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const publicHandle = { use: exportsOf, has: hasModule, list: () => status().map(({ id, name, running }) => ({ id, name, running })), emit }
 
   return {
+    hasListeners: events.has,
     failedAdapters: () => [...errors].filter(([key, error]) => error.adapter && isEnabled(key.split('@')[0])).map(([key]) => key),
     normalizeSettings(previous: Record<string, RawConfig>, next: Record<string, RawConfig>, patch: unknown) {
       if (!isObj(patch)) return

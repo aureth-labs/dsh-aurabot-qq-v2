@@ -28,6 +28,7 @@ export interface SessionInit {
   userName?: string
   content: string
   messageId?: string
+  sn?: number
   guildId?: string
   /** 入站元素树；取不到就留空，`content` 是它的纯文本投影。 */
   elements?: Element[]
@@ -52,6 +53,8 @@ export interface SessionLike {
   readonly userName: string
   readonly content: string
   readonly messageId?: string
+  readonly sn?: number
+  readonly id?: string
   readonly guildId?: string
   readonly elements: Element[]
   readonly timestamp: number

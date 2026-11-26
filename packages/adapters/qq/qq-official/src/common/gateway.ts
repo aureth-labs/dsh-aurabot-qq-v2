@@ -35,7 +35,7 @@ export interface QQGatewayOptions {
   log?: (message: string) => void
   /** 收到 DISPATCH 时调用；`READY` 也会走这里，方便拿 selfId。 */
   onDown?: (reason: string) => void
-  onDispatch: (type: string, data: Record<string, any>) => void
+  onDispatch: (type: string, data: Record<string, any>, sn?: number) => void
   socketFactory?: GatewaySocketFactory
   /** 断线自动重连次数，默认 3；0 表示不重连。 */
   maxRetries?: number
@@ -173,7 +173,7 @@ export class QQGateway {
       this.readyResolve = null
       this.readyReject = null
     }
-    this.options.onDispatch(type, data)
+    this.options.onDispatch(type, data, payload.s ?? undefined)
   }
 
   private async identify(): Promise<void> {

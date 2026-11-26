@@ -96,7 +96,7 @@ export function createOutbound(deps: OutboundDeps) {
     message = cleanOutboundSegments(message, cleaning)
     if (!message.length) return settleOutboundFailed(verdict)
     // 扩展模块最后改一次（加签名、过滤敏感词、转发到别处……）；返回 null 就不发
-    if (hooks?.send) {
+    if (!sensitive && hooks?.send) {
       try {
         const next = await hooks.send(message, { chatId, note, force })
         if (next === null) {
@@ -146,7 +146,8 @@ export function createOutbound(deps: OutboundDeps) {
       ? hooks?.deliveryScope?.(chatId, pnow(), cfg.botQQ)
       : null
     try {
-      const r = await onebot.call(action, params, timeoutMs ? { timeoutMs } : undefined)
+      const r = await onebot.call(action, params, sensitive ? { sensitive, timeoutMs } : timeoutMs ? { timeoutMs } : undefined)
+      if (r?.cancelled || r?.ok === false) return settleOutboundFailed(verdict)
       if (r && r.message_id !== undefined) {
         sentIds.add(String(r.message_id))
         if (sentIds.size > 500) sentIds.delete(sentIds.values().next().value)

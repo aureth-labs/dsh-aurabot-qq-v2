@@ -157,6 +157,8 @@ export interface Session {
   readonly userName: string
   readonly content: string
   readonly messageId?: string
+  readonly sn?: number
+  readonly id?: string
   readonly guildId?: string
   readonly elements: Element[]
   readonly timestamp: number
@@ -172,6 +174,49 @@ export interface Session {
    * 等价于「用户又发了这句话」，不是本地空跑。递归深度限 1。
    */
   execute(text: string): Promise<PipelineResult>
+}
+
+export interface MessageDraft {
+  readonly platform: string
+  readonly botId: string
+  readonly type: Target['type']
+  readonly userId: string
+  readonly channelId: string
+  readonly guildId?: string
+  elements: Element[]
+}
+
+export interface SendEvent {
+  readonly bot: Bot
+  readonly platform: string
+  readonly botId: string
+  readonly type: Target['type']
+  readonly target: Target
+  readonly elements: Element[]
+  readonly channelId?: string
+  readonly userId?: string
+  readonly messageId?: string
+}
+
+export type NoticeName = 'guild-added' | 'guild-updated' | 'guild-removed' | 'guild-request' | 'friend-request'
+  | 'guild-member-added' | 'guild-member-updated' | 'guild-member-removed' | 'guild-member-request'
+  | 'guild-role-created' | 'guild-role-updated' | 'guild-role-deleted'
+  | 'message-deleted' | 'message-updated' | 'reaction-added' | 'reaction-removed'
+
+export interface PlatformNotice {
+  readonly bot: Bot
+  readonly platform: string
+  readonly botId: string
+  readonly selfId: string
+  readonly event: NoticeName
+  readonly data: Record<string, unknown>
+  readonly type: 'group' | 'private'
+  readonly userId?: string
+  readonly channelId?: string
+  readonly guildId?: string
+  readonly messageId?: string
+  readonly timestamp: number
+  readonly sn?: number
 }
 
 export interface PipelineResult {
@@ -271,6 +316,7 @@ export interface InboundMessage {
   content?: string
   elements?: Element[]
   messageId?: string
+  sn?: number
   guildId?: string
   timestamp?: number
   raw?: unknown
@@ -344,6 +390,10 @@ export interface Ctx {
 
   /** 自定义事件；别的插件 ctx.on(名字) 能收到。 */
   emit(event: string, ...args: any[]): void
+  on(event: 'message', fn: (session: Session) => unknown): () => void
+  on(event: 'before-parse', fn: (draft: MessageDraft) => unknown): () => void
+  on(event: 'before-send' | 'send', fn: (event: SendEvent) => unknown): () => void
+  on(event: NoticeName, fn: (notice: PlatformNotice) => unknown): () => void
   on(event: string, fn: (...args: any[]) => unknown): () => void
 
   get<T = unknown>(id: string): T | null

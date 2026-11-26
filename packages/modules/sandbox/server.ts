@@ -134,6 +134,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
   const channels = new Map<string, { id: string; name: string; type: number }>([
     ['sandbox-1', { id: 'sandbox-1', name: '沙盒群', type: 0 }],
   ])
+  const members = new Set<string>()
   const sockets = new Set<SocketConn>()
   const streams = new Set<http.ServerResponse>()
   let sn = 0
@@ -158,7 +159,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
     const data = frame(JSON.stringify({ op: 0, body }))
     for (const conn of sockets) {
       try {
-        conn.socket.write(data)
+        if (conn.authed) conn.socket.write(data)
       } catch {
         sockets.delete(conn)
       }
@@ -200,7 +201,7 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
           direction: 'out',
         }
         remember(message)
-        return { id: message.id }
+        return [resource(message)]
       }
       case 'user.get':
         return userOf(String(body.user_id || ''), undefined)
@@ -229,7 +230,21 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         return end < 0 ? [] : rows.slice(Math.max(0, end - limit), end).map(resource)
       }
       case 'message.delete':
-      case 'message.update':
+      case 'message.update': {
+        const index = messages.findIndex(message => message.channelId === String(body.channel_id) && message.id === String(body.message_id))
+        if (index < 0) return null
+        const message = messages[index]
+        const deleted = method === 'message.delete'
+        if (deleted) messages.splice(index, 1)
+        else message.content = String(body.content ?? '')
+        const channel = channels.get(message.channelId)
+        const result = resource(message)
+        push({ type: deleted ? 'message-deleted' : 'message-updated', message: result, channel,
+          guild: channel?.type === 1 ? undefined : guild, user: result.user })
+        const change = JSON.stringify({ id: message.id, content: message.content, deleted })
+        for (const stream of streams) stream.write(`event: change\ndata: ${change}\n\n`)
+        return deleted ? {} : result
+      }
       case 'reaction.create':
       case 'reaction.delete':
         return {}
@@ -300,6 +315,10 @@ export function createSandboxServer(options: SandboxServerOptions = {}) {
         direction: 'in',
       }
       remember(message)
+      if (kind === 'group' && !members.has(user.id)) {
+        members.add(user.id)
+        push({ type: 'guild-member-added', guild, user, member: { user } })
+      }
       push({
         type: 'message-created',
         message: { id: message.id, content: (quoted ? '<quote id="' + quoted.id + '"/>' : '') + '<text>' + escapeXml(text) + '</text>' },

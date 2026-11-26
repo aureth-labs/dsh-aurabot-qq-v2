@@ -162,6 +162,10 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
       try {
         const result = await call(item.action, item.params, { retries: 0, timeoutMs: 30_000 })
         remove(item.id)
+        if (result && typeof result === 'object' && 'ok' in result && result.ok === false) {
+          dropped++
+          continue
+        }
         sent++
         log?.info?.(`补发成功：${item.note || item.chatId || item.action}`)
         try { onFlushed?.(item, result) } catch (error) { log?.warn?.('补发回执通知失败：', error?.message || error) }

@@ -1,7 +1,8 @@
 import type { PluginContext } from '../../../../../src/types/plugin/ctx.ts'
 import type { AdapterSpec } from '../../../../../src/types/adapter/adapter.ts'
 import { createOneBotConnection } from './connection.ts'
-import { inboundOf, isMessageEvent, recalledMessage } from './inbound.ts'
+import { oneBotNotice } from './notices.ts'
+import { inboundOf, isMessageEvent } from './inbound.ts'
 import type { OneBotBot } from './bot.ts'
 
 import { Schema } from '../../../../../src/core/config/shape/schema.ts'
@@ -33,6 +34,7 @@ export function apply(ctx: PluginContext, config: Config) {
     platform: 'qq',
     name,
     async connect(_, runtime) {
+      let sn = 0
       const ready = Promise.withResolvers<OneBotBot>()
       connection = createOneBotConnection({
         id: ctx.instanceId,
@@ -51,10 +53,10 @@ export function apply(ctx: PluginContext, config: Config) {
           if (state === 'stopped') ready.reject(new Error(connection.wrongAccount ? '网关登录账号不匹配' : 'OneBot 连接已停止'))
         },
         onEvent(event) {
-          if (isMessageEvent(event)) runtime.emitMessage(inboundOf(event))
+          if (isMessageEvent(event)) runtime.emitMessage({ ...inboundOf(event), sn: ++sn })
           else {
-            const recalled = recalledMessage(event)
-            if (recalled) runtime.emitEvent?.('message-deleted', recalled)
+            const notice = oneBotNotice(event, ++sn)
+            if (notice) runtime.emitEvent?.(notice.type, notice)
             runtime.emitEvent?.('onebot', event)
           }
         },

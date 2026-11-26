@@ -226,6 +226,7 @@ export function inboundOf(event: SatoriEvent, bot: { rememberDirect(userId: stri
     userName: String(event.user?.nick || event.user?.name || userId),
     content: toText(elements),
     elements,
+    sn: event.sn,
     messageId: event.message.id != null ? String(event.message.id) : undefined,
     guildId: event.guild?.id != null ? String(event.guild.id) : undefined,
     timestamp: Number(event.timestamp) || Date.now(),
@@ -283,12 +284,7 @@ export function satoriAdapter(): AdapterSpec {
             runtime.emitMessage(message)
             return
           }
-          if (event.type === 'message-deleted' && event.channel?.id && event.message?.id) {
-            runtime.emitEvent?.(event.type, {
-              type: event.channel.type === CHANNEL_DIRECT ? 'private' : 'group',
-              channelId: String(event.channel.id), messageId: String(event.message.id), raw: event,
-            })
-          } else runtime.emitEvent?.(event.type, event)
+          runtime.emitEvent?.(event.type, event)
         },
         onDown(reason) {
           bot?.markOffline(reason)

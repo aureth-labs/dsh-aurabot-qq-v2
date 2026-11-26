@@ -67,6 +67,7 @@ function add(message) {
   if (!message) return
   const row = document.createElement('div')
   const out = message.direction === 'out'
+  row.dataset.id = message.id
   row.className = 'row ' + (out ? 'out' : 'me')
   const who = document.createElement('div')
   who.className = 'who'
@@ -86,6 +87,13 @@ async function boot() {
     for (const m of state.messages || []) add(m)
   }
   const stream = new EventSource('/_sandbox/stream')
+  stream.addEventListener('change', event => {
+    const change = JSON.parse(event.data)
+    const row = log.querySelector('[data-id="' + CSS.escape(change.id) + '"]')
+    if (!row) return
+    if (change.deleted) row.remove()
+    else row.querySelector('.bubble').textContent = strip(change.content)
+  })
   stream.onmessage = (event) => {
     try {
       const m = JSON.parse(event.data)
