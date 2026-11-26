@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../../src/core/config/index.ts'
-import stickersModule from '../../../packages/modules/stickers/index.ts'
+import { apply as installStickers } from '../../../packages/modules/stickers/index.ts'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -18,7 +18,9 @@ function setup() {
   const dir = process.env.AURABOT_DATA_DIR
   const cfg = normalize({ botQQ: BOT, ownerQQ: OWNER, enabled: false, dryRun: true, stickers: { collect: false, caption: false }, allow: { private: ['10000002'], groups: ['123'] } })
   const hub = (logger = log) => createHub({ dsh: {}, getConfig: () => cfg, log: logger, onebot: {}, stickers: {} })
-  return { hub, cfg, dir, file: join(dir, 'recent-media.json') }
+  const accountDir = join(dir, 'primary-media', BOT)
+  mkdirSync(accountDir, { recursive: true })
+  return { hub, cfg, dir, file: join(accountDir, 'recent-media.json') }
 }
 const send = (hub, seg, user = OWNER, group = '') => hub.onMessage({
   message_type: group ? 'group' : 'private', self_id: Number(BOT), user_id: Number(user),
@@ -31,7 +33,7 @@ test('最近表情：重建中枢后仍能取到聊天和发图人对应的消�
   const expected = before.recentMedia(CHAT)
   assert.equal(expected.length, 1)
   assert.ok(existsSync(s.file), '消息收到时就落盘，不依赖正常退出')
-  before.disposeRecentMedia()
+  before.dispose()
   const after = s.hub()
   assert.deepEqual(after.recentMedia(CHAT), expected)
 })
@@ -144,8 +146,8 @@ test('媒体缓存关闭后旧实例不可取图，迟到消息不再改写暂�
   const s = setup(), hub = s.hub()
   await send(hub, image('before-dispose.png'))
   const disk = readFileSync(s.file, 'utf8')
-  hub.disposeRecentMedia()
-  hub.disposeRecentMedia()
+  hub.dispose()
+  hub.dispose()
   assert.deepEqual(hub.recentMedia(CHAT), [])
   await send(hub, image('late.png'))
   assert.equal(readFileSync(s.file, 'utf8'), disk)
@@ -154,9 +156,9 @@ test('媒体缓存关闭后旧实例不可取图，迟到消息不再改写暂�
 
 function saveTool(hub, cfg, chat = { kind: 'private', chatId: CHAT, userId: OWNER }) {
   let build
-  stickersModule.setup({
-    core: { hub, onebot: {}, http: {} }, config: () => cfg, dsh: {}, log,
-    tool: (fn) => { build = fn }, route() {}, rule() {},
+  installStickers({
+    host: { hub, onebot: {}, http: {} }, root: { config: cfg, read: () => cfg }, harness: {}, logger: log,
+    tool: (fn) => { build = fn }, server: { get() {}, post() {} }, rule() {},
   })
   return build({ chat, sessionId: 'save-test', level: 'full' }).find((tool) => tool.name === 'qq_save_sticker')
 }
@@ -165,7 +167,7 @@ const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a
 test('现有 qq_save_sticker 可在重启后从暂存保存原图、备注及标签，权限仍在执行时检查', async () => {
   const s = setup(), before = s.hub()
   await send(before, image('base64://' + png.toString('base64')))
-  before.disposeRecentMedia()
+  before.dispose()
   const after = s.hub(), tool = saveTool(after, s.cfg)
   assert.equal((await tool.execute({ name: '不应保存' })).ok, false)
   assert.equal(existsSync(join(s.dir, 'stickers', 'index.json')), false)
@@ -205,17 +207,43 @@ test('过期表情不能经过现有保存工具绕过有效期', async (t) => {
 
 test('宿主卸载会关闭媒体缓存，旧中枢不能继续读写暂存文件', async () => {
   const s = setup()
-  writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, onebot: { ...s.cfg.onebot } }))
+  const { startMockOneBot } = await import('../../helpers/mock-onebot.js')
+  const gateway = await startMockOneBot({ selfId: BOT })
+  writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, enabled: true,
+    onebot: { httpUrl: gateway.httpUrl, wsUrl: gateway.wsUrl, httpToken: gateway.token, wsToken: gateway.token } }))
   const { createFakeDsh } = await import('../../helpers/fake-dsh.js')
   const { apply } = await import('../../../packages/app/index.ts')
   const fake = createFakeDsh({ brain: async () => '' }), api = apply(fake.ctx)
   try {
     await api.ready
+    await api.modules.use('adapter-qq-onebot-v11').ready
     await send(api.hub, image('before-unload.png'))
     const disk = readFileSync(s.file, 'utf8')
     fake.dispose()
     assert.deepEqual(api.hub.recentMedia(CHAT), [])
     await send(api.hub, image('late-after-unload.png'))
     assert.equal(readFileSync(s.file, 'utf8'), disk)
-  } finally { fake.dispose() }
+  } finally { fake.dispose(); await gateway.close() }
+})
+
+test('同一实例切换登录后，旧读取无法把后到的图片交给新账号', async t => {
+  const s = setup()
+  const { createMediaScope } = await import('../../../packages/modules/chat-bridge/qq/media/account.ts')
+  let self = BOT
+  const scope = createMediaScope(() => self, log)
+  const started = Promise.withResolvers(), downloaded = Promise.withResolvers()
+  const hub = createHub({ dsh: {}, getConfig: () => s.cfg, log, stickers: {},
+    hooks: { media: () => scope.current() }, onebot: { async call() { started.resolve(); return downloaded.promise } } })
+  t.after(() => { scope.dispose(); hub.dispose() })
+  const first = scope.current()
+  first.images.remember(CHAT, [{ userId: OWNER, sticker: false, seg: image('file-id') }])
+  const reading = hub.referenceImage({ chatId: CHAT }, 'last')
+  await started.promise
+  self = '20000003'
+  assert.deepEqual(hub.recentMedia(CHAT), [])
+  downloaded.resolve({ file: 'base64://' + png.toString('base64') })
+  await assert.rejects(reading, /登录账号已改变/)
+  first.images.clear(CHAT)
+  self = BOT
+  assert.equal(hub.recentMedia(CHAT)[0].seg.data.file, 'file-id')
 })

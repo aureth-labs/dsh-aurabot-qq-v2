@@ -40,9 +40,7 @@ export function createIncomingMessages({
   const {
     faces,
     stickers,
-    stickerStash,
-    recentFiles,
-    recentMedia,
+    currentMedia,
     transcribe,
     addGroupImages,
     imagesOf,
@@ -58,6 +56,8 @@ export function createIncomingMessages({
 
   async function onPersonaMessage(event, quoteDeleted: boolean) {
     if (isDisposed()) return
+    const account = currentMedia()
+    if (!account || (account.selfId && event.self_id && account.selfId !== String(event.self_id))) return
     activity.selfId = String(event.self_id || activity.selfId || getConfig().botQQ)
     const cfg = getConfig()
     const msg = parseMessageEvent(event, activity.selfId, { faceName: faces.nameOf })
@@ -69,7 +69,7 @@ export function createIncomingMessages({
     msg.stickers = msg.stickers.filter(seg => accepted.has(seg))
     if (ignoredGroupMember(cfg, msg)) return
     const now = Date.now()
-    const wasCleared = () => isBeforeMemoryReset(msg.chatId, msg.userId, now)
+    const wasCleared = () => currentMedia() !== account || isBeforeMemoryReset(msg.chatId, msg.userId, now)
     const fromOwner = onCommand && isOwner(cfg, msg.userId)
     const ownerRevision = fromOwner ? ownerAuthorizationRevision(cfg) : ''
 
@@ -122,7 +122,7 @@ export function createIncomingMessages({
               })
               .catch(() => {})
         } else {
-          stickerPick = stickerStash.remember(msg.chatId, msg.stickers)
+          stickerPick = account.stickers.remember(msg.chatId, msg.stickers)
 
           if (collectMode === 'owner' && !isOwner(cfg, msg.userId)) stickerPick = 0
         }
@@ -140,7 +140,7 @@ export function createIncomingMessages({
       return
     }
     await refreshFriends()
-    if (isDisposed()) return
+    if (isDisposed() || wasCleared()) return
 
     const quotedBot = msg.kind === 'group' && msg.replyId ? !quoteDeleted && await repliedToBot(msg.replyId, msg) : false
     if (isDisposed() || wasCleared()) return
@@ -156,14 +156,14 @@ export function createIncomingMessages({
       })
 
     if (msg.files.length) {
-      const list = (recentFiles.get(msg.chatId) || []).concat(
+      const list = (account.files.get(msg.chatId) || []).concat(
         msg.files.map((f) => ({ ...f, userId: msg.userId, at: now })),
       )
-      recentFiles.set(msg.chatId, list.slice(-8))
+      account.files.set(msg.chatId, list.slice(-8))
     }
 
     if (msg.stickers.length || msg.images.length) {
-      recentMedia.remember(
+      account.images.remember(
         msg.chatId,
         msg.segments
           .filter((seg) => msg.images.includes(seg) || msg.stickers.includes(seg))
@@ -194,7 +194,7 @@ export function createIncomingMessages({
           },
           ownerStillCurrent,
         )
-        if (isDisposed() || (sensitiveCommand && !ownerStillCurrent())) return
+        if (isDisposed() || wasCleared() || (sensitiveCommand && !ownerStillCurrent())) return
         if (reply) {
           log.info(sensitiveCommand || `QQ 命令 ${msg.text.trim().slice(0, 30)} → ${reply.split('\n')[0]}`)
           await sendSegments(
@@ -211,7 +211,7 @@ export function createIncomingMessages({
         }
         if (sensitiveCommand || reply === '') return
       } catch (error) {
-        if (isDisposed() || (sensitiveCommand && !ownerStillCurrent())) return
+        if (isDisposed() || wasCleared() || (sensitiveCommand && !ownerStillCurrent())) return
         const detail = sensitiveCommand || error.message
         log.warn('执行命令出错：', detail)
         const text = '命令没执行成功，请先查看当前状态再决定是否重试；详细原因请主人查看本机日志。'
@@ -285,7 +285,7 @@ export function createIncomingMessages({
     if (hooks?.message) {
       try {
         if (await hooks.message({ ...msg, raw: event })) {
-          if (isDisposed()) return
+          if (isDisposed() || wasCleared()) return
           logIncoming()
           return
         }
@@ -301,7 +301,7 @@ export function createIncomingMessages({
     }
 
     void maybeReact(msg)
-    if (isDisposed()) return
+    if (isDisposed() || wasCleared()) return
 
     let mode = 'must'
     if (msg.kind === 'group') {
@@ -353,7 +353,7 @@ export function createIncomingMessages({
           log.warn('扩展模块改群聊决定出错：', error.message)
         }
       }
-      if (isDisposed()) return
+      if (isDisposed() || wasCleared()) return
       if (!decision.reply) {
         log.debug(`群 ${msg.groupId}：不回（${decision.reason}）`)
         logIncoming()
@@ -392,7 +392,7 @@ export function createIncomingMessages({
     }
 
     const quoted = msg.kind === 'private' && msg.replyId && !quoteDeleted ? await quotedInfo(msg.replyId, msg) : null
-    if (isDisposed()) return
+    if (isDisposed() || wasCleared()) return
 
     const content: ContentBlock[] =
       msg.kind === 'group'
@@ -408,7 +408,7 @@ export function createIncomingMessages({
             },
           ]
     const imgs = await imagesOf(msg)
-    if (isDisposed()) return
+    if (isDisposed() || wasCleared()) return
     if (imgs.length && groupEntry) groupEntry.mediaPending = true // 这些图已经进 pending.images，groupPrompt 不用再带
     if (imgs.length) {
       for (let i = 0; i < imgs.length; i++) {

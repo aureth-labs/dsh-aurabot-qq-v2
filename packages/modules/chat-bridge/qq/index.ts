@@ -29,7 +29,8 @@ import { createOutbound } from './delivery/outbound.ts'
 import { createDeliver } from './delivery/deliver.ts'
 import { createTurnState } from './turn/turn-state.ts'
 import { createStats } from './store/stats.ts'
-import { createStickerStash } from './format/sticker.ts'
+import { stickerHint } from './format/sticker.ts'
+import { createMediaScope, type AccountMedia } from './media/account.ts'
 import { createGroupEvents } from './events/group.ts'
 import { createNoticeHandler } from './events/notices.ts'
 import { createSubagent } from './subagent/index.ts'
@@ -100,7 +101,20 @@ export function createHub({
   const { refreshFriends, isFriend, membersOf, userName } = createDirectory(botOf, log)
   const privateSources = new Map()
 
-  const stickerStash = createStickerStash()
+  const localMedia = hooks?.media ? undefined : createMediaScope(() => String(getConfig().botQQ || ''), log)
+  let previousMedia: AccountMedia | undefined
+  function clearGroupMedia() {
+    for (const cache of Object.values(groups)) cache.clear()
+    sentIds.clear()
+  }
+  function currentMedia(): AccountMedia | undefined {
+    const next = disposed ? undefined : hooks?.media ? hooks.media() : localMedia.current()
+    if (next && next !== previousMedia) {
+      next.signal.addEventListener('abort', clearGroupMedia, { once: true })
+    }
+    previousMedia = next
+    return next
+  }
   const pauses = new Set<() => void>()
   const sendChain = new Map() // chatId → 串行发送链：中间段和最后一段排同一条队列，保证发出顺序和生成顺序一致
 
@@ -327,6 +341,7 @@ export function createHub({
   const { deliver, setOutboundEngineResolver } = deliverMod
 
   const media = createMessageMedia({
+    currentMedia,
     getConfig,
     log,
     onebot,
@@ -340,11 +355,8 @@ export function createHub({
     asr,
   })
   const {
-    recentMedia,
     recentMediaOf,
-    recentFiles,
     groupName,
-    quoteCache,
     referenceImage,
     repliedToBot,
     transcribe,
@@ -370,7 +382,7 @@ export function createHub({
     isDisposed,
     turnGuard,
     groups,
-    stickerStash,
+    stickerHint,
     stats,
     groupPrompt,
     lastSpeaker,
@@ -453,9 +465,7 @@ export function createHub({
     isCreating,
     noticesFor,
     saidElsewhere,
-    recentFiles,
-    recentMedia,
-    quoteCache,
+    currentMedia,
     groupBuf,
   })
   const background = createBackgroundTurns({
@@ -532,7 +542,7 @@ export function createHub({
       mood,
       memoryScore,
     },
-    media: { ...media, faces, stickers, stickerStash },
+    media: { ...media, faces, stickers, currentMedia },
     conversation: { stats, privateSources, logChat, refreshFriends, repliedToBot, sendSegments },
     enqueue,
   })
@@ -566,8 +576,10 @@ export function createHub({
     outputSources.clear()
     disposeSessions()
     privateSources.clear()
-    quoteCache.clear()
-    recentMedia.dispose()
+    previousMedia?.signal.removeEventListener('abort', clearGroupMedia)
+    localMedia?.dispose()
+    clearGroupMedia()
+    previousMedia = undefined
 
     closeLogs()
   }
@@ -577,7 +589,6 @@ export function createHub({
 
     cleanOutbound: (chatId, text) => cleanOutboundText(String(text ?? ''), cleaningFor(chatId)),
 
-    disposeRecentMedia: () => recentMedia.dispose(),
     remountAll,
     ensureDebugSession: background.ensureDebugSession,
     debugSay: background.debugSay,
@@ -585,8 +596,8 @@ export function createHub({
 
     recentMedia: recentMediaOf,
     referenceImage,
-    recentFiles: (chatId) => recentFiles.get(chatId) || [],
-    stickerOf: (chatId, index) => stickerStash.of(chatId, index),
+    recentFiles: (chatId) => currentMedia()?.files.get(chatId) || [],
+    stickerOf: (chatId, index) => currentMedia()?.stickers.of(chatId, index) ?? null,
     capture,
     simulateTurn,
     onMessage,

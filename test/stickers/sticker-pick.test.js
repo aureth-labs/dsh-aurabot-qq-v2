@@ -14,10 +14,12 @@ mkdirSync(dataDir, { recursive: true })
 const OWNER = '10000001'
 const BOT = '20000002'
 const LIB = join(dataDir, 'stickers', 'index.json')
+const { startMockOneBot } = await import('../helpers/mock-onebot.js')
+const gateway = await startMockOneBot({ selfId: BOT })
 writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
   enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
   allow: { private: [], groups: [] },
-  onebot: {},
+  onebot: { httpUrl: gateway.httpUrl, wsUrl: gateway.wsUrl, httpToken: gateway.token, wsToken: gateway.token },
   voice: { enabled: false }, merge: { enabled: false },
   stickers: { enabled: true, collect: true, collectMode: 'ask', caption: false, autoChance: 0, maxSide: 1600 },
 }))
@@ -46,7 +48,7 @@ const fake = createFakeDsh({
 const host = await import(`file:///${REPO}/packages/app/index.ts`)
 const api = host.apply(fake.ctx)
 await api.ready
-await new Promise((r) => setTimeout(r, 400))
+await api.modules.use('adapter-qq-onebot-v11').ready
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 const library = () => (existsSync(LIB) ? JSON.parse(readFileSync(LIB, 'utf8')).items || [] : [])
@@ -70,7 +72,7 @@ test('她挑：没让她收就不收，但会收到提示', async () => {
   assert.match(String(t.userText), /qq_collect_sticker/, '应该给她一句"喜欢就收"的提示')
   assert.equal(library().length, 0, '她没说要收，库里应该还是空的')
   // 表情暂存要落盘：只在内存里的话，DSH 一重启她就收不了了（真实踩过）
-  const stashFile = join(dataDir, 'sticker-stash.json')
+  const stashFile = join(dataDir, 'primary-media', BOT, 'sticker-stash.json')
   assert.ok(existsSync(stashFile), 'sticker-stash.json 应该写出来')
   const stash = JSON.parse(readFileSync(stashFile, 'utf8'))
   assert.ok(stash['private:10000001']?.segs?.length, '暂存里应该有这个聊天的表情')
@@ -150,4 +152,4 @@ test('普通图片段只在明确指定时收藏，宽图仍会被拒绝', async
   assert.equal(library().length, before + 1)
 })
 
-after(() => fake.dispose())
+after(async () => { fake.dispose(); await gateway.close() })

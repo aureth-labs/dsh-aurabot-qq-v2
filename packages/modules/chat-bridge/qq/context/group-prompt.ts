@@ -5,6 +5,7 @@ import { identityNote } from '../../history.ts'
 import type { GroupPromptResult } from './context.ts'
 
 export interface GroupPromptDeps {
+  currentMedia?: () => object | undefined
   groupBuf: Map<string, any[]>
   groupRefs: Map<string, Record<string, any>>
   groupEngagedRun: Map<string, number>
@@ -21,7 +22,10 @@ export function createGroupPromptBuilder (deps: GroupPromptDeps) {
   const { groupBuf, groupRefs, groupEngagedRun } = deps
 
   async function groupPrompt(chat, mode, imageRoom = 0, refOffset = 0): Promise<GroupPromptResult> {
+    const account = deps.currentMedia?.()
+    const check = () => { if (deps.currentMedia && (!account || deps.currentMedia() !== account)) throw Error('群聊登录账号已改变') }
     const name = await deps.groupName(chat.groupId)
+    check()
     const buf: any[] = groupBuf.get(chat.groupId) || []
     // 时间戳可能同一毫秒：直接取上一轮之后的消息，避免紧接着到达的消息丢失。
     const fresh = buf.filter((x) => !x.fed).slice(-20)
@@ -29,11 +33,13 @@ export function createGroupPromptBuilder (deps: GroupPromptDeps) {
     // 这一段里还没转完的群语音：等它一下，免得交给她时那条只有空正文（#197）
     const pendingVoices = fresh.filter((x) => x.voicePromise && !x.voiceText).map((x) => x.voicePromise)
     if (pendingVoices.length) await Promise.all(pendingVoices)
+    check()
     for (const x of buf) x.fed = true
     // 引用内容只在这一段真要交给她时才取（缓存在 quoteCache 里，取失败也会记一笔）
     const need = fresh.filter((x) => x.replyId && !('quote' in x))
     if (need.length) {
       const infos = await Promise.all(need.map((x) => deps.quotedInfo(x.replyId, chat)))
+      check()
       need.forEach((x, i) => { x.quote = infos[i] })
     }
     const atLabel = (x) => x.at ? '@了你' : (x.atTargets?.length ? '@了' + x.atTargets.map((t) => `${t.name}(${t.qq})`).join('、') : '')
@@ -61,13 +67,16 @@ export function createGroupPromptBuilder (deps: GroupPromptDeps) {
     const quotedImages = []
     if (imageRoom > 0) {
       for (const x of fresh) {
+        check()
         if (!x.quote?.ok || (!x.quote.images.length && !x.quote.stickers.length)) continue
         const take = Math.min(2, imageRoom - quotedImages.length)
         if (take <= 0) break
         quotedImages.push(...await deps.quoteImages(x.quote, take))
       }
     }
+    check()
     const extraImages = await deps.freshGroupImages(fresh, Math.max(0, imageRoom - quotedImages.length), chat.chatId)
+    check()
     const archiveMessages: any[] = fresh.filter(x => x.text).map(x => ({ role: 'user', text: x.text,
       speakerId: String(x.uid || ''), at: x.t, id: x.mid && x.mid !== '0' ? 'qq:' + chat.groupId + ':' + x.mid : randomUUID() }))
     return { text, query, speakers, autoReply: pickAutoReply(fresh), directRequester: pickDirectRequester(fresh), images: [...quotedImages, ...extraImages], archiveMessages, freshCount: fresh.length }

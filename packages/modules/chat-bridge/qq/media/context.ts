@@ -1,4 +1,3 @@
-import { createRecentMedia } from '../../../../../src/chat/media/recent.ts'
 import { createImageReader } from './images.ts'
 import { createQuoteResolver } from '../format/quote.ts'
 import { segmentBytes } from '../../../../../src/core/net/index.ts'
@@ -7,6 +6,7 @@ import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from '../context/group-media.t
 import { createGroupPromptBuilder } from '../context/group-prompt.ts'
 
 export function createMessageMedia({
+  currentMedia,
   getConfig,
   log,
   onebot,
@@ -23,14 +23,10 @@ export function createMessageMedia({
   const { groupNames, groupBuf, groupRefs, groupEngagedRun } = groups
   const { pending } = turnGuard
 
-  const recentMedia = createRecentMedia({ log })
-
   const recentMediaOf = (chatId, userId?) =>
-    recentMedia.get(chatId, userId).filter((item) => !isBeforeMemoryReset(chatId, item.userId, item.at))
+    currentMedia()?.images.get(chatId, userId).filter((item) => !isBeforeMemoryReset(chatId, item.userId, item.at)) ?? []
 
-  const { imagesOf, fitForModel, animatedNote } = createImageReader({ onebot, getConfig, log, recentMediaOf })
-
-  const recentFiles = new Map()
+  const { imagesOf, fitForModel, animatedNote } = createImageReader({ onebot, getConfig, log, recentMediaOf, currentMedia })
 
   async function groupName(gid) {
     if (groupNames.has(gid)) return groupNames.get(gid)
@@ -42,6 +38,7 @@ export function createMessageMedia({
   }
 
   const quotes = createQuoteResolver({
+    currentMedia,
     onebot,
     log,
     getConfig,
@@ -51,10 +48,11 @@ export function createMessageMedia({
     imagesOf,
   })
 
-  const { cache: quoteCache, info: quotedInfo, inline: quoteInline, images: quoteImages } = quotes
+  const { info: quotedInfo, inline: quoteInline, images: quoteImages } = quotes
 
   async function referenceImage(chat, source = 'last') {
     assertActive()
+    const sourceAccount = currentMedia()
     let seg
     if (String(source).startsWith('msg:')) {
       const match = /^msg:(-?[1-9]\d*):([1-9]\d*)$/.exec(source)
@@ -68,7 +66,7 @@ export function createMessageMedia({
       seg = item.seg
     } else if (source === 'quote') {
       const now = Date.now()
-      const q = [...quoteCache.values()].findLast(
+      const q = [...(sourceAccount?.quotes.values() || [])].findLast(
         (item) => item.chatId === chat.chatId && item.ok && item.at <= now && now - item.at < 30 * 60_000,
       )
       seg = q?.images.at(-1) || q?.stickers.at(-1)
@@ -83,7 +81,9 @@ export function createMessageMedia({
       )
     const limits = mediaLimits(getConfig().media)
     if (!limits.receiveImages) throw Error('已关闭接收图片')
-    return segmentBytes(seg, onebot, { maxBytes: limits.maxImageMB * 1048576, allowLocal: false })
+    const bytes = await segmentBytes(seg, onebot, { maxBytes: limits.maxImageMB * 1048576, allowLocal: false })
+    if (!sourceAccount || currentMedia() !== sourceAccount) throw Error('读取图片期间登录账号已改变')
+    return bytes
   }
 
   async function repliedToBot(replyId, msg) {
@@ -158,6 +158,7 @@ export function createMessageMedia({
   }
 
   const { groupPrompt } = createGroupPromptBuilder({
+    currentMedia,
     groupBuf,
     groupRefs,
     groupEngagedRun,
@@ -171,12 +172,9 @@ export function createMessageMedia({
   })
 
   return {
-    recentMedia,
     recentMediaOf,
-    recentFiles,
     groupName,
     quotes,
-    quoteCache,
     referenceImage,
     repliedToBot,
     transcribe,

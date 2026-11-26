@@ -3,10 +3,9 @@ import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/messag
 import { QUOTE_FORWARD_MAX_CHARS } from '../context/context.ts'
 
 /** 引用消息解析：QQ 的引用段只有 message_id，正文要再取一次；取不到也留一笔，让她能如实说没看到。 */
-export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, historyVisible, imagesOf }) {
+export function createQuoteResolver({ currentMedia, onebot, log, getConfig, selfId, faceName, historyVisible, imagesOf }) {
   // QQ 的引用段只有 message_id，正文要用 get_msg 再取一次。取到后把「谁、说了什么、几张图」带上；
   // 取不到也记一笔，让她知道「这条引用没读到」，可以如实说没看到（别装作看见了）。
-  const quoteCache = new Map()
   const QUOTE_CACHE_MAX = 200
   /** 表情包/图片段里有没有能直接下载的地址（有些 get_msg 只回了空 url + 裸文件名）。 */
   const quoteSegUsable = (seg) => {
@@ -19,7 +18,7 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
    * get_msg 对「她发出的表情包/图片」可能只回空 url + 裸文件名（下载不了）。
    * 这时退回消息历史（get_friend_msg_history / get_group_msg_history），里面带可用 url。
    */
-  async function quoteFromHistory(id, ctx) {
+  async function quoteFromHistory(id, ctx, current) {
     if (!ctx || (!ctx.userId && !ctx.groupId)) return null
     const group = Boolean(ctx.groupId)
     const action = group ? 'get_group_msg_history' : 'get_friend_msg_history'
@@ -30,6 +29,7 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
       ? [{ ...base, message_id: anchor, count: 5, reverse_order: false }, { ...base, count: 30 }]
       : [{ ...base, count: 30 }]
     for (const params of attempts) {
+      if (!current()) return null
       try {
         const r = await onebot.call(action, params, { timeoutMs: 8000, retries: 0 })
         const hit = (r?.messages || []).find((m) => String(m?.message_id ?? '') === id || String(m?.real_id ?? '') === id)
@@ -42,7 +42,8 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
   }
   async function quotedInfo(replyId, ctx = null) {
     const id = String(replyId || '')
-    if (!id) return null
+    const quoteCache = currentMedia()?.quotes
+    if (!id || !quoteCache) return null
     const chatId = ctx?.chatId || (ctx?.groupId ? `group:${ctx.groupId}` : ctx?.userId ? `private:${ctx.userId}` : '')
     if (!chatId || ctx?.quoteDeleted) return null
     const key = `${chatId}|${id}`
@@ -54,13 +55,15 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
       quoteCache.set(key, cached)
       return cached
     }
+    const current = () => currentMedia()?.quotes === quoteCache
     const out = { ok: false, who: '', uid: '', text: '', images: [], stickers: [], records: 0, isBot: false, at: 0, chatId, time: 0 }
     try {
       let m = await onebot.call('get_msg', { message_id: Number(id) || id }, { timeoutMs: 5000, retries: 0 })
+      if (!current()) return null
       const source = messageSource(m, String(selfId() || getConfig().botQQ))
       if (source.type + ':' + source.id !== chatId || String(m?.message_id ?? '') !== id) {
-        m = await quoteFromHistory(id, ctx)
-        if (!m) return null
+        m = await quoteFromHistory(id, ctx, current)
+        if (!m || !current()) return null
       }
       // 被引用那条消息的发生时间（QQ 给的是秒）。引用里要标出来，否则模型拿「今晚/昨天」
       // 去对历史引用时会按当前时间算错（2026-11-04 实测：11-02 的话被当成「今晚」）。
@@ -74,7 +77,8 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
       const content = await project(m?.message ?? m?.raw_message ?? '')
       let parsed = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender, message: content }, selfId(), { faceName })
       if (quoteNeedsHistory(parsed)) {
-        const hit = await quoteFromHistory(id, ctx)
+        const hit = await quoteFromHistory(id, ctx, current)
+        if (!current()) return null
         if (hit) {
           out.time ||= Number(hit?.time) || 0
           const again = parseMessageEvent({ message_type: kind, group_id: ctx?.groupId, user_id: out.uid, sender: hit.sender || sender, message: await project(hit.message ?? '') }, selfId(), { faceName })
@@ -92,7 +96,7 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
     } catch (error) {
       log.debug(`引用消息没拉到（${id}）：`, error.message)
     }
-    if (quoteCache.get(key)?.deleted || !historyVisible(chatId, out.uid, out.time)) return null
+    if (currentMedia()?.quotes !== quoteCache || quoteCache.get(key)?.deleted || !historyVisible(chatId, out.uid, out.time)) return null
     if (quoteCache.size >= QUOTE_CACHE_MAX) quoteCache.delete(quoteCache.keys().next().value)
     quoteCache.set(key, out)
     return out
@@ -139,8 +143,10 @@ export function createQuoteResolver({ onebot, log, getConfig, selfId, faceName, 
   }
 
   function recall(chatId: string, messageId: string) {
+    const quoteCache = currentMedia()?.quotes
+    if (!quoteCache) return
     if (quoteCache.size >= QUOTE_CACHE_MAX) quoteCache.delete(quoteCache.keys().next().value)
     quoteCache.set(chatId + '|' + messageId, { deleted: true })
   }
-  return { recall, cache: quoteCache, info: quotedInfo, who: quoteWho, body: quoteBody, when: quoteWhen, inline: quoteInline, images: quoteImages }
+  return { recall, info: quotedInfo, who: quoteWho, body: quoteBody, when: quoteWhen, inline: quoteInline, images: quoteImages }
 }

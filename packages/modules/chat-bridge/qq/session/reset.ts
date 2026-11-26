@@ -19,9 +19,7 @@ export function createSessionReset({
   isCreating,
   noticesFor,
   saidElsewhere,
-  recentFiles,
-  recentMedia,
-  quoteCache,
+  currentMedia,
   groupBuf,
 }) {
   const { map, saveMap, memoryCutoffs }: ReturnType<typeof createSessionStore> = store
@@ -84,9 +82,7 @@ export function createSessionReset({
     busySessions.delete(chatId)
     noticesFor.delete(chatId)
     saidElsewhere.delete(chatId)
-    recentFiles.delete(chatId)
-    recentMedia.clear(chatId)
-    for (const key of quoteCache.keys()) if (key.startsWith(chatId + '|')) quoteCache.delete(key)
+    currentMedia()?.clear(chatId)
     for (const [groupId, entries] of groupBuf) {
       groupBuf.set(
         groupId,

@@ -1,3 +1,4 @@
+import { createMediaScope } from '../modules/chat-bridge/qq/media/account.ts'
 import { fileURLToPath } from 'node:url'
 import * as adapter from '../adapters/qq/onebot-v11/src/plugin.ts'
 import type { createOneBotConnection } from '../adapters/qq/onebot-v11/src/connection.ts'
@@ -24,6 +25,13 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
       if (!current.enabled) return
       const overrides = current.ext?.[defaultOneBotId] ?? {}
       const config = { ...current.onebot, selfId: current.botQQ, ...overrides } as adapter.Config
+      const media = createMediaScope(() => {
+        const connection = ctx.services.get<Connection>('onebot/' + ctx.instanceId)
+        return connection?.verified ? connection.login.uin : null
+      }, ctx.logger)
+      ctx.provide('primary-chat-media', media)
+      ctx.effect(() => media.dispose())
+      ctx.on('onebot/connection', (id, state) => { if (id === ctx.instanceId && state !== 'connected') media.reset() })
       return adapter.apply(ctx, config)
     },
   }

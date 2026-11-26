@@ -106,6 +106,7 @@ export function createPrimaryChat({
     availableModels: models,
     toolsGeneration: () => (modules() ? modules().generation?.() || 0 : 0),
     hooks: {
+      media: () => modules()?.services.get('primary-chat-media')?.current(),
       message: (msg) => modules().claim('onebot/message', msg),
       reply: (text, info) => modules().filter('reply', text, info),
       secrets: () => [],

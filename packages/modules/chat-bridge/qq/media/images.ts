@@ -12,10 +12,11 @@ export interface CreateImageReaderOptions {
   onebot: OneBotGateway
   getConfig: () => Record<string, any>
   log: { debug(message: string, error?: unknown): void }
+  currentMedia: () => object | undefined
   recentMediaOf: (chatId: string, userId?: string) => Array<Record<string, any>>
 }
 
-export function createImageReader({ onebot, getConfig, log, recentMediaOf }: CreateImageReaderOptions) {  // 动图交给模型时通常只看到一帧，这里如实告诉她，免得她把动图说成静态图。
+export function createImageReader({ onebot, getConfig, log, recentMediaOf, currentMedia }: CreateImageReaderOptions) {  // 动图交给模型时通常只看到一帧，这里如实告诉她，免得她把动图说成静态图。
   const animatedNote = (imgs) => {
     const n = imgs.filter((img) => img.frames > 1).length
     return n ? `（其中 ${n} 张是动图，你看到的可能只是其中一帧，别说它是静态的，也别编没看到的动作）` : ''
@@ -31,10 +32,12 @@ export function createImageReader({ onebot, getConfig, log, recentMediaOf }: Cre
   }
 
   async function imagesOf(msg) {
+    const account = currentMedia()
     const out = []
     const limits = mediaLimits(getConfig().media)
     if (!limits.receiveImages) return out
     for (const seg of [...msg.stickers, ...msg.images].slice(0, limits.maxImages)) {
+      if (!account || currentMedia() !== account) return []
       try {
         const raw = await segmentBytes(seg, onebot, { maxBytes: limits.maxImageMB * 1048576 })
         const frames = gifFrames(raw)
@@ -47,7 +50,7 @@ export function createImageReader({ onebot, getConfig, log, recentMediaOf }: Cre
         log.debug('图片下载失败：', error.message)
       }
     }
-    return out
+    return currentMedia() === account ? out : []
   }
 
   return { imagesOf, fitForModel, animatedNote }

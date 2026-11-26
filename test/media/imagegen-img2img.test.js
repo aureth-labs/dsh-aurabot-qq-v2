@@ -9,7 +9,7 @@ import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { createLocal } from '../../src/local/index.ts'
 import { savePainting } from '../../src/features/media/generate/paintings.ts'
-import imagegenModule from '../../packages/modules/imagegen/index.ts'
+import { apply as installImageGen } from '../../packages/modules/imagegen/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])
@@ -231,7 +231,8 @@ test('quote 复用 hub 引用解析缓存，按聊天隔离，支持私聊并保
     onebot: { call: async (action) => {
       assert.equal(action, 'get_msg')
       gets++
-      return { sender: { user_id: OWNER }, message: [{ type: 'image', data: { file: 'base64://' + (gets === 2 ? OTHER : PNG).toString('base64') } }] }
+      return { message_id: '42', message_type: gets < 3 ? 'group' : 'private', group_id: gets === 1 ? '123' : gets === 2 ? '456' : undefined,
+        user_id: OWNER, sender: { user_id: OWNER }, message: [{ type: 'image', data: { file: 'base64://' + (gets === 2 ? OTHER : PNG).toString('base64') } }] }
     } },
   })
   t.after(() => hub.dispose())
@@ -265,9 +266,9 @@ function drawTool(cfg, overrides = {}) {
     canSeeImages: async () => false,
     ...overrides,
   }
-  imagegenModule.setup({ config: () => cfg, log, dsh: {}, lazy: () => ({ addEvent: (event) => events.push(event) }),
-    route() {}, on: (event, fn) => { if (event === 'prompt') prompts.push(fn) }, tool: (fn) => { build = fn },
-    core: { hub, local: { active: () => true, call: async (slot, args) => { generated.push({ slot, args }); return OTHER } } },
+  installImageGen({ root: { config: cfg, read: () => cfg }, logger: log, harness: {}, effect() {}, provide() {}, prompt() {}, lazy: () => ({ addEvent: (event) => events.push(event) }),
+    server: { get() {}, post() {} }, on: (event, fn) => { if (event === 'prompt') prompts.push(fn) }, tool: (fn) => { build = fn },
+    host: { hub, local: { active: () => true, call: async (slot, args) => { generated.push({ slot, args }); return OTHER } } },
   })
   return { tool: build({ chat: privateChat, sessionId: 'img-test' }), generated, sent, events, references, prompt: (content, chat) => prompts.reduce((out, fn) => fn(out, { chat, sessionId: 'img-test' }), content) }
 }
@@ -427,7 +428,7 @@ test('msg 随原缓存恢复；旧格式缓存仍支持 last，不凭空补编�
   assert.deepEqual(await resolveDrawImage('msg:401:1', { hub: restored, chat: groupChat }), PNG)
   assert.deepEqual(await resolveDrawImage('msg:401:2', { hub: restored, chat: groupChat }), OTHER)
   restored.dispose()
-  const file = join(process.env.AURABOT_DATA_DIR, 'recent-media.json')
+  const file = join(process.env.AURABOT_DATA_DIR, 'primary-media', BOT, 'recent-media.json')
   const legacy = JSON.parse(readFileSync(file, 'utf8'))
   for (const item of legacy[groupChat.chatId]) { delete item.messageId; delete item.imageIndex }
   writeFileSync(file, JSON.stringify(legacy))

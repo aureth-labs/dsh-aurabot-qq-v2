@@ -9,7 +9,7 @@ export function createTurnQueue({
   isDisposed,
   turnGuard,
   groups,
-  stickerStash,
+  stickerHint,
   stats,
   groupPrompt,
   lastSpeaker,
@@ -103,7 +103,7 @@ export function createTurnQueue({
       return
     }
 
-    const hint = p.stickerPick ? '\n\n' + stickerStash.hint(p.stickerPick) : ''
+    const hint = p.stickerPick ? '\n\n' + stickerHint(p.stickerPick) : ''
 
     if (isBusy(chatId) && p.chat.kind === 'private' && running.has(chatId)) {
       pending.delete(chatId)
