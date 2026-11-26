@@ -610,6 +610,9 @@ export function apply(ctx) {
       const commands = mods.commands()
       const cmd = parseCommand(msg.text, commands)
       if (!cmd) return null
+      // 框架自己一条指令都不预设：内置命令表住在「主人命令」模块里，关了就当普通聊天；
+      // 插件用 api.command() 注册的命令不受影响。
+      if (!cmd.ext && !use('commands')) return null
       if (!ownerStillCurrent()) {
         const key = delegatedCommandKey(cmd)
         if (!canUseDelegatedCommand(getConfig(), msg, key)) return '你没有使用这个命令的权限，请联系主人设置。'

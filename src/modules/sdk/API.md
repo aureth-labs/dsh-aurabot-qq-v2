@@ -381,6 +381,8 @@ return function Panel({ settings, save, toast }) {
 | `speakup` | 主动搭话 | `fire(原因)` `state()` |
 | `bili` | B 站 | `watch(链接)` `comment(链接, 文字)` `run()` `checkReplies()` `account()` `state()` |
 | `song` | 翻唱 | `request({ song, pitch, chatId })` `search(关键词)` `status()` `install()` |
+| `commands` | 主人命令 | 关掉它框架不认任何内置指令（`/off`、`/model`、`/sing`……），消息全按普通聊天进管线；插件 `api.command()` 注册的命令不受影响 |
+| `sandbox` | 聊天沙盒 | `server`（本地 Satori 服务端）`ready`（启动 Promise） |
 
 人物记忆统一使用 `features/memory-store.js` 的 `load/save`，不另建名单或记忆文件。`memory.deletePerson(qq, { keepNoMemory?: boolean })` 删除画像、关于该人的事实及跟进、相关事实引用、涉及他的关系、个人梗概、相处经验、说话习惯、短期摘要和标签，并用 `hub.forgetChatLog(qq)` 把旧流水标为已忘；只提到他名字的别人的事实保留。主人不能删除。`forgetChatLog(qq, query?)` 省略 query 表示整个人，传关键词仍是原来的局部遗忘。
 

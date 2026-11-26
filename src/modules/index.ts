@@ -20,5 +20,6 @@ import contacts from './contacts/index.ts'
 import video from './video/index.ts'
 import imageRecovery from './image-recovery/index.ts'
 import sandbox from './sandbox/index.ts'
+import commands from './commands/index.ts'
 
-export const BUILTINS = [stickers, voice, mood, memory, qqTools, qqApi, imagegen, diary, qzoneSocial, purpose, autotelic, bili, song, profile, contacts, video, imageRecovery, sandbox]
+export const BUILTINS = [stickers, voice, mood, memory, qqTools, qqApi, imagegen, diary, qzoneSocial, purpose, autotelic, bili, song, profile, contacts, video, imageRecovery, commands, sandbox]
