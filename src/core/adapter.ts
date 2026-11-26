@@ -11,6 +11,13 @@ export type { AdapterHandle, AdapterInfo, AdapterRuntime, AdapterSpec } from '..
 
 export interface StartAdapterOptions {
   /**
+   * 已经解析好的平台名。
+   *
+   * 适配器注册表会先跑一遍 `resolvePlatform(config)`（Satori 的真实平台写在配置里），
+   * 这里必须接住那个结果，否则再按 `spec.platform` 算一次就会和 `runtime.platform` 对不上。
+   */
+  platform?: string
+  /**
    * 宿主统一包装 bot 的发送方法。
    *
    * 试运行闸门、元素降级、`<voice>` 合成这些是**所有**平台都要的，
@@ -31,7 +38,9 @@ export async function startAdapter(
   options: StartAdapterOptions = {},
 ): Promise<AdapterHandle> {
   if (!spec || typeof spec.connect !== 'function') throw new Error('适配器要有 connect(config, runtime)')
-  const platform = String(spec.platform || runtime.platform || '').trim()
+  const platform = String(
+    options.platform || spec.resolvePlatform?.(config) || spec.platform || runtime.platform || '',
+  ).trim()
   if (!platform) throw new Error('适配器要声明 platform')
 
   const connected = await spec.connect(config, { ...runtime, platform })

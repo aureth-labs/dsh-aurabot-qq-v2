@@ -76,6 +76,7 @@ export class AdapterRegistry {
       },
     }
     const handle = await startAdapter(this.deps.bots, spec, config, runtime, {
+      platform,
       wrapBot: this.deps.wrapBot,
     })
     bound = handle.bot
