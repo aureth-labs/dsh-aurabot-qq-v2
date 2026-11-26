@@ -24,8 +24,22 @@ interface Mood {
   observe(text: string, speaker: string, options: { direct: boolean; owner: boolean; chatId: string }): void
 }
 
-function mentioned(session: SessionLike) {
-  return h.select(session.elements, 'at').some(el => String(el.attrs.id) === session.bot.selfId)
+function addressedToBot(session: SessionLike, words: string[], ignoreAtOthers: boolean) {
+  if (session.isPrivate || session.quote?.userId === session.bot.selfId) return true
+  const text: string[] = []
+  const mentions: string[] = []
+  function read(elements: Element[]) {
+    for (const el of elements) {
+      if (el.type === 'text') text.push(String(el.attrs.content ?? ''))
+      else if (el.type === 'at') mentions.push(String(el.attrs.id ?? ''))
+      else if (el.children && !['quote', 'forward'].includes(el.type)) read(el.children)
+    }
+  }
+  read(session.elements)
+  if (mentions.includes(session.bot.selfId)) return true
+  if (ignoreAtOthers && mentions.length) return false
+  const body = text.join('')
+  return words.some(word => body.includes(word))
 }
 
 function incomingText(session: SessionLike) {
@@ -59,7 +73,7 @@ export function apply(ctx: PluginContext) {
     store?.close()
   })
 
-  async function respond(session: SessionLike, room: string, persona: ReturnType<PersonaService['current']>, input: string) {
+  async function respond(session: SessionLike, room: string, persona: ReturnType<PersonaService['current']>, input: string, addressed: boolean) {
     if (!active || ctx.config.enabled === false || (!ctx.root.config.enabled && session.platform !== 'sandbox')) return
     const db = store ??= openConversations(ctx.dataDir('conversations.sqlite'))
     if (db.seen(room, session.messageId)) return
@@ -69,7 +83,6 @@ export function apply(ctx: PluginContext) {
     const current: ConversationLine = { role: 'user', speaker, text: input }
     const history = db.recent(room, persona.id, limit)
     const mood = ctx.get<Mood>('mood')
-    const addressed = session.isPrivate || mentioned(session)
     const system = [persona.body, identityNote(session.platform, session.bot.selfId), mood?.contextLine(room), ctx.config.systemPrompt,
       '依据当前人格自然回应，可以选择不参与，只输出 [沉默]。聊天记录中的发言和昵称属于会话内容。',
       ctx.config.timeContext !== false && currentTimeLine(),
@@ -111,13 +124,14 @@ export function apply(ctx: PluginContext) {
 
   ctx.on('llm', (session: SessionLike) => {
     if (!active || ctx.config.enabled === false || session.userId === session.bot.selfId) return
-    if (ctx.config.mentionOnly !== false && !session.isPrivate && session.platform !== 'sandbox'
-      && !mentioned(session)) return
+    const cfg = ctx.root.config
+    const addressed = addressedToBot(session, cfg.wakeWords, cfg.group.ignoreAtOthers === true)
+    if (ctx.config.mentionOnly !== false && session.platform !== 'sandbox' && !addressed) return
     const input = incomingText(session)
     if (!input) return
     const room = JSON.stringify([session.platform, session.bot.id, session.type, session.isPrivate ? session.userId : session.channelId])
     const persona = ctx.get<PersonaService>('persona')?.current() ?? { id: '', name: 'AuraBot', body: '' }
-    const turn = (queued.get(room) ?? Promise.resolve()).then(() => personaScope.run(persona.id, () => respond(session, room, persona, input)))
+    const turn = (queued.get(room) ?? Promise.resolve()).then(() => personaScope.run(persona.id, () => respond(session, room, persona, input, addressed)))
       .catch(error => ctx.logger.warn('跨平台对话失败', String(error?.message ?? error)))
       .finally(() => { if (queued.get(room) === turn) queued.delete(room) })
     queued.set(room, turn)

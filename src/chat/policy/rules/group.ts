@@ -1,7 +1,8 @@
 // 群聊回复策略：什么时候必回、什么时候插话、什么时候闭嘴。纯函数，便于测试。
 
+import { GLOBAL_CONFIG_DEFAULTS } from '../../../core/config/global.ts'
+
 export const DEFAULT_GROUP_POLICY = {
-  wakeWords: ['大肥鱼', '肥鱼'],
   proactiveEnabled: true, // 无人叫时主动加入话题
   engagedEnabled: null, // null 保留旧设置：插话概率 > 0 时才允许窗口内接话
   interjectChance: 0.15, // 普通消息的基础插话概率（话题越相关越高，最高 80%）
@@ -96,7 +97,7 @@ export function decideGroupReply(p) {
   const burst = said.filter((t) => p.now - t < (pol.burstWindowSec ?? 120) * 1000).length
   // @ 了别人（没 @ 她）：不算在叫她，但仍走正常插话判断
   const atOther = !p.mentioned && p.atOthers === true
-  const hit = atOther ? undefined : (pol.wakeWords || []).find((w) => w && text.includes(w))
+  const hit = atOther ? undefined : (pol.wakeWords ?? GLOBAL_CONFIG_DEFAULTS.wakeWords).find((w) => w && text.includes(w))
   // 她刚说完，别人追一句「人呢」「不说话了」也算在问她。要她这几分钟确实说过话（burst > 0），
   // 且这一条之前最近一条就是她——群里 A/B 正常聊天、B 回 A 一句「人呢」时别抢答
   const shortAsk = Boolean(burst > 0 && p.lastIsBot && !atOther && !p.atOthersAny && String(text).trim().length <= 12 &&

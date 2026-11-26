@@ -5,6 +5,7 @@ export interface GlobalConfig {
   commandPrefixes: Array<string | null>
   /** 指令消费消息后是否继续走中间件（默认 false，和 Koishi 一致）。 */
   middlewareAfterCommand: boolean
+  wakeWords: string[]
   owners: Owner[]
   ownerQQ: string
   ownerIds: string[]
@@ -16,6 +17,7 @@ export interface GlobalConfig {
 export const GLOBAL_CONFIG_DEFAULTS: GlobalConfig = {
   commandPrefixes: [null, '/'],
   middlewareAfterCommand: false,
+  wakeWords: ['大肥鱼', '肥鱼'],
   owners: [],
   ownerQQ: '',
   ownerIds: [],

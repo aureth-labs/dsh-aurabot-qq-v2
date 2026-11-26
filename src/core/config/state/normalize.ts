@@ -157,7 +157,11 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   const g = c.group
   g.privateCommandsEnabled = bool(g.privateCommandsEnabled, true)
   g.moduleOnlyGroups = qqList(g.moduleOnlyGroups)
-  g.wakeWords = (Array.isArray(g.wakeWords) ? g.wakeWords : String(g.wakeWords || '').split(/[\s,，]+/)).map((s) => String(s).trim()).filter(Boolean)
+  const legacyGroup = isObj(raw?.group) ? raw.group : {}
+  const words = raw?.wakeWords ?? legacyGroup.wakeWords ?? DEFAULTS.wakeWords
+  c.wakeWords = [...new Set((Array.isArray(words) ? words : String(words).split(/[\s,，]+/))
+    .filter((word): word is string => typeof word === 'string').map(word => word.trim()).filter(Boolean))]
+  delete (g as RawConfig).wakeWords
   g.proactiveEnabled = bool(g.proactiveEnabled, true)
   g.engagedEnabled = typeof g.engagedEnabled === 'boolean' ? g.engagedEnabled : null
   g.interjectChance = num(g.interjectChance, 0.15, 0, 1)

@@ -320,7 +320,7 @@ export function createIncomingMessages({
 
     let mode = 'must'
     if (msg.kind === 'group') {
-      const pol0 = policyFor(cfg.group, cfg.group.overrides, msg.groupId)
+      const pol0 = policyFor({ ...cfg.group, wakeWords: cfg.wakeWords }, cfg.group.overrides, msg.groupId)
 
       const pol = { ...pol0, interjectChance: Math.min(1, pol0.interjectChance * mood().chatty) }
 

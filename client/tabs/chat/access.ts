@@ -189,6 +189,7 @@ function GlobalAccess({ st, draft, setDraft, toast }) {
   return h('div', { className: 'ab-grid' },
     h(Card, { title: '主人', desc: '主人的 QQ 号。群管、点歌、电脑上的操作只听主人的。' },
       h(Row, { label: '主人 QQ 号' }, f.text('ownerQQ')),
+      h(Row, { label: '群聊唤醒词', hint: '每行一个称呼，所有平台共用。留空可关闭按称呼唤醒。' }, f.list('wakeWords', { placeholder: '大肥鱼\n肥鱼' })),
       h(Row, { label: 'ta怎么称呼你' }, f.text('ownerName', { placeholder: '主人' })),
       h(Row, { label: '主人私聊的权限', hint: '群聊永远没有电脑操作权限，这里管不到群。' },
         h('div', { style: { width: '100%' } },
@@ -507,7 +508,6 @@ function Group({ draft, setDraft, st, go }) {
     // 组行 ① 被叫到时怎么回：6 项流式排一行
     h(Card, { title: '被叫到时怎么回', desc: '群模式为「允许 AI 聊天」时，被 @、引用回复或叫名字会触发回复，仍受总开关、暂停和次数限制。' },
       h('div', { className: 'ab-grp-row' },
-        h(Row, { label: '用哪些称呼叫它', hint: '一行一个；群里提到这些称呼时，按被叫到的规则回应。' }, f.list('group.wakeWords', { placeholder: '大肥鱼\n肥鱼' })),
         h(Row, { label: '@ 了别人不算叫ta', hint: '有人 @ 别人时顺口提到ta的名字，不算在叫ta；ta还是可以按平时的频率插话。默认关' }, f.sw('group.ignoreAtOthers')),
         h(Row, { label: '每小时必回上限', hint: '一个群里一小时内因被 @、引用、叫名字而必回的次数最多这么多，超过就不回（主人说话不受限，也不计入）；小时一过自动恢复。0 = 不限' }, f.range('group.mustMaxPerHour', 0, 100, 5, (v) => (v === 0 ? '不限' : v + ' 次'))),
         h(Row, { label: '免打扰', hint: '这段时间内只有主人的消息能进；群里其他人 @、引用、唤醒词、追问都不起轮次。清空 = 不启用' },
