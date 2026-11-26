@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 import { readClientSource } from '../helpers/client-source.js'
 
 const client = readClientSource()
-const config = ['index.ts', 'defaults.ts'].map((f) => readFileSync(new URL('../../src/core/config/' + f, import.meta.url), 'utf8')).join('\n')
+const config = ['defaults.ts', 'normalize.ts'].map((f) => readFileSync(new URL('../../src/core/config/' + f, import.meta.url), 'utf8')).join('\n')
 
 test('浏览器页接上了页签、导航、组件、路由和脏检查', () => {
   assert.ok(client.includes("{ id: 'browser', label: '浏览器' }"), '缺浏览器页签')
