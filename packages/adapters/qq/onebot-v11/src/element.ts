@@ -65,7 +65,8 @@ export function toOneBot(source: ElementSource): OneBotSegment[] {
     if (element.type === 'text') return { type: 'text', data: { text: String(element.attrs.content ?? '') } }
     if (element.type === 'at') return { type: 'at', data: { qq: String(element.attrs.id ?? '') } }
     if (element.type === 'image' || element.type === 'voice' || element.type === 'video' || element.type === 'file') {
-      return { type, data: { file: String(element.attrs.url ?? element.attrs.file ?? '') } }
+      const url = String(element.attrs.url ?? element.attrs.file ?? '')
+      return { type, data: { file: url.replace(/^data:[\w.+/-]+;base64,/i, 'base64://') } }
     }
     if (element.type === 'quote') return { type: 'reply', data: { id: String(element.attrs.id ?? '') } }
     return { type, data: { ...element.attrs } }

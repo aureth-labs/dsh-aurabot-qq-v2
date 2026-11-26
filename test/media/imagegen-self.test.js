@@ -5,9 +5,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createImageGen, customRequest, isUnsupportedReference } from '../../src/features/media/generate/imagegen.ts'
+import { createImageGen, customRequest, isUnsupportedReference } from '../../packages/modules/imagegen/engine.ts'
 import { createLocal } from '../../src/local/index.ts'
-import imagegenModule from '../../packages/modules/imagegen/index.ts'
+import { apply } from '../../packages/modules/imagegen/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
 const PNG = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), Buffer.alloc(64)])
@@ -28,10 +28,11 @@ function sandbox(t) {
 function setup(cfg, { look = { image: PNG, appearance: '蓝色短发' }, owner = true, local, send = true, external } = {}) {
   let build, reads = 0
   const sent = [], events = [], notices = [], lookSessions = []
-  const gen = imagegenModule.setup({
-    config: () => cfg, log, dsh: {}, route() {}, tool: (fn) => { build = fn },
+  const gen = apply({
+    root: { read: () => cfg, config: cfg }, logger: log, harness: {}, server: { get() {}, post() {} },
+    effect() {}, provide() {}, prompt() {}, tool: (fn) => { build = fn },
     lazy: (id) => id === 'dsh-image' ? external : { addEvent: (e) => events.push(e) },
-    core: { local, ask: async () => '', personas: { look: (sessionId) => { reads++; lookSessions.push(sessionId); return look } }, hub: {
+    host: { local, ask: async () => '', personas: { look: (sessionId) => { reads++; lookSessions.push(sessionId); return look } }, hub: {
       turnSendersAllOwner: () => owner, canSeeImages: async () => false,
       modelFor: () => null, lastTextOf: () => '',
       sendText: async (...args) => { notices.push(args); return send },

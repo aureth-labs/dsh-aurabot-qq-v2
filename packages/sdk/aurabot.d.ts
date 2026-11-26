@@ -299,6 +299,22 @@ export interface PageOptions {
   url?: string
 }
 
+export interface GenerateImageOptions {
+  shape?: 'square' | 'portrait' | 'landscape' | 'wide'
+  size?: string
+  count?: number
+  format?: 'static' | 'gif'
+  references?: Uint8Array[]
+}
+
+export interface GenerateVideoOptions {
+  seconds?: number
+  firstFrame?: Uint8Array
+}
+
+export type GenerateImage = (prompt: string, options?: GenerateImageOptions) => Promise<Element[]>
+export type GenerateVideo = (prompt: string, options?: GenerateVideoOptions) => Promise<Element>
+
 export interface ChatModelChoice {
   provider: string
   model: string
@@ -430,6 +446,8 @@ export interface Ctx {
 
   /** 宿主注入的消息元素工厂，和 Koishi 一样不用 import。 */
   readonly h: ElementFactory
+  readonly generateImage: GenerateImage
+  readonly generateVideo: GenerateVideo
   readonly llm: LlmFacade
   readonly tts: TtsFacade
   readonly bot: {

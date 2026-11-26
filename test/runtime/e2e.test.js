@@ -981,7 +981,7 @@ test('生图工具结果：能看图时带 image 块，纯文本模型只给文�
   assert.equal(withImg.image.type, 'image')
   assert.ok(withImg.image.attachment?.attachmentId, '要登记成附件块')
   assert.equal(withImg.image.data, undefined, '不要裸 base64')
-  const blocks = (await import('../../src/features/media/generate/imagegen.ts')).drawResultBlocks({}, withImg)
+  const blocks = (await import('../../packages/modules/imagegen/engine.ts')).drawResultBlocks({}, withImg)
   assert.equal(blocks.length, 2)
   assert.equal(blocks[1].type, 'image')
   assert.doesNotMatch(withImg.message, /你自己看到的画面/, '不再额外调模型写描述')

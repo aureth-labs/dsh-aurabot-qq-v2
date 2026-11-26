@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 /** 下载 / 取图的可调项。 */
 export interface FetchOptions {
+  signal?: AbortSignal
   /** 最大字节数，默认 10MB。 */
   maxBytes?: number
   /** 单跳超时，默认 20 秒。 */
@@ -151,7 +152,8 @@ export async function fetchGuarded (url: string, o: GuardedOptions = {}): Promis
   let current = String(url)
   for (let hop = 0; hop <= 5; hop++) {
     await assertPublicUrl(current)
-    const r = await fetchImpl(current, { signal: AbortSignal.timeout(o.timeoutMs ?? 20000), redirect: 'manual' })
+    const timeout = AbortSignal.timeout(o.timeoutMs ?? 20000)
+    const r = await fetchImpl(current, { signal: o.signal ? AbortSignal.any([o.signal, timeout]) : timeout, redirect: 'manual' })
     if ([301, 302, 303, 307, 308].includes(r.status)) {
       const loc = r.headers.get('location')
       if (loc) {

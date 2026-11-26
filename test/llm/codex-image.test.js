@@ -11,8 +11,8 @@ const dataDir = mkdtempSync(join(tmpdir(), 'aurabot-codex-'))
 process.env.AURABOT_DATA_DIR = dataDir
 mkdirSync(dataDir, { recursive: true })
 
-const { createCodexAuth, createPkce, buildAuthUrl, parseAuthInput, accountIdOf, emailOf, decodeJwt, openInBrowser } = await import('../../src/features/codex/auth.ts')
-const { createImageGen } = await import('../../src/features/media/generate/imagegen.ts')
+const { createCodexAuth, createPkce, buildAuthUrl, parseAuthInput, accountIdOf, emailOf, decodeJwt, openInBrowser } = await import('../../packages/modules/imagegen/providers/subscription/auth.ts')
+const { createImageGen } = await import('../../packages/modules/imagegen/engine.ts')
 const { normalize } = await import('../../src/core/config/index.ts')
 
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])

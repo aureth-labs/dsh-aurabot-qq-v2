@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createImageGen } from '../../src/features/media/generate/imagegen.ts'
+import { createImageGen } from '../../packages/modules/imagegen/engine.ts'
 import { normalize, publicConfig, mergeFromPanel } from '../../src/core/config/index.ts'
 const log = { info() {}, debug() {}, warn() {} }
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aS0AAAAASUVORK5CYII=', 'base64')

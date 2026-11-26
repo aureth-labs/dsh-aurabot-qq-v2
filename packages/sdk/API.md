@@ -155,3 +155,11 @@ export async function apply(ctx, config) {
 | `message-deleted`、`message-updated` | 撤回或编辑。按 `platform`、`botId`、`channelId` 与 `messageId` 定位消息。 |
 
 对支持撤回且返回频道和消息 ID 的适配器，可在 `send` 监听器里调用 `await event.bot.deleteMessage(event.channelId, event.messageId)`。主动私信时频道 ID 取决于平台回执。试运行、入队和被取消的发送不会触发成功事件。
+
+## 生成图片与视频
+
+需要生成图片的插件可声明 `export const inject = ['generateImage']`。调用 `await ctx.generateImage(prompt, { references, shape, size, count, format })` 会得到一个图片元素数组。`references` 接收按顺序排列的图片字节，支持的数量、尺寸与格式取决于提供者。
+
+视频插件提供 `await ctx.generateVideo(prompt, { seconds, firstFrame })`，返回一个 MP4 视频元素。`firstFrame` 接收图片字节。服务只生成媒体。插件决定是否发送，例如 `await session.send(await ctx.generateVideo('海边日落'))`。提供者在生成过程中下线时，调用会抛出异常。
+
+在聊天中，模型通过工具发起生成。视频默认需要在原会话确认。生成和投递分别检查接收账号与权限。适配器支持文件时，明确拒收视频后可以改发文件。

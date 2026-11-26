@@ -1,60 +1,53 @@
-import { test } from 'node:test'
+import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { cleanupDir } from '../helpers/cleanup.js'
+import { DeliveryError } from '../../src/core/bot/delivery.ts'
 import { memoryLine } from '../../packages/modules/memory/engine/index.ts'
-import video, { videoFile, videoReady, minimaxBody, customRequestParts, clampResolution, fillJson, fillUrl } from '../../packages/modules/video/index.ts'
+import { apply, videoFile, videoReady, minimaxBody, customRequestParts, clampResolution, fillJson, fillUrl } from '../../packages/modules/video/index.ts'
 import { SLOTS } from '../../src/local/index.ts'
 import { readClientSource } from '../helpers/client-source.js'
 
-function setup({ owner = true, result = 'D:/out/a.mp4', active = true, sendFails = false, confirm = false, enhance = false, provider = 'local', minimaxKey = '', customReady = false, asked = [], selfView = false } = {}) {
-  const sent = []
-  const calls = []
-  let tool = null
-  let onMessage = null
-  let finish
-  const done = new Promise((r) => { finish = r })
-  let sendersOwner = owner
-  const hub = {
-    turnSendersAllOwner: () => sendersOwner,
-    sendSegments: async (chatId, segs) => { if (sendFails) throw new Error('网关不收'); sent.push({ chatId, segs }); finish() },
-    sendFile: async (chatId, file) => { sent.push({ chatId, file }); finish() },
-    sendText: async (chatId, text) => { sent.push({ chatId, text }); if (/没做成/.test(String(text))) finish() },
+const root = mkdtempSync(join(tmpdir(), 'aurabot-video-'))
+const mp4 = join(root, 'preview.mp4')
+writeFileSync(mp4, Buffer.from('000000146674797069736f6d0000020069736f6d', 'hex'))
+after(() => cleanupDir(root))
+
+function setup({ owner = true, result = mp4, active = true, sendFails = false, confirm = false, enhance = false, provider = 'local', minimaxKey = '', customReady = false, asked = [], selfView = false } = {}) {
+  const sent = [], calls = [], rules = []
+  let tool, middleware, finish, sendersOwner = owner
+  const done = new Promise(resolve => { finish = resolve })
+  const bot = { id: 'one', selfId: '42', status: 'online', supports: () => true }
+  const target = { platform: 'sandbox', botId: 'one', type: 'private', id: '7' }
+  const chat = { chatId: 'private:7', userId: '7', kind: 'private' }
+  const config = { enabled: true, video: { provider, confirm, enhance, selfView, minimax: { apiKey: minimaxKey },
+    custom: { createUrl: customReady ? 'https://x/create' : '', queryUrl: customReady ? 'https://x/query/{taskId}' : '' } } }
+  const local = { active: () => active, async call(slot, args) {
+    calls.push({ slot, args })
+    if (result instanceof Error) throw result
+    return result
+  } }
+  async function sendTo(_target, el) {
+    if (el.type === 'video' && sendFails) throw new DeliveryError('网关不收', 'rejected')
+    sent.push(el.type === 'text' ? { text: el.attrs.content } : { element: el })
+    if (el.type !== 'text' || el.attrs.content.includes('未能确认送达')) finish()
+    return { ok: true }
   }
-  const local = { active: () => active, call: async (slot, args) => { calls.push({ slot, args }); if (result instanceof Error) throw result; return result } }
-  const rules = []
-  const config = {
-    video: {
-      provider,
-      confirm,
-      enhance,
-      selfView,
-      minimax: { apiKey: minimaxKey, baseUrl: 'https://api.minimax.cn', model: 'MiniMax-H3', resolution: '768P', duration: 5, ratio: '16:9', pollMs: 5000 },
-      custom: { createUrl: customReady ? 'https://x/create' : '', queryUrl: customReady ? 'https://x/query/{taskId}' : '', createMethod: 'POST', headers: '', body: '{"prompt":"{prompt}"}', taskIdPath: 'task_id', statusPath: 'status', successValue: 'succeeded', failValue: 'failed', urlPath: 'content.url', pollMs: 5000 },
-    },
-    local: { video: active, videoTimeoutMin: 20 },
-    bili: {},
-  }
-  const api = {
-    core: { hub, local },
-    config: () => config,
-    dsh: {},
-    log: { warn() {}, info() {}, debug() {} },
-    ask: async (o) => { asked.push(o); return '【扩写】镜头缓缓推进，暖光，胶片质感，大肥鱼在池塘里打滚，水面反光' },
-    isOwner: (id) => owner && String(id) === '7',
-    rule: (f) => rules.push(f),
-    tool: (f) => { tool = f },
-    on: (ev, fn) => { if (ev === 'message') onMessage = fn },
-    onDispose() {},
-    context() {},
-  }
-  video.setup(api)
-  const chat = { chatId: 'private:1', userId: '7', kind: 'private' }
-  return {
-    get: (c = chat) => tool({ chat: c, sessionId: 's' }),
-    say: (text, c = chat, userId = c.userId) => onMessage({ ...c, userId, sessionId: 's', text }),
-    rules, sent, calls, done, config, chat,
-    setSenders: (v) => { sendersOwner = v },
-  }
+  const services = new Map()
+  const ctx = { host: { local }, root: { config }, provide: (name, fn) => services.set(name, fn),
+    logger: { warn() {}, debug() {}, info() {} }, bots: { get: () => bot }, text: { sent: v => v?.ok === true },
+    ask: async opts => { asked.push(opts); return '【扩写】镜头缓缓推进，暖光，胶片质感，大肥鱼在池塘里打滚，水面反光' },
+    isOwner: (who) => owner && String(typeof who === 'object' ? who.userId : who) === '7',
+    turnFromOwner: () => sendersOwner, sendTo, effect() {}, prompt() {}, rule: f => rules.push(f),
+    tool: f => { tool = f }, middleware: f => { middleware = f }, setTimeout: () => () => {} }
+  apply(ctx)
+  return { calls, rules, sent, done, config, chat, services, bot,
+    get: (origin = chat) => tool({ target, chat: origin, sessionId: 's' }),
+    say: (text, origin = chat, userId = origin.userId) => middleware({ target, bot, userId, content: text,
+      send: async message => sendTo(target, { type: 'text', attrs: { content: message } }) }, () => false),
+    setSenders: v => { sendersOwner = v } }
 }
 
 test('video 槽位默认等 20 分钟', () => {
@@ -122,9 +115,9 @@ test('关掉确认时：工具马上返回，做好后自动按视频发回聊�
   assert.equal(r.ok, true)
   await s.done
   assert.equal(s.calls[0].slot, 'video')
-  const seg = s.sent.find((x) => x.segs)
-  assert.equal(seg.segs[0].type, 'video')
-  assert.match(seg.segs[0].data.file, /^file:/)
+  const { element } = s.sent.find(x => x.element)
+  assert.equal(element.type, 'video')
+  assert.match(element.attrs.url, /^data:video\/mp4;base64,/)
 })
 
 test('开着确认时：先发描述等确认，确认后才生成', async () => {
@@ -139,7 +132,7 @@ test('开着确认时：先发描述等确认，确认后才生成', async () =>
   assert.equal(await s.say('确认'), true)
   await s.done
   assert.equal(s.calls.length, 1)
-  assert.ok(s.sent.some((x) => x.segs))
+  assert.ok(s.sent.some((x) => x.element))
 })
 
 test('等确认期间不接受新的生成请求', async () => {
@@ -180,14 +173,14 @@ test('发视频失败时改发文件', async () => {
   const s = setup({ sendFails: true, confirm: false })
   await s.get().execute({ prompt: '一条鱼' })
   await s.done
-  assert.equal(s.sent.find((x) => x.file).file, 'D:/out/a.mp4')
+  assert.equal(s.sent.find(x => x.element).element.type, 'file')
 })
 
 test('失败时告诉对方', async () => {
   const s = setup({ result: new Error('显存不够'), confirm: false })
   await s.get().execute({ prompt: '一条鱼' })
   await s.done
-  assert.ok(s.sent.some((x) => x.text && /没做成.*显存不够/.test(x.text)))
+  assert.ok(s.sent.some((x) => x.text && /未能确认送达/.test(x.text)))
 })
 
 test('只有主人能生成，后台会话和没配好时没有工具，规则跟着开关走', async () => {

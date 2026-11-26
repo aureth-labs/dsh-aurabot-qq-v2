@@ -1,14 +1,15 @@
 // 内置模块：生图。她能画图发到聊天里（OpenAI 兼容的生图服务，或「本地接口」里接的 SD WebUI / ComfyUI）。
 
+import { installImageService } from './service.ts'
 import { readFileSync } from 'node:fs'
 import { privateCapabilityAllowed } from '../../../src/chat/policy/rules/access.ts'
-import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from '../../../src/features/media/generate/imagegen.ts'
+import { createImageGen, drawResultBlocks, drawToolMessage, imageToolBlock, resolveDrawImage, isUnsupportedReference, isSingleReferenceOnly, fetchOpenAIModels } from './engine.ts'
 import { listPaintings, openPaintFolder, paintingPath, rememberPainting, removePainting, savePainting } from '../../../src/features/media/generate/paintings.ts'
 import { defineTool, str, int } from '../../../src/tools/index.ts'
-import { SIZE_OPTIONS } from '../../../src/features/media/image/shape.ts'
+import { SIZE_OPTIONS } from './shape.ts'
 import { dataDir } from '../../../src/core/store/index.ts'
 import { mimeOf } from '../../../src/core/message/media/inspect.ts'
-import { drawFormat, gifFrameCount } from '../../../src/features/media/image/format.ts'
+import { drawFormat, gifFrameCount } from './format.ts'
 import { mergeFromPanel } from '../../../src/core/config/index.ts'
 import { redact } from '../../../src/core/support/log/redact.ts'
 
@@ -16,13 +17,15 @@ function reason(error) { if (error?.gifRequestError) return error.message; if (e
 
 export const name = '生图'
 
-export const version = '1.0.0'
+export const version = '2.0.0'
 
-export const description = '画一张图发到聊天里（qq_draw_image）'
+export const description = '生成图片并发送到当前会话'
 
 export const tab = 'imagegen'
 
 export function apply(ctx, config) {
+  let active = true
+  ctx.effect(() => { active = false })
   const { hub, local } = ctx.host
   const memory = ctx.lazy('memory')
   // 外部生图模块（例如社区库的「生图 · DSH 已接入模型」）：装了且自己选了模型就由它先接管。
@@ -39,6 +42,7 @@ export function apply(ctx, config) {
       { ready: () => Boolean(external && external.ready && external.ready()) },
     ),
   })
+  installImageService(ctx, gen)
   const auth = gen.codexAuth
   ctx.effect(() => gen.dispose())
   ctx.prompt(({ chat }) => {
@@ -137,7 +141,7 @@ export function apply(ctx, config) {
     })
     return [...labeled, { type: 'text', text: '新画以请求者指定的人物或作品为准，旁人的图片只是聊天背景，不把其中的人物或外形写进新画。对方要照某张图画或修改它时，优先用目标图旁的 msg 编号；没有编号才用明确指向目标的 quote/last。要改的原图不明确或缺失时，请对方引用它，不能省略参考图生成一张新图来代替。' }]
   })
-  ctx.tool(({ chat, sessionId }) => ((chat.kind !== 'system' && canDraw()) ? defineTool({
+  ctx.tool(({ chat, sessionId, target, primaryChat }) => ((!target || primaryChat) && chat.kind !== 'system' && canDraw() ? defineTool({
     name: 'qq_draw_image',
     description: '画一张或多张图并发到当前 QQ 聊天里。prompt 详细描述画面；可以用 image 参考当前聊天最近收到的图（last）、引用消息里的图（quote）或自己画作的文件名来改画；画自己时 image 填 self，优先参考人设图，不支持时按外貌文字生成；想同时参考多张图时用 images（最多 16 张，MiniMax H3 改画时最有用）；shape 可按用途选择方图、竖图、横图或宽幅；size 可显式指定常用尺寸（含 2K/4K），不填就沿用 shape / 面板默认；count 是本次画几张（1~10，仅 MiniMax H3 支持）。画好会直接发出去，并给你画作编号（换头像、收成表情时用这个编号）。回复里简单说一句就行。群聊和私聊都支持绘图，权限由工具按本轮请求检查。有新的明确绘图请求时应调用工具，不要沿用旧轮次的拒绝结论。失败时区分权限不足、缺少参考图和生成失败，按实际返回说明，不要把权限不足说成必须私聊。',
     properties: {
@@ -155,8 +159,14 @@ export function apply(ctx, config) {
     render: drawResultBlocks,
     execute: async ({ prompt, format, shape, image, images, count, size, notice }) => {
       const cfg = ctx.root.config
-      const ownerRequest = hub.turnSendersAllOwner(sessionId) || (chat.kind === 'group' && hub.turnDirectFromOwner?.(sessionId))
-      if (cfg.imageGen.ownerOnly && !ownerRequest && !privateCapabilityAllowed(cfg, chat, 'image')) return { ok: false, message: '本轮未获绘图授权（当前开启了“只给主人画”），尚未开始生成。群聊也能画：请主人在群里直接 @ 我提出请求，改图时同时引用目标原图；多人同时提出请求时请分开发送。私聊也需要授权，转私聊不会自动放行。后续新请求会重新检查权限。' }
+      const bot = target && ctx.bots.get(target.botId, target.platform)
+      const selfId = bot?.selfId
+      const permitted = () => !ctx.root.config.imageGen.ownerOnly || hub.turnSendersAllOwner(sessionId) ||
+        (chat.kind === 'group' && hub.turnDirectFromOwner?.(sessionId)) || privateCapabilityAllowed(ctx.root.config, chat, 'image')
+      const current = () => active && permitted() && (!target || (ctx.root.config.enabled && bot?.status === 'online' &&
+        bot.selfId === selfId && ctx.bots.get(target.botId, target.platform) === bot))
+      const changed = { ok: false, message: '接收账号或权限已变更，已停止投递。' }
+      if (!current()) return { ok: false, message: '本轮未获绘图授权（当前开启了“只给主人画”），尚未开始生成。群聊也能画：请主人在群里直接 @ 我提出请求，改图时同时引用目标原图；多人同时提出请求时请分开发送。私聊也需要授权，转私聊不会自动放行。后续新请求会重新检查权限。' }
       try { drawFormat(format) } catch (error) { return { ok: false, message: error.message } }
       if (format === 'gif' && !ctx.root.config.imageGen.allowGif) return { ok: false, message: 'GIF 动图还没开启，请主人在生图设置中打开「允许按需生成 GIF」' }
       // 工具常驻，真正能不能画在执行时判断（Codex 登录状态可能刚变过）
@@ -171,14 +181,10 @@ export function apply(ctx, config) {
         if (buf) extraRefs.push(buf)
       }
       const text = typeof notice === 'string' ? notice.trim().slice(0, 200) : ''
-      // 画前提示是「她这个回合正在做的事」的进度说明，与最终回复是同一轮的产物。
-      // 显式声明 turnNotice：宿主据此在回合内直发（不经代发决断），否则慢工具兜底会在 1.5s 后
-      // 先把同一句发出去、9s 后代发决断再发一遍（2026-11-18 主人私聊实测）。
-      // 其余模块不声明这个标记，仍一律走代发决断。
+      if (!current()) return changed
       const NOTICE_OPTS = { turnNotice: true }
       let acknowledged = text ? await hub.sendText(chat.chatId, text, undefined, undefined, undefined, NOTICE_OPTS) : null
-      // 「正在做」提示已经以 notice 发出去了：立刻登记，hub 的慢工具兜底（1.5s 定时器）就不再发
-      // 她当轮正文——否则 notice 和兜底各发一遍，同样的话出现两次（2026-11-18 主人私聊实测）。
+      if (!current()) return changed
       if (acknowledged && typeof hub.markSlowNotice === 'function') hub.markSlowNotice(sessionId)
       const simulatedNotice = () => acknowledged === null && Boolean(cfg.debug)
       if (!acknowledged && !simulatedNotice()) acknowledged = await hub.sendText(chat.chatId, '好，我来画。', undefined, undefined, undefined, NOTICE_OPTS)
@@ -188,7 +194,8 @@ export function apply(ctx, config) {
         const fallback = retrying ? '刚才没画出来，我换个模型再试试。' : '这次没画出来，我先停下了。'
         let message = ''; let timer
         try { message = String(await Promise.race([ctx.host.ask({ model: hub.modelFor(chat), system: `${ctx.host.personas?.current?.() || ''}\n根据事实写一句自然简短的聊天回复，不编造原因，不说已经画好。只输出回复。`, text: `对方说：${String(hub.lastTextOf(sessionId) || '').slice(0, 500)}\n之前回复：${text}\n事实：${facts}；问题：${issue}。`, maxTokens: 100 }), new Promise(resolve => { timer = setTimeout(() => resolve(''), 6000) })]) || '').trim().slice(0, 200) } catch (e) { ctx.logger.debug('生成生图进度回复失败：', e.message) } finally { clearTimeout(timer) }
-        try { const sent = await hub.sendText(chat.chatId, `${message || fallback}（${issue}）`); if (!sent && message) await hub.sendText(chat.chatId, `${fallback}（${issue}）`) } catch (e) { ctx.logger.debug('生图进度回复没发出去：', e.message) }
+        if (!current()) return
+        try { const sent = await hub.sendText(chat.chatId, `${message || fallback}（${issue}）`); if (!sent && message && current()) await hub.sendText(chat.chatId, `${fallback}（${issue}）`) } catch (e) { ctx.logger.debug('生图进度回复没发出去：', e.message) }
       }
       let references = []
       let fullPrompt = String(prompt || '')
@@ -220,6 +227,7 @@ export function apply(ctx, config) {
       const generate = () => {
         const notes = references.map((ref, index) => ref.note ? `参考图 ${index + 1} 备注：${JSON.stringify(ref.note)}` : '').filter(Boolean)
         const actualPrompt = notes.length ? `${fullPrompt}\n图片备注（仅作造型说明，按画面要求选择合适造型，不混合互斥服装）：\n${notes.join('\n')}` : fullPrompt
+        if (!current()) throw Error(changed.message)
         return gen.generate(actualPrompt, { format, shape, size, count, onRetry: ({ error }) => progress(error, true), ...(references.length > 1 ? { images: references.map((ref) => ref.image) } : { image: references[0]?.image || null }) })
       }
       let buf
@@ -245,6 +253,7 @@ export function apply(ctx, config) {
       catch (error) { await progress(error, false); return { ok: false, message: `生图失败：${reason(error)}。已尝试告知对方，请结合情况回应，不要说画好了。` } }
       const bufs = (Array.isArray(buf) ? buf : [buf]).filter((item) => Buffer.isBuffer(item) && item.length)
       if (!bufs.length) { await progress(new Error('生图接口没有返回图片'), false); return { ok: false, message: '生图失败：生图接口没有返回图片。已尝试告知对方，请结合情况回应，不要说画好了。' } }
+      if (!current()) return changed
       const sent = await hub.sendSegments(chat.chatId, bufs.map((item) => ({ type: 'image', data: { file: 'base64://' + item.toString('base64') } })), `[生图] ${String(prompt).slice(0, 30)}`)
       // 调试 / 调试模式下本来就不真发（sendSegments 只记日志、返回 null）：
       // 这一轮仍算画好了 —— 存盘、给编号、能看图，只是 QQ 里收不到；不能当失败。

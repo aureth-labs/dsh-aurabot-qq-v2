@@ -1,21 +1,21 @@
 // #47：生图配好了却没有 qq_draw_image —— 工具注册只看内置开关会漏掉本地接口/外部生图模块接管。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import imagegenModule from '../../packages/modules/imagegen/index.ts'
+import { apply } from '../../packages/modules/imagegen/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 
 function buildTool ({ config, localActive = false, external = null } = {}) {
   let build = null
-  imagegenModule.setup({
-    config: () => config,
-    log,
-    dsh: {},
+  apply({
+    root: { read: () => config, config },
+    logger: log,
+    harness: {},
     lazy: (id) => id === 'dsh-image' ? external : { addEvent () {} },
-    route () {},
+    server: { get() {}, post() {} }, effect() {}, prompt() {}, provide() {},
     tool: (fn) => { build = fn },
-    core: { hub: {}, local: { active: (slot) => slot === 'image' && localActive } },
+    host: { hub: {}, local: { active: (slot) => slot === 'image' && localActive } },
   })
   return (kind = 'private') => build({ chat: { kind, chatId: 'private:10001', userId: '10001' }, sessionId: 'visibility-test' })
 }

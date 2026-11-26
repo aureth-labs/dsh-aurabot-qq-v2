@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import qqTools from '../../packages/modules/qq-tools/index.ts'
 import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 import { matchSticker, pickForReply } from '../../src/features/stickers/index.ts'
-import { createImageGen } from '../../src/features/media/generate/imagegen.ts'
+import { createImageGen } from '../../packages/modules/imagegen/engine.ts'
 import { askModel } from '../../src/core/llm/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
-import imagegenModule from '../../packages/modules/imagegen/index.ts'
+import { apply } from '../../packages/modules/imagegen/index.ts'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 
 const OWNER = '10000001', OTHER = '10000002', BOT = '20000002', GROUP = '30000003'
@@ -50,15 +50,16 @@ function setup(t, { beforeDraw } = {}) {
   hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log,
     onebot: { connected: true, async call(action) {
       if (action === 'get_group_info') return { group_name: '测试群' }
-      if (action === 'get_msg') return { sender: { user_id: Number(BOT) }, message: [{ type: 'text', data: { text: '上一条回复' } }] }
+      if (action === 'get_msg') return { message_id: 'quoted-bot-message', message_type: 'group', group_id: GROUP, sender: { user_id: Number(BOT) }, message: [{ type: 'text', data: { text: '上一条回复' } }] }
       return {}
     } },
     hooks: { groupDecide: () => ({ reply: true, mode: 'must' }) },
     buildTools: info => [buildImage(info)],
   })
-  imagegenModule.setup({ config: () => cfg, log, dsh: fake.ctx, lazy: () => ({}), route() {},
+  apply({ root: { read: () => cfg, config: cfg }, logger: log, harness: fake.ctx, lazy: () => ({}),
+    effect() {}, prompt() {}, provide() {}, server: { get() {}, post() {} },
     tool: fn => { buildImage = fn },
-    core: { hub, local: { active: name => name === 'image', call: async () => { draws++; throw new Error('TEST_AUTHORIZED_NO_IMAGE_API') } } },
+    host: { hub, local: { active: name => name === 'image', call: async () => { draws++; throw new Error('TEST_AUTHORIZED_NO_IMAGE_API') } } },
   })
   fake.ctx.effect(() => fake.ctx.on('session/event', hub.onSessionEvent))
   t.after(() => { if (!fake.turns.length) t.diagnostic(fake.logs.join('\n')); hub.dispose(); fake.dispose(); cleanupDir(dir) })

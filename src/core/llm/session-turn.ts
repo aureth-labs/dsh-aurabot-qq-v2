@@ -17,6 +17,7 @@ interface Scope {
   active: boolean
 }
 interface Where {
+  images?: SessionPrompt['images']
   target: Target
   level: 'full' | 'social'
   sessionId: string
@@ -61,6 +62,7 @@ export function createDialogue(options: Options): Dialogue {
               const registered = options.tools({
                 sessionId,
                 target,
+                images: prompt.images,
                 level: owner() && session.isPrivate ? 'full' : 'social',
                 chat: {
                   kind: session.type,

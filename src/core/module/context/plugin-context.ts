@@ -136,6 +136,19 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
   value('has', (id: string) => api.has(id))
   value('isOwner', api.isOwner)
   value('lazy', (id: string) => lazyService(id))
+  const provideGeneration = (name: 'generateImage' | 'generateVideo') => {
+    value(name, async (prompt, options) => {
+      api.assertActive?.()
+      const provider = services?.require(name)
+      if (typeof provider?.generate !== 'function') throw new Error('缺少生成服务 ' + name)
+      const result = await provider.generate(prompt, options)
+      api.assertActive?.()
+      if (services.get(name) !== provider) throw new Error('生成服务已经重新加载')
+      return result
+    })
+  }
+  provideGeneration('generateImage')
+  provideGeneration('generateVideo')
   getter('voice', () => services?.get('voice') ?? null)
   getter('sing', () => services?.get('sing') ?? null)
   getter('database', () => services?.get('database') ?? null)

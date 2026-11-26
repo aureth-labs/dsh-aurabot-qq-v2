@@ -144,6 +144,8 @@ const TOOL_MODULES = {
   qq_list_shots: 'bili',
   qq_draw_image: 'imagegen',
   qq_generate_video: 'video',
+  generate_video: 'video',
+  generate_image: 'imagegen',
   qq_send_sticker: 'stickers',
   qq_collect_sticker: 'stickers',
   qq_add_sticker: 'stickers',

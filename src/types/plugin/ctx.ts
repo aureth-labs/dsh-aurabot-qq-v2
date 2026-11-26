@@ -7,7 +7,7 @@
 
 import type { BotsAccessor, BotLike, SendOptions } from '../adapter/bot.ts'
 import type { AdapterHandle, AdapterSpec } from '../adapter/adapter.ts'
-import type { ElementFactory, ElementSource } from '../core/element.ts'
+import type { Element, ElementFactory, ElementSource } from '../core/element.ts'
 import type { CommandOptions, Middleware, MiddlewareOptions, SessionFilter } from './pipeline.ts'
 import type { SessionLike } from '../core/session.ts'
 import type { Target } from '../core/target.ts'
@@ -105,12 +105,22 @@ export interface ServerFacade {
   delete(path: string, handler: RouteHandler, options?: { access?: 'panel' | null }): () => void
 }
 
-/**
- * `ctx.llm`：宿主提供的模型能力。
- *
- * 现在只有文本三件套；图片 / 视频生成后续挂在这里，不另开入口。
- * 这些调用不进聊天会话、不计入人格上下文，适合后台小任务。
- */
+export interface GenerateImageOptions {
+  shape?: 'square' | 'portrait' | 'landscape' | 'wide'
+  size?: string
+  count?: number
+  format?: 'static' | 'gif'
+  references?: Uint8Array[]
+}
+
+export interface GenerateVideoOptions {
+  seconds?: number
+  firstFrame?: Uint8Array
+}
+
+export type GenerateImage = (prompt: string, options?: GenerateImageOptions) => Promise<Element[]>
+export type GenerateVideo = (prompt: string, options?: GenerateVideoOptions) => Promise<Element>
+
 export interface ChatModelChoice {
   provider: string
   model: string
@@ -246,6 +256,8 @@ export interface PluginContext extends ScopeFactory {
   readonly apiVersion: number
   /** 插件自己的源码目录（只读；要写数据用 dataDir）。 */
   readonly baseDir: string
+  readonly generateImage: GenerateImage
+  readonly generateVideo: GenerateVideo
   /** 本插件的配置对象（活值）。 */
   readonly config: Record<string, any>
   /** 全局配置。 */
