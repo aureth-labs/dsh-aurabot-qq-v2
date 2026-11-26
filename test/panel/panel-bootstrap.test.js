@@ -9,7 +9,7 @@
 // 启动方式对齐 test/panel-access-gate.test.js：AURABOT_DATA_DIR 隔离 + createFakeDsh。
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
@@ -322,13 +322,20 @@ test('导航版本：模块停/起时 navigationRevision 递增，摘要同步�
   assert.equal(song.enabled, true)
 })
 
-test('summarizeModules 纯内存：不调 scanUser 重扫、不做文件系统遍历（静态契约）', async () => {
-  const src = readFileSync(new URL('../../src/core/module/kernel/create.ts', import.meta.url), 'utf8')
-  const start = src.indexOf('function summarizeModules')
-  assert.ok(start > 0, '要有 summarizeModules')
-  // 函数体截到下一个顶层函数为止
-  const end = src.indexOf('\n  function ', start + 10)
-  const body = src.slice(start, end)
-  assert.ok(!/scanUser\s*\(/.test(body), 'summarizeModules 不准调 scanUser（首屏只准碰内存）')
-  assert.ok(!/readdirSync|statSync|readFileSync/.test(body), 'summarizeModules 不准碰文件系统')
+test('首屏摘要只读取内存，不触发插件发现或工具构造', async () => {
+  const { createModuleCatalog } = await import('../../src/core/module/kernel/catalog.ts')
+  let probes = 0
+  const forbidden = () => { probes++; throw new Error('unexpected discovery') }
+  const def = {id:'example',name:'Example'}
+  const record = {key:'example',moduleId:'example',source:'user',def,tools:[forbidden]}
+  const catalog = createModuleCatalog({
+    live: new Map([[record.key,record]]), errors:new Map(), routes:new Map(), userSeen:new Map(),
+    builtinDefs:new Map(), discover:forbidden, isUserOn:()=>true, routesAtRoot:()=>false,
+    modCfg:()=>({}), revision:()=>7,
+  })
+  const summary = catalog.summarizeModules()
+  assert.equal(summary.navigationRevision,7)
+  assert.equal(summary.modules[0].name,'Example')
+  assert.equal(summary.modules[0].running,'user')
+  assert.equal(probes,0)
 })

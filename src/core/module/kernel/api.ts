@@ -40,7 +40,7 @@ export interface ApiDeps {
   version: string
   live: Map<string, ModuleRecord>
   routes: Map<string, { id: string; handler: (...args: any[]) => unknown; access?: string | null }>
-  listeners: Map<string, Array<{ id: string; fn: (...args: any[]) => unknown }>>
+  subscribe: (owner: string, event: string, listener: (...args: unknown[]) => unknown) => () => void
   builtinDefs: Map<string, ModuleDef>
   personaMemoryRuntime?: { forModule(active: () => boolean, track: (off: () => void) => unknown): unknown } | null
   isDisposed: () => boolean
@@ -54,7 +54,7 @@ export interface ApiDeps {
 }
 
 export function createApi(deps: ApiDeps) {
-  const { logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit, isEnabled, isUserOn, ctx } = deps
+  const { logger, core, getConfig, setConfig, version, live, routes, subscribe, builtinDefs, personaMemoryRuntime, isDisposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit, isEnabled, isUserOn, ctx } = deps
 
   function makeApi(id: string, source: string, rec: ModuleRecord) {
     const mlog = logger.child(id)
@@ -165,11 +165,7 @@ export function createApi(deps: ApiDeps) {
         return () => remove(rec.commands, item)
       },
       on: (event, fn) => {
-        const item = { id, fn: guard(`事件 ${event}`, fn) }
-        const list = listeners.get(event) || []
-        list.push(item)
-        listeners.set(event, list)
-        const off = () => listeners.set(event, (listeners.get(event) || []).filter((x) => x !== item))
+        const off = subscribe(rec.key, event, guard(`事件 ${event}`, fn))
         track(off)
         return off
       },

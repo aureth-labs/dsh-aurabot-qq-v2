@@ -1,13 +1,3 @@
-// 模块内核：插件的功能都是模块，内置的在 packages/，自己写的放数据目录 modules/（升级不会动）。
-//
-// - 每个模块能单独开关；自己写的模块和内置的同名，就替换掉内置的
-// - 模块之间用 api.use('模块id') 拿对方导出的东西，用的时候再拿（对方被关了、换了也不会拿到旧的）
-// - 模块注册的工具、上下文、命令、定时任务、面板接口都记在模块名下，关掉 / 重新加载时一起撤掉
-// - 一个模块出错只影响它自己：启动失败记下原因，其他照常跑
-// - 自己写的模块保存就生效（按修改时间重新加载），不用重启 DSH
-//
-// 接口说明给写模块的人看：packages/sdk/API.md（每次启动复制到数据目录 modules/ 里）。
-
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, watch } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createPluginContext } from '../context/plugin-context.ts'
@@ -21,14 +11,8 @@ import { readManifest, entryOf as entryOfManifest } from '../manifest.ts'
 import { join, relative, resolve, isAbsolute } from 'node:path'
 import { dataDir } from '../../store/index.ts'
 import type { SettingsField } from '../../config/shape/schema.ts'
-import { defineTool } from '../../../tools/index.ts'
-import { selfName, personaScope, personaNow } from '../../../persona/personas.ts'
 import { PERSONA_MEMORY_MODULE } from '../../support/bridge/persona-memory-bridge.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type RouteOptions = Partial<Record<'access', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type ThinkOptions = Partial<Record<'title', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 interface StartOptions {
   replaces?: any
@@ -47,12 +31,13 @@ import { createPlugin } from '../scaffold.ts'
 export * from '../governance.ts'
 import { INSTANCE_RE, STABLE_ROUTES, BUILTIN_DIR, API_VERSION, instanceKey, settingsFromMeta, schemaDefaults, stampOfTarget, SNAP, scanUser, userDir, ID_RE, idDir } from '../loader.ts'
 import type { ModuleDef, ModuleRecord, ModuleError } from '../loader.ts'
-import { scopeCoreForModule, outboundLogOf, governedSend, logAsModuleSpeech } from '../governance.ts'
 
 export * from './util.ts'
-import { deepMerge, isObj } from './util.ts'
 import { createApi } from './api.ts'
 import { createDocs } from './docs.ts'
+import { createModuleEvents } from './events.ts'
+import { createContributions } from './contributions.ts'
+import { createModuleCatalog } from './catalog.ts'
 import { loadDefinition } from './definition.ts'
 import { createAdapterCatalog } from './adapters.ts'
 import { ServiceRegistry } from '../../service/registry.ts'
@@ -68,7 +53,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const pages = new Map() // 完整路径 → { id, path, name, icon, order }
   const services = new ServiceRegistry()
   for (const [name, service] of Object.entries(initialServices)) services.provide(name, service, '@core')
-  const listeners = new Map() // 事件名 → [{ id, fn }]
+  const events = createModuleEvents(note)
+  const {emit, emitAsync, claim, filter, filterSync} = events
   const revisions = new Map() // id → 停止次数，取消在途 import
   // 模块每次（重）启动都递增一次「代际」：hub 用它判断会话里挂的工具是不是旧模块实例的闭包。
   let generation = 0
@@ -76,7 +62,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   // 面板首屏轮询 /panel/pulse 拿它判断要不要重新拉导航摘要（方案 §二/§2.1）。
   let navigationRevisionCounter = 0
   const bumpNavigation = () => { navigationRevisionCounter++ }
-  let userSeen = new Map() // id → { dir, file, stamp }
+  const userSeen = new Map() // id → { dir, file, stamp }
   /** 额外实例上一次启动时的配置快照：配置一改就重启那个实例（适配器要重连）。 */
   const instanceSeen = new Map() // 注册表键 → JSON(config)
   let watching = null
@@ -88,12 +74,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const isEnabled = (id) => modCfg(id).enabled !== false
   const isUserOn = () => !getConfig().safeMode
   const adapterCatalog = createAdapterCatalog(builtinDefs, live, importer, isUserOn, id => Boolean(modCfg(id).useBuiltin))
-  /**
-   * 一份插件的额外实例（`ext.<id>.instances`）。
-   *
-   * 只有清单里 `reusable: true` 的插件才会被启动；配置写坏了（不是数组、没名字、名字重复）
-   * 一律当没写，别让一条脏数据把整个模块拖死。
-   */
   const instancesOf = (id) => {
     // 实例配置和插件设置放在一起（ext.<id>.instances），不是 modules.<id>（那个只管启停）
     const raw = getConfig().ext?.[id]?.instances
@@ -124,7 +104,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   // 面板里的 call('/x') 要用同一份判断决定基址（见 status().routesAtRoot），两边不能各算各的。
   const routesAtRoot = (id) => builtinDefs.has(id) || STABLE_ROUTES.has(id)
 
-  const apiOf = createApi({ logger, core, getConfig, setConfig, version, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
+  const { status, summarizeModules } = createModuleCatalog({ live, errors, routes, userSeen, builtinDefs, discover: scanUser, modCfg, isUserOn, routesAtRoot, revision: () => navigationRevisionCounter })
+  const { buildTools, contextFor, rules, commands, dshTools } = createContributions(live, getConfig, log, note)
+
+  const apiOf = createApi({ logger, core, getConfig, setConfig, version, live, routes, subscribe: events.subscribe, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
   const makeApi = (id: string, source: string, rec: ModuleRecord) => apiOf(id, source, rec)
 
   /** 插件在面板侧栏注册的页面：路径唯一，模块卸载一起撤。 */
@@ -382,11 +365,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     })().catch((error) => log.error('加载自己写的模块出错：', error.message))
   }
 
-  /**
-   * 盯着 modules 目录：文件一变就同步（事件驱动），不再每 3 秒扫一遍。
-   * 事件可能丢（网络盘 / 编辑器原子替换），所以留一个 30 秒的版本戳兜底——
-   * 兜底只比 mtime，不重新 import。
-   */
   function startWatching() {
     const dir = userDir()
     try { mkdirSync(dir, { recursive: true }) } catch (error) {}
@@ -532,13 +510,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return status().find((m) => m.id === id) || null
   }
 
-  /**
-   * 面板保存设置后的收尾。
-   *
-   * 默认什么都不做：内置模块和多数插件用的是 `ctx.settings()`，每次读都是新值，重载反而丢内存态。
-   * 清单里写了 `aurabot.reloadOnConfig: true` 的模块才重载 —— 那些在 `apply(ctx, config)` 里
-   * 直接把 config 存进闭包的插件，重载一次最省心。
-   */
   async function reloadOnConfigChange(beforeExt: Record<string, unknown> = {}, nextExt: Record<string, unknown> = {}, force: readonly string[] = []) {
     const ids = new Set([...force, ...Object.keys(beforeExt), ...Object.keys(nextExt)])
     for (const id of ids) {
@@ -559,6 +530,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   function dispose() {
     if (disposed) return
     disposed = true
+    events.close()
     clearInterval(watching)
     clearTimeout(pendingSync)
     try { watcher?.close?.() } catch (error) {}
@@ -566,97 +538,10 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     for (const id of [...live.keys()].reverse()) stop(id, { quiet: true })
     importer.dispose()
     routes.clear()
-    listeners.clear()
+
     if (globalThis.aurabot?.modules === publicHandle) delete globalThis.aurabot
   }
 
-  // ---------- 事件 ----------
-  function emit(event, ...args) {
-    if (disposed || event === 'chat/delivery') return
-    for (const { fn } of listeners.get(event) || []) {
-      try { const r = fn(...args); if (r && typeof r.catch === 'function') r.catch(() => {}) } catch (error) {}
-    }
-  }
-  async function emitAsync(event: string, ...args: unknown[]) {
-    if (disposed || event === 'chat/delivery') return
-    await Promise.all(Array.from(listeners.get(event) || [], async ({ id, fn }) => {
-      try { await fn(...args) } catch (error) { note(id, event, error) }
-    }))
-  }
-  /** 依次问每个模块，第一个返回真值的接管（收到消息时用）。 */
-  async function claim(event, ...args) {
-    for (const { fn } of listeners.get(event) || []) {
-      try { if (await fn(...args)) return true } catch (error) {}
-    }
-    return false
-  }
-  /** 依次让每个模块改写一个值（发回复前用）：返回 undefined 不改，null 拦下。 */
-  async function filter(event, value, ...args) {
-    let v = value
-    for (const { fn } of listeners.get(event) || []) {
-      try {
-        const r = await fn(v, ...args)
-        if (r === null) return null
-        if (r !== undefined) v = r
-      } catch (error) {}
-    }
-    return v
-  }
-  /** 同步版（人格、规则、模型选择这些地方不能等）：监听函数返回 Promise 的不算。 */
-  function filterSync(event, value, ...args) {
-    let v = value
-    for (const { fn } of listeners.get(event) || []) {
-      try {
-        const r = fn(v, ...args)
-        if (r && typeof r.then === 'function') continue
-        if (r === null) return null
-        if (r !== undefined) v = r
-      } catch (error) {}
-    }
-    return v
-  }
-
-  // ---------- 汇总给插件其他部分用 ----------
-  function buildTools(where, sessionNative = false) {
-    const out = []
-    const names = new Set()
-    for (const rec of live.values()) {
-      const platform = where.target?.platform
-      const platforms = Array.isArray(rec.def.platforms) ? rec.def.platforms : rec.source === 'user' ? ['*'] : sessionNative ? [] : ['qq']
-      if (platform && !platforms.includes('*') && !platforms.includes(platform)) continue
-      for (const b of rec.tools) {
-        let r
-        try { r = typeof b === 'function' ? b(where) : b } catch (error) { note(rec.id, '生成工具', error); continue }
-        for (const t of [].concat(r || [])) {
-          if (!t || !t.name) continue
-          if (names.has(t.name)) { log.debug(`工具 ${t.name} 重名，模块「${rec.id}」的没挂`); continue }
-          names.add(t.name)
-          out.push(t.output || typeof t.execute !== 'function' ? t : defineTool({ ...t, properties: t.parameters?.properties ?? t.properties, required: t.parameters?.required ?? t.required }))
-        }
-      }
-    }
-    return out
-  }
-  function contextFor(args) {
-    const parts = []
-    for (const rec of live.values()) {
-      for (const fn of rec.contexts) {
-        try { const t = fn(args); if (t) parts.push(String(t)) } catch (error) {}
-      }
-    }
-    return parts.join('\n\n')
-  }
-  function rules(kind) {
-    const out = []
-    for (const rec of live.values()) {
-      for (const fn of rec.rules) {
-        try { const t = typeof fn === 'function' ? fn(kind, getConfig()) : fn; for (const line of [].concat(t || [])) if (line) out.push(String(line)) } catch (error) {}
-      }
-    }
-    return out
-  }
-  const commands = () => [...live.values()].flatMap((r) => r.commands)
-  const dshTools = () => [...live.values()].flatMap((r) => r.dshTools.map((t) => ({ ...t, module: r.moduleId, instance: r.instance })))
   /** 内置模块里没在跑的（关掉的、被替换的）。 */
   const builtinOff = () => new Set([...builtinDefs.keys()].filter((id) => live.get(id)?.source !== 'builtin'))
 
@@ -680,130 +565,6 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       if (manifest) return manifest.capabilities
     }
     return []
-  }
-
-  // ---------- 面板 ----------
-  function status() {
-    const users = isUserOn() ? scanUser() : scanUser().map((u) => ({ ...u, safe: true }))
-    // 文件夹刚删掉、还没来得及停的模块也列出来（下一轮检查就停）
-    const moduleIds = [...live.values()].map((rec) => rec.moduleId)
-    const ids = [...builtinDefs.keys(), ...[...new Set([...users.map((u) => u.id), ...moduleIds])].filter((id) => !builtinDefs.has(id)).sort()]
-    return ids.map((id) => {
-      const b = builtinDefs.get(id)
-      const u = users.find((x) => x.id === id)
-      const rec = live.get(id)
-      // 主实例没跑但额外实例在跑时，定义从实例上取，面板照样能显示名称/设置字段
-      const instanceRecs = [...live.values()].filter((item) => item.moduleId === id && item.key !== id)
-      const def: any = rec?.def || instanceRecs[0]?.def || b || {}
-      const m = modCfg(id)
-      const err = errors.get(id)
-      return {
-        id,
-        name: def.name || id,
-        description: def.description || '',
-        version: def.version || '',
-        kind: def.kind === 'adapter' ? 'adapter' : 'plugin',
-        reusable: Boolean(def.reusable),
-        builtin: Boolean(b),
-        builtinVersion: b?.version || '',
-        hasUser: Boolean(u),
-        community: Boolean(u && existsSync(join(u.dir, '.aurabot-source.json'))),
-        userDir: u?.dir || '',
-        safeSkipped: Boolean(u?.safe),
-        running: rec ? rec.source : null, // 'builtin' | 'user' | null
-        // 额外实例：面板按这个列表出「实例」卡片；配置在 ext.<id>.instances
-        instances: instanceRecs.map((item) => ({
-          id: item.instance,
-          key: item.key,
-          running: item.source,
-          startedAt: item.startedAt,
-          error: errors.get(item.key)?.message || '',
-          errors: item.errors,
-          tools: toolNames(item),
-          commands: item.commands.map((c) => c.name),
-          routes: [...routes].filter(([, route]) => route.id === item.key).map(([p]) => p.replace('/aurabot/api', '')),
-        })),
-        fallback: Boolean(rec?.fallback),
-        enabled: m.enabled !== false,
-        useBuiltin: Boolean(m.useBuiltin),
-        forkedFrom: m.forkedFrom || '',
-        outdated: Boolean(b && rec?.source === 'user' && m.forkedFrom && m.forkedFrom !== b.version),
-        error: err ? err.message : '',
-        errors: rec ? rec.errors : [],
-        tools: rec ? toolNames(rec) : [],
-        commands: rec ? rec.commands.map((c) => c.name) : [],
-        routes: [...routes].filter(([, r]) => r.id === id).map(([p]) => p.replace('/aurabot/api', '')),
-        settings: (def.settings || []).map(field => field.type === 'password' ? { ...field, default: '' } : field),
-        defaults: Object.fromEntries(Object.entries(def.defaults || {}).map(([key, value]) => [key,
-          def.settings?.some(field => field.key === key && field.type === 'password') ? '' : value])),
-        // 内置模块也能带面板：内置和用户模块走同一条加载链路，面板只按「定义里有没有声明 panel」判断。
-        // 不再要求 rec.source === 'user'，否则内置模块写了 panel.js 也永远显示不出来。
-        // 仍然要求模块在跑（rec 存在），没跑起来的模块没有面板代码可读。
-        panel: Boolean(rec && def.panel),
-        // 接口是不是挂在根路径（内置模块的老路径）；面板里的 call() 靠它决定加不加 /ext/<id> 前缀
-        routesAtRoot: routesAtRoot(id),
-        tab: def.tab || '',
-        navGroup: typeof def.navGroup === 'string' ? def.navGroup : '',
-        flag: typeof def.flag === 'string' ? def.flag : (def.settings || []).some((f) => f?.key === 'enabled') ? 'enabled' : '',
-        keepPanel: Boolean(def.keepPanel),
-        startedAt: rec?.startedAt || 0,
-      }
-    })
-  }
-  function toolNames(rec) {
-    const names = []
-    for (const b of rec.tools) {
-      try {
-        const r = typeof b === 'function' ? b({ chat: { chatId: 'private:0', kind: 'private', userId: '0' }, level: 'full', sessionId: '' }) : b
-        for (const t of [].concat(r || [])) if (t?.name) names.push(t.name)
-      } catch (error) {}
-    }
-    return names
-  }
-
-  // ---------- 面板首屏：导航摘要（方案 §二/§2.1） ----------
-  /**
-   * 从内存注册表生成导航摘要：内置定义（builtinDefs）+ 用户模块扫描缓存（userSeen）+
-   * 运行记录（live）+ 错误表（errors）+ 配置（modCfg）。**绝不调 scanUser() 重扫模块目录，
-   * 也不执行工具构造器**（toolNames 那套不走）——首屏读取只准碰内存。
-   * 每项：id/name/tab/navGroup/hasSettings/hasPanel/enabled/running/platforms/availability。
-   */
-  function summarizeModules() {
-    // live 的键可能是 `id@实例名`：导航按模块 id 去重，额外实例只体现在 instanceCount 上
-    const liveIds = [...live.values()].map((rec) => rec.moduleId)
-    const ids = new Set([...builtinDefs.keys(), ...userSeen.keys(), ...liveIds])
-    const modules = [...ids].sort().map((id) => {
-      const b = builtinDefs.get(id)
-      const seen = userSeen.get(id)
-      const rec = live.get(id)
-      const instanceRecs = [...live.values()].filter((item) => item.moduleId === id && item.key !== id)
-      const def: any = rec?.def || instanceRecs[0]?.def || b || {}
-      const m = modCfg(id)
-      const err = errors.get(id)
-      const enabled = m.enabled !== false
-      const availability = rec ? 'ready'
-        : err ? 'error'
-        : !enabled ? 'disabled'
-        : (b || seen) ? 'stopped' // 有定义/有安装记录但没在跑（被关、被替换、等待加载）
-        : 'unloaded' // 只有扫描缓存残影，定义还没拿到
-      return {
-        id,
-        name: def.name || id,
-        tab: def.tab || '',
-        navGroup: typeof def.navGroup === 'string' ? def.navGroup : '',
-        hasSettings: Array.isArray(def.settings) && def.settings.length > 0,
-        hasPanel: Boolean(rec && def.panel),
-        kind: def.kind === 'adapter' ? 'adapter' : 'plugin',
-        reusable: Boolean(def.reusable),
-        enabled,
-        running: rec ? rec.source : null, // 'builtin' | 'user' | null
-        instanceCount: instanceRecs.length,
-        platforms: Array.isArray(def.platforms) ? def.platforms.map(String) : [],
-        availability, // ready | error | disabled | stopped | unloaded
-        error: err && !rec ? err.message : '',
-      }
-    })
-    return { navigationRevision: navigationRevisionCounter, modules }
   }
 
   /** file 是不是在 root 目录里面（root 自己不算；越过 root 的 ../ 一律不算）。 */
@@ -913,7 +674,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     summarizeModules, navigationRevision: () => navigationRevisionCounter,
     emit, emitAsync, claim, filter, filterSync, buildTools,
     // 插件核心自己听事件（不属于任何模块，不会被撤掉）
-    listen: (event, fn) => { const item = { id: '@core', fn }; listeners.set(event, [...(listeners.get(event) || []), item]); return () => listeners.set(event, (listeners.get(event) || []).filter((x) => x !== item)) }, contextFor, rules, commands, dshTools, builtinOff, handle,
+    listen: (event, fn) => events.subscribe('@core', event, fn), contextFor, rules, commands, dshTools, builtinOff, handle,
     hasRoute: (path) => routes.has(path),
     routeAccess: (path) => routes.get(path)?.access || null,
     dir: userDir,
