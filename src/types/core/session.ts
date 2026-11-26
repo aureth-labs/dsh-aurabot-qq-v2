@@ -20,6 +20,8 @@ export interface MessageQuote {
 }
 
 export interface SessionInit {
+  authority?: number
+  grant?: (userId: string, level: number) => void
   quote?: MessageQuote
   bot: BotLike
   type: TargetType
@@ -45,6 +47,8 @@ export interface SessionInit {
  * 插件只依赖这份契约，不依赖具体实现。
  */
 export interface SessionLike {
+  readonly authority: number
+  authorize(userId: string, level: number): Promise<void>
   readonly quote?: MessageQuote
   readonly bot: BotLike
   readonly type: TargetType

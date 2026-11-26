@@ -127,7 +127,6 @@ export const DEFAULTS = {
   group: { ...DEFAULT_GROUP_POLICY, privateCommandsEnabled: true, overrides: {} as Record<string, unknown>, ownerTools: 'off', ownerToolsGroups: [] as string[], ownerBrief: { enabled: true, lines: 24, groups: [] as string[] } },
   memberFilter: { enabled: true, rules: [] as MemberFilterRule[] }, // 不回应的人：明确选择所有群或指定群；不影响私聊
   // 按群头衔不回：勾选的群里，专属头衔正好是 title 的成员（一般是别的机器人）说话、戳她都不理。没勾群就不起作用
-  titleFilter: { enabled: true, groups: [] as string[], title: '大肥鱼' },
   voice: {
     enabled: true,
     // auto = 先 edge-tts，不行用 Windows 语音；edge / windows / cosyvoice / gptsovits / volcano / breeze / minimax / http = 指定引擎（失败都会退回 Windows 语音）

@@ -74,6 +74,7 @@ export interface CommandActionContext {
  * `.action()` 的返回值是卸载函数（模块卸载时宿主也会自动撤）。
  */
 export interface CommandBuilder {
+  authority(level: number): this
   description(text: string): this
   usage(text: string): this
   alias(...names: string[]): this

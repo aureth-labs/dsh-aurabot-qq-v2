@@ -1,3 +1,4 @@
+import { registerIdentityRoutes } from './identity.ts'
 import { commandList } from '../../../modules/commands/dispatch.ts'
 import {
   privatePermissionCatalog,
@@ -5,7 +6,8 @@ import {
   changePrivateWhitelist,
 } from '../../../../src/chat/policy/rules/permission.ts'
 
-export function registerPermissionRoutes({ http, logger, mods, getConfig, setConfig, bots, defaultBot }) {
+export function registerPermissionRoutes({ http, logger, mods, getConfig, setConfig, bots, defaultBot, directory }) {
+  registerIdentityRoutes(http, directory)
   const { route, query, readBody } = http
 
   route('/logs', async (req) => {

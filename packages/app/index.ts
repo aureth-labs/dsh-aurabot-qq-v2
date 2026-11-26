@@ -1,3 +1,4 @@
+import { createIdentityDirectory } from '../../src/core/store/identity.ts'
 import { createPrimaryChat } from './runtime/primary-chat.ts'
 import { createOutboundRuntime } from './runtime/outbound.ts'
 import { createTransport } from './runtime/transport.ts'
@@ -45,7 +46,7 @@ import { defaultModel, type AskModelOptions, modelReasoning, modelVision } from 
 import { isOwnerOf } from '../../src/core/config/owners.ts'
 import { createDialogue } from '../../src/core/llm/session-turn.ts'
 import { createMediaAccess } from '../../src/core/message/media/media.ts'
-import { dataDir } from '../../src/core/store/index.ts'
+import { dataDir, ensureDir } from '../../src/core/store/index.ts'
 import { createUsageFx } from '../../src/core/llm/usage/fx.ts'
 import { initUsage, usageReport, closeUsage } from '../../src/core/llm/usage/usage.ts'
 import { createBotsAccessor } from '../../src/core/bot/instance/registry.ts'
@@ -187,7 +188,9 @@ export function apply(ctx) {
   let hub = null
   let dangerGuard = null // 危险命令确认（security.dangerConfirm 开着才生效）
   let approvalRelay = null // DSH 要授权时在 QQ 私聊问主人（approvalViaQQ 开着才生效）
+  const directory = createIdentityDirectory(() => { ensureDir(dataDir()); return dataDir('identity.sqlite') }, getConfig)
   const gateway = createPrimaryGateway({
+    directory,
     ctx, onebot, logger, getConfig, endpoint, personaMemoryRuntime,
     getHub: () => hub,
     emit: (...args) => mods?.emit(...args),
@@ -195,7 +198,7 @@ export function apply(ctx) {
   })
   const { outbox, connectionChanged, flushOutbox, warmSince, warmPhase } = gateway
   const { botRegistry, adapterRegistry, pipeline, dispatchInbound, closeQuoteHistory } = createTransport({
-    getConfig, log: logger.child('adapter'),
+    directory, getConfig, log: logger.child('adapter'),
     speak: async text => { const voice = await tts.speak(text); return typeof voice === 'string' ? voice : String(voice?.file ?? '') },
     emit: (event, payload) => mods?.emit(event, payload),
     hasListeners: event => mods?.hasListeners(event) ?? false,
@@ -459,6 +462,7 @@ export function apply(ctx) {
     dangerGuard?.dispose()
     approvalRelay?.dispose()
     closeQuoteHistory()
+    directory.close()
     hub.dispose()
     closeUsage()
     bridge.dispose()
@@ -578,19 +582,14 @@ export function apply(ctx) {
   registerOutboundPolicyRoutes({ http, getConfig, setConfig, outbound, log })
   registerPetControls({ http, setConfig, getConfig, log, petStatus, use, redactTokens, publicBaseUrlOf, ctx, PREFIX })
   registerPetBehavior({ http, use, redactTokens, getConfig, setConfig, log })
-  registerPermissionRoutes({ http, logger, mods, getConfig, setConfig, bots: botRegistry, defaultBot: () => onebot.bot })
+  registerPermissionRoutes({ http, logger, mods, directory, getConfig, setConfig, bots: botRegistry, defaultBot: () => onebot.bot })
   registerUpdateRoutes({ PKG, log, getConfig, http, ROOT, VERSION })
   const { connectionProblem } = registerDiagnostics({ http, getConfig, endpoint, onebot, warmSince, warmPhase, mods, hub })
   registerPersonaRoutes({ http, ctx, generate, getConfig, bridge, use, hub, setConfig, log })
 
-  // 按群头衔不理：白名单里的群（带群名）+ 这些群里现有的头衔，面板里点一个就设成要过滤的那类
-  route('/groups/titles', async () => {
-    const gids = (cfg.allow.groups || []).map(String)
-    const groups = await Promise.all(gids.map(async (gid) => ({ groupId: gid, name: await hub.groupName(gid) })))
-    if (!gids.length) return { ok: true, groups, titles: [], failed: [] }
-    const { titles, failed } = await hub.titleFilter.titlesIn(gids)
-    hub.titleFilter.clear()
-    return { ok: true, groups, titles, failed, message: failed.length ? `有 ${failed.length} 个群的成员没拉到（她在群里吗？）` : '' }
+  route('/permissions/groups', async () => {
+    const groups = await Promise.all(cfg.allow.groups.map(async groupId => ({ groupId, name: await hub.groupName(groupId) })))
+    return { ok: true, groups }
   })
 
   // 本地接口

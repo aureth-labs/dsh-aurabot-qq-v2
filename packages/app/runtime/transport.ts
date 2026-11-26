@@ -1,3 +1,4 @@
+import type { IdentityDirectory } from '../../../src/core/store/identity.ts'
 import { isDeepStrictEqual } from 'node:util'
 import { h, isElement, normalize, toText } from '../../../src/core/message/element/element.ts'
 import type { createSendEvents } from '../../../src/core/bot/send-events.ts'
@@ -17,6 +18,7 @@ import type { AurabotConfig } from '../../../src/core/config/shape/defaults.ts'
 import type { AreaLogger } from '../../../src/core/support/log/logger.ts'
 
 interface TransportOptions {
+  directory: IdentityDirectory
   getConfig(): AurabotConfig
   log: AreaLogger
   speak(text: string): Promise<string>
@@ -25,7 +27,7 @@ interface TransportOptions {
   emitAsync(event: string, data: unknown): Promise<void>
   sendEvents: ReturnType<typeof createSendEvents>
   beforeMessage(bot: BotLike, message: InboundMessage): unknown
-  beforeEvent(event: string, payload: unknown, bot: BotLike): void
+  beforeEvent(event: string, payload: unknown, bot: BotLike): boolean | void
   respond: LlmHandler
 }
 
@@ -34,7 +36,7 @@ export function createTransport({
   log,
   speak,
   emit,
-  beforeMessage, hasListeners, emitAsync, sendEvents,
+  directory, beforeMessage, hasListeners, emitAsync, sendEvents,
   beforeEvent,
   respond,
 }: TransportOptions) {
@@ -50,6 +52,10 @@ export function createTransport({
 
   async function dispatchInbound(bot: BotLike, message: InboundMessage) {
     try {
+      if (closed) return
+      const scope = { platform: bot.platform, botId: bot.id }
+      const authority = directory.observe(scope, message)
+      if (!authority || beforeMessage(bot, message)) return
       emit('adapter/message', { ...message, platform: bot.platform, botId: bot.id })
       let reparsed = false
       if (hasListeners('before-parse')) {
@@ -69,7 +75,9 @@ export function createTransport({
         catch (error) { log.warn('引用记录不可用', String(error)) }
       }
       if (closed) return
-      const session = inboundSession(bot, message, pipeline, quote)
+      const actor = { type: message.type, channelId: message.channelId, userId: message.userId }
+      const session = inboundSession(bot, message, pipeline, quote, authority,
+        (userId, level) => directory.authorize(scope, actor, userId, level))
       if (!session.content.trim() && !session.elements.length) return
       session.reparsed = reparsed
       const result = await personaScope.run(personaNow(getConfig()), async () => {
@@ -89,16 +97,14 @@ export function createTransport({
     bots: botRegistry,
     log: (message) => log.info(message),
     speak,
-    onMessage(bot, message) {
-      if (!beforeMessage(bot, message)) return dispatchInbound(bot, message)
-    },
+    onMessage: dispatchInbound,
     onEvent(platform, event, payload, bot) {
       try {
         const notice = platformNotice(event, payload, bot)
         const detail = event === 'message-deleted' && notice?.channelId && notice.messageId
           ? { type: notice.type, channelId: notice.channelId, messageId: notice.messageId, raw: payload } : payload
         if (event === 'message-deleted') quotes.recall(bot, detail as MessageDeletion)
-        beforeEvent(event, detail, bot)
+        if (beforeEvent(event, detail, bot) === false) return
         if (notice) emit(event, notice)
         emit('adapter/' + event, { platform, botId: bot.id, payload: detail })
       } catch (error) {

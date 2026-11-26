@@ -208,28 +208,36 @@ export function createPluginContext(api: KernelApi, extras: PluginContextExtras 
     api.onDispose(off)
     return off
   })
-  const registerCommand = (signature: string, handler: (...args: any[]) => unknown, filter?: SessionFilter) => {
+  const registerCommand = (signature: string, handler: (...args: any[]) => unknown, filter?: SessionFilter, authority = 1) => {
     if (!pipeline) return () => {}
     // 官方插件必须显式打开 registerCommands（默认 false）；社区插件不声明就照常注册。
     if (api.settings().registerCommands === false) return () => {}
     const parsed = parseSignature(signature)
-    const off = pipeline.command(parsed.name, handler as any, filter ? { filter } : undefined)
+    const off = pipeline.command(parsed.name, handler as any, { filter, authority })
     api.onDispose(off)
     return off
   }
   const commandBuilder = (signature: string, filter?: SessionFilter): CommandBuilder => {
     const parsed = parseSignature(signature)
-    const meta = { description: '', usage: '', alias: [] as string[] }
+    const meta = { description: '', usage: '', alias: [] as string[], authority: 1 }
     let dispose: (() => void) | null = null
     const builder: CommandBuilder = {
+      authority(level) {
+        if (!Number.isInteger(level) || level < 1 || level > 5) throw new Error('指令权限等级范围是 1 至 5')
+        meta.authority = level
+        return builder
+      },
       description(text) { meta.description = String(text || ''); return builder },
       usage(text) { meta.usage = String(text || ''); return builder },
       alias(...names) { meta.alias.push(...names.map(String)); return builder },
       action(fn) {
-        dispose = registerCommand(signature, (session: any, raw: string, command: string) => {
+        dispose?.()
+        const action = (session: any, raw: string, command: string) => {
           const values = parseValues(parsed.args, String(raw ?? ''))
           return (fn as any)({ session, command, args: String(raw ?? ''), options: {} }, ...values)
-        }, filter)
+        }
+        const offs = [...new Set([parsed.name, ...meta.alias])].map(name => registerCommand(name, action, filter, meta.authority))
+        dispose = () => offs.forEach(off => off())
         return dispose
       },
       dispose() { dispose?.(); dispose = null },

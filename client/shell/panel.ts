@@ -480,7 +480,7 @@ function AurabotPage() {
   }[curTab.id] || Overview
   // 哪些标签有没保存的改动
   // group 键补上 files/forward：整理合并转发/发文件是聊天页的独立配置域，不补则改动不显示未保存标记
-  const TAB_KEYS = { character: ['personaLook'], connect: ['onebot', 'botQQ', 'workspaceDir'], access: ['ownerQQ', 'ownerName', 'ownerLevel', 'approvalNotify', 'approvalViaQQ', 'qqApi', 'longTasks', 'profilePerms', 'subagentBackground'], group: ['group', 'merge', 'titleFilter', 'memberFilter', 'chat', 'files', 'forward'], model: ['model', 'chatModels'], voice: ['voice'], stickers: ['stickers'], imagegen: ['imageGen'], video: ['video', 'local'], speakup: ['speakUp', 'ext'], autotelic: [], pet: [], mood: ['mood', 'memory'], song: ['song'], content: ['douyin', 'heybox'], local: ['local'], browser: ['browser'], security: ['security', 'update'] }
+  const TAB_KEYS = { character: ['personaLook'], connect: ['onebot', 'botQQ', 'workspaceDir'], access: ['owners', 'ownerQQ', 'wakeWords', 'ownerName', 'ownerLevel', 'approvalNotify', 'approvalViaQQ', 'qqApi', 'longTasks', 'profilePerms', 'subagentBackground'], group: ['group', 'merge', 'memberFilter', 'chat', 'files', 'forward'], model: ['model', 'chatModels'], voice: ['voice'], stickers: ['stickers'], imagegen: ['imageGen'], video: ['video', 'local'], speakup: ['speakUp', 'ext'], autotelic: [], pet: [], mood: ['mood', 'memory'], song: ['song'], content: ['douyin', 'heybox'], local: ['local'], browser: ['browser'], security: ['security', 'update'] }
   const tabDirty = (id) => {
     if (!dirty) return false
     // 对基线（/panel/config 快照）比对，不对比 st.config——pulse 只更新展示，不代表草稿基线

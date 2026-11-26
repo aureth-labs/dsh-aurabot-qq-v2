@@ -33,6 +33,7 @@ export type Next = () => Promise<PipelineResult>
 
 /** 管线只需要这几个字段，避免把整个 Session 类拖进契约。 */
 export interface PipelineSession {
+  readonly authority?: number
   content: string
   bot?: { platform?: string }
   type?: string
@@ -76,6 +77,7 @@ export type LlmHandler = (session: PipelineSession) => unknown
 export type SessionFilter = (session: PipelineSession) => boolean
 
 export interface CommandOptions {
+  authority?: number
   /** 只对满足条件的会话生效；不匹配时当作这条不是指令，继续走中间件与模型。 */
   filter?: SessionFilter
 }

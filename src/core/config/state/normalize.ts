@@ -508,9 +508,7 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.forward.expandEarly = bool(c.forward.expandEarly, false)
   c.forward.expandHistory = bool(c.forward.expandHistory, false)
   c.memberFilter = normalizeMemberFilter(c.memberFilter)
-  c.titleFilter.enabled = bool(c.titleFilter.enabled, true)
-  c.titleFilter.groups = qqList(c.titleFilter.groups) // 和群白名单同一套规则
-  c.titleFilter.title = String(c.titleFilter.title ?? '').replace(/[​-‍﻿]/g, '').trim().slice(0, 30) || '大肥鱼'
+  delete (c as RawConfig).titleFilter
   g.burstMax = num(g.burstMax, 8, 1, BIG)
   g.engagedMax = num(g.engagedMax, 6, 0, BIG)
   g.burstWindowSec = num(g.burstWindowSec, 120, 1, BIG)

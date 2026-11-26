@@ -22,6 +22,7 @@ export interface InboundMessage {
   /** 发消息的人。 */
   userId: string
   userName?: string
+  channelName?: string
   content?: string
   elements?: Element[]
   messageId?: string

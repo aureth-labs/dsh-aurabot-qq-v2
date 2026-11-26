@@ -224,6 +224,7 @@ export function inboundOf(event: SatoriEvent, bot: { rememberDirect(userId: stri
     channelId,
     userId,
     userName: String(event.user?.nick || event.user?.name || userId),
+    channelName: event.channel?.name,
     content: toText(elements),
     elements,
     sn: event.sn,

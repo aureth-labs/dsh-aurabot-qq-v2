@@ -130,8 +130,6 @@ before(async () => {
     botQQ: BOT,
     ownerQQ: OWNER,
     allow: { private: [OWNER], groups: ['555', '556', '557', '558', '559'] },
-    // 556 专门测按头衔不理
-    titleFilter: { enabled: true, groups: ['556'], title: '大肥鱼' },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0 },
     stickers: { autoChance: 0, collectMode: 'auto' },
@@ -293,7 +291,9 @@ test('群管：她在群里只是普通成员时，主人要求也做不了，�
   }
 })
 
-test('按头衔不理：勾选的群里头衔是「大肥鱼」的成员 @ 她、戳她都不交给模型；没头衔的照常回', async () => {
+test('平台封禁会同时拦截群消息与戳一戳，其他成员照常回复', async () => {
+  const rule = { platform: 'qq', botId: '', id: '880', kind: 'user', alias: '', level: 0 }
+  assert.equal((await fake.call('/panel/identities/edit', { action: 'save', ...rule }, { 'content-type': 'application/json' })).json().ok, true)
   const at = (t) => [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' ' + t } }]
   const titled = (uid, t) => ({ ...grp('556', uid, at(t), '另一只鱼'), sender: { user_id: Number(uid), nickname: '另一只鱼', card: '', role: 'member', title: '大肥鱼' } })
   const turns = fake.turns.length

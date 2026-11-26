@@ -27,7 +27,6 @@ export function createIncomingMessages({
   const { pending } = turnGuard
   const {
     onCommand,
-    titleFilter,
     onMemoryCommand,
     isMuted,
     dislikes,
@@ -75,7 +74,6 @@ export function createIncomingMessages({
     const fromOwner = onCommand && isOwner(cfg, msg.userId)
     const ownerRevision = fromOwner ? ownerAuthorizationRevision(cfg) : ''
 
-    if (msg.kind === 'group' && (await titleFilter.shouldIgnore(event))) return
     if (isDisposed() || wasCleared()) return
     stats.bump('received')
 

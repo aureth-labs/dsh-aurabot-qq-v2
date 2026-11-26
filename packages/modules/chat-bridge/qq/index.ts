@@ -17,7 +17,6 @@ import { parseReply, bubbleDelay, itemsToLine, cleanOutboundText, cleanOutboundS
   tidyPunctuation, hasSuspectTagShape } from '../../../../src/chat/reply/index.ts'
 import { groupResponseMode, isOwner } from '../../../../src/chat/policy/rules/access.ts'
 import { createFaces } from '../../../adapters/qq/onebot-v11/src/face/index.ts'
-import { createTitleFilter } from '../../../../src/chat/inbound/filter/title-filter.ts'
 import { guardOutgoing } from '../../../../src/chat/inbound/hooks/guard.ts'
 import { currentPromptSources } from '../../../../src/security/leak-guard.ts'
 import { noticeText } from '../../../../src/chat/reply/notices/index.ts'
@@ -125,7 +124,6 @@ export function createHub({
   }
   const faces = createFaces({ onebot, log }) // QQ 系统表情：<face:名字> ↔ 编号
   const { maybeReact } = createReact({ getConfig, log, botOf, faces, mood })
-  const titleFilter = createTitleFilter({ getConfig, onebot, log }) // 勾选的群里，头衔是某个词的成员（别的机器人）不理
   const noticesFor = new Map() // chatId → [一句话]  下次交给她时带上的群事件（撤回、禁言、进群……）
   const saidElsewhere = new Map() // chatId → [{ at, text }]  别处安排她在这里发的话，下次这个聊天交给她时补进去
   const proactiveLogAt = new Map() // chatId → 已从流水补进过一次的最大时间戳（重启后回捞用，避免同一批重复注入）
@@ -363,7 +361,6 @@ export function createHub({
     getSelfId: () => activity.selfId,
     userName,
     hooks,
-    titleFilter,
     lastPoker,
     ignoredGroupMember,
     groupResponseMode,
@@ -529,7 +526,6 @@ export function createHub({
     turnGuard,
     policy: {
       onCommand,
-      titleFilter,
       onMemoryCommand,
       isMuted,
       dislikes,
@@ -621,7 +617,6 @@ export function createHub({
     pushToSession,
     runTurnInChat: directTurns.runTurnInChat,
     receiveOwnerMessage: directTurns.receiveOwnerMessage,
-    titleFilter,
     runSystemTurn: background.runSystemTurn,
     systemSessionCooldown,
     chatCooldown,

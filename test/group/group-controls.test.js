@@ -114,7 +114,6 @@ for (const [name, patch] of Object.entries({
   '记忆关闭': { memory: { enabled: false, passiveGroups: [G] } },
   '未列入旁听名单': { memory: { passiveGroups: [] } },
   '调试模式': { debug: true },
-  '命中头衔过滤': { titleFilter: { enabled: true, groups: [G], title: '大肥鱼' } },
 })) test(`${name}不写旁听流水`, async t => {
   const s = setup(t, patch)
   await s.hub.onMessage(s.event('我喜欢白米饭'))

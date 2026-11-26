@@ -4,7 +4,6 @@ export interface GroupEventDeps {
   getSelfId: () => string
   userName(userId: string, guildId?: string): Promise<string>
   hooks: any
-  titleFilter: any
   lastPoker: Map<string, string>
   ignoredGroupMember: (cfg: any, chat: any) => boolean
   groupResponseMode: (cfg: any, groupId: string) => string
@@ -17,7 +16,6 @@ export function createGroupEvents (deps: GroupEventDeps) {
 
   // ---------- 戳一戳 ----------
   /** 有人戳了她：当成一条对她说的话交给她（群里也一定回），同一个聊天 20 秒内只算一次。 */
-  /** 群文件是单独的通知，不是消息：转成一条文件消息走正常流程（白名单、头衔过滤都照旧）。 */
   async function onGroupFile(ev) {
     if (deps.isDisposed() || !ev.file?.name) return
     if (deps.ignoredGroupMember(deps.getConfig(), { kind: 'group', groupId: ev.group_id, userId: ev.user_id })) return
@@ -45,7 +43,6 @@ export function createGroupEvents (deps: GroupEventDeps) {
     if (group && deps.groupResponseMode(deps.getConfig(), group) !== 'chat') return
     const poker = String(group ? ev.user_id : ev.sender_id ?? ev.user_id)
     if (!poker || poker === self) return
-    if (group && await deps.titleFilter.shouldIgnore({ group_id: group, user_id: poker })) return
     if (deps.isDisposed()) return
     const chatId = group ? `group:${group}` : `private:${poker}`
     deps.lastPoker.set(chatId, poker)

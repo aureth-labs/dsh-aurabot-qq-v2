@@ -37,6 +37,8 @@ function sentTextOf(content: unknown): string {
 }
 
 export class Session implements SessionLike {
+  readonly authority: number
+  private readonly grant?: SessionInit['grant']
   readonly bot: BotLike
   readonly type: TargetType
   readonly channelId: string
@@ -73,6 +75,8 @@ export class Session implements SessionLike {
   readonly sentLog: Array<{ text: string; at: number }> = []
 
   constructor(init: SessionInit, parent?: Session) {
+    this.grant = parent?.grant ?? init.grant
+    this.authority = parent?.authority ?? init.authority ?? 1
     this.quote = init.quote
     this.raw = init.raw
     this.parent = parent
@@ -89,6 +93,11 @@ export class Session implements SessionLike {
     this.timestamp = init.timestamp ?? Date.now()
     this.target = targetOfBot(init.bot, init.type, init.type === 'private' ? init.userId : init.channelId)
     this.pipeline = init.pipeline
+  }
+
+  async authorize(userId: string, level: number): Promise<void> {
+    if (!this.grant) throw new Error('此会话没有授权能力')
+    this.grant(userId, level)
   }
 
   get platform(): string {
@@ -162,10 +171,10 @@ export class Session implements SessionLike {
   }
 }
 
-export function inboundSession(bot: BotLike, message: InboundMessage, pipeline: PipelineRunner, quote?: MessageQuote): Session {
+export function inboundSession(bot: BotLike, message: InboundMessage, pipeline: PipelineRunner, quote?: MessageQuote, authority = 1, grant?: SessionInit['grant']): Session {
   const elements = message.elements?.length ? normalize(message.elements) : undefined
   const content = message.content ?? (elements ? toText(elements) : '')
-  return new Session({ ...message, bot, pipeline, elements, content, quote, userName: message.userName ?? message.userId })
+  return new Session({ ...message, bot, pipeline, authority, grant, elements, content, quote, userName: message.userName ?? message.userId })
 }
 
 /** 定时任务等没有真实入站消息的场景，用这个造一个 Session。 */

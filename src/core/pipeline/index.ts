@@ -22,7 +22,6 @@ import type {
   PipelineErrorInfo,
   PipelineResult,
   PipelineSession,
-  SessionFilter,
 } from '../../types/plugin/pipeline.ts'
 
 export type {
@@ -59,8 +58,7 @@ const NOT_CONSUMED: PipelineResult = { handled: false, by: null }
 
 export class Pipeline {
   private readonly entries: Entry[] = []
-  private readonly commands = new Map<string, CommandHandler>()
-  private readonly filters = new Map<string, SessionFilter>()
+  private readonly commands = new Map<string, CommandOptions & { handler: CommandHandler }>()
   private llmHandler: LlmHandler | null = null
   private readonly onError?: (info: PipelineErrorInfo) => void
   private seq = 0
@@ -94,14 +92,9 @@ export class Pipeline {
    * 不满足的会话直接当作「没有这条指令」，继续走中间件与模型，不会被指令吞掉。
    */
   command(name: string, handler: CommandHandler, options: CommandOptions = {}): () => void {
-    this.commands.set(name, handler)
-    if (options.filter) this.filters.set(name, options.filter)
-    return () => {
-      if (this.commands.get(name) === handler) {
-        this.commands.delete(name)
-        this.filters.delete(name)
-      }
-    }
+    const entry = { ...options, handler }
+    this.commands.set(name, entry)
+    return () => { if (this.commands.get(name) === entry) this.commands.delete(name) }
   }
 
   /** 管线末端：交给模型。没注册时视为未消费。 */
@@ -138,7 +131,8 @@ export class Pipeline {
     // ① 指令段
     const parsed = this.findCommand(session)
     if (parsed) {
-      const handler = this.commands.get(parsed.command)!
+      const { handler, authority = 1 } = this.commands.get(parsed.command)!
+      if ((session.authority ?? 1) < authority) return { handled: true, by: 'command' }
       try {
         const value = await handler(session, parsed.args, parsed.command)
         if (!this.config.middlewareAfterCommand) return { handled: true, by: 'command', value }
@@ -192,7 +186,7 @@ export class Pipeline {
   /** 这条指令存在，且当前会话满足它的作用域过滤器。 */
   private matches(command: string, session: PipelineSession): boolean {
     if (!command || !this.commands.has(command)) return false
-    const filter = this.filters.get(command)
+    const filter = this.commands.get(command)?.filter
     if (!filter) return true
     try {
       return Boolean(filter(session))

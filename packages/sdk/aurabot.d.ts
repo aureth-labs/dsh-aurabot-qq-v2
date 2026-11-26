@@ -149,6 +149,8 @@ export interface MessageQuote {
 }
 
 export interface Session {
+  readonly authority: number
+  authorize(userId: string, level: number): Promise<void>
   readonly quote?: MessageQuote
   readonly bot: Bot
   readonly type: Target['type']
@@ -247,6 +249,7 @@ export interface CommandActionContext {
 }
 
 export interface CommandBuilder {
+  authority(level: number): this
   description(text: string): this
   usage(text: string): this
   alias(...names: string[]): this
@@ -309,6 +312,7 @@ export interface ServerFacade {
 }
 
 export interface InboundMessage {
+  channelName?: string
   type: Target['type']
   channelId: string
   userId: string

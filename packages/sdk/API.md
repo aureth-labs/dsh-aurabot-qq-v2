@@ -51,7 +51,8 @@ Schema 的 `title('字段名')` 与 `description('填写说明')` 分别用于�
 | `ctx.logger` | `info / warn / error / debug` |
 | `ctx.setInterval / setTimeout / effect` | 随卸载回收 |
 | `ctx.middleware(fn, { name, before, after })` | 入站中间件 |
-| `ctx.command('名字 <参数>').action(fn)` | 指令（不经过 AI） |
+| `ctx.command('名字 <参数>').action(fn)` | 指令（不经过 AI），可用 `.authority(1..5)` 设置最低等级 |
+| `session.authority` / `session.authorize(userId, level)` | 当前权限等级；5 级用户可在当前平台实例内授权，写入时重新核对身份 |
 | `ctx.tool(spec \| (where) => spec[])` | 给 AI 调用的工具，用户不能直接触发 |
 | `ctx.prompt(fn)` / `ctx.rule(text)` | 每轮上下文 / 系统提示规则 |
 | `ctx.think(prompt, { title, key, timeoutMs })` | 以她的人格跑一轮后台会话，返回正文 |

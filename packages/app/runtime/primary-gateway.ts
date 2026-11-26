@@ -11,7 +11,7 @@ import { tcpOpen } from '../support.ts'
 const primary = (bot: BotLike) => bot.platform === 'qq' && bot.id === defaultOneBotId
 export function createPrimaryGateway({
   ctx,
-  onebot,
+  onebot, directory,
   logger,
   getConfig,
   getHub,
@@ -192,7 +192,16 @@ export function createPrimaryGateway({
       primary(bot) && claimPrimaryMessage(message.raw, message),
     beforeEvent: (event: string, payload: unknown, bot: BotLike) => {
       if (!primary(bot)) return
-      if (event === 'onebot') handleNotice(payload)
+      if (event === 'onebot') {
+        const notice = payload as { group_id?: number; sender_id?: number; user_id?: number; notice_type?: string }
+        if (notice?.notice_type === 'group_upload' || notice?.notice_type === 'notify') {
+          const userId = String(notice.group_id ? notice.user_id ?? '' : notice.sender_id ?? notice.user_id ?? '')
+          const type = notice.group_id ? 'group' : 'private'
+          if (userId && !directory.authority({ platform: bot.platform, botId: bot.id },
+            { userId, type, channelId: String(notice.group_id || userId) })) return false
+        }
+        handleNotice(payload)
+      }
       if (event === 'message-deleted') {
         const row = payload as { type: string; channelId: string; messageId: string }
         getHub()?.recallQuote(row.type, row.channelId, row.messageId)

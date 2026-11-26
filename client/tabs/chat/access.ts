@@ -6,13 +6,15 @@ import { Btn, Card, Choices, Empty, ListArea, Row, Seg, Select, Switch, cx, h, u
 import { PersonMemoryReset } from '../persona/persona-graph.ts'
 import { NoticeWorkspaces } from '../persona/persona.ts'
 
+import { IdentityDirectoryPage } from './identity-directory.ts'
+
 function Access(props) {
   const [tab, setTab] = useState('global')
   return h('div', { className: 'ab-grid' },
     h('div', null, h(Seg, { value: tab, onChange: setTab, options: [
-      { value: 'global', label: '全局设置' }, { value: 'people', label: '私聊用户' }, { value: 'groups', label: '群聊' },
+      { value: 'global', label: '全局设置' }, { value: 'directory', label: '平台权限' }, { value: 'people', label: '私聊用户' }, { value: 'groups', label: '群聊' },
     ] })),
-    tab === 'people' ? h(PrivatePermissions, props)
+    tab === 'directory' ? h(IdentityDirectoryPage) : tab === 'people' ? h(PrivatePermissions, props)
       : tab === 'groups' ? h(GroupPermissions, props) : h(GlobalAccess, props),
   )
 }
@@ -292,46 +294,6 @@ function GroupRoles() {
           h('td', null, g.canManage ? h('span', { className: 'ab-badge' }, '可以') : h('span', { className: 'ab-muted ab-small' }, '不行')))))))
 }
 
-/** 按群头衔不理：勾选的群里，专属头衔是某个词的成员（别的机器人）她不理。头衔可以从群里现有的里面点一个。 */
-
-function TitleFilter({ draft, setDraft }) {
-  const tf = draft.titleFilter || { enabled: true, groups: [], title: '大肥鱼' }
-  const [info, setInfo] = useState(null) // { groups, titles, failed, message } 拉过才有 titles
-  const [busy, setBusy] = useState(false)
-  const set = (p) => setDraft(setPath(draft, 'titleFilter', { ...tf, ...p }))
-  const pull = async () => {
-    setBusy(true)
-    const r = await get('/groups/titles')
-    setBusy(false)
-    if (r.ok) setInfo(r)
-    else setInfo({ groups: [], titles: [], message: r.message || '没拉到' })
-  }
-  useEffect(() => { pull() }, [])
-  const groups = (draft.allow.groups || []).map(String)
-  const nameOf = (gid) => { const g = ((info && info.groups) || []).find((x) => x.groupId === gid); return g && g.name && g.name !== gid ? g.name : '' }
-  const on = (gid) => tf.groups.includes(gid)
-  const hit = info && info.titles ? info.titles.find((t) => t.title === tf.title.trim()) : null
-  return h(Card, { title: '按头衔不理（防机器人互聊）', right: h(Switch, { on: tf.enabled, onChange: (v) => set({ enabled: v }) }),
-    desc: '同一个群里有别的机器人时，给它们挂上同一个专属头衔（比如「大肥鱼」），ta在勾选的群里就不理它们：说话、@ ta、戳ta都不回，免得机器人之间互相接话停不下来。只认专属头衔，昵称和群名片不算；私聊不受影响。' },
-    h(Row, { label: '要不理的头衔', hint: '一字不差才算。下面列出白名单群里现有的头衔，点一个就填进来。' },
-      h('div', { style: { width: '100%' } },
-        h('div', { className: 'ab-flex' },
-          h('input', { className: 'ab-input', value: tf.title, maxLength: 30, placeholder: '大肥鱼', onChange: (e) => set({ title: e.target.value }) }),
-          h(Btn, { small: true, onClick: pull, disabled: busy }, busy ? '拉取中…' : '从群里拉取头衔')),
-        info && info.titles ? h('div', { className: 'ab-psec-add', style: { marginTop: 10 } },
-          info.titles.length
-            ? info.titles.slice(0, 30).map((t) => h('button', { key: t.title, type: 'button', className: cx('ab-chip', t.title === tf.title.trim() && 'on'), title: t.members.map((m) => m.name).join('、'), onClick: () => set({ title: t.title }) }, t.title, h('span', { className: 'n' }, t.count + ' 人')))
-            : h('span', { className: 'ab-muted ab-small' }, groups.length ? '这些群里还没有人挂专属头衔。' : '先到「聊天 → 群聊」添加群，选择「仅模块」或「允许 AI 聊天」。')) : null,
-        hit ? h('div', { className: 'ab-tf-who' }, '挂着「' + hit.title + '」的：' + hit.members.map((m) => m.name + '（' + m.id + '）').join('、') + (hit.count > hit.members.length ? ' 等 ' + hit.count + ' 人' : '')) : null,
-        info && info.message ? h('div', { className: 'ab-muted ab-small', style: { marginTop: 6 } }, info.message) : null)),
-    h(Row, { label: '在哪些群生效', hint: '没勾的群照常回。只列白名单里的群。' },
-      groups.length
-        ? h('div', { className: 'ab-flex' }, groups.map((gid) => h('button', { key: gid, type: 'button', className: cx('ab-chip', on(gid) && 'on'), onClick: () => set({ groups: on(gid) ? tf.groups.filter((x) => x !== gid) : [...tf.groups, gid] }) },
-          (on(gid) ? '✓ ' : '') + (nameOf(gid) || '群'), h('span', { className: 'n' }, gid))))
-        : h('span', { className: 'ab-muted ab-small' }, '群白名单是空的。')),
-    h('div', { className: 'ab-muted ab-small', style: { marginTop: 6 } }, '查不到某人的头衔时（网关抽风），那条先不回，过几秒再查；成员改了头衔一分钟内生效。'))
-}
-
 /** 主人私聊里问起群里的事：把最近群聊流水补进当轮上下文（默认关）。 */
 
 function OwnerBrief({ draft, setDraft }) {
@@ -339,7 +301,7 @@ function OwnerBrief({ draft, setDraft }) {
   const ob = draft.group.ownerBrief || { enabled: false, lines: 12, groups: [] }
   const groups = (draft.allow.groups || []).map(String)
   const [info, setInfo] = useState(null)
-  useEffect(() => { get('/groups/titles').then((r) => { if (r.ok) setInfo(r) }).catch(() => {}) }, [])
+  useEffect(() => { get('/permissions/groups').then((r) => { if (r.ok) setInfo(r) }).catch(() => {}) }, [])
   const nameOf = (gid) => {
     const g = ((info && info.groups) || []).find((x) => x.groupId === gid)
     return g && g.name && g.name !== gid ? g.name : ''
@@ -595,11 +557,7 @@ function Group({ draft, setDraft, st, go }) {
       h(Row, { key: 'p', label: '图片按路径直发', hint: '网关和 NapCat 在同一台机器或共享挂载时，直接把路径交给网关，省掉读盘和 base64 膨胀；网关读不到会自动改用 base64。默认开。' }, f.sw('files.imageByPath')),
     ]),
 
-    // 折叠 F：不想理的人与头衔（整卡默认折叠，内容自成一卡）
-    h(Card, { title: '不想理的人与头衔', desc: '按 QQ 号或群头衔屏蔽：说了也不回（包括 @、引用、戳一戳和模块指令）。私聊和主人不受影响。', collapsible: true, defaultOpen: false },
-      h(MemberFilter, { draft, setDraft }),
-      h(TitleFilter, { draft, setDraft }),
-    ),
+    h(Card, { title: '群成员规则', collapsible: true, defaultOpen: false }, h(MemberFilter, { draft, setDraft })),
 
     ) : null,
   )
@@ -611,7 +569,7 @@ function OwnerBriefGroups({ draft, setDraft }) {
   const ob = draft.group.ownerBrief || { enabled: false, lines: 12, groups: [] }
   const groups = (draft.allow.groups || []).map(String)
   const [info, setInfo] = useState(null)
-  useEffect(() => { get('/groups/titles').then((r) => { if (r.ok) setInfo(r) }).catch(() => {}) }, [])
+  useEffect(() => { get('/permissions/groups').then((r) => { if (r.ok) setInfo(r) }).catch(() => {}) }, [])
   const nameOf = (gid) => {
     const g = ((info && info.groups) || []).find((x) => x.groupId === gid)
     return g && g.name && g.name !== gid ? g.name : ''
@@ -624,4 +582,4 @@ function OwnerBriefGroups({ draft, setDraft }) {
     : h('span', { className: 'ab-muted ab-small' }, '先到「聊天 → 单个群」添加群，选择「仅模块」或「允许 AI 聊天」。'))
 }
 
-export { Access, usePermissionSave, PrivatePermissions, GroupPermissions, GlobalAccess, ProfilePerms, CommandList, GroupRoles, TitleFilter, OwnerBrief, MemberFilter, GroupOverrides, Group, OwnerBriefGroups }
+export { Access, usePermissionSave, PrivatePermissions, GroupPermissions, GlobalAccess, ProfilePerms, CommandList, GroupRoles, OwnerBrief, MemberFilter, GroupOverrides, Group, OwnerBriefGroups }
