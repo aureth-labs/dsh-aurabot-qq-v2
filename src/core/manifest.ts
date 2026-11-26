@@ -14,6 +14,10 @@ export interface ModuleManifest {
   version: string
   description: string
   category: string
+  /** 插件类型：普通插件 `plugin`，适配器插件 `adapter`（市场/面板据此分组）。 */
+  kind: 'plugin' | 'adapter'
+  /** 允许多份配置。适配器默认允许（同平台多账号），普通插件默认单实例。 */
+  reusable: boolean
   platforms: string[]
   capabilities: string[]
   minPluginVersion: string
@@ -108,6 +112,8 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
       version: str(pkg.version, '0.0.0'),
       description: str(pkg.description),
       category: str(aurabot.category, 'other'),
+      kind: str(aurabot.kind) === 'adapter' ? 'adapter' : 'plugin',
+      reusable: aurabot.reusable === undefined ? str(aurabot.kind) === 'adapter' : aurabot.reusable === true,
       platforms: strings(aurabot.platforms, ['qq']),
       capabilities: strings(aurabot.capabilities),
       minPluginVersion: str(aurabot.minPluginVersion),
@@ -136,6 +142,8 @@ export function readManifest(dir: string, options: { id?: string } = {}): Manife
     version: str(legacy.version, '0.0.0'),
     description: str(legacy.description),
     category: str(legacy.category, 'other'),
+    kind: 'plugin',
+    reusable: legacy.reusable === true,
     platforms: strings(legacy.platforms, ['qq']),
     capabilities: strings(legacy.capabilities),
     minPluginVersion: str(legacy.minPluginVersion),

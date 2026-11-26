@@ -45,6 +45,10 @@ export interface ModuleDef {
   description?: string
   version?: string
   api?: number
+  /** 插件类型：`plugin` 普通插件 / `adapter` 适配器插件。 */
+  kind?: 'plugin' | 'adapter'
+  /** 允许多份配置；适配器默认 true。 */
+  reusable?: boolean
   panel?: string
   capabilities?: string[]
   defaults?: Record<string, unknown>
@@ -1112,6 +1116,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
           panel: def.panel || (panelFile && existsSync(panelFile) ? manifest.panel : undefined),
           capabilities: def.capabilities || manifest.capabilities,
           api: Math.max(Number(def.api || 1) || 1, manifest.api),
+          kind: def.kind || manifest.kind,
+          reusable: def.reusable ?? manifest.reusable,
           reloadOnConfig: def.reloadOnConfig ?? manifest.reloadOnConfig,
         }
       }
@@ -1412,6 +1418,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         name: def.name || id,
         description: def.description || '',
         version: def.version || '',
+        kind: def.kind === 'adapter' ? 'adapter' : 'plugin',
+        reusable: Boolean(def.reusable),
         builtin: Boolean(b),
         builtinVersion: b?.version || '',
         hasUser: Boolean(u),
@@ -1485,6 +1493,8 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         navGroup: typeof def.navGroup === 'string' ? def.navGroup : '',
         hasSettings: Array.isArray(def.settings) && def.settings.length > 0,
         hasPanel: Boolean(rec && def.panel),
+        kind: def.kind === 'adapter' ? 'adapter' : 'plugin',
+        reusable: Boolean(def.reusable),
         enabled,
         running: rec ? rec.source : null, // 'builtin' | 'user' | null
         platforms: Array.isArray(def.platforms) ? def.platforms.map(String) : [],
