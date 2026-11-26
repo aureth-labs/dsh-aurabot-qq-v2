@@ -298,7 +298,11 @@ function Market({ st, toast, reload, go }) {
       : m.name
     return h('div', { key: m.id, className: 'ab-card', style: { display: 'flex', flexDirection: 'column' } },
       h('h3', null, title, m.update ? h('span', { className: 'ab-badge' }, '可更新') : null),
-      h('div', { className: 'ab-small ab-muted' }, 'v' + (m.installed || m.version) + (m.update ? ' → v' + m.version : '') + (CATEGORY_LABEL[m.category] ? ' · ' + CATEGORY_LABEL[m.category] : '') + (m.author ? ' · ' + m.author : '') + (m.license ? ' · ' + m.license : '')),
+      h('div', { className: 'ab-small ab-muted' }, 'v' + (m.installed || m.version) + (m.update ? ' → v' + m.version : '')
+        + (m.kind === 'adapter' ? ' · 适配器' : '')
+        + (Number(m.api) >= 2 ? ' · 接口 v2' : '')
+        + (CATEGORY_LABEL[m.category] ? ' · ' + CATEGORY_LABEL[m.category] : '')
+        + (m.author ? ' · ' + m.author : '') + (m.license ? ' · ' + m.license : '')),
       canHot ? h('div', { className: 'ab-small ab-muted', style: { marginTop: 2 } }, '下载 ' + num(m.downloads) + ' 次' + (m.delisted ? '' : ' · 含更新')) : null,
       timeMode && dateTextOf(m) ? h('div', { className: 'ab-small ab-muted', style: { marginTop: 2 } }, (timeMode === 'updated' ? '最近更新 ' : '发布于 ') + dateTextOf(m)) : null,
       h('p', { className: 'ab-desc', style: { margin: '8px 0' } }, m.description),
