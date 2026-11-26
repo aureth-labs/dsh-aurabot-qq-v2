@@ -1,6 +1,6 @@
 // 「她挑 / 只听主人的」：这一轮收到的表情按会话记着，她想收时凭编号来取。落盘一份，DSH 重启不丢。
-import { dataDir, readJson, writeJson } from '../../../core/store/index.ts'
-import type { OutSegment } from '../context/context.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
+import type { OutSegment } from './context/context.ts'
 
 const TTL = 30 * 60_000
 

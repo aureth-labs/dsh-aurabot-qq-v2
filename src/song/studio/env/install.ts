@@ -187,7 +187,7 @@ export const SEPARATOR_FILES: Record<string, Array<[string, string[], string?]>>
     [`${BS_ROFORMER}.yaml`, [`${GH_AS}/${BS_ROFORMER}.yaml`], '2bfdd16c656bd9519aba757cc4f8834b7ede675eb1e00ec4772d74ae1c41af7f'],
   ],
 }
-export const BUNDLED_SEP = fileURLToPath(new URL('../separator/', import.meta.url))
+export const BUNDLED_SEP = fileURLToPath(new URL('../../separator/', import.meta.url))
 
 /** 手动下载用的地址（面板里给用户复制，用浏览器或下载工具下好再拖进来）。 */
 export function separatorLinks(model) {

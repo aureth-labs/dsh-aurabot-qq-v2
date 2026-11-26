@@ -9,10 +9,10 @@ import { searchSongs, songUrl, account } from '../source/netease.ts'
 import { installLinuxUv } from '../source/linux-uv.ts'
 import { SongClipError, validateSongClip, clipCacheParts, clipLabel, clipFade } from '../audio/segment.ts'
 
-import { APPLIO_COMMIT, TORCH_INDEX, TORCH_CPU_INDEX, CN_PYPI, CN_TORCH, CN_PYTHON, shouldUseCnMirror, PREREQS, downloadWithMirror, UV_SOURCES, separatorReady, fetchFile, findFile, ensureReadable, dirSize, defaultRoot, explainInstallError, INSTALL_STEPS, SEPARATOR_FILES, BUNDLED_SEP, separatorLinks, importSeparator, SEPARATOR_LIST, checkRoot, pathsOf } from './install.ts'
-import { listVoices, importModels, deleteVoice, pruneCache } from './voice.ts'
-import { VOCAL_MIN_DB, mixArgs, rankCandidates, explainSongError, SongDeliveryError, songFailureReason, cutFirstWith } from './audio.ts'
-import { run } from './run.ts'
+import { APPLIO_COMMIT, TORCH_INDEX, TORCH_CPU_INDEX, CN_PYPI, CN_TORCH, CN_PYTHON, shouldUseCnMirror, PREREQS, downloadWithMirror, UV_SOURCES, separatorReady, fetchFile, findFile, ensureReadable, dirSize, defaultRoot, explainInstallError, INSTALL_STEPS, SEPARATOR_FILES, BUNDLED_SEP, separatorLinks, importSeparator, SEPARATOR_LIST, checkRoot, pathsOf } from './env/install.ts'
+import { listVoices, importModels, deleteVoice, pruneCache } from './vocal/voice.ts'
+import { VOCAL_MIN_DB, mixArgs, rankCandidates, explainSongError, SongDeliveryError, songFailureReason, cutFirstWith } from './vocal/audio.ts'
+import { run } from './env/run.ts'
 
 type CreateSongStudioOptions = Partial<Record<'getConfig' | 'log' | 'sendVoiceFile' | 'sendText' | 'say' | 'onSung' | 'local' | 'readPcm' | 'platform' | 'runInstallCommand', any>>
 type ConvertSpeechOptions = Partial<Record<'voice' | 'pitch' | 'outDir', any>>

@@ -73,7 +73,7 @@ import { createAuditor } from '../autotelic/observe/audit.ts'
 import { setSsrpMode, assertPublicUrl, fetchGuarded } from '../core/net/index.ts'
 import { BUILTINS } from '../modules/index.ts'
 import { ensureDevBuild, runUpdate, tcpOpen, updateExec } from './support.ts'
-import { createHttp } from './http/index.ts'
+import { createHttp } from './http.ts'
 import { createOutboundPolicy } from '../chat/policy/outbound.ts'
 import { createPurposePolicy, createSharedBudget } from '../features/proactive/policy.ts'
 

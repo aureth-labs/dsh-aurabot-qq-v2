@@ -1,6 +1,6 @@
 import { mkdirSync, readdirSync, statSync, writeFileSync, rmSync } from 'node:fs'
 import { join, basename } from 'node:path'
-import { readZip } from '../audio/zip.ts'
+import { readZip } from '../../audio/zip.ts'
 
 
 

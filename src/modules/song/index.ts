@@ -3,7 +3,7 @@
 
 import { createHash } from 'node:crypto'
 import { createSongStudio } from '../../song/studio/studio.ts'
-import { checkRoot, listDrives } from '../../song/studio/install.ts'
+import { checkRoot, listDrives } from '../../song/studio/env/install.ts'
 import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
 import { defineTool, str, int, bool } from '../../tools/index.ts'
 
@@ -20,10 +20,10 @@ export default {
   tab: 'song',
   files: [
     'song/studio/studio.js',
-    'song/studio/install.js',
-    'song/studio/voice.js',
-    'song/studio/audio.js',
-    'song/studio/run.js',
+    'song/studio/env/install.js',
+    'song/studio/vocal/voice.js',
+    'song/studio/vocal/audio.js',
+    'song/studio/env/run.js',
     'song/audio/segment.js',
   ],
   setup(api) {

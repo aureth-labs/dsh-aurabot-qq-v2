@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { SongClipError, selectedWindow } from '../audio/segment.ts'
+import { SongClipError, selectedWindow } from '../../audio/segment.ts'
 
 
 type EstimateChorusStartOptions = Partial<Record<'sampleRate' | 'maxSec' | 'frameSec', any>>
