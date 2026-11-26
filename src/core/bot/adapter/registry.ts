@@ -56,16 +56,21 @@ export class AdapterRegistry {
     if (!platform) throw new Error('适配器要声明 platform')
 
     // runtime 要在 connect() 之前交出去，但消息只能挂在 connect() 返回的 bot 上。
-    // 用一个可变槽位接住：连上之前投进来的消息直接丢（那时还没有实例可挂）。
+    // 用一个可变槽位接住：连上之前投进来的消息先压着，connect() 返回后再补投，
+    // 免得握手那一小段时间里的消息凭空消失。
     let bound: BotLike | null = null
+    let self: AdapterHandle | null = null
+    const early: InboundMessage[] = []
     const runtime: AdapterRuntime = {
       platform,
       log: this.deps.log,
       emitMessage: (message) => {
         if (!bound) {
-          this.deps.log(`适配器 ${platform} 在 connect() 返回前投递了消息，已丢弃`)
+          if (early.length < 100) early.push(message)
           return
         }
+        // 被顶替 / 已下线的旧实例还会从断线重连里收到事件：只让当前这条记录投递，免得重复进管线。
+        if (self && this.entries.get(self.bot.id)?.handle !== self) return
         this.deps.onMessage?.(bound, message)
       },
       emitEvent: (event, payload) => this.deps.onEvent?.(platform, event, payload),
@@ -80,6 +85,11 @@ export class AdapterRegistry {
       wrapBot: this.deps.wrapBot,
     })
     bound = handle.bot
+    self = handle
+    if (early.length) {
+      const pending = early.splice(0)
+      for (const message of pending) this.deps.onMessage?.(handle.bot, message)
+    }
     const key = handle.bot.id
     const existing = this.entries.get(key)
     if (existing?.handle) {

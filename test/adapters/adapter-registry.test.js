@@ -103,3 +103,51 @@ test('每次增删都通知监听者', async () => {
 
   assert.equal(calls, 2)
 })
+
+test('connect() 返回前投递的消息不会丢，连上之后补投', async () => {
+  const bots = new BotRegistry()
+  const got = []
+  const registry = new AdapterRegistry({ bots, log: () => {}, onMessage: (bot, message) => got.push([bot.id, message]) })
+  const bot = fakeBot('discord', 'dc-buf')
+  const spec = {
+    platform: 'discord',
+    name: '缓冲',
+    async connect(_config, runtime) {
+      runtime.emitMessage({ content: '早到的消息' })
+      return bot
+    },
+  }
+  const handle = await registry.start(spec, {})
+  assert.deepEqual(got, [['dc-buf', { content: '早到的消息' }]])
+  await handle.dispose()
+})
+
+test('被顶替的旧实例再收到事件，不会重复进管线', async () => {
+  const bots = new BotRegistry()
+  const got = []
+  const registry = new AdapterRegistry({ bots, log: () => {}, onMessage: (_bot, message) => got.push(message) })
+  let first = null
+  let second = null
+  await registry.start({
+    platform: 'telegram',
+    name: '旧',
+    async connect(_config, runtime) {
+      first = runtime
+      return fakeBot('telegram', 'tg-dup')
+    },
+  }, {})
+  const handle = await registry.start({
+    platform: 'telegram',
+    name: '新',
+    async connect(_config, runtime) {
+      second = runtime
+      return fakeBot('telegram', 'tg-dup')
+    },
+  }, {})
+
+  first.emitMessage({ content: '旧实例' })
+  assert.deepEqual(got, [])
+  second.emitMessage({ content: '新实例' })
+  assert.deepEqual(got, [{ content: '新实例' }])
+  await handle.dispose()
+})

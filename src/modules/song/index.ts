@@ -2,7 +2,8 @@
 // 换声这一步可以在「本地接口」里接你自己的推理（so-vits-svc、自己训练的 RVC……）；整个模块也可以替换掉。
 
 import { createHash } from 'node:crypto'
-import { createSongStudio, checkRoot, listDrives } from '../../song/studio/index.ts'
+import { createSongStudio } from '../../song/studio/studio.ts'
+import { checkRoot, listDrives } from '../../song/studio/install.ts'
 import { privateCapabilityAllowed } from '../../chat/policy/access.ts'
 import { defineTool, str, int, bool } from '../../tools/index.ts'
 
@@ -17,7 +18,14 @@ export default {
   version: '1.0.0',
   description: '用她的声音翻唱一首歌，做好发语音条（qq_song_cover、/sing）',
   tab: 'song',
-  files: ['song/studio/index.js', 'song/audio/segment.js'],
+  files: [
+    'song/studio/studio.js',
+    'song/studio/install.js',
+    'song/studio/voice.js',
+    'song/studio/audio.js',
+    'song/studio/run.js',
+    'song/audio/segment.js',
+  ],
   setup(api) {
     const { hub, local, http } = api.core
     const mood = api.lazy('mood')
