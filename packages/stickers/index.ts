@@ -14,16 +14,15 @@ export default {
   version: '1.0.0',
   description: '偷表情、回复时按情绪配表情、她自己改名删图；关掉后不发也不收表情',
   tab: 'stickers',
-  files: ['src/features/stickers/index.js'],
-  setup(api) {
-    const { hub, onebot, http } = api.core
-    const store = createStickerStore({ dsh: api.dsh, getConfig: api.config, onebot, log: api.log })
+  apply(ctx, config) {
+    const { hub, onebot, http } = ctx.host
+    const store = createStickerStore({ dsh: ctx.harness, getConfig: ctx.root.read, onebot, log: ctx.logger })
 
-    api.tool(({ chat, level, sessionId }) => {
+    ctx.tool(({ chat, level, sessionId }) => {
       if (chat.kind === 'system') return []
       const current = chat.chatId
       const tools = [
-        ...(api.config().stickers.enabled ? [defineTool({
+        ...(ctx.root.config.stickers.enabled ? [defineTool({
           name: 'qq_send_sticker',
           description: '在当前 QQ 聊天里发一张表情包。name 写表情的名字或情绪（如「委屈」「开心」「早晚安」），会在表情库里模糊匹配。一般直接在回复里写 <sticker:名字> 就行，这个工具用于回复之外单独补发。',
           properties: { name: str('表情名字或情绪关键词') },
@@ -104,12 +103,12 @@ export default {
             if (r.existed) return { ok: true, message: `库里已经有这张了（叫「${r.item.name || '未命名'}」）` }
             return { ok: true, message: `收进库了：「${r.item.name || '未命名'}」（${p.prompt ? '画的是' + p.prompt : '自己画的'}）` }
           }
-          if (!api.config().stickers.collect) return { ok: false, message: '偷表情关着' }
-          const mode = (api.config().stickers.collectMode || 'auto')
+          if (!ctx.root.config.stickers.collect) return { ok: false, message: '偷表情关着' }
+          const mode = (ctx.root.config.stickers.collectMode || 'auto')
           if (mode === 'owner' && !hub.turnSendersAllOwner(sessionId)) {
             return { ok: false, message: '现在是「只听主人的」模式：这一轮有别人在，得主人让我收才行' }
           }
-          if (latest_image && !(current.startsWith('group:') ? api.config().stickers.fromGroups : api.config().stickers.fromPrivate)) {
+          if (latest_image && !(current.startsWith('group:') ? ctx.root.config.stickers.fromGroups : ctx.root.config.stickers.fromPrivate)) {
             return { ok: false, message: '没有开启从这个会话收表情' }
           }
           const photo = latest_image ? hub.recentMedia(current).at(-1) : null
@@ -164,12 +163,12 @@ export default {
           } else {
             const media = hub.recentMedia(current)
             // 优先主人自己发的，其次这个聊天里最近的
-            const pick = media.filter((x) => x.userId === String(api.config().ownerQQ)).at(-1) || media.at(-1)
+            const pick = media.filter((x) => x.userId === String(ctx.root.config.ownerQQ)).at(-1) || media.at(-1)
             if (!pick) return { ok: false, message: '最近半小时这个聊天里没有人发表情或图片，先把那张发过来' }
             // 下载失败要说清是哪一步、多大：以前这里没 try，异常直接冒到工具层，
             // 模型只看到三个字「太大了」，只能让主人换一张反复试（#332）
             try {
-              buf = await segmentBytes(pick.seg, api.core.onebot, { maxBytes: MAX_STICKER_BYTES })
+              buf = await segmentBytes(pick.seg, ctx.host.onebot, { maxBytes: MAX_STICKER_BYTES })
             } catch (error) {
               return { ok: false, message: '这张表情下载失败了：' + error.message }
             }
@@ -208,43 +207,43 @@ export default {
       return tools
     })
 
-    api.route('/stickers', async (req) => {
+    ctx.server.get('/stickers', async (req) => {
       const q = http.query(req)
       const limit = Math.min(200, Math.max(1, Math.trunc(Number(q.limit) || 40)))
       const offset = Math.max(0, Math.trunc(Number(q.offset) || 0))
       const all = store.library().items.slice().reverse()
       return { ok: true, items: all.slice(offset, offset + limit), total: all.length, hasMore: offset + limit < all.length }
     })
-    api.route('/sticker/image', async (req, res) => {
+    ctx.server.get('/sticker/image', async (req, res) => {
       const it = store.library().items.find((i) => i.md5 === http.query(req).md5)
       if (!it || !existsSync(stickerPath(it))) return http.send(res, 404, '')
       const ext = it.file.split('.').pop()
       http.send(res, 200, readFileSync(stickerPath(it)), ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : ext === 'webp' ? 'image/webp' : 'image/jpeg')
     })
-    api.route('/sticker/rename', async (req) => {
+    ctx.server.get('/sticker/rename', async (req) => {
       const b = await http.body(req)
       return store.rename(b.md5, b.name, Array.isArray(b.tags) ? b.tags : undefined)
     })
-    api.route('/sticker/delete', async (req) => {
+    ctx.server.get('/sticker/delete', async (req) => {
       const b = await http.body(req)
       return store.remove(b.md5, { fromQQ: b.fromQQ !== false })
     })
     // 多选批量删除：面板上一次删几十张，不用一张张点、一张张确认
-    api.route('/sticker/delete-batch', async (req) => {
+    ctx.server.get('/sticker/delete-batch', async (req) => {
       const b = await http.body(req)
       const list = Array.isArray(b.md5s) ? b.md5s : b.md5 ? [b.md5] : []
       return store.removeMany(list, { fromQQ: b.fromQQ !== false })
     })
     // 批量补名字 / 标签：POST 立刻返回，后台一张张看图起名，进度用下面的 status 查
-    api.route('/sticker/caption-all', async (req) => {
+    ctx.server.get('/sticker/caption-all', async (req) => {
       const b = await http.body(req)
       return store.captionLibrary({ all: b.all === true, limit: Number(b.limit) || 0 })
     })
-    api.route('/sticker/caption-status', async () => ({ ok: true, ...store.captionStatus() }))
-    api.route('/sticker/caption-stop', async () => ({ ok: true, ...store.captionCancel() }))
-    api.route('/sticker/import-qq', async () => store.importFromQQ())
-    api.rule(() => '- 主人让你存某个表情（「存一下」「导入这个表情」）时用 qq_save_sticker；让你把 QQ 收藏里的表情导进来时用 qq_import_qq_stickers。别人让你存，不用理。')
-    api.route('/sticker/upload', async (req) => {
+    ctx.server.get('/sticker/caption-status', async () => ({ ok: true, ...store.captionStatus() }))
+    ctx.server.get('/sticker/caption-stop', async () => ({ ok: true, ...store.captionCancel() }))
+    ctx.server.get('/sticker/import-qq', async () => store.importFromQQ())
+    ctx.rule(() => '- 主人让你存某个表情（「存一下」「导入这个表情」）时用 qq_save_sticker；让你把 QQ 收藏里的表情导进来时用 qq_import_qq_stickers。别人让你存，不用理。')
+    ctx.server.get('/sticker/upload', async (req) => {
       const b = await http.body(req)
       const buf = Buffer.from(String(b.data || '').replace(/^data:[^,]+,/, ''), 'base64')
       if (!buf.length) return { ok: false, message: '图片是空的' }

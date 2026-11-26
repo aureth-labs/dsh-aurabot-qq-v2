@@ -65,10 +65,10 @@ export default {
   name: '好友申请与白名单',
   version: '1.0.0',
   description: '处理好友申请、加群申请和邀请，改私聊 / 群白名单；主人私聊可管理群接话与旁听；权限在「权限」页',
-  setup(api) {
-    const { hub, onebot } = api.core
-    const pendingFile = () => api.dataDir('friend-requests.json')
-    const groupPendingFile = () => api.dataDir('group-requests.json')
+  apply(ctx, config) {
+    const { hub, onebot } = ctx.host
+    const pendingFile = () => ctx.dataDir('friend-requests.json')
+    const groupPendingFile = () => ctx.dataDir('group-requests.json')
 
     const loadPending = () => {
       try {
@@ -80,7 +80,7 @@ export default {
       } catch (error) { return [] }
     }
     const savePending = (list) => {
-      try { writeFileSync(pendingFile(), JSON.stringify(list.slice(-PENDING_MAX))) } catch (error) { api.log.warn('存好友申请出错：', error.message) }
+      try { writeFileSync(pendingFile(), JSON.stringify(list.slice(-PENDING_MAX))) } catch (error) { ctx.logger.warn('存好友申请出错：', error.message) }
     }
 
     const loadGroupPending = () => {
@@ -92,7 +92,7 @@ export default {
       } catch (error) { return [] }
     }
     const saveGroupPending = (list) => {
-      try { writeFileSync(groupPendingFile(), JSON.stringify(list.slice(-PENDING_MAX))) } catch (error) { api.log.warn('存加群申请出错：', error.message) }
+      try { writeFileSync(groupPendingFile(), JSON.stringify(list.slice(-PENDING_MAX))) } catch (error) { ctx.logger.warn('存加群申请出错：', error.message) }
     }
     const groupRequestText = (r, botQQ) => {
       const user = r.userId ? `QQ ${r.userId}` : '未知用户'
@@ -112,15 +112,15 @@ export default {
       const req = { flag: String(ev.flag), subType: ev.sub_type, userId, groupId, invitedId: String(ev.invited_id || ''), comment: String(ev.comment || '').slice(0, 80), at: Date.now() }
       list.push(req)
       saveGroupPending(list)
-      const cfg = api.config()
+      const cfg = ctx.root.config
       if (cfg.ownerQQ && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
         const note = req.comment ? `，验证消息：「${req.comment}」` : ''
-        api.sendText(`private:${cfg.ownerQQ}`, `${groupRequestText(req, cfg.botQQ)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`).catch(() => {})
+        ctx.sendTo(`private:${cfg.ownerQQ}`, `${groupRequestText(req, cfg.botQQ)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`).catch(() => {})
       }
     }
 
     // 好友申请事件：只记下来（flag 必须原样用，不能自己拼），再给主人提一句
-    api.on('onebot', (ev) => {
+    ctx.on('onebot', (ev) => {
       if (!ev || ev.post_type !== 'request') return
       if (ev.request_type === 'group') return onGroupRequest(ev)
       if (ev.request_type !== 'friend' || !ev.flag) return
@@ -133,24 +133,24 @@ export default {
         list.push({ flag: String(ev.flag), userId, comment: String(ev.comment || '').slice(0, 80), at: Date.now() })
         savePending(list)
       }
-      const cfg = api.config()
+      const cfg = ctx.root.config
       if (isNew && cfg.ownerQQ && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
         const note = ev.comment ? `，验证消息：「${String(ev.comment).slice(0, 80)}」` : ''
         const how = isUnknownUser(userId)
           ? `现在它是第 ${list.length} 个待处理申请，跟我说「通过第 ${list.length} 个」或「拒绝第 ${list.length} 个」就行。`
           : `要通过就跟我说「通过 ${userId}」，不想加说「拒绝 ${userId}」。`
-        api.sendText(`private:${cfg.ownerQQ}`, `有人想加我好友：${requestLabel(userId)}${note}。${how}`).catch(() => {})
+        ctx.sendTo(`private:${cfg.ownerQQ}`, `有人想加我好友：${requestLabel(userId)}${note}。${how}`).catch(() => {})
       }
     })
 
     const guarded = (key, chat, sessionId, run) => async (args) => {
-      const cfg = api.config()
+      const cfg = ctx.root.config
       const p = profilePermits(cfg, key, chat, hub.turnSendersAllOwner(sessionId))
       if (!p.ok) return p
       return run(args, cfg)
     }
 
-    const groupOwner = (chat) => chat.kind === 'private' && Boolean(api.config().ownerQQ) && String(chat.userId) === String(api.config().ownerQQ)
+    const groupOwner = (chat) => chat.kind === 'private' && Boolean(ctx.root.config.ownerQQ) && String(chat.userId) === String(ctx.root.config.ownerQQ)
     const guardedGroup = (chat, sessionId, run) => guarded('qqFriendRequest', chat, sessionId, async (args, cfg) => {
       if (!groupOwner(chat) || !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人私聊才能处理加群申请' }
       return run(args, cfg)
@@ -205,9 +205,9 @@ export default {
       return { ok: false, message: what ? `没找到 ${what} 的好友申请（没收到过，QQ 过滤的列表里也没有）` : '现在没有待处理的好友申请' }
     }
 
-    api.tool(({ chat, sessionId }) => {
+    ctx.tool(({ chat, sessionId }) => {
       if (chat.kind !== 'private' && chat.kind !== 'group') return []
-      const cfg = api.config()
+      const cfg = ctx.root.config
       const tools = []
       if (profileToolVisible(cfg, 'qqFriendRequest', chat)) {
         tools.push(defineTool({
@@ -303,7 +303,7 @@ export default {
           const key = String(args.kind).trim().toLowerCase() === 'private' ? 'private' : 'groups'
           // 用保存那一刻最新的配置再算一遍，免得盖掉面板刚改的
           let result = plan
-          api.setConfig((cur) => {
+          ctx.root.update((cur) => {
             result = planWhitelist(cur, args)
             if (!result.ok || !result.changed) return cur
             return { ...cur, allow: { ...cur.allow, [key]: result.next } }
@@ -311,7 +311,7 @@ export default {
           return { ok: result.ok, message: result.message }
         }),
       }))
-      const groupSettings = groupSettingsTool(api, { chat, sessionId })
+      const groupSettings = groupSettingsTool(ctx, { chat, sessionId })
       if (groupSettings) tools.push(groupSettings)
       return tools
     })

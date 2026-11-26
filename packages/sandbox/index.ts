@@ -9,7 +9,6 @@ export default {
   name: '聊天沙盒',
   version: '1.0.0',
   description: '本地 Satori 服务端 + 网页聊天室：不用 QQ 也能和机器人对话，用来联调插件',
-  files: ['packages/modules/sandbox/index.js', 'packages/modules/sandbox/server.js', 'packages/modules/sandbox/ui.js'],
   defaults: {
     host: '127.0.0.1',
     port: 5140,
@@ -30,9 +29,9 @@ export default {
     { key: 'defaultUserName', type: 'string', label: '网页里默认的昵称（留空用主人名）' },
     { key: 'autoConnect', type: 'boolean', label: '自动用 Satori 适配器连上自己' },
   ],
-  setup(api) {
-    const settings = api.settings() as Record<string, any>
-    const cfg = api.config()
+  apply(ctx, config) {
+    const settings = ctx.config as Record<string, any>
+    const cfg = ctx.root.config
     const server = createSandboxServer({
       host: String(settings.host || '127.0.0.1'),
       port: Number(settings.port) || 5140,
@@ -42,14 +41,14 @@ export default {
       platform: String(settings.platform || 'sandbox'),
       defaultUserId: String(settings.defaultUserId || cfg.ownerQQ || 'sandbox-user'),
       defaultUserName: String(settings.defaultUserName || cfg.ownerName || '沙盒用户'),
-      log: (message) => api.log.info(message),
+      log: (message) => ctx.logger.info(message),
     })
     let handle = null
     let stopped = false
     const ready = server.start()
       .then(() => {
         if (stopped || settings.autoConnect === false) return
-        return api.core.adapters
+        return ctx.host.adapters
           .start(satoriAdapter(), { endpoint: server.url, token: String(settings.token || ''), platform: String(settings.platform || 'sandbox') })
           .then((started) => {
             if (stopped) {
@@ -58,10 +57,10 @@ export default {
             }
             handle = started
           })
-          .catch((error) => api.log.warn(`沙盒没接上自己的适配器：${error?.message || error}`))
+          .catch((error) => ctx.logger.warn(`沙盒没接上自己的适配器：${error?.message || error}`))
       })
-      .catch((error) => api.log.warn(`聊天沙盒没起来：${error?.message || error}`))
-    api.route('/sandbox/status', async () => ({
+      .catch((error) => ctx.logger.warn(`聊天沙盒没起来：${error?.message || error}`))
+    ctx.server.get('/sandbox/status', async () => ({
       ok: true,
       running: server.running,
       url: server.url,

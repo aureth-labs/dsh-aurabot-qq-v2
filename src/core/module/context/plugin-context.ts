@@ -1,10 +1,8 @@
-// 模块拿到的 ctx：v1 的 api 原样保留（老插件零改动），再补 v2 的别名。
-// 规则：v1 里已有同名能力的，只做转发，不改语义；v1 没有的才新增。
+// 模块拿到的 ctx：只有 v2 能力，没有 v1 的 setup(api) 字段。
 
 import type { AdapterHandle, AdapterSpec } from '../../../types/adapter/adapter.ts'
 import type { BotsAccessor, BotLike } from '../../../types/adapter/bot.ts'
 import type {
-  ApiLike,
   BotAccessor,
   BroadcastResult,
   CommandArg,
@@ -19,7 +17,6 @@ import type { Middleware, MiddlewareOptions, SessionFilter } from '../../../type
 import type { Target } from '../../../types/core/target.ts'
 
 export type {
-  ApiLike,
   LlmFacade,
   LlmSummaryOptions,
   LlmTextOptions,
@@ -29,64 +26,130 @@ export type {
   TtsFacade,
 } from '../../../types/plugin/ctx.ts'
 
-export function createPluginContext(api: ApiLike, extras: PluginContextExtras = {}): PluginContext {
-  const ctx = { ...api } as PluginContext
+/** 内核内部的注册器；插件作者看不到这个对象，只看到它投出来的 ctx。 */
+interface KernelApi {
+  id: string
+  version: string
+  apiVersion: number
+  dir?: string
+  log: PluginContext['logger']
+  core: Record<string, any>
+  dsh: Record<string, any>
+  settings: () => Record<string, any>
+  saveSettings: (patch: any) => Record<string, any>
+  setConfig: (patch: any) => unknown
+  config: () => Record<string, any>
+  use: (id: string) => Record<string, any> | null
+  lazy: (id: string) => Record<string, any>
+  has: (id: string) => boolean
+  defineTool: (spec: any) => any
+  tool: (builder: any) => () => void
+  on: (event: string, fn: (...args: any[]) => unknown) => () => void
+  emit: (event: string, ...args: any[]) => void
+  every: (ms: number, fn: () => unknown, label?: string) => () => void
+  later: (ms: number, fn: () => unknown) => () => void
+  onDispose: (fn: () => unknown) => () => void
+  context: (fn: (args: any) => unknown) => () => void
+  rule: (fn: any) => () => void
+  dataDir: (...parts: string[]) => string
+  sendText: (chatId: string, text: string, opts?: any) => Promise<any>
+  sendImage: (chatId: string, src: unknown) => Promise<any>
+  sendFile: (chatId: string, file: unknown, name?: string) => Promise<any>
+  sendVoiceFile: (chatId: string, file: unknown, note?: string) => Promise<any>
+  reply: (msg: any, text: string) => Promise<any>
+  proactive: PluginContext['proactive']
+  ask: (options: any) => Promise<any>
+  onebot: PluginContext['onebot']
+  route: (path: string, handler: (req: any, res: any) => unknown, options?: { access?: 'panel' }) => () => void
+}
+
+export function createPluginContext(api: KernelApi, extras: PluginContextExtras = {}): PluginContext {
+  const ctx = {} as PluginContext
+  const value = (key: string, v: unknown) => Object.defineProperty(ctx, key, { enumerable: true, configurable: true, writable: true, value: v })
+  const getter = (key: string, get: () => unknown) => Object.defineProperty(ctx, key, { enumerable: true, configurable: true, get })
+
+  value('id', api.id)
+  value('version', api.version)
+  value('apiVersion', api.apiVersion)
+  value('baseDir', api.dir || '')
+  // 本插件自己的配置：live 视图，面板存完立刻读到新值
+  getter('config', () => api.settings())
+  // 全局配置：ctx.root.config 直接读，ctx.root.read() 是函数形态（给回调用）
+  const root = {}
+  Object.defineProperty(root, 'config', { enumerable: true, get: () => api.config() })
+  value('root', root)
+  Object.defineProperty(root, 'read', { enumerable: false, value: () => api.config() })
+  Object.defineProperty(root, 'update', { enumerable: false, value: (patch: any) => api.setConfig(patch) })
+
+  value('updateConfig', (patch: any) => api.saveSettings(typeof patch === 'function' ? patch(api.settings()) : patch))
+  value('logger', api.log)
+  value('host', api.core)
+  value('harness', api.dsh)
+
+  value('get', (id: string) => api.use(id) as any)
+  value('has', (id: string) => api.has(id))
+  value('lazy', (id: string) => api.lazy(id) as any)
+  value('defineTool', (spec: any) => api.defineTool(spec))
+  value('tool', (builder: any) => api.tool(builder))
+  value('prompt', (fn: any) => api.context(fn))
+  value('rule', (fn: any) => api.rule(fn))
+
+  value('sendTo', (chatId: string, content: any, options?: any) => api.sendText(chatId, String(content ?? ''), options))
+  value('sendImage', (chatId: string, src: any) => api.sendImage(chatId, src))
+  value('sendFile', (chatId: string, file: any, name?: string) => api.sendFile(chatId, file, name))
+  value('sendVoiceFile', (chatId: string, file: any, note?: string) => api.sendVoiceFile(chatId, file, note))
+  value('reply', (msg: any, content: any) => api.reply(msg, String(content ?? '')))
+  value('proactive', api.proactive)
+  value('ask', (options: any) => api.ask(options))
+  value('onebot', api.onebot)
+  value('dataDir', (...parts: string[]) => api.dataDir(...parts))
 
   // 定时器随模块卸载自动回收（Cordis 的 effect 语义），不要用裸 setInterval
-  ctx.setInterval = (ms, fn, label) => api.every?.(ms, fn, label) ?? (() => {})
-  ctx.setTimeout = (ms, fn) => api.later?.(ms, fn) ?? (() => {})
+  value('setInterval', (ms: number, fn: () => unknown, label?: string) => api.every(ms, fn, label))
+  value('setTimeout', (ms: number, fn: () => unknown) => api.later(ms, fn))
 
   // effect：接函数或带 dispose 的对象，统一挂到模块的 dispose 队列
-  ctx.effect = (fn) => {
-    if (typeof fn === 'function') return api.onDispose?.(fn as () => unknown) ?? (() => {})
+  value('effect', (fn: any) => {
+    if (typeof fn === 'function') return api.onDispose(fn)
     const disposable = fn as { dispose?: () => unknown } | null
-    return api.onDispose?.(() => disposable?.dispose?.()) ?? (() => {})
-  }
+    return api.onDispose(() => disposable?.dispose?.())
+  })
 
   // on('dispose') 归到卸载队列，其它事件照旧
-  ctx.on = (event, fn) => (event === 'dispose' ? ctx.effect(fn) : (api.on?.(event, fn) ?? (() => {})))
+  value('on', (event: string, fn: (...args: any[]) => unknown) => (event === 'dispose' ? api.onDispose(fn) : api.on(event, fn)))
 
-  if (extras.bots) ctx.bots = extras.bots
-  ctx.bot = makeBotAccessor(extras.bots, extras.bot)
-  ctx.broadcast = (targets, content, options) => broadcast(ctx, targets, content, options)
-  ctx.emit = (event, ...args) => { api.emit?.(event, ...args) }
-  // 全局配置是活的：模块卸载/重装、面板改设置之后读到的必须是最新值
-  Object.defineProperty(ctx, 'root', {
-    enumerable: true,
-    configurable: true,
-    get: () => ({ config: extras.rootConfig?.() ?? {} }),
-  })
-  if (extras.Schema) ctx.Schema = extras.Schema
-  if (extras.h) ctx.h = extras.h
-  if (extras.llm) ctx.llm = extras.llm
-  if (extras.tts) ctx.tts = extras.tts
+  if (extras.bots) value('bots', extras.bots)
+  value('bot', makeBotAccessor(extras.bots, extras.bot))
+  value('broadcast', (targets: Target[], content: unknown, options?: { timeoutMs?: number }) => broadcast(ctx, targets, content, options))
+  value('emit', (event: string, ...args: any[]) => { api.emit(event, ...args) })
+  if (extras.Schema) value('Schema', extras.Schema)
+  if (extras.h) value('h', extras.h)
+  if (extras.llm) value('llm', extras.llm)
+  if (extras.tts) value('tts', extras.tts)
+  if (extras.nativePreview) value('nativePreview', extras.nativePreview)
 
-  ctx.adapter = async (spec, config) => {
+  value('adapter', async (spec: AdapterSpec, config?: unknown) => {
     if (!extras.startAdapter) throw new Error('宿主没有提供适配器注册表')
     const handle = await extras.startAdapter(spec, config)
-    // 模块卸载 = 适配器下线，顺序和 koishi 一样：先断连，再摘 bots，再发 offline
-    api.onDispose?.(() => handle.dispose())
+    api.onDispose(() => handle.dispose())
     return handle
-  }
+  })
 
   // S5：管线三段。注册即绑定到本模块的卸载队列——模块关了，中间件/指令一起没。
   const pipeline = extras.pipeline
-  ctx.middleware = (fn, options) => {
+  value('middleware', (fn: Middleware, options?: MiddlewareOptions) => {
     if (!pipeline) return () => {}
     const off = pipeline.use(fn, options)
-    const dispose = api.onDispose?.(off)
-    return () => { off(); dispose?.() }
-  }
-  /** 注册一条指令，返回卸载函数；模块卸载时宿主也会一起撤。 */
+    api.onDispose(off)
+    return off
+  })
   const registerCommand = (signature: string, handler: (...args: any[]) => unknown, filter?: SessionFilter) => {
     if (!pipeline) return () => {}
     const parsed = parseSignature(signature)
     const off = pipeline.command(parsed.name, handler as any, filter ? { filter } : undefined)
-    const dispose = api.onDispose?.(off)
-    return () => { off(); dispose?.() }
+    api.onDispose(off)
+    return off
   }
-
-  /** `ctx.command('名字 <参数>')` 的链式写法：最后 .action() 才真正注册。 */
   const commandBuilder = (signature: string, filter?: SessionFilter): CommandBuilder => {
     const parsed = parseSignature(signature)
     const meta = { description: '', usage: '', alias: [] as string[] }
@@ -106,73 +169,60 @@ export function createPluginContext(api: ApiLike, extras: PluginContextExtras = 
     }
     return builder
   }
-
-  ctx.command = ((signature: unknown, handler?: (...args: any[]) => unknown, filter?: SessionFilter) => {
-    // v1 兼容：api.command({ name, run }) 注册的是「给 AI 调用的命令」，不是本地指令
-    if (signature && typeof signature === 'object') return (api.command as any)?.(signature) ?? (() => {})
+  value('command', ((signature: unknown, handler?: (...args: any[]) => unknown, filter?: SessionFilter) => {
     const text = String(signature ?? '').trim()
     if (!text) return () => {}
-    // 老写法：整段参数原样交给回调
     if (typeof handler === 'function') return registerCommand(text, handler, filter)
     return commandBuilder(text, filter)
-  }) as PluginContext['command']
+  }) as PluginContext['command'])
 
   /**
    * 工具注册。三种写法都认：
-   * - `ctx.tool(fn)`：v1 的工厂函数
-   * - `ctx.tool({ name, description, parameters, execute })`：Koishi 那种 JSON Schema 写法，转成 defineTool
+   * - `ctx.tool(fn)`：工厂函数，按 where 生成一批工具
+   * - `ctx.tool({ name, description, parameters, execute })`：JSON Schema 写法，转成 defineTool
    * - 已经做好、带 output 的工具：原样收下
    */
-  ctx.tool = (builder) => {
-    const define = (api as any).defineTool
-    const raw = builder as any
+  value('tool', (builder: any) => {
     let tool: any = builder
-    if (raw && typeof raw === 'object' && typeof raw.execute === 'function' && typeof raw.name === 'string' && !raw.output) {
-      const params = raw.parameters && typeof raw.parameters === 'object' ? raw.parameters : {}
-      if (typeof define === 'function') {
-        tool = define({
-          name: raw.name,
-          description: raw.description || '',
-          properties: params.properties || {},
-          required: params.required || [],
-          execute: raw.execute,
-        })
-      }
+    if (builder && typeof builder === 'object' && typeof builder.execute === 'function' && typeof builder.name === 'string' && !builder.output) {
+      const params = builder.parameters && typeof builder.parameters === 'object' ? builder.parameters : {}
+      tool = api.defineTool({
+        name: builder.name,
+        description: builder.description || '',
+        properties: params.properties || {},
+        required: params.required || [],
+        execute: builder.execute,
+      })
     }
-    return (api.tool as any)?.(tool) ?? (() => {})
-  }
+    return api.tool(tool)
+  })
 
-  /** 面板接口：默认带 access: 'panel'，和宿主的管理面同一套闸。 */
   const registerRoute = (
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     handler: (req: any, res: any) => unknown,
     options: { access?: 'panel' | null } = {},
   ) => {
-    const route = (api as any).route
-    if (typeof route !== 'function') return () => {}
     const access = options.access === undefined ? 'panel' : options.access
-    return route(path, (req: any, res: any) => {
+    return api.route(path, (req: any, res: any) => {
       const actual = String(req?.method || 'GET').toUpperCase()
       if (actual !== method) return { ok: false, code: 'METHOD_NOT_ALLOWED', message: `这个接口只接受 ${method}` }
       return handler(req, res)
     }, access === null ? {} : { access })
   }
-  ctx.server = {
-    get: (path, handler, options) => registerRoute('GET', path, handler, options),
-    post: (path, handler, options) => registerRoute('POST', path, handler, options),
-    put: (path, handler, options) => registerRoute('PUT', path, handler, options),
-    patch: (path, handler, options) => registerRoute('PATCH', path, handler, options),
-    delete: (path, handler, options) => registerRoute('DELETE', path, handler, options),
-  }
+  value('server', {
+    get: (path: string, handler: any, options?: any) => registerRoute('GET', path, handler, options),
+    post: (path: string, handler: any, options?: any) => registerRoute('POST', path, handler, options),
+    put: (path: string, handler: any, options?: any) => registerRoute('PUT', path, handler, options),
+    patch: (path: string, handler: any, options?: any) => registerRoute('PATCH', path, handler, options),
+    delete: (path: string, handler: any, options?: any) => registerRoute('DELETE', path, handler, options),
+  })
+  // 页面注册：先统一进宿主的页面表，侧栏按这份表渲染。
+  value('page', (page: any) => {
+    if (!extras.registerPage) return () => {}
+    return extras.registerPage(page)
+  })
 
-  // 写惯 Koishi 的会顺手写 ctx.logger，给它一个别名
-  ctx.logger = (api.log || api.logger) as PluginContext['logger']
-  // 管线末段（llm）由宿主独占：插件要抢在模型前处理，用
-  // ctx.middleware(fn, { before: 'llm' })，不要替换模型入口。
-
-  // 作用域视图（ctx.platform / guild / private）挂在这一层：
-  // 注册仍然落到当前模块的卸载队列，只是多了一层「这条会话归不归我管」的判断。
   return installScopes(ctx)
 }
 

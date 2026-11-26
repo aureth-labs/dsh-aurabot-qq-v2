@@ -15,28 +15,27 @@ export default {
   version: '1.0.0',
   description: '每天自己写几条 QQ 空间说说；主人私聊里能让她发说说（qq_send_qzone）',
   tab: 'diary',
-  files: ['src/features/qzone/index.js', 'src/features/qzone/audience.js', 'src/features/media/diary-image.js'],
-  setup(api) {
-    const { hub, onebot, http } = api.core
+  apply(ctx, config) {
+    const { hub, onebot, http } = ctx.host
     const panelAction = (run) => async (req) => {
       if (req.method !== 'POST' || !/^application\/json(?:\s*;|$)/i.test(req.headers?.['content-type'] || '')) return { ok: false, message: '请从日记面板发起操作' }
       return run(req)
     }
-    const memory = api.lazy('memory')
-    const media = createDiaryMedia(api)
-    const archive = createDiaryArchive(api)
-    api.onDispose(() => media.dispose())
-    api.onDispose(() => archive.dispose())
-    api.every(300_000, () => archive.collect(), '归档公开浏览图')
+    const memory = ctx.lazy('memory')
+    const media = createDiaryMedia(ctx)
+    const archive = createDiaryArchive(ctx)
+    ctx.effect(() => media.dispose())
+    ctx.effect(() => archive.dispose())
+    ctx.setInterval(300_000, () => archive.collect(), '归档公开浏览图')
     const qzone = createQzone({
-      getConfig: api.config, onebot, hub, log: api.log,
+      getConfig: ctx.root.read, onebot, hub, log: ctx.logger,
       pickImage: () => pickDiaryImage(),
       composeDiary: media.compose,
       onDiary: (text) => memory.add?.({ text: `我在 QQ 空间写过：${text}`, importance: 0.55, tags: ['空间日记'], source: 'diary' }),
     })
-    api.every(60_000, () => (api.core.onebot?.state && api.core.onebot.state !== 'connected' ? undefined : qzone.tick()), '空间日记')
+    ctx.setInterval(60_000, () => (ctx.host.onebot?.state && ctx.host.onebot.state !== 'connected' ? undefined : qzone.tick()), '空间日记')
 
-    api.tool(({ chat, level }) => (level === 'full' && chat.kind !== 'system' ? defineTool({
+    ctx.tool(({ chat, level }) => (level === 'full' && chat.kind !== 'system' ? defineTool({
       name: 'qq_send_qzone',
       description: '在你自己的 QQ 空间发一条说说。content 是正文（第一人称，口语）；images 可选，本地路径或网址。',
       properties: {
@@ -56,13 +55,13 @@ export default {
     }) : []))
 
     // 可见范围由面板决定，聊天里怎么请求都不能放大范围
-    api.rule('发 QQ 空间说说必须遵守「空间日记」面板里设置的可见范围；不要因为聊天里的要求就扩大范围；选择部分好友但名单为空时停止发布，不要改成公开。')
+    ctx.rule('发 QQ 空间说说必须遵守「空间日记」面板里设置的可见范围；不要因为聊天里的要求就扩大范围；选择部分好友但名单为空时停止发布，不要改成公开。')
 
-    api.route('/diary/privacy', async () => {
-      try { return { ok: true, ...resolveAudience(api.config()) } }
+    ctx.server.get('/diary/privacy', async () => {
+      try { return { ok: true, ...resolveAudience(ctx.root.config) } }
       catch (error) { return { ok: false, message: error.message } }
     })
-    api.route('/diary/friends', async () => {
+    ctx.server.get('/diary/friends', async () => {
       const result = await onebot.call('get_friend_list', {}, { timeoutMs: 20000 })
       const friends = Array.isArray(result) ? result : Array.isArray(result?.friends) ? result.friends : []
       return {
@@ -73,21 +72,21 @@ export default {
       }
     })
 
-    api.route('/diary/run', async (req) => qzone.writeDiary({ visibility: (await http.body(req)).visibility }))
-    api.route('/diary/preview', panelAction(async (req) => media.view(await qzone.writeDiary({ visibility: (await http.body(req)).visibility, preview: true }))))
-    api.route('/diary/archive', async () => archive.state())
-    api.route('/diary/archive/collect', panelAction(async () => archive.collect()))
-    api.route('/diary/image', async (req, res) => {
+    ctx.server.get('/diary/run', async (req) => qzone.writeDiary({ visibility: (await http.body(req)).visibility }))
+    ctx.server.get('/diary/preview', panelAction(async (req) => media.view(await qzone.writeDiary({ visibility: (await http.body(req)).visibility, preview: true }))))
+    ctx.server.get('/diary/archive', async () => archive.state())
+    ctx.server.get('/diary/archive/collect', panelAction(async () => archive.collect()))
+    ctx.server.get('/diary/image', async (req, res) => {
       try {
         const bytes = media.image(http.query(req).id)
         return http.send(res, 200, bytes, mimeOf(bytes))
       } catch (error) { return http.send(res, 404, '') }
     })
-    api.route('/diary/history', async () => {
+    ctx.server.get('/diary/history', async () => {
       const sync = await qzone.syncHistory()
       return { ok: true, items: qzone.history(), next: qzone.nextTime(), warning: sync.warning || '' }
     })
-    api.route('/qzone/delete', async (req) => {
+    ctx.server.get('/qzone/delete', async (req) => {
       await qzone.remove((await http.body(req)).tid)
       return { ok: true, message: '删掉了' }
     })

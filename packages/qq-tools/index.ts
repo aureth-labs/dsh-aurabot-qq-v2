@@ -81,11 +81,11 @@ export default {
   name: '基础 QQ 工具',
   version: '1.0.0',
   description: '翻当前聊天的记录（qq_chat_history）；主人私聊里让她主动给白名单里的人和群发消息（qq_send_message）；把本机文件发到 QQ（qq_send_file，图片会直接显示成图）——私聊里随时能发，群里只在她主人开口的那一轮能发',
-  setup(api) {
-    const { hub, onebot } = api.core
-    api.tool(({ chat, level, sessionId }) => {
+  apply(ctx, config) {
+    const { hub, onebot } = ctx.host
+    ctx.tool(({ chat, level, sessionId }) => {
       if (chat.kind === 'system') return []
-      const crossRead = api.config().group?.crossRead || 'private'
+      const crossRead = ctx.root.config.group?.crossRead || 'private'
       const tools = [defineTool({
         name: 'qq_chat_history',
         description: '翻翻当前这个聊天之前的聊天记录（只读，最多 50 条）。用返回的最早消息 ID 填 before 可以继续往前翻。',
@@ -98,7 +98,7 @@ export default {
           const n = Math.max(1, Math.min(50, Number(count) || 20))
           const anchor = String(before ?? '').trim()
           if (anchor && (!/^-?\d+$/.test(anchor) || !Number.isSafeInteger(Number(anchor)) || Number(anchor) === 0)) return { ok: false, message: 'before 要填有效的消息 ID' }
-          const cfg = api.config()
+          const cfg = ctx.root.config
           let groupId = chat.kind === 'group' ? chat.groupId : ''
           let elsewhere = false
           if (group) {
@@ -119,7 +119,7 @@ export default {
           const visible = hub.filterHistory?.(historyChatId, history) ?? history
           const msgs = visible.filter((m) => !anchor || String(m.message_id) !== String(Number(anchor))).slice(-n)
           if (!msgs.length) return { ok: true, message: '没翻到聊天记录' }
-          const self = String(api.config().botQQ)
+          const self = String(ctx.root.config.botQQ)
           const lines = msgs.map((m) => {
             const p = parseMessageEvent({ ...m, message_type: m.message_type || (groupId ? 'group' : 'private') }, self)
             const who = String(m.user_id ?? m.sender?.user_id) === self ? '你' : (m.sender?.card || m.sender?.nickname || String(m.user_id ?? ''))
@@ -149,7 +149,7 @@ export default {
           if (card.error) return { ok: false, message: card.error }
           const r = await hub.sendSegments(chat.chatId, [card.segment], `[卡片] ${card.segment.type}`, { throwOnError: true })
           if (!r) {
-            const cfg = api.config()
+            const cfg = ctx.root.config
             return { ok: false, message: !cfg.enabled ? '总开关关着，没发' : '卡片没发出去' }
           }
           return { ok: true, message: card.segment.type === 'share' && card.segment.data.image
@@ -211,12 +211,12 @@ export default {
           const want = String(name || '').trim()
           const file = want ? list.findLast((f) => f.name === want) || list.findLast((f) => f.name.includes(want)) : list.at(-1)
           if (!file) return { ok: false, message: `没找到「${want}」，最近的文件有：${list.map((f) => f.name).join('、')}` }
-          return readQqFile({ onebot, chat, file, dsh: api.dsh, canPreview: () => hub.canSeeImages(chat) })
+          return readQqFile({ onebot, chat, file, dsh: ctx.harness, canPreview: () => hub.canSeeImages(chat) })
         },
       }))
       // 发文件/发图：主人私聊（full）和群聊都挂；群里只有「这一轮说话的人全是主人」才放行（#169）。
       // 面板「聊天」页关掉 files.enabled 就都没有。
-      if ((level === 'full' || chat.kind === 'group') && api.config().files?.enabled) tools.push(defineTool({
+      if ((level === 'full' || chat.kind === 'group') && ctx.root.config.files?.enabled) tools.push(defineTool({
         name: 'qq_send_file',
         description: '把本机上的文件发到 QQ：图片（png/jpg/jpeg/gif/webp/bmp）会直接显示成图，其它当文件发。默认发到当前聊天；主人让你发给别的私聊或群时，target 写 private:QQ号 或 group:群号（只能发白名单里的人和群）。file 要写这台电脑上的绝对路径，而且必须在允许发送的目录里（QQ 工作区，或主人在面板里加的目录）；name 可选，是对方看到的文件名。',
         properties: {
@@ -226,7 +226,7 @@ export default {
         },
         required: ['file'],
         execute: async ({ file, name, target }) => {
-          const cfg = api.config()
+          const cfg = ctx.root.config
           // 群里只认主人：这一轮说话的人必须全是主人，群里别人 @ 她不算（#169）
           if (chat.kind === 'group' && !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '群里只有主人开口时才能发文件，这一轮不是。' }
           let chatId = chat.chatId
@@ -268,7 +268,7 @@ export default {
         required: ['target', 'text'],
         execute: async ({ target, text, voice }) => {
           if (chat.kind === 'group' && !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人开口时才能往别的聊天发，这一轮不是。' }
-          const cfg = api.config()
+          const cfg = ctx.root.config
           const [kind, id] = String(target || '').split(':')
           const okList = kind === 'group' ? cfg.allow.groups : kind === 'private' ? [cfg.ownerQQ, ...cfg.allow.private] : []
           if (!okList.map(String).includes(String(id))) return { ok: false, message: '不在白名单里，不能发' }
@@ -280,7 +280,7 @@ export default {
           let r
           try { r = await hub.deliver(`${kind}:${id}`, body, voice === true ? { voice: true } : {}) }
           catch (error) {
-            api.log?.warn?.('跨聊天发送未确认：', error?.message || error)
+            ctx.logger?.warn?.('跨聊天发送未确认：', error?.message || error)
             return { ok: false, message: '发送结果未确认，请先查看目标聊天；不要自动重发整条消息。详细原因请主人查看本机日志。' }
           }
           if (!r) return { ok: false, message: '没发出去：这条被拦下了，或者内容是空的' }

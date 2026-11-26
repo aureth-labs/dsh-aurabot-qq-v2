@@ -12,9 +12,6 @@ import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../src/c
 import { segmentBytes } from '../../src/core/net/index.ts'
 import { dataDir } from '../../src/core/store/index.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type SetupOptions = Partial<Record<'fetchAvatar' | 'ask', any>>
-
 const NICK_MAX = 36
 const SIGN_MAX = 80
 const AVATAR_MAX_SIDE = 640
@@ -48,12 +45,11 @@ export default {
   name: '改资料',
   version: '1.2.0',
   description: '主人私聊时查看自己的 QQ 资料与头像图片（qq_get_profile）、发送当前头像（qq_send_avatar）；按权限修改 QQ 资料',
-  files: ['src/features/qq/profile.js'],
-  setup(api, { fetchAvatar, ask } : SetupOptions = {}) {
-    const { hub, onebot } = api.core
-    const reader = createQqProfile({ getConfig: api.config, onebot, dsh: api.dsh, log: api.log, fetchAvatar, ask })
-    api.onDispose(reader.dispose)
-    api.rule((kind) => kind === 'private' ? '主人谈到你自己的 QQ 昵称、个性签名或头像时，可以主动用 qq_get_profile 查看当前资料，不必等主人明确说“查询”。例如“你现在叫什么”“签名是什么”“喜欢这个头像吗”。问头像画面时传 view_avatar=true，依据本次头像附件和描述回答；查不到就如实说明，不凭旧聊天记录猜。主人明确说“把现在头像发出来”“发你的头像给我”时，用 qq_send_avatar 直接发送，不必先识图；只有工具报告 sent=true 才能说发出去了，成功后不要再用链接或 Markdown 重复发图。查询不会发送图片或修改资料；普通无关聊天无需查询。' : '')
+  apply(ctx, config) {
+    const { hub, onebot } = ctx.host
+    const reader = createQqProfile({ getConfig: ctx.root.read, onebot, dsh: ctx.harness, log: ctx.logger })
+    ctx.effect(reader.dispose)
+    ctx.rule((kind) => kind === 'private' ? '主人谈到你自己的 QQ 昵称、个性签名或头像时，可以主动用 qq_get_profile 查看当前资料，不必等主人明确说“查询”。例如“你现在叫什么”“签名是什么”“喜欢这个头像吗”。问头像画面时传 view_avatar=true，依据本次头像附件和描述回答；查不到就如实说明，不凭旧聊天记录猜。主人明确说“把现在头像发出来”“发你的头像给我”时，用 qq_send_avatar 直接发送，不必先识图；只有工具报告 sent=true 才能说发出去了，成功后不要再用链接或 Markdown 重复发图。查询不会发送图片或修改资料；普通无关聊天无需查询。' : '')
 
     /** 真正换头像：图先压到 QQ 能收下，再依次试 base64、临时文件（网关可能不在同一台机器）。 */
     const applyAvatar = async (buf, c, okMessage) => {
@@ -82,17 +78,17 @@ export default {
     }
 
     const guarded = (key, chat, sessionId, run) => async (args) => {
-      const cfg = api.config()
+      const cfg = ctx.root.config
       const p = profilePermits(cfg, key, chat, hub.turnSendersAllOwner(sessionId))
       if (!p.ok) return p
       return run(args, cfg)
     }
 
-    api.tool(({ chat, sessionId }) => {
+    ctx.tool(({ chat, sessionId }) => {
       if (chat.kind !== 'private' && chat.kind !== 'group') return []
-      const cfg = api.config()
+      const cfg = ctx.root.config
       const tools = []
-      const allowed = () => chat.kind === 'private' && isOwner(api.config(), chat.userId) && hub.turnSendersAllOwner(sessionId)
+      const allowed = () => chat.kind === 'private' && isOwner(ctx.root.config, chat.userId) && hub.turnSendersAllOwner(sessionId)
       if (chat.kind === 'private' && isOwner(cfg, chat.userId)) tools.push(defineTool({
         name: 'qq_get_profile',
         description: '查看你自己的当前 QQ 昵称、个性签名和头像地址。主人私聊谈到资料时可主动查询；需要看头像长什么样、评价头像时传 view_avatar=true，返回实际头像图片附件及辅助描述。只读，不发送图片或修改资料；主人要你发头像时用 qq_send_avatar。',
@@ -112,9 +108,9 @@ export default {
           try {
             if (!allowed()) throw new Error('只有主人 QQ 私聊时才能发送我的 QQ 头像')
             const ready = () => {
-              reader.assertCurrent(String(api.config().botQQ || ''))
-              if (!api.config().enabled) throw new Error('插件总开关已关闭，未发送头像')
-              return api.config().debug
+              reader.assertCurrent(String(ctx.root.config.botQQ || ''))
+              if (!ctx.root.config.enabled) throw new Error('插件总开关已关闭，未发送头像')
+              return ctx.root.config.debug
             }
             if (ready()) return { ok: true, sent: false, simulated: true, message: '调试模式：不会真实发送 QQ 头像' }
             const avatar = await reader.avatar()
@@ -123,10 +119,10 @@ export default {
             if (ready()) return { ok: true, sent: false, simulated: true, message: '已切换到试运行或调试模式，未发送头像' }
             const sent = await hub.sendSegments(chat.chatId, [{ type: 'image', data: { file: 'base64://' + avatar.bytes.toString('base64') } }], '[当前 QQ 头像]')
             if (sent?.message_id == null) throw new Error('未收到 QQ 网关的头像发送确认，请检查连接；不要重复发送')
-            api.log?.info?.('当前 QQ 头像已发送给主人私聊')
+            ctx.logger?.info?.('当前 QQ 头像已发送给主人私聊')
             return { ok: true, sent: true, messageId: sent.message_id, message: '当前 QQ 头像图片已发送给本次主人私聊，不要再用链接或 Markdown 重复发图' }
           } catch (error) {
-            api.log?.warn?.('QQ 头像未确认发送：', error.message)
+            ctx.logger?.warn?.('QQ 头像未确认发送：', error.message)
             return { ok: false, sent: false, message: error.message }
           }
         },

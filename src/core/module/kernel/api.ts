@@ -170,7 +170,7 @@ export function createApi(deps: ApiDeps) {
         return off
       },
       emit: writable('emit', (event, ...args) => emit(event, ...args)),
-      // 每次触发都按当时的当前人格固定（不沿用 setup 时的上下文）：这一趟写的记忆、流水、会话都归这个人格
+      // 每次触发都按当时的当前人格固定（不沿用加载时的上下文）：这一趟写的记忆、流水、会话都归这个人格
       every: (ms, fn, label = '定时任务') => {
         const t = setInterval(() => {
           // 调试模式不跑定时任务：刷 B 站、逛空间、主动搭话、整理记忆这些都别在调试里自己动

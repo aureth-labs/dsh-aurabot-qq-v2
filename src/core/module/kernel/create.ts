@@ -57,6 +57,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   const live = new Map<string, ModuleRecord>() // id → 运行中的模块（见 start）
   const errors = new Map<string, ModuleError>() // id → { message, at }  启动失败 / 加载失败
   const routes = new Map() // 完整路径 → { id, handler }
+  const pages = new Map() // 完整路径 → { id, path, name, icon, order }
   const listeners = new Map() // 事件名 → [{ id, fn }]
   const revisions = new Map() // id → 停止次数，取消在途 import
   // 模块每次（重）启动都递增一次「代际」：hub 用它判断会话里挂的工具是不是旧模块实例的闭包。
@@ -114,6 +115,18 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
 
   const apiOf = createApi({ logger, core, getConfig, setConfig, version, lib, live, routes, listeners, builtinDefs, personaMemoryRuntime, isDisposed: () => disposed, note, cleanup, remove, exportsOf, hasModule, routesAtRoot, instancesOf, emit: (event, ...args) => emit(event, ...args), isEnabled, isUserOn, ctx })
   const makeApi = (id: string, source: string, rec: ModuleRecord) => apiOf(id, source, rec)
+
+  /** 插件在面板侧栏注册的页面：路径唯一，模块卸载一起撤。 */
+  function registerPage(rec: ModuleRecord, page: any) {
+    const path = '/' + String(page?.path || '').replace(/^\/+/, '')
+    if (path === '/') throw new Error('ctx.page 需要 path，例如 { path: "/sandbox", name: "聊天沙盒" }')
+    const current = pages.get(path)
+    if (current && current.id !== rec.key && live.has(current.id)) throw new Error(`页面 ${path} 已经被模块「${current.id}」注册`)
+    const item = { id: rec.key, path, name: String(page.name || path), icon: String(page.icon || ''), order: Number(page.order) || 0 }
+    pages.set(path, item)
+    rec.offs.push(() => { if (pages.get(path) === item) pages.delete(path) })
+    return () => { if (pages.get(path) === item) pages.delete(path) }
+  }
 
   function remove(list, item) {
     const i = list.indexOf(item)
@@ -191,23 +204,25 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     generation++ // 新实例：会话里的工具要在下一轮重挂（issue #73）
     try {
       const api = makeApi(id, source, rec)
-      // v2 的 apply(ctx, config) 与 v1 的 setup(api) 共用同一个 api 对象：
-      // ctx 是它的 v2 别名视图（定时器、按 id 取 bot…），config 是模块自己的配置快照。
+      // 插件只写 apply(ctx, config)：ctx 是 v2 能力面，config 是本插件的配置。
       const ctx = createPluginContext(api, {
         bots: core.bots,
         bot: core.bot,
-        rootConfig: () => getConfig(),
         Schema,
         h,
         pipeline: core.pipeline,
         llm: core.llm,
         tts: core.tts,
         startAdapter: core.adapters?.start,
+        registerPage: (page) => registerPage(rec, page),
+        nativePreview: id === 'memory' && personaMemoryRuntime
+          ? (read) => api.onDispose(personaMemoryRuntime.registerNativePreview(read))
+          : undefined,
       })
-      const entry = typeof def.apply === 'function' ? def.apply : def.setup
-      // v2 传进去的是校验过的配置：面板存了脏数据就落到默认值，并把原因记进日志
+      if (typeof def.apply !== 'function') throw new Error('模块没有 apply(ctx, config)')
+      // 传进去的是校验过的配置：面板存了脏数据就落到默认值，并把原因记进日志
       let passed = api.settings()
-      if (entry === def.apply && isSchema(def.config)) {
+      if (isSchema(def.config)) {
         const checked = def.config.validate(passed)
         if (!checked.ok) {
           log.warn(`模块「${def.name || id}」配置不合法：${checked.error}，已按默认值启动`)
@@ -215,19 +230,19 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
         } else {
           passed = checked.value
         }
-      } else if (entry === def.apply && def.config) {
+      } else if (def.config) {
         // 别人家的 Schema（模板仓库自带的那份）：只取默认值，面板存过的值优先
         const defaults = schemaDefaults(def.config)
         if (defaults && typeof defaults === 'object') passed = { ...defaults, ...passed }
       }
-      const r = entry === def.apply ? entry(ctx, passed) : entry(api)
+      const r = def.apply(ctx, passed)
       const exports = (r && typeof r.then === 'function' ? await r : r) ?? {}
       if (disposed || rec.stopped || live.get(key) !== rec) {
         cleanup(() => exports?.dispose?.())
         return null
       }
       rec.exports = exports
-      log.info(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}${source !== 'user' ? '' : existsSync(join(rec.dir, '.aurabot-source.json')) ? '（模块市场）' : '（自己写的）'}已启动（${entry === def.apply ? 'v2 apply' : 'v1 setup'}）`)
+      log.info(`模块「${def.name || id}」${instance ? `实例 ${instance} ` : ''}${source !== 'user' ? '' : existsSync(join(rec.dir, '.aurabot-source.json')) ? '（模块市场）' : '（自己写的）'}已启动`)
       bumpNavigation() // 新实例进了注册表：导航摘要可能变（新增/替换）
       emit('module/start', id, key)
     } catch (error) {
@@ -240,7 +255,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     return live.get(key)
   }
 
-  /** 同步启动（内置模块的 setup 都是同步的，插件一加载就要能用）。 */
+  /** 同步启动（内置模块的 apply 都是同步的，插件一加载就要能用）。 */
   function startSync(def) {
     if (disposed) return
     const id = def.id
@@ -250,10 +265,24 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
     if (errors.get(id)?.source !== 'user') errors.delete(id) // 替换版的报错留着给面板看
     try {
       const api = makeApi(id, 'builtin', rec)
-      const r = id === 'memory' && personaMemoryRuntime
-        ? def.setup(api, { registerNativePreview: read => api.onDispose(personaMemoryRuntime.registerNativePreview(read)) })
-        : def.setup(api)
-      if (r && typeof r.then === 'function') throw new Error('内置模块的 setup 要同步返回')
+      const ctx = createPluginContext(api, {
+        bots: core.bots,
+        bot: core.bot,
+        Schema,
+        h,
+        pipeline: core.pipeline,
+        llm: core.llm,
+        tts: core.tts,
+        startAdapter: core.adapters?.start,
+        registerPage: (page) => registerPage(rec, page),
+        nativePreview: id === 'memory' && personaMemoryRuntime
+          ? (read) => api.onDispose(personaMemoryRuntime.registerNativePreview(read))
+          : undefined,
+      })
+      if (typeof def.apply !== 'function') throw new Error('内置模块没有 apply(ctx, config)')
+      const passed = api.settings()
+      const r = def.apply(ctx, passed)
+      if (r && typeof r.then === 'function') throw new Error('内置模块的 apply 要同步返回')
       rec.exports = r ?? {}
       bumpNavigation() // 内置模块（重）启动：导航摘要可能变
     } catch (error) {
@@ -408,7 +437,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
       const m = modCfg(u.id)
       if (!m.forkedFrom) setConfig({ ...getConfig(), modules: { ...getConfig().modules, [u.id]: { ...m, forkedFrom: b.version || version } } })
     }
-    // setConfig 可能同步触发安全模式或关闭模块，再确认一次才执行 setup。
+    // setConfig 可能同步触发安全模式或关闭模块，再确认一次才执行 apply。
     if (disposed || (revisions.get(key) || 0) !== revision) return null
     if (!stillWanted()) { resyncRequested = true; return null }
     return start(def, 'user', extra)
@@ -531,7 +560,7 @@ export function createModules({ ctx, core, getConfig, setConfig, logger, version
   /**
    * 把 `ext.<id>.instances` 和正在跑的额外实例对齐。
    *
-   * 只给用户模块开多实例（内置模块的 setup 是同步单例，没有可重复调用的入口）；
+   * 只给用户模块开多实例（内置模块的 apply 是同步单例，没有可重复调用的入口）；
    * 清单没写 `reusable: true` 时，残留的实例一律停掉。
    */
   async function syncInstances(id, users) {

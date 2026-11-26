@@ -18,30 +18,29 @@ export default {
   version: '1.1.0',
   description: '看别人发的 B 站视频；定时自己刷、评论、回评论；可选发弹幕；抽帧看画面、发截图；按权限改自己的头像 / 签名（bili_watch / bili_comment / bili_danmaku / qq_send_shot / bili_set_avatar / bili_set_sign）',
   tab: 'bili',
-  files: ['packages/modules/bili/impl/live/duty.js', 'packages/modules/bili/impl/live/group-share.js', 'packages/modules/bili/impl/api.js', 'packages/modules/bili/impl/media/vision.js', 'packages/modules/bili/impl/media/shots.js', 'packages/modules/bili/impl/live/danmaku.js', 'packages/modules/bili/impl/login/login-pause.js', 'packages/modules/bili/impl/login/qr-login.js'],
-  setup(api) {
-    const { hub } = api.core
+  apply(ctx, config) {
+    const { hub } = ctx.host
     const lastImage = new Map() // chatId → 最近一张图的网址（给 bili_set_avatar 的 last 用）
     const groupShare = createGroupShare({
-      getConfig: api.config, hub, log: api.log,
+      getConfig: ctx.root.read, hub, log: ctx.logger,
       shotPathOf: (name) => bili.shotFileOf(name),
       captureShot: (bvid) => bili.captureShot(bvid),
       groupNameOf: (gid) => hub.groupName(gid),
     })
-    api.on('message', (msg) => {
+    ctx.on('message', (msg) => {
       const url = (msg.images || []).slice(-1)[0]?.data?.url
       if (url && /^https?:\/\//i.test(url)) lastImage.set(msg.chatId, url)
       return groupShare.handleReply(msg.chatId, msg.userId, msg.text)
     })
-    const danmaku = createDanmaku(api)
+    const danmaku = createDanmaku(ctx)
     const bili = createBili({
-      getConfig: api.config, hub, memory: api.lazy('memory'), log: api.log, dsh: api.dsh,
+      getConfig: ctx.root.read, hub, memory: ctx.lazy('memory'), log: ctx.logger, dsh: ctx.harness,
       afterBrowse: danmaku.afterBrowse, groupShare,
     })
-    api.every(60_000, () => (api.core.onebot?.state && api.core.onebot.state !== 'connected' ? undefined : bili.tick()), '刷B站')
+    ctx.setInterval(60_000, () => (ctx.host.onebot?.state && ctx.host.onebot.state !== 'connected' ? undefined : bili.tick()), '刷B站')
 
-    api.tool(({ chat, sessionId }) => {
-      if (!api.config().bili.enabled || chat.kind === 'system') return []
+    ctx.tool(({ chat, sessionId }) => {
+      if (!ctx.root.config.bili.enabled || chat.kind === 'system') return []
       return [
         defineTool({
           name: 'bili_watch',
@@ -56,7 +55,7 @@ export default {
           properties: { link: str('B 站链接或 BV 号'), text: str('评论内容') },
           required: ['link', 'text'],
           execute: async ({ link, text }) => {
-            const perm = permOf(api.config(), 'biliComment')
+            const perm = permOf(ctx.root.config, 'biliComment')
             if (perm === 'off') return { ok: false, message: '这个操作在面板里关掉了' }
             if (perm === 'owner' && !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人能让我去发评论' }
             return bili.comment(String(link || ''), String(text || ''))
@@ -85,8 +84,8 @@ export default {
       ]
     })
 
-    api.tool(({ chat, sessionId }) => {
-      const cfg = api.config()
+    ctx.tool(({ chat, sessionId }) => {
+      const cfg = ctx.root.config
       if (!cfg.bili.enabled) return []
       const tools = []
       if (profileToolVisible(cfg, 'biliAvatar', chat)) tools.push(defineTool({
@@ -95,7 +94,7 @@ export default {
         properties: { image: str('图片网址（http/https）／last（刚才那张图）／画作编号（如 #1）') },
         required: ['image'],
         execute: async ({ image }) => {
-          const c = api.config()
+          const c = ctx.root.config
           if (!c.bili.enabled) return { ok: false, message: 'B 站没打开' }
           const p = profilePermits(c, 'biliAvatar', chat, hub.turnSendersAllOwner(sessionId))
           if (!p.ok) return p
@@ -121,7 +120,7 @@ export default {
             const pick = media.filter((x) => !x.sticker).at(-1) || media.at(-1)
             if (pick) {
               try {
-                const buf = await segmentBytes(pick.seg, api.core.onebot, { maxBytes: 10 * 1024 * 1024 })
+                const buf = await segmentBytes(pick.seg, ctx.host.onebot, { maxBytes: 10 * 1024 * 1024 })
                 if (buf && buf.length) return bili.setAvatar(buf)
               } catch (error) { /* 退回网址 */ }
             }
@@ -142,7 +141,7 @@ export default {
         properties: { text: str('新的签名') },
         required: ['text'],
         execute: async ({ text }) => {
-          const c = api.config()
+          const c = ctx.root.config
           if (!c.bili.enabled) return { ok: false, message: 'B 站没打开' }
           const p = profilePermits(c, 'biliSign', chat, hub.turnSendersAllOwner(sessionId))
           if (!p.ok) return p
@@ -151,19 +150,19 @@ export default {
       })]
     })
 
-    api.route('/bili/state', async () => ({ ok: true, ...bili.state(), account: await bili.account() }))
-    api.route('/bili/account', async () => bili.account(true))
-    api.route('/bili/run', async () => bili.run({ force: true }))
-    api.route('/bili/replies', async () => bili.checkReplies())
-    api.route('/bili/danmaku/state', async () => danmaku.state())
+    ctx.server.get('/bili/state', async () => ({ ok: true, ...bili.state(), account: await bili.account() }))
+    ctx.server.get('/bili/account', async () => bili.account(true))
+    ctx.server.get('/bili/run', async () => bili.run({ force: true }))
+    ctx.server.get('/bili/replies', async () => bili.checkReplies())
+    ctx.server.get('/bili/danmaku/state', async () => danmaku.state())
     for (const action of ['inspect', 'send']) {
-      api.route('/bili/danmaku/' + action, async (req) => {
+      ctx.server.get('/bili/danmaku/' + action, async (req) => {
         if (!danmakuPanelRequest(req)) return { ok: false, message: '请从 B 站面板发起弹幕操作' }
-        return danmaku[action](await api.core.http.body(req))
+        return danmaku[action](await ctx.host.http.body(req))
       })
     }
-    api.tool(({ chat, level, sessionId }) => {
-      const cfg = api.config()
+    ctx.tool(({ chat, level, sessionId }) => {
+      const cfg = ctx.root.config
       if (!cfg.bili.enabled || !cfg.bili.danmakuEnabled || level !== 'full'
         || chat.kind !== 'private' || String(chat.userId) !== String(cfg.ownerQQ)) return []
       return defineTool({
@@ -182,44 +181,44 @@ export default {
       })
     })
     // 截图库（面板分页、手动删）
-    api.route('/bili/shots', async (req) => {
-      const q = req ? api.core.http.query(req) : {}
+    ctx.server.get('/bili/shots', async (req) => {
+      const q = req ? ctx.host.http.query(req) : {}
       const limit = Math.min(200, Math.max(1, Math.trunc(Number(q.limit) || 25)))
       const offset = Math.max(0, Math.trunc(Number(q.offset) || 0))
-      return { ...bili.libraryShots({ limit, offset }), limit: api.config().bili.shotLibrary }
+      return { ...bili.libraryShots({ limit, offset }), limit: ctx.root.config.bili.shotLibrary }
     })
-    api.route('/bili/shot/image', async (req, res) => {
-      const p = bili.shotFileOf(api.core.http.query(req).file)
-      if (!p) return api.core.http.send(res, 404, '')
-      return api.core.http.send(res, 200, readFileSync(p), 'image/jpeg')
+    ctx.server.get('/bili/shot/image', async (req, res) => {
+      const p = bili.shotFileOf(ctx.host.http.query(req).file)
+      if (!p) return ctx.host.http.send(res, 404, '')
+      return ctx.host.http.send(res, 200, readFileSync(p), 'image/jpeg')
     })
-    api.route('/bili/shot/delete', async (req) => bili.deleteShot(String((await api.core.http.body(req)).file || '')))
+    ctx.server.get('/bili/shot/delete', async (req) => bili.deleteShot(String((await ctx.host.http.body(req)).file || '')))
 
     // 扫码登录：机器人自己起浏览器拿一张只属于它的票，拿到后自动写配置（只写一次）
-    const qr = createQrLogin({ log: api.log, dataDir })
+    const qr = createQrLogin({ log: ctx.logger, dataDir })
     const savedQr = new Set()
-    api.route('/bili/qr/start', async () => qr.start())
-    api.route('/bili/qr/status', async (req) => {
-      const id = String(api.core.http.query(req).id || '')
+    ctx.server.get('/bili/qr/start', async () => qr.start())
+    ctx.server.get('/bili/qr/status', async (req) => {
+      const id = String(ctx.host.http.query(req).id || '')
       const r: any = await qr.poll(id)
       if (r.state !== 'done') return { ok: r.state !== 'error', state: r.state, message: r.message }
       if (!r.creds) return { ok: false, state: 'error', message: '票没拿到，重新生成一个' }
       if (savedQr.has(id)) return { ok: true, state: 'done', account: r.account }
       try {
         const { sessdata, biliJct, buvid3, buvid4, dedeUserId } = r.creds
-        api.setConfig({ bili: { sessdata, biliJct, buvid3, buvid4, dedeUserId } })
+        ctx.root.update({ bili: { sessdata, biliJct, buvid3, buvid4, dedeUserId } })
         savedQr.add(id)
         return { ok: true, state: 'done', account: r.account }
       } catch (e) {
         return { ok: false, state: 'error', message: '票拿到了但保存失败：' + e.message }
       }
     })
-    api.route('/bili/qr/cancel', async (req) => {
-      const id = String((await api.core.http.body(req)).id || '')
+    ctx.server.get('/bili/qr/cancel', async (req) => {
+      const id = String((await ctx.host.http.body(req)).id || '')
       savedQr.delete(id)
       return qr.cancel(id)
     })
-    api.onDispose(() => qr.dispose())
+    ctx.effect(() => qr.dispose())
     return bili
   },
 }

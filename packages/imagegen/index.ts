@@ -20,25 +20,17 @@ export default {
   version: '1.0.0',
   description: '画一张图发到聊天里（qq_draw_image）',
   tab: 'imagegen',
-  files: [
-    'src/features/media/imagegen.js',
-    'src/features/media/format.js',
-    'src/features/media/shape.js',
-    'src/features/media/paintings.js',
-    'src/features/codex/auth.js',
-    'src/features/codex/image.js',
-  ],
-  setup(api) {
-    const { hub, local } = api.core
-    const memory = api.lazy('memory')
+  apply(ctx, config) {
+    const { hub, local } = ctx.host
+    const memory = ctx.lazy('memory')
     // 外部生图模块（例如社区库的「生图 · DSH 已接入模型」）：装了且自己选了模型就由它先接管。
     // 用 lazy 拿，模块后装 / 重载都能跟上；没装时这里恒为 null，行为与改动前一致。
-    const external = api.lazy('dsh-image')
+    const external = ctx.lazy('dsh-image')
     const gen = createImageGen({
-      getConfig: api.config,
-      log: api.log,
+      getConfig: ctx.root.read,
+      log: ctx.logger,
       local,
-      dsh: api.dsh,
+      dsh: ctx.harness,
       upstream: Object.assign(
         (prompt, opts) => (external && external.generate ? external.generate(prompt, opts) : null),
         // ready() 必须同步且不联网：只回答「这个模块现在愿不愿意接管」。
@@ -46,19 +38,19 @@ export default {
       ),
     })
     const auth = gen.codexAuth
-    api.onDispose?.(() => gen.dispose())
-    api.context?.(({ chat }) => {
-      if (!gen.enabled() || !privateCapabilityAllowed(api.config(), chat, 'image')) return ''
+    ctx.effect(() => gen.dispose())
+    ctx.prompt(({ chat }) => {
+      if (!gen.enabled() || !privateCapabilityAllowed(ctx.root.config, chat, 'image')) return ''
       return '当前私聊对象已经获得主人的画图授权。对方请求画图时可以直接使用 qq_draw_image；之前说过的权限限制已更新，以当前授权为准。'
     })
     const accountAction = (fn) => async (req) => {
       if (req?.method !== 'POST' || !/^application\/json(?:\s*;|$)/i.test(String(req.headers?.['content-type'] || ''))) return { ok: false, message: '账号操作需要 POST JSON 请求' }
       return fn(req)
     }
-    api.route('/image/models', accountAction(async (req) => {
-      const body = await api.core.http.body(req)
+    ctx.server.get('/image/models', accountAction(async (req) => {
+      const body = await ctx.host.http.body(req)
       if (!body?.imageGen || typeof body.imageGen !== 'object') return { ok: false, message: '缺少生图配置' }
-      const config = mergeFromPanel(api.config(), { imageGen: body.imageGen }); const c = config.imageGen
+      const config = mergeFromPanel(ctx.root.config, { imageGen: body.imageGen }); const c = config.imageGen
       if (c.provider === 'custom') return { ok: false, message: '自定义接口没有统一的模型列表接口，请手动填写模型名' }
       if (c.provider === 'codex') return { ok: false, message: 'Codex 订阅不需要填模型名，也不能按服务地址拉模型列表' }
       try {
@@ -70,10 +62,10 @@ export default {
         return { ok: false, message }
       }
     }))
-    api.route('/image/test', accountAction(async (req) => {
-      const body = await api.core.http.body(req)
+    ctx.server.get('/image/test', accountAction(async (req) => {
+      const body = await ctx.host.http.body(req)
       if (!body?.imageGen || typeof body.imageGen !== 'object') return { ok: false, message: '缺少生图配置' }
-      const config = mergeFromPanel(api.config(), { imageGen: body.imageGen }); const c = config.imageGen
+      const config = mergeFromPanel(ctx.root.config, { imageGen: body.imageGen }); const c = config.imageGen
       if (body.id) {
         const e = c.fallbacks.find(e => e.id === body.id)
         if (!e || !e.model) return { ok: false, message: '请填写备用模型' }
@@ -82,58 +74,58 @@ export default {
         else Object.assign(c, { baseUrl: e.baseUrl, apiKey: e.apiKey, model: e.model })
       }
       c.enabled = true; c.fallbackEnabled = false
-      const test = createImageGen({ getConfig: () => config, log: api.log, codexAuth: auth }); const start = Date.now()
+      const test = createImageGen({ getConfig: () => config, log: ctx.logger, codexAuth: auth }); const start = Date.now()
       try { await test.generate('一只蓝色小鱼的简洁插画'); return { ok: true, message: `生图成功，耗时 ${((Date.now() - start) / 1000).toFixed(1)} 秒` } }
       catch (error) { let message = redact(error?.message || String(error)); for (const key of [c.apiKey, ...c.fallbacks.map(e => e.apiKey)]) if (key) message = message.split(key).join('***'); return { ok: false, message: `测试失败：${message}` } }
     }))
-    api.route('/image/codex/status', async () => ({ ok: true, ...auth.status(), login: auth.loginStatus(), callback: { port: auth.callbackPort?.() || 1455, available: await auth.callbackPortUsable?.() } }))
-    api.route('/image/codex/login', accountAction(async () => ({ ok: true, ...(await auth.startLogin()), ...auth.loginStatus() })))
-    api.route('/image/codex/login/status', async () => ({ ok: true, ...auth.loginStatus(), ...auth.status() }))
-    api.route('/image/codex/complete', accountAction(async (req) => {
-      const body = await api.core.http.body(req)
+    ctx.server.get('/image/codex/status', async () => ({ ok: true, ...auth.status(), login: auth.loginStatus(), callback: { port: auth.callbackPort?.() || 1455, available: await auth.callbackPortUsable?.() } }))
+    ctx.server.get('/image/codex/login', accountAction(async () => ({ ok: true, ...(await auth.startLogin()), ...auth.loginStatus() })))
+    ctx.server.get('/image/codex/login/status', async () => ({ ok: true, ...auth.loginStatus(), ...auth.status() }))
+    ctx.server.get('/image/codex/complete', accountAction(async (req) => {
+      const body = await ctx.host.http.body(req)
       const credential = await auth.completeLogin(String(body?.input || ''))
       // 登录状态变了：已经挂好的会话要重挂一次，工具里才能立刻用（面板直输不经过 mount）
-      try { hub.remountAll?.('ChatGPT 订阅已登录') } catch (error) { api.log.debug('重挂工具失败：', error.message) }
+      try { hub.remountAll?.('ChatGPT 订阅已登录') } catch (error) { ctx.logger.debug('重挂工具失败：', error.message) }
       return { ok: true, email: credential.email || '', accountId: credential.accountId || '' }
     }))
-    api.route('/image/codex/cancel', accountAction(async () => ({ ok: true, ...auth.cancelLogin('已取消') })))
-    api.route('/image/codex/logout', accountAction(async () => {
+    ctx.server.get('/image/codex/cancel', accountAction(async () => ({ ok: true, ...auth.cancelLogin('已取消') })))
+    ctx.server.get('/image/codex/logout', accountAction(async () => {
       const r = auth.logout()
-      try { hub.remountAll?.('ChatGPT 订阅已登出') } catch (error) { api.log.debug('重挂工具失败：', error.message) }
+      try { hub.remountAll?.('ChatGPT 订阅已登出') } catch (error) { ctx.logger.debug('重挂工具失败：', error.message) }
       return { ok: true, ...r }
     }))
 
     // 她的画作：面板底下的图库（直接读存图目录，可以单张删、开文件夹）
-    api.route('/image/gallery', async (req) => {
-      const q = api.core.http.query(req)
-      const limit = q && q.limit ? Number(q.limit) : api.config().imageGen.galleryShown
+    ctx.server.get('/image/gallery', async (req) => {
+      const q = ctx.host.http.query(req)
+      const limit = q && q.limit ? Number(q.limit) : ctx.root.config.imageGen.galleryShown
       return { ok: true, ...listPaintings({ limit }), dir: dataDir('imagegen') }
     })
-    api.route('/image/gallery/image', async (req, res) => {
-      const p = paintingPath(api.core.http.query(req).file)
-      if (!p) return api.core.http.send(res, 404, '')
+    ctx.server.get('/image/gallery/image', async (req, res) => {
+      const p = paintingPath(ctx.host.http.query(req).file)
+      if (!p) return ctx.host.http.send(res, 404, '')
       const buf = readFileSync(p)
-      api.core.http.send(res, 200, buf, String(mimeOf(buf) || 'image/png'))
+      ctx.host.http.send(res, 200, buf, String(mimeOf(buf) || 'image/png'))
     })
-    api.route('/image/gallery/delete', async (req) => {
-      const b = await api.core.http.body(req).catch(() => ({}))
+    ctx.server.get('/image/gallery/delete', async (req) => {
+      const b = await ctx.host.http.body(req).catch(() => ({}))
       return removePainting(String((b && b.file) || ''))
     })
-    api.route('/image/open-folder', async () => openPaintFolder())
+    ctx.server.get('/image/open-folder', async () => openPaintFolder())
 
     // 生图模块开着就把工具挂上；「没开启 / 没填地址 / Codex 没登录」在执行时再如实提示。
     // 不能按登录状态决定挂不挂：Codex 订阅常是「先开会话、后登录」，那样工具会缺失（unknown tool）。
     // 也不能只看内置开关：本地接口（local.image）和外部生图模块（dsh-image）都能单独接管生图，
     // 它们能用时同样要挂工具，否则配好了却「工具清单里没有画图工具」（#47）。
     const canDraw = () => {
-      const c = api.config().imageGen
+      const c = ctx.root.config.imageGen
       if (c && c.enabled) return true
       try { if (local?.active?.('image')) return true } catch (error) {}
       try { if (external && external.ready && external.ready()) return true } catch (error) {}
       return false
     }
     // 编号只指向已收到的短期缓存，不另建图库、不抓取模型提供的消息 ID。
-    api.on?.('prompt', (content, { chat }) => {
+    ctx.on?.('prompt', (content, { chat }) => {
       if (chat.kind === 'system' || !canDraw()) return content
       const recent = hub.recentMedia?.(chat.chatId) || []
       const labeled = content.flatMap((block) => {
@@ -143,7 +135,7 @@ export default {
       })
       return [...labeled, { type: 'text', text: '新画以请求者指定的人物或作品为准，旁人的图片只是聊天背景，不把其中的人物或外形写进新画。对方要照某张图画或修改它时，优先用目标图旁的 msg 编号；没有编号才用明确指向目标的 quote/last。要改的原图不明确或缺失时，请对方引用它，不能省略参考图生成一张新图来代替。' }]
     })
-    api.tool(({ chat, sessionId }) => ((chat.kind !== 'system' && canDraw()) ? defineTool({
+    ctx.tool(({ chat, sessionId }) => ((chat.kind !== 'system' && canDraw()) ? defineTool({
       name: 'qq_draw_image',
       description: '画一张或多张图并发到当前 QQ 聊天里。prompt 详细描述画面；可以用 image 参考当前聊天最近收到的图（last）、引用消息里的图（quote）或自己画作的文件名来改画；画自己时 image 填 self，优先参考人设图，不支持时按外貌文字生成；想同时参考多张图时用 images（最多 16 张，MiniMax H3 改画时最有用）；shape 可按用途选择方图、竖图、横图或宽幅；size 可显式指定常用尺寸（含 2K/4K），不填就沿用 shape / 面板默认；count 是本次画几张（1~10，仅 MiniMax H3 支持）。画好会直接发出去，并给你画作编号（换头像、收成表情时用这个编号）。回复里简单说一句就行。群聊和私聊都支持绘图，权限由工具按本轮请求检查。有新的明确绘图请求时应调用工具，不要沿用旧轮次的拒绝结论。失败时区分权限不足、缺少参考图和生成失败，按实际返回说明，不要把权限不足说成必须私聊。',
       properties: {
@@ -160,11 +152,11 @@ export default {
       // 能看图时把原图放进工具结果（image 块），她当轮就能看见自己画了什么
       render: drawResultBlocks,
       execute: async ({ prompt, format, shape, image, images, count, size, notice }) => {
-        const cfg = api.config()
+        const cfg = ctx.root.config
         const ownerRequest = hub.turnSendersAllOwner(sessionId) || (chat.kind === 'group' && hub.turnDirectFromOwner?.(sessionId))
         if (cfg.imageGen.ownerOnly && !ownerRequest && !privateCapabilityAllowed(cfg, chat, 'image')) return { ok: false, message: '本轮未获绘图授权（当前开启了“只给主人画”），尚未开始生成。群聊也能画：请主人在群里直接 @ 我提出请求，改图时同时引用目标原图；多人同时提出请求时请分开发送。私聊也需要授权，转私聊不会自动放行。后续新请求会重新检查权限。' }
         try { drawFormat(format) } catch (error) { return { ok: false, message: error.message } }
-        if (format === 'gif' && !api.config().imageGen.allowGif) return { ok: false, message: 'GIF 动图还没开启，请主人在生图设置中打开「允许按需生成 GIF」' }
+        if (format === 'gif' && !ctx.root.config.imageGen.allowGif) return { ok: false, message: 'GIF 动图还没开启，请主人在生图设置中打开「允许按需生成 GIF」' }
         // 工具常驻，真正能不能画在执行时判断（Codex 登录状态可能刚变过）
         if (!gen.enabled()) return { ok: false, message: gen.notReadyReason() || '生图还没配置好' }
         const self = typeof image === 'string' && /^(self|自己|人设图)$/i.test(image.trim())
@@ -193,15 +185,15 @@ export default {
           const issue = reason(error); const facts = retrying ? '刚才失败，正在尝试下一个备用模型，结果尚未确定' : '生图最终失败，没有图片'
           const fallback = retrying ? '刚才没画出来，我换个模型再试试。' : '这次没画出来，我先停下了。'
           let message = ''; let timer
-          try { message = String(await Promise.race([api.core.ask({ model: hub.modelFor(chat), system: `${api.core.personas?.current?.() || ''}\n根据事实写一句自然简短的聊天回复，不编造原因，不说已经画好。只输出回复。`, text: `对方说：${String(hub.lastTextOf(sessionId) || '').slice(0, 500)}\n之前回复：${text}\n事实：${facts}；问题：${issue}。`, maxTokens: 100 }), new Promise(resolve => { timer = setTimeout(() => resolve(''), 6000) })]) || '').trim().slice(0, 200) } catch (e) { api.log.debug('生成生图进度回复失败：', e.message) } finally { clearTimeout(timer) }
-          try { const sent = await hub.sendText(chat.chatId, `${message || fallback}（${issue}）`); if (!sent && message) await hub.sendText(chat.chatId, `${fallback}（${issue}）`) } catch (e) { api.log.debug('生图进度回复没发出去：', e.message) }
+          try { message = String(await Promise.race([ctx.host.ask({ model: hub.modelFor(chat), system: `${ctx.host.personas?.current?.() || ''}\n根据事实写一句自然简短的聊天回复，不编造原因，不说已经画好。只输出回复。`, text: `对方说：${String(hub.lastTextOf(sessionId) || '').slice(0, 500)}\n之前回复：${text}\n事实：${facts}；问题：${issue}。`, maxTokens: 100 }), new Promise(resolve => { timer = setTimeout(() => resolve(''), 6000) })]) || '').trim().slice(0, 200) } catch (e) { ctx.logger.debug('生成生图进度回复失败：', e.message) } finally { clearTimeout(timer) }
+          try { const sent = await hub.sendText(chat.chatId, `${message || fallback}（${issue}）`); if (!sent && message) await hub.sendText(chat.chatId, `${fallback}（${issue}）`) } catch (e) { ctx.logger.debug('生图进度回复没发出去：', e.message) }
         }
         let references = []
         let fullPrompt = String(prompt || '')
         let fallback = ''
         let selectedCount = 0
         if (self) {
-          const look = api.core.personas?.look?.(sessionId) || {}
+          const look = ctx.host.personas?.look?.(sessionId) || {}
           const appearance = typeof look.appearance === 'string' ? look.appearance.trim() : ''
           if (appearance) fullPrompt = `角色外貌：${appearance}\n画面要求：${fullPrompt}`
           const selected = Array.isArray(look.references) ? look.references : look.image ? [{ image: look.image, note: '' }] : []
@@ -258,21 +250,21 @@ export default {
         const simulated = sent === null && Boolean(cfg.debug)
         if (!sent && !simulated) return { ok: false, message: '画好了，但没有发到 QQ（请检查网关）' }
         const saved = bufs.map((item) => savePainting(item, String(prompt || ''))).filter(Boolean)
-        for (const path of saved) api.log.debug(`生图已存盘：${path}`)
+        for (const path of saved) ctx.logger.debug(`生图已存盘：${path}`)
         try { const refNote = references.length ? `参考了${references.length === 1 ? '一张图' : references.length + ' 张图'}画了${bufs.length > 1 ? bufs.length + ' 张' : '一张'}` : (bufs.length > 1 ? `按提示词画了 ${bufs.length} 张` : '按提示词画了一张图'); memory.addEvent?.({ text: `${refNote}：${String(prompt).slice(0, 120)}（提示词不一定等于实际画面）`, about: chat.kind === 'private' ? chat.userId : '', tags: ['画画'], importance: 0.4 }) }
-        catch (error) { api.log.warn('生图已发送，但经历没记下来：', error.message) }
+        catch (error) { ctx.logger.warn('生图已发送，但经历没记下来：', error.message) }
         let visual = (await hub.canSeeImages(chat)) === true
         // 「让她画完自己看一眼」是总开关：关掉就当没视觉能力处理 —— 不给图、也不给路径。
-        const seeOwn = api.config().imageGen.seeOwn !== false
+        const seeOwn = ctx.root.config.imageGen.seeOwn !== false
         // 只有明确能看图的模型才把图交给它；纯文本模型只拿文字，不会崩。
         // 图要先缩、再登记成 DSH 附件块 —— 直接塞 base64 会让下一轮请求整轮失败（实测）
         let img = null
         if (visual && seeOwn) {
-          img = await imageToolBlock(api.dsh, bufs[0], { ffmpegPath: api.config().bili && api.config().bili.ffmpegPath })
+          img = await imageToolBlock(ctx.harness, bufs[0], { ffmpegPath: ctx.root.config.bili && ctx.root.config.bili.ffmpegPath })
           if (!img) {
             // 图没给成：如实说看不了，别让她照着提示词编画面细节
             visual = false
-            api.log.debug('这次生图没把图交给模型（缩图/登记失败），只给文字')
+            ctx.logger.debug('这次生图没把图交给模型（缩图/登记失败），只给文字')
           }
         }
         const shown = Boolean(img)

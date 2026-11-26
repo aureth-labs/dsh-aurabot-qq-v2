@@ -174,7 +174,7 @@ async function minimaxGenerate({ prompt, seconds, image, cfg, log, timeoutMs }) 
   const m = cfg.video?.minimax || {}
   const key = String(m.apiKey || '').trim()
   if (!key) throw new Error('没填 MiniMax API Key')
-  const base = String(m.baseUrl || 'https://api.minimax.cn').replace(/\/+$/, '')
+  const base = String(m.baseUrl || 'https://ctx.minimax.cn').replace(/\/+$/, '')
   const ref = image ? resolveImage(image) : ''
   const body = minimaxBody({ prompt, seconds, image: ref, cfg })
 
@@ -277,15 +277,15 @@ export default {
   name: '生视频',
   version: '1.1.0',
   description: '生成视频并发到聊天：本地脚本 / MiniMax / 自定义异步任务（qq_generate_video）',
-  setup(api) {
-    const { hub, local } = api.core
-    const cfg = () => api.config()
+  apply(ctx, config) {
+    const { hub, local } = ctx.host
+    const cfg = () => ctx.root.config
     let running = false
     let stopped = false
     const pending = new Map() // chatId -> { args, userId, timer }
     const last = new Map() // chatId -> { at, desc, seconds }
 
-    api.onDispose?.(() => {
+    ctx.effect(() => {
       stopped = true
       for (const k of [...pending.keys()]) clearPending(k)
     })
@@ -300,7 +300,7 @@ export default {
       pending.delete(chatId)
     }
 
-    api.context?.(({ chat }) => {
+    ctx.prompt(({ chat }) => {
       const parts = []
       if (ready() && privateCapabilityAllowed(cfg(), chat, 'video')) parts.push('当前私聊对象已经获得主人的视频生成授权。对方请求生成视频时可以使用 qq_generate_video，以当前授权为准。')
       const mine = last.get(String(chat?.chatId || ''))
@@ -314,7 +314,7 @@ export default {
       try {
         await hub.sendSegments(chatId, [{ type: 'video', data: { file: pathToFileURL(file).href } }], '[视频]', { throwOnError: true, timeoutMs: 120_000 })
       } catch (error) {
-        api.log.warn('按视频发送失败，改发文件：', error.message)
+        ctx.logger.warn('按视频发送失败，改发文件：', error.message)
         await hub.sendFile(chatId, file)
       }
     }
@@ -323,9 +323,9 @@ export default {
     async function selfView(file, prompt, seconds) {
       if (v().selfView === false) return ''
       try {
-        if (canSeeImages && (await canSeeImages(api.dsh, cfg())) === false) { api.log.debug('当前模型看不了图，跳过自检'); return '' }
+        if (canSeeImages && (await canSeeImages(ctx.harness, cfg())) === false) { ctx.logger.debug('当前模型看不了图，跳过自检'); return '' }
         const ffmpeg = findFfmpeg(cfg().bili?.ffmpegPath || '')
-        if (!ffmpeg) { api.log.debug('没找到 ffmpeg，跳过抽帧'); return '' }
+        if (!ffmpeg) { ctx.logger.debug('没找到 ffmpeg，跳过抽帧'); return '' }
         const d = Math.max(4, Math.round(Number(seconds) || 5))
         const frames = []
         for (const p of [0.2, 0.4, 0.6, 0.8]) {
@@ -333,7 +333,7 @@ export default {
           if (f) frames.push(f)
         }
         if (!frames.length) return ''
-        const out = await askModel(api.dsh, {
+        const out = await askModel(ctx.harness, {
           module: 'video-selfview',
           cfg: cfg(),
           system: '你在看自己刚生成的一段视频的截图。只写画面上确实能看到的东西：场景、主体、动作、光线、色调、画面里的文字。不要猜剧情，不要编造。用 2~4 句中文写。',
@@ -344,7 +344,7 @@ export default {
         })
         return String(out || '').trim()
       } catch (error) {
-        api.log.warn('视频自检失败（不影响发送）：', error.message)
+        ctx.logger.warn('视频自检失败（不影响发送）：', error.message)
         return ''
       }
     }
@@ -353,7 +353,7 @@ export default {
     async function enhance(text) {
       if (v().enhance === false) return text
       try {
-        const out = await api.ask({
+        const out = await ctx.ask({
           system: '你是视频分镜师。把用户的一句话场景扩写成一段可直接用于文生视频模型的提示词：镜头运动、主体外形与动作、环境与光线、色调与质感，按时间顺序描述，只输出提示词本身，不要解释、不要分点。中文，120 字以内。',
           text,
           maxTokens: 400,
@@ -361,15 +361,15 @@ export default {
         const s = String(out || '').trim()
         return s.length >= 20 ? s.slice(0, 900) : text
       } catch (error) {
-        api.log.debug('提示词扩写失败，用原文：', error.message)
+        ctx.logger.debug('提示词扩写失败，用原文：', error.message)
         return text
       }
     }
 
     async function produce(args) {
       const provider = v().provider || 'local'
-      if (provider === 'minimax') return minimaxGenerate({ ...args, cfg: cfg(), log: api.log, timeoutMs: timeoutMs() })
-      if (provider === 'custom') return customGenerate({ ...args, cfg: cfg(), log: api.log, timeoutMs: timeoutMs() })
+      if (provider === 'minimax') return minimaxGenerate({ ...args, cfg: cfg(), log: ctx.logger, timeoutMs: timeoutMs() })
+      if (provider === 'custom') return customGenerate({ ...args, cfg: cfg(), log: ctx.logger, timeoutMs: timeoutMs() })
       return videoFile(await local.call('video', { prompt: args.prompt, seconds: args.seconds, image: args.image }))
     }
 
@@ -391,7 +391,7 @@ export default {
       }
     }
 
-    api.rule(() => (ready()
+    ctx.rule(() => (ready()
       ? [
         '- 你能用 qq_generate_video 生成视频，主人和已授权的私聊对象可以使用。生成本身很慢，开始前先告诉对方要等多久；做好会自动发出来，不用再发一次。',
         v().confirm === false ? '' : '- 生成前系统会先把视频描述发给对方确认，对方回「确认」才会真的生成；不要自己连续调用两次。',
@@ -399,7 +399,7 @@ export default {
       ].filter(Boolean)
       : []))
 
-    api.tool(({ chat, sessionId }) => (ready() && chat.kind !== 'system' ? defineTool({
+    ctx.tool(({ chat, sessionId }) => (ready() && chat.kind !== 'system' ? defineTool({
       name: 'qq_generate_video',
       description: '生成一段视频，做好后自动发到当前聊天。很慢，开始前先告诉对方要等。主人和已授权的私聊对象可以使用。',
       properties: {
@@ -429,12 +429,12 @@ export default {
     }) : []))
 
     // 回「确认 / 取消」时才继续：主人，或者发起这次请求的那个人
-    api.on?.('message', async (msg) => {
+    ctx.on?.('message', async (msg) => {
       const chatId = msg?.chatId
       if (!chatId || !pending.has(chatId)) return false
       const item = pending.get(chatId)
       const mine = String(msg.userId || '') === item.userId
-      if (!mine && !api.isOwner?.(msg.userId) && !hub.turnSendersAllOwner?.(msg.sessionId)) return false
+      if (!mine && !ctx.isOwner?.(msg.userId) && !hub.turnSendersAllOwner?.(msg.sessionId)) return false
       const text = String(msg.text || '').trim()
       if (CANCEL_RE.test(text)) {
         clearPending(chatId)

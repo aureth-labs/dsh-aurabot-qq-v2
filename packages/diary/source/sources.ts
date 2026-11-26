@@ -95,7 +95,7 @@ function sourceLink(platform, item) {
   return ''
 }
 
-export function collectSources(api, settings, history = [], now = Date.now()) {
+export function collectSources(env, settings, history = [], now = Date.now()) {
   const events = []
   const pictures = []
   const seen = new Set()
@@ -115,7 +115,7 @@ export function collectSources(api, settings, history = [], now = Date.now()) {
     ]
     for (const [id, platform, kinds] of platforms) {
       let rows = []
-      try { rows = api.use(id)?.state?.()?.history || [] } catch (error) { continue }
+      try { rows = env.get(id)?.state?.()?.history || [] } catch (error) { continue }
       if (!Array.isArray(rows)) continue
       for (const row of rows.slice(0, 80)) {
         if (!row || typeof row !== 'object') continue
@@ -144,7 +144,7 @@ export function collectSources(api, settings, history = [], now = Date.now()) {
   }
   if (settings.stickers) {
     let items = []
-    try { items = api.use('stickers')?.library?.()?.items || [] } catch (error) {}
+    try { items = env.get('stickers')?.library?.()?.items || [] } catch (error) {}
     if (!Array.isArray(items)) items = []
     for (const item of items.slice(-300)) {
       if (!item || typeof item.file !== 'string' || basename(item.file) !== item.file || /[\\/]/.test(item.file) || !/\.(png|jpe?g|gif|webp)$/i.test(item.file)) continue

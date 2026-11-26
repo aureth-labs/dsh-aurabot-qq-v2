@@ -51,14 +51,10 @@ const COMMANDS = {
   help: '看这份命令列表',
   permissions: '主人私聊管理权限：/权限 查看用法',
   groupsettings: '主人私聊管理群发言和记忆：/群设置 查看用法',
-  silent: '在这里闭嘴（可带分钟数，如 /silent 30；不带就一直到 /active）',
-  active: '解除闭嘴；在群里还会接着参与话题一会儿',
   quiet: '这个群里只在被叫到时说话，不插话',
   chatty: '这个群里话多一点，更爱插话',
   normal: '这个群恢复默认的插话频率',
-  model: '看或换她用的模型：/model 看列表，/model 2 或 /model 名字 换，/model 默认 跟随 DSH',
   effort: '查看当前聊天的模型思考档位；发 /effort 序号 或 档位名切换，/effort 默认恢复跟随',
-  sing: '让她翻唱一首：/sing 小幸运 田馥甄；可加 +12 变调，或 开始=60 时长=30 唱指定片段',
   status: '看她现在的状态',
   mood: '看她现在的心情',
   diary: '马上写一篇空间日记',
@@ -128,18 +124,6 @@ export async function runCommand(cmd, msg, deps) {
       return runPermissionsCommand(cmd.arg, msg, deps)
     case 'help':
       return helpText(deps.extraCommands || [])
-    case 'silent': {
-      const min = Math.max(0, Math.min(7 * 24 * 60, Number.parseInt(cmd.arg, 10) || 0))
-      mutes.set(msg.chatId, min)
-      mood?.nudge?.(-6, '主人让她闭嘴') // 有点委屈
-      if (inGroup) hub.leaveTopic?.(msg.groupId)
-      return min ? `好，我在${here}安静 ${min} 分钟` : `好，我在${here}先不说话了，想我了发 /active`
-    }
-    case 'active':
-      mutes.clear(msg.chatId)
-      mood?.nudge?.(4, '主人让她回来说话')
-      if (inGroup) hub.joinTopic?.(msg.groupId)
-      return inGroup ? '我回来啦' : '在呢'
     case 'quiet':
       if (!inGroup) return '这个命令要在群里用'
       setGroup({ interjectChance: 0, proactiveEnabled: false, engagedEnabled: false })
@@ -186,37 +170,8 @@ export async function runCommand(cmd, msg, deps) {
       }
       return lines.join('\n')
     }
-    case 'model': {
-      const list = deps.listModels ? await deps.listModels() : []
-      const cur = cfg.model.provider && cfg.model.model ? cfg.model : null
-      const label = (m) => (m.name && m.name !== m.model ? `${m.name}（${m.model}）` : m.model)
-      if (!cmd.arg) {
-        const def = deps.defaultModel?.()
-        const head = cur ? `现在用的：${cur.model}` : `现在跟随 DSH 默认${def ? '：' + def.model : ''}`
-        if (!list.length) return head + '\n（拿不到模型列表）'
-        return head + '\n' + list.slice(0, 20).map((m, i) => `${i + 1}. ${label(m)}${cur && m.provider === cur.provider && m.model === cur.model ? '  ← 当前' : ''}`).join('\n') + '\n发 /model 序号 换，/model 默认 跟随 DSH'
-      }
-      if (/^(默认|default|auto|跟随)$/i.test(cmd.arg)) {
-        setConfig({ ...cfg, model: { ...cfg.model, provider: '', model: '' } })
-        return '好，换回跟随 DSH 的默认模型，下一句起生效'
-      }
-      const n = Number.parseInt(cmd.arg, 10)
-      const q = cmd.arg.toLowerCase()
-      const hit = String(n) === cmd.arg ? list[n - 1]
-        : list.find((m) => m.model.toLowerCase() === q || String(m.name).toLowerCase() === q) || list.find((m) => m.model.toLowerCase().includes(q) || String(m.name).toLowerCase().includes(q))
-      if (!hit) return `没找到「${cmd.arg}」这个模型，发 /model 看列表`
-      setConfig({ ...cfg, model: { ...cfg.model, provider: hit.provider, model: hit.model } })
-      return `好，换成 ${label(hit)} 了，下一句起生效`
-    }
     case 'effort':
       return runEffortCommand(cmd.arg, msg, deps)
-    case 'sing': {
-      if (!deps.song) return '翻唱功能不可用'
-      const request = parseSingRequest(cmd.arg)
-      if (request.error) return request.error
-      if (!request.song) return '唱哪首？比如 /sing 小幸运 田馥甄；只唱一段可加 开始=60 时长=30（秒）'
-      return deps.song.request({ ...request, chatId: msg.chatId }).message
-    }
     case 'mood':
       return mood ? `现在${mood.label()}` : '心情模块关着'
     case 'diary': {

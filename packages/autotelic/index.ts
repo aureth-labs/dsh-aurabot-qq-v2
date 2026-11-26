@@ -2,7 +2,7 @@
 // 【实验性】v5 是重写后的新架构，行为与配置面可能随版本调整；默认关闭，开了才参与她过日子。
 //
 // v5 生活叙事五环：感知 → 想要 → 行动 → 沉淀 → 分享。本模块是接线层（集成属主）：
-//   · 感知：api.every(60s) → 聊天流水采集 + 情绪观察桥 → observations.jsonl（只积累不决策）
+//   · 感知：ctx.setInterval(60s) → 聊天流水采集 + 情绪观察桥 → observations.jsonl（只积累不决策）
 //   · 想要：schedule 双轨触发（定时回味 + 心念点火）→ plan.decideRound 三段决策环
 //     （意图生成 → 自我把关 → 集成层 constraint.check 前置否决）→ buildTicket
 //   · 行动：exec.run（三级分级 + 硬禁区 + 预算 + touch-owner 确认闸）
@@ -48,12 +48,6 @@ export default {
   api: 2,
   platforms: ['*'],
   description: '实验性。v5：她自己的日子——观察积累 → 定时回味/心念点火 → 三段决策环（生成/把关分离，全灭合法）→ 行动单执行（三级分级+硬禁区）→ 技能三层沉淀（score 锚真实复用终态）→ 反馈回路（抑制/冷度/熔断）+ constraintRules 强制约束 + 接管。默认关闭；实验性功能，行为与配置面可能随版本调整。',
-  files: [
-    'packages/modules/autotelic/impl/audit.js', 'packages/modules/autotelic/impl/book.js', 'packages/modules/autotelic/impl/observe.js', 'packages/modules/autotelic/impl/tags.js',
-    'packages/modules/autotelic/impl/schedule.js', 'packages/modules/autotelic/impl/plan.js', 'packages/modules/autotelic/impl/constraint.js', 'packages/modules/autotelic/impl/prefix.js',
-    'packages/modules/autotelic/impl/exec.js', 'packages/modules/autotelic/impl/feedback.js', 'packages/modules/autotelic/impl/skills.js', 'packages/modules/autotelic/impl/reflect.js',
-    'packages/modules/autotelic/impl/python.js', 'packages/modules/autotelic/impl/takeover.js', 'packages/modules/autotelic/impl/reconcile.js',
-  ],
   tab: 'autotelic',
   defaults: {
     // —— 总开关与生活节奏（裁决三：对齐目的引擎风格）——
@@ -123,29 +117,29 @@ export default {
     { key: 'scriptTimeoutMs', label: '脚本超时（毫秒）', type: 'number', min: 1000, max: 600000 },
     { key: 'takeover', label: '接管浏览模块', type: 'switch', hint: '手动点开才生效：压制抖音/B站的自主循环（不关模块总开关，她的手还在）。关掉自动还原原配置' },
   ],
-  setup(api) {
-    const auditDir = () => api.dataDir('audit')
-    const auditWired = () => Boolean(api.core?.autotelicAuditOn)
-    const note = (entry) => api.core?.autotelicAudit?.note?.(entry)
-    const log = api.log
+  apply(ctx, config) {
+    const auditDir = () => ctx.dataDir('audit')
+    const auditWired = () => Boolean(ctx.host?.autotelicAuditOn)
+    const note = (entry) => ctx.host?.autotelicAudit?.note?.(entry)
+    const log = ctx.logger
 
     const own = (...parts) => {
-      const dir = personaDataDir(api.config(), personaNow(api.config()))
-      return dir === dataDir() ? api.dataDir(...parts) : join(dir, 'autotelic', ...parts)
+      const dir = personaDataDir(ctx.root.config, personaNow(ctx.root.config))
+      return dir === dataDir() ? ctx.dataDir(...parts) : join(dir, 'autotelic', ...parts)
     }
-    const hub = api.core?.hub || {}
-    const settings = () => api.settings()
+    const hub = ctx.host?.hub || {}
+    const settings = () => ctx.config
 
     // ---------- 感知层（无 IO 副作用，可安全在 setup 构造） ----------
-    const tagsOf = () => { try { return resolveTags((...p) => api.dataDir(...p)) } catch { return undefined } }
+    const tagsOf = () => { try { return resolveTags((...p) => ctx.dataDir(...p)) } catch { return undefined } }
     const observe = createObserve({
       file: () => own('observations.jsonl'),
       tagsOf,
       hooks: {
-        onCorrection: (c) => { try { ctx()?.feedback.ingestCorrection(c.text, { tags: [c.tag] }) } catch (e) { log.debug?.('自驱v5：纠偏入表失败：', e?.message) } },
+        onCorrection: (c) => { try { ctxOf()?.feedback.ingestCorrection(c.text, { tags: [c.tag] }) } catch (e) { log.debug?.('自驱v5：纠偏入表失败：', e?.message) } },
       },
     })
-    const chatCollector = createChatCollector({ hub, identity: api.core?.identity, observe })
+    const chatCollector = createChatCollector({ hub, identity: ctx.host?.identity, observe })
 
     let lastEmoAt = 0
     let lastEmoKey = ''
@@ -153,7 +147,7 @@ export default {
       observe,
       fetchEmotions: () => {
         let s: any = null
-        try { s = api.use('mood')?.state?.() } catch { s = null }
+        try { s = ctx.get('mood')?.state?.() } catch { s = null }
         if (!s || !Number(s.emotionsAt) || Number(s.emotionsAt) <= lastEmoAt) return []
         lastEmoAt = Number(s.emotionsAt)
         const top = s.emotionTop?.[0]?.key
@@ -169,9 +163,9 @@ export default {
     const constraintFile = () => own('constraints.txt')
     const prefixCache = createPrefixCache()
 
-    let ctx = null // 重件（有 IO 面）懒初始化：enabled=false 时绝不构造（场景 1 零 IO）
+    let engine = null // 重件（有 IO 面）懒初始化：enabled=false 时绝不构造（场景 1 零 IO）
     function ctxOf() {
-      if (ctx) return ctx
+      if (engine) return engine
       const feedback = createFeedback({
         file: own('feedback.json'),
         // 中危 9（集成审查）：feedback 的事件流水另立文件，不再 append 进 decisions.jsonl——
@@ -181,7 +175,7 @@ export default {
         log,
       })
       const watcher = createConstraintWatcher({ file: constraintFile(), onAudit: note })
-      const skillsStore = createSkillStore(api.dataDir('skills'), {
+      const skillsStore = createSkillStore(ctx.dataDir('skills'), {
         distill: (entries) => distillViaLlm(entries),
         personaFile: personaCardPath(),
         log: (...v) => log.warn?.(...v),
@@ -203,13 +197,13 @@ export default {
         hooks: { selfCheck: selfCheckOwner },
         log,
       })
-      ctx = { feedback, watcher, skillsStore, planner, exec }
-      return ctx
+      engine = { feedback, watcher, skillsStore, planner, exec }
+      return engine
     }
     function personaCardPath() {
       try {
-        const id = personaNow(api.config())
-        return personaDataDir(api.config(), id, `${id}.md`)
+        const id = personaNow(ctx.root.config)
+        return personaDataDir(ctx.root.config, id, `${id}.md`)
       } catch { return '' }
     }
     /** 技能提炼调用（晋升注入点）：一次 LLM 调用把同主题记忆合成方法论；失败由 skills.js 模板兜底。 */
@@ -283,7 +277,7 @@ export default {
       run: (ticket, opts) => ctxOf().exec.run(ticket, opts),
       confirm: (id) => ctxOf().exec.confirm(id),
       cancel: (id) => ctxOf().exec.cancel(id),
-      pendingList: () => (ctx ? ctx.exec.pendingList() : []),
+      pendingList: () => (engine ? engine.exec.pendingList() : []),
     }
 
     // ---------- 一轮回味（schedule.run 回调）：观察窗口 → 生成 → 把关 → 前置否决 → 行动 ----------
@@ -317,7 +311,7 @@ export default {
 
       // 4) 人格锚 + 本能附加段 + 技能索引 + 自身状态薄摘要（§9.3：前缀段稳定可缓存）
       let personaSummary = ''
-      try { personaSummary = String(currentPersonaText(personaNow(api.config())) || '').slice(0, 1200) } catch { personaSummary = '' }
+      try { personaSummary = String(currentPersonaText(personaNow(ctx.root.config)) || '').slice(0, 1200) } catch { personaSummary = '' }
       const instincts = c.skillsStore.list('instinct').map((d) => ({ id: d.id, title: d.meta.title, content: String(d.body || '').slice(0, 300) }))
       const instinctExtra = instincts.map((d) => `【本能·${d.title}】${d.content}`).join('\n')
       const prefixText = prefixCache.build({ personaSummary, instincts, constraints: constraintRulesText })
@@ -409,7 +403,7 @@ export default {
       }
       observe.append({ source: 'note', tag: tagOf(entry.tag), text: `有个念头被自己挂起了（等换个时机或主人松口）：${entry.title}`, salience: 0.8 })
     }
-    function isValidParkTag(tag) { try { return resolveTags((...p) => api.dataDir(...p)).includes(tag) } catch { return false } }
+    function isValidParkTag(tag) { try { return resolveTags((...p) => ctx.dataDir(...p)).includes(tag) } catch { return false } }
 
     /** 面板 constraintRules 文本框 → constraints.txt 落盘（watcher 的真相来源）。 */
     async function syncConstraints() {
@@ -436,7 +430,7 @@ export default {
       const c = ctxOf()
       const windows = c.feedback.snapshot().windows
       if (!windows.length) return
-      const ownerId = String(api.core?.identity?.owner?.() || '')
+      const ownerId = String(ctx.host?.identity?.owner?.() || '')
       if (!ownerId) return
       let entries = []
       try {
@@ -467,7 +461,7 @@ export default {
       const park = c.feedback.snapshot().park || {}
       const tags = Object.keys(park)
       if (!tags.length) return
-      const ownerId = String(api.core?.identity?.owner?.() || '')
+      const ownerId = String(ctx.host?.identity?.owner?.() || '')
       if (!ownerId) return
       let entries = []
       try {
@@ -486,14 +480,14 @@ export default {
     }
 
     // ---------- 60s 心跳（接线层）：接管兜底 → 反馈维护 → 感知 → 排程 ----------
-    api.every(60_000, async () => {
+    ctx.setInterval(60_000, async () => {
       const s = settings()
       if (!s.enabled) return // 总开关关着：什么都不做（场景 1）
       // 接管兜底：主人手动把它改回 true → 压回去并留痕
       try {
-        const flipped = findFlipped({ getConfig: api.config, backup: takeoverBackup() })
+        const flipped = findFlipped({ getConfig: ctx.root.read, backup: takeoverBackup() })
         if (flipped.length) {
-          repressTakeover({ getConfig: api.config, setConfig: api.setConfig, backup: takeoverBackup() })
+          repressTakeover({ getConfig: ctx.root.read, setConfig: ctx.root.update, backup: takeoverBackup() })
           note({ kind: 'autotelic/takeover', args: { action: 'resuppress', targets: flipped.map((f) => f.id) }, outcome: '主人手动改回，接管期间被压回' })
           log.info?.(`自驱：接管兜底，压回 ${flipped.map((f) => f.id).join('、')}`)
         }
@@ -516,18 +510,18 @@ export default {
     }, '自驱引擎心跳')
 
     // ---------- 她的手（P3/P4 保留，只在 system:autotelic* 的会话里出现） ----------
-    const oldSkills = createSkills(api.dataDir())
-    const userModulesDir = () => { try { return (typeof api.core?.modules?.dir === 'function') ? api.core.modules.dir() : '' } catch { return '' } }
+    const oldSkills = createSkills(ctx.dataDir())
+    const userModulesDir = () => { try { return (typeof ctx.host?.modules?.dir === 'function') ? ctx.host.modules.dir() : '' } catch { return '' } }
     let envCache = null
-    const probeFn = api.__autotelicTestHooks?.probePython || probePython
-    const readEnv = () => { if (envCache == null) envCache = loadEnvCache(api.dataDir('env.json')); return envCache }
+    const probeFn = ctx.__autotelicTestHooks?.probePython || probePython
+    const readEnv = () => { if (envCache == null) envCache = loadEnvCache(ctx.dataDir('env.json')); return envCache }
     const pythonEnv = async ({ force = false } : PythonEnvOptions = {}) => {
       const cached = readEnv()
       const s = settings()
       if (!force && envUsable(cached) && (!s.pythonBin || cached.source === 'configured')) return cached
       envCache = await probeFn({ configured: s.pythonBin })
       if (envCache) envCache.source = s.pythonBin ? 'configured' : 'probed'
-      saveEnvCache(api.dataDir('env.json'), envCache)
+      saveEnvCache(ctx.dataDir('env.json'), envCache)
       if (!envCache) log.info?.('自驱：本机没有探测到可用 Python，这项能力关闭')
       else log.info?.(`自驱：Python 用 ${envCache.bin}（${envCache.version}，${envCache.source === 'configured' ? '手填' : '自动探测'}）`)
       return envCache
@@ -551,17 +545,17 @@ export default {
     // 接管浏览模块（保留 v3 交付，主人手动点）
     const liveModuleIds = () => {
       try {
-        const list = api.core?.modules?.status?.() || []
+        const list = ctx.host?.modules?.status?.() || []
         return list.filter((m) => m && m.running !== false).map((m) => m.id).filter(Boolean)
       } catch { return [] }
     }
-    const takeoverProbe = () => probeTakeovers({ getConfig: api.config, liveIds: liveModuleIds(), extra: settings().takeoverExtra || [] })
+    const takeoverProbe = () => probeTakeovers({ getConfig: ctx.root.read, liveIds: liveModuleIds(), extra: settings().takeoverExtra || [] })
     const takeoverBackup = () => (settings().takenOver && typeof settings().takenOver === 'object') ? settings().takenOver : {}
-    const saveBackup = (backup) => api.saveSettings({ takenOver: backup })
+    const saveBackup = (backup) => ctx.updateConfig({ takenOver: backup })
     function repressIfNeeded() {
       const backup = takeoverBackup()
       if (!Object.keys(backup).length) return []
-      const done = repressTakeover({ getConfig: api.config, setConfig: api.setConfig, backup })
+      const done = repressTakeover({ getConfig: ctx.root.read, setConfig: ctx.root.update, backup })
       if (done.length) {
         log.info?.(`自驱：恢复接管，重压 ${done.map((d) => d.id).join('、')}`)
         note({ kind: 'autotelic/takeover', args: { action: 'repress', targets: done }, outcome: '重启后恢复接管（幂等重压）' })
@@ -570,10 +564,10 @@ export default {
     }
     repressIfNeeded()
 
-    api.tool((where) => {
+    ctx.tool((where) => {
       if (!settings().enabled || !isHer(where)) return []
       return [
-        api.defineTool({
+        ctx.defineTool({
           name: 'autotelic_note',
           description: '写一篇笔记到你自己的目录（notes/ 年月日-标题.md）。用于记录你查到的东西、想留给以后的想法。',
           properties: { title: { type: 'string', description: '标题（做文件名用）' }, text: { type: 'string', description: '正文' } },
@@ -593,7 +587,7 @@ export default {
             } catch (error) { return { ok: false, message: `写不了：${error.message}` } }
           },
         }),
-        api.defineTool({
+        ctx.defineTool({
           name: 'autotelic_run_python',
           description: '跑一段 Python 脚本（子进程，超时会杀，不继承主程序的任何密钥环境变量）。stdout 会回给你；要留产物就写到你目录的 out/ 附近。',
           properties: { code: { type: 'string', description: 'Python 3 源码' }, saveAs: { type: 'string', description: '可选：保存为技能（id，小写字母/数字/-）。跑成功会累计，连续 2 次成功就学会' } },
@@ -605,7 +599,7 @@ export default {
             if (!env || !env.pythonBin) return { ok: false, message: '本机没有可用 Python（这项能力关闭；面板「自驱引擎」页可手动填解释器路径）' }
             const spendR = spend('autotelic_run_python')
             if (!spendR.ok) return spendR
-            const r: any = await runPython({ dir: api.dataDir(), pythonBin: env.pythonBin, code, timeoutMs: Number(s.scriptTimeoutMs) || 120000 })
+            const r: any = await runPython({ dir: ctx.dataDir(), pythonBin: env.pythonBin, code, timeoutMs: Number(s.scriptTimeoutMs) || 120000 })
             note({ kind: 'autotelic/python', tool: 'run_python', args: { bytes: String(code || '').length, saveAs: saveAs || '' }, outcome: r.ok ? 'ok' : (r.error || 'failed') })
             let skillMsg = ''
             if (saveAs && String(saveAs).trim()) {
@@ -618,7 +612,7 @@ export default {
             return { ok: r.ok, message: `${r.ok ? '跑完了' : '没跑成'}（${r.ms}ms）${r.error ? '：' + r.error : ''}${r.stdout ? '\n输出：' + clip(r.stdout, 3000) : ''}${skillMsg}` }
           },
         }),
-        api.defineTool({
+        ctx.defineTool({
           name: 'autotelic_write_module',
           description: '给自己写一个用户模块（扩展能力，升级不丢）。只能写你自己的模块目录；框架代码永远写不到。',
           properties: { id: { type: 'string', description: '模块 id（小写字母开头，小写字母/数字/-）' }, code: { type: 'string', description: 'index.mjs 完整内容，必须 export default 模块对象' } },
@@ -634,7 +628,7 @@ export default {
             return { ok: r.ok, message: r.ok ? `写好了 ${r.file}。${r.note}` : r.why }
           },
         }),
-        api.defineTool({
+        ctx.defineTool({
           name: 'autotelic_propose_say',
           description: '你想对主人说一句话。不直接发：交给出站治理统筹排程；安静时段先攒着。说不说、怎么说由治理和你判断，但「想过要说」会留痕。',
           properties: { text: { type: 'string', description: '想说的话' }, reason: { type: 'string', description: '为什么现在想说' } },
@@ -647,14 +641,14 @@ export default {
               writeJsonSafe(own('say-pending.json'), pending.slice(-20))
               return { ok: true, message: '现在是安静时段，这句先攒着（没丢，安静结束再交给治理）' }
             }
-            const r = await api.proactive.submit({ text: body, itemId: `say-${Date.now()}`, cause: { kind: 'background' } })
+            const r = await ctx.proactive.submit({ text: body, itemId: `say-${Date.now()}`, cause: { kind: 'background' } })
             note({ kind: 'autotelic/say', tool: 'propose_say', args: { reason: clip(reason, 120) }, outcome: r?.state || 'unknown' })
             if (!r || r.state === 'unsupported') return { ok: false, message: '出站治理没开成 broker 档，这句话送不出去（要主人把 outboundPolicy.tier 设为 broker）' }
             if (r.state === 'dropped') return { ok: false, message: `治理没放行：${r.reason || 'denied'}（可以攒着以后再说）` }
             return { ok: true, message: `交给出站治理了（${r.state}）` }
           },
         }),
-        api.defineTool({
+        ctx.defineTool({
           name: 'autotelic_propose',
           description: '给主人写提案（proposals/）：想要新能力、想改框架、想加工具，都写在这里。你永远改不到框架代码（src/）。',
           properties: { title: { type: 'string' }, body: { type: 'string' } },
@@ -671,7 +665,7 @@ export default {
             } catch (error) { return { ok: false, message: `写不了：${error.message}` } }
           },
         }),
-        api.defineTool({
+        ctx.defineTool({
           name: 'autotelic_modules',
           description: '看看现在有哪些模块装着、开着（比如抖音、B站）。你只能看到清单——每个模块的具体能力要等主人逐个接给你。',
           properties: {},
@@ -680,7 +674,7 @@ export default {
             const rows = []
             for (const id of want) {
               let mod = null
-              try { mod = api.use(id) } catch { mod = null }
+              try { mod = ctx.get(id) } catch { mod = null }
               rows.push(`${mod ? '✓' : '✗'} ${id}${mod ? '（开着，能力待接入）' : '（没装或没开）'}`)
             }
             return { ok: true, message: rows.join('\n') }
@@ -690,20 +684,20 @@ export default {
     })
 
     // ---------- 面板路由 ----------
-    api.route('/autotelic/proposals', async () => {
+    ctx.server.get('/autotelic/proposals', async () => {
       let list = []
       try { list = readdirSync(own('proposals')).filter((f) => f.endsWith('.md')).sort().reverse().slice(0, 20) } catch {}
       return { ok: true, list }
     })
-    api.route('/autotelic/env', async (req) => {
+    ctx.server.get('/autotelic/env', async (req) => {
       let probeOnly = false
       if (req && req.method === 'POST') {
-        const body = await api.core.http.body(req).catch(() => ({}))
+        const body = await ctx.host.http.body(req).catch(() => ({}))
         if (body && typeof body.pythonBin === 'string' && body.pythonBin.trim()) {
           const bin = body.pythonBin.trim()
           const hit = await probeFn({ configured: bin })
           if (!hit || hit.bin !== bin) return { ok: false, message: `这个路径跑不出 Python 3（${bin}）。检查一下是不是全路径、是不是真装了` }
-          api.setConfig({ ext: { autotelic: { pythonBin: bin } } })
+          ctx.root.update({ ext: { autotelic: { pythonBin: bin } } })
           envCache = null
         }
         probeOnly = Boolean(body?.probe)
@@ -719,22 +713,22 @@ export default {
       }
     })
     // 手动入口（面板「现在想一轮」/「现在想想」）：schedule.fire——跳排程闸，不跳总开关与安静时段。
-    api.route('/autotelic/plan', async () => {
+    ctx.server.get('/autotelic/plan', async () => {
       if (!settings().enabled) return { ok: false, message: '自驱引擎没开（本页可以打开）' }
       const r = await schedule.fire('手动回味')
       return { ok: r.outcome === 'run', message: roundMessage(r), ...r }
     })
     // 旧面板按钮的别名：同一入口。
-    api.route('/autotelic/run', async () => {
+    ctx.server.get('/autotelic/run', async () => {
       if (!settings().enabled) return { ok: false, message: '自驱引擎没开（本页可以打开）' }
       const r = await schedule.fire('手动回味')
       return { ok: r.outcome === 'run', message: roundMessage(r), ...r }
     })
     // v5 没有单步推进（行动单整单跑），旧按钮给一句实话。
-    api.route('/autotelic/step', async () => ({ ok: false, message: 'v5 没有单步推进：行动单整单自动跑，用「现在想一轮」代替' }))
+    ctx.server.get('/autotelic/step', async () => ({ ok: false, message: 'v5 没有单步推进：行动单整单自动跑，用「现在想一轮」代替' }))
     // 零副作用预览（旧面板按钮兼容）：她最近的观察与想事过程，不写任何状态。
-    api.route('/autotelic/preview', async () => {
-      const c = ctx
+    ctx.server.get('/autotelic/preview', async () => {
+      const c = ctxOf()
       const stats = observe.stats()
       const recent = observe.list({ limit: 8 }).map((r) => ({ id: r.id, at: r.ts, source: r.source, tag: r.tag, text: r.text }))
       return {
@@ -749,9 +743,9 @@ export default {
       }
     })
     // touch-owner 确认闸：放行 / 待确认清单。
-    api.route('/autotelic/confirm', async (req) => {
+    ctx.server.get('/autotelic/confirm', async (req) => {
       if (!settings().enabled) return { ok: false, message: '自驱引擎没开' }
-      const body = await api.core.http.body(req).catch(() => ({}))
+      const body = await ctx.host.http.body(req).catch(() => ({}))
       const c = ctxOf()
       if (body?.list) return { ok: true, pending: exec.pendingList() }
       const ticketId = String(body?.ticketId || '')
@@ -770,10 +764,10 @@ export default {
       return { ok: r.status === 'done' || r.status === 'failed', message: `行动单 ${ticketId}：${r.status}${r.why ? '（' + r.why + '）' : ''}`, ...r }
     })
     // 技能库面板口（GET 清单 + POST 回滚/归档——裁决一的安全兜底要能「按」不能只「看」，集成审查中危 5）。
-    api.route('/autotelic/skills', async (req) => {
+    ctx.server.get('/autotelic/skills', async (req) => {
       const c = ctx?.skillsStore ? ctx : null
       if (req && req.method === 'POST' && c) {
-        const body = await api.core.http.body(req).catch(() => ({}))
+        const body = await ctx.host.http.body(req).catch(() => ({}))
         if (body?.action === 'rollback' && body.stamp) {
           const r = c.skillsStore.rollback(String(body.stamp))
           note({ kind: 'autotelic/skill-rollback', args: { stamp: body.stamp, restored: r.restored || 0 }, outcome: r.ok ? '主人一键回滚技能库快照' : (r.why || '回滚失败') })
@@ -790,10 +784,10 @@ export default {
       }
     })
     // 反馈回路面板：快照 / 恢复 / 检视完成。
-    api.route('/autotelic/feedback', async (req) => {
+    ctx.server.get('/autotelic/feedback', async (req) => {
       const c = ctxOf()
       if (req && req.method === 'POST') {
-        const body = await api.core.http.body(req).catch(() => ({}))
+        const body = await ctx.host.http.body(req).catch(() => ({}))
         if (body?.action === 'resume' && body.tag) return { ok: true, ...c.feedback.resume(String(body.tag), ['mention', 'explicit', 'panel'].includes(body.source) ? body.source : 'panel'), snapshot: c.feedback.snapshot() }
         if (body?.action === 'clearReview') { c.feedback.clearReview(); return { ok: true, snapshot: c.feedback.snapshot() } }
         return { ok: false, message: '不认识的操作' }
@@ -801,7 +795,7 @@ export default {
       return { ok: true, snapshot: c.feedback.snapshot() }
     })
     // 决策审计面板：「她最近想事的过程」（decisions.jsonl 尾部 + 链校验）。
-    api.route('/autotelic/decisions', async () => {
+    ctx.server.get('/autotelic/decisions', async () => {
       const file = own('decisions.jsonl')
       const chain = await verifyDecisionLog(file)
       let tail = []
@@ -812,8 +806,8 @@ export default {
       return { ok: true, chain, tail: tail.reverse() }
     })
     // 接管 / 还原（保留）。
-    api.route('/autotelic/takeover', async (req) => {
-      const body = await api.core.http.body?.(req).catch(() => ({})) || {}
+    ctx.server.get('/autotelic/takeover', async (req) => {
+      const body = await ctx.host.http.body?.(req).catch(() => ({})) || {}
       const want = body.on === undefined ? !settings().takeover : Boolean(body.on)
       if (want) {
         const probe = takeoverProbe()
@@ -821,20 +815,20 @@ export default {
           const live = liveModuleIds()
           return { ok: false, message: `没找到可接管的浏览模块${live.length ? `（在跑：${live.join('、')}）` : '（没有模块在跑？）'}。装了抖音/B站之类的模块再点`, takeover: takeoverView(takeoverBackup()) }
         }
-        const backup = applyTakeover({ getConfig: api.config, setConfig: api.setConfig, probe })
+        const backup = applyTakeover({ getConfig: ctx.root.read, setConfig: ctx.root.update, probe })
         saveBackup(backup)
-        api.saveSettings({ takeover: true })
+        ctx.updateConfig({ takeover: true })
         note({ kind: 'autotelic/takeover', args: { action: 'on', targets: Object.keys(backup) }, outcome: '主人手动点开接管' })
         log.info?.(`自驱：接管浏览模块 ${Object.keys(backup).join('、')}`)
         return { ok: true, message: `接管了 ${Object.keys(backup).join('、')}：自主循环已压制。刷什么由她的回味决定`, takeover: takeoverView(backup) }
       }
-      const done = restoreTakeover({ getConfig: api.config, setConfig: api.setConfig, backup: takeoverBackup() })
+      const done = restoreTakeover({ getConfig: ctx.root.read, setConfig: ctx.root.update, backup: takeoverBackup() })
       saveBackup({})
-      api.saveSettings({ takeover: false })
+      ctx.updateConfig({ takeover: false })
       note({ kind: 'autotelic/takeover', args: { action: 'off', targets: done.map((d) => d.id) }, outcome: '主人手动关掉接管，原值已还原' })
       return { ok: true, message: done.length ? `已还原 ${done.map((d) => d.id).join('、')} 的原配置` : '没接管过，不用还原', takeover: takeoverView({}) }
     })
-    api.route('/autotelic/takeover-status', async () => ({
+    ctx.server.get('/autotelic/takeover-status', async () => ({
       ok: true,
       on: Boolean(settings().takeover),
       takeover: takeoverView(takeoverBackup()),
@@ -842,8 +836,8 @@ export default {
       live: liveModuleIds(),
     }))
     // 调参（v5 收窄：只许动节奏键，其余主人面板改）。
-    api.route('/autotelic/tune', async (req) => {
-      const body = await api.core.http.body(req).catch(() => ({}))
+    ctx.server.get('/autotelic/tune', async (req) => {
+      const body = await ctx.host.http.body(req).catch(() => ({}))
       const patch = body && typeof body === 'object' ? body.patch || body : {}
       const ALLOWED = ['awakeFrom', 'awakeTo', 'minIntervalMinutes', 'maxIntervalMinutes', 'maxPerDay', 'igniteCooldownMinutes']
       const applied: Record<string, any> = {}
@@ -854,13 +848,13 @@ export default {
         if (!Number.isFinite(n)) { rejected[k] = '要数字'; continue }
         applied[k] = n
       }
-      if (Object.keys(applied).length) api.setConfig({ ext: { autotelic: applied } })
+      if (Object.keys(applied).length) ctx.root.update({ ext: { autotelic: applied } })
       note({ kind: 'autotelic/tune', args: { patch: applied, rejected: Object.keys(rejected) }, outcome: '调参动作本身进审计（C5）' })
       return { ok: true, message: `调好了：${Object.entries(applied).map(([k, v]) => `${k}=${v}`).join('、')}${Object.keys(rejected).length ? `（拒了 ${Object.keys(rejected).length} 项）` : ''}`, applied, rejected }
     })
-    api.route('/autotelic/journal', async () => ({ ok: true, daily: journal.list('daily'), dreams: journal.list('dreams') }))
-    api.route('/autotelic/day', async (req) => {
-      const q = api.core.http.query(req)
+    ctx.server.get('/autotelic/journal', async () => ({ ok: true, daily: journal.list('daily'), dreams: journal.list('dreams') }))
+    ctx.server.get('/autotelic/day', async (req) => {
+      const q = ctx.host.http.query(req)
       const date = String(q.date || '').trim()
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, message: '日期格式要 YYYY-MM-DD' }
       const audit = await readAuditDay(auditDir(), date)
@@ -894,7 +888,7 @@ export default {
     })
 
     // 状态路由（v5：新状态 + 兼容旧面板字段 + takenOver 透明）。
-    api.route('/autotelic/status', async () => {
+    ctx.server.get('/autotelic/status', async () => {
       const cfg = settings()
       const chain = await verifyAuditChain(auditDir())
       const book = getBook()

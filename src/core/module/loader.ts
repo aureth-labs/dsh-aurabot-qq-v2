@@ -226,7 +226,7 @@ export function checkDef(def, id) {
     if (!ID_RE.test(String(id))) return `模块 id「${id}」不对：小写字母开头，只能有小写字母、数字和 -，2~40 个字`
     return ''
   }
-  if (typeof def.setup !== 'function' && typeof def.apply !== 'function') return '模块里没有 setup(api) 或 apply(ctx, config) 函数'
+  if (typeof def.apply !== 'function') return '模块里没有 apply(ctx, config) 函数'
   if (!ID_RE.test(String(def.id || id || ''))) return `模块 id「${def.id ?? id ?? ''}」不对：小写字母开头，只能有小写字母、数字和 -，2~40 个字`
   // 带 scope 的安装目录是 modules/<owner>/<name>，入口里写 <name> 就行
   if (id && def.id && def.id !== id && def.id !== String(id).split('/').pop()) return `模块 id「${def.id}」要和文件夹名「${id}」一样`
@@ -244,7 +244,7 @@ export function checkDef(def, id) {
  */
 export function namedModuleDef(mod) {
   if (!mod) return undefined
-  const apply = typeof mod.apply === 'function' ? mod.apply : typeof mod.setup === 'function' ? mod.setup : null
+  const apply = typeof mod.apply === 'function' ? mod.apply : null
   if (!apply) return undefined
   const raw = {
     name: mod.name,
@@ -265,7 +265,6 @@ export function namedModuleDef(mod) {
     capabilities: mod.capabilities,
     api: mod.api,
     apply: mod.apply,
-    setup: mod.setup,
   }
   return Object.fromEntries(Object.entries(raw).filter(([, value]) => value !== undefined))
 }

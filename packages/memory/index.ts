@@ -38,29 +38,25 @@ export default {
   version: '1.0.0',
   description: '长期记忆：记事、想起、每日整理、小档案和相处经验',
   tab: 'memory',
-  files: [
-    'src/features/memory/index.js',
-    'src/features/memory/query/rules.js',
-    'src/features/memory/store/store.js',
-    'src/features/memory/vector.js',
-  ],
-  setup(api, { fetchImpl, registerNativePreview } : SetupOptions = {}) {
-    const { hub, http } = api.core
+  apply(ctx, config) {
+    const fetchImpl = undefined
+    const registerNativePreview = ctx.nativePreview
+    const { hub, http } = ctx.host
     const stores = new Map() // 目录 → 记忆库
     const scoped = new Map() // 人格|目录 → 固定在这个人格下的记忆库
     let noMemory = null // 所有人格里设了「不再记住」的 QQ 号，任何一个人格都不记这些人
-    const blocked = (qq) => (noMemory ||= new Set(personaDataRoots(api.config()).flatMap(({ id }) => storeOf(id).noMemoryIds()))).has(qq)
+    const blocked = (qq) => (noMemory ||= new Set(personaDataRoots(ctx.root.config).flatMap(({ id }) => storeOf(id).noMemoryIds()))).has(qq)
     function storeOf(pid) {
-      const directory = personaDataDir(api.config(), pid)
-      if (!stores.has(directory)) stores.set(directory, createMemoryStore({ dsh: api.dsh, getConfig: api.config, hub, log: api.log, fetchImpl, setConfig: api.setConfig, directory, blocked }))
+      const directory = personaDataDir(ctx.root.config, pid)
+      if (!stores.has(directory)) stores.set(directory, createMemoryStore({ dsh: ctx.harness, getConfig: ctx.root.read, hub, log: ctx.logger, fetchImpl, setConfig: ctx.updateConfig, directory, blocked }))
       const key = pid + '|' + directory
       if (!scoped.has(key)) scoped.set(key, new Proxy(stores.get(directory), { get: (t, k) => (typeof t[k] === 'function' ? (...args) => personaScope.run(pid, () => t[k](...args)) : t[k]) }))
       return scoped.get(key)
     }
-    const current = () => storeOf(personaNow(api.config()))
-    const memoryOf = (sessionId) => storeOf(hub.personaOf?.(sessionId) || personaNow(api.config()))
+    const current = () => storeOf(personaNow(ctx.root.config))
+    const memoryOf = (sessionId) => storeOf(hub.personaOf?.(sessionId) || personaNow(ctx.root.config))
     /** 当前人格之外、各有一个目录的人格。 */
-    const others = () => personaDataRoots(api.config()).filter(({ dir }) => dir !== personaDataDir(api.config(), personaNow(api.config())))
+    const others = () => personaDataRoots(ctx.root.config).filter(({ dir }) => dir !== personaDataDir(ctx.root.config, personaNow(ctx.root.config)))
 
     function handleCommand(chat, text) {
       const result = current().handleCommand(chat, text)
@@ -75,7 +71,7 @@ export default {
     }
     /** 删人格数据前关掉它的记忆库文件。 */
     function closePersona(pid) {
-      const directory = personaDataDir(api.config(), pid)
+      const directory = personaDataDir(ctx.root.config, pid)
       if (directory === dataDir()) return
       stores.get(directory)?.close()
       stores.delete(directory)
@@ -88,13 +84,13 @@ export default {
     })
     memory.list('') // 启动时完成旧 JSON 迁移，不必等第一条聊天或打开面板。
     registerNativePreview?.(({ personaId, chatId }, page) => {
-      const cfg = api.config()
+      const cfg = ctx.root.config
       if (!cfg.memory.enabled) return null
       return stores.get(personaDataDir(cfg, personaId))?.[NATIVE_MEMORY_VIEW](chatId, page) ?? null
     })
 
-    api.context(({ chat, sessionId }) => (chat.kind === 'system' ? '' : memoryOf(sessionId).contextFor(chat, sessionId)))
-    api.on('prompt', async (content, info) => {
+    ctx.prompt(({ chat, sessionId }) => (chat.kind === 'system' ? '' : memoryOf(sessionId).contextFor(chat, sessionId)))
+    ctx.on('prompt', async (content, info) => {
       try {
         if (!info || !info.chat || info.chat.kind === 'system' || !Array.isArray(content)) return content
         const memory = memoryOf(info.sessionId)
@@ -104,10 +100,10 @@ export default {
         return [{ type: 'text', text: hint }, ...content]
       } catch (error) { return content }
     })
-    api.every(60_000, () => memory.tick(), '整理记忆')
+    ctx.setInterval(60_000, () => memory.tick(), '整理记忆')
 
-    api.tool(({ chat, level, sessionId }) => {
-      if (!api.config().memory.enabled || chat.kind === 'system') return []
+    ctx.tool(({ chat, level, sessionId }) => {
+      if (!ctx.root.config.memory.enabled || chat.kind === 'system') return []
       const memory = memoryOf(sessionId)
       const current = chat.chatId
       const senders = () => (typeof hub.turnSenders === 'function' ? hub.turnSenders(sessionId) : hub.speakersOf?.(sessionId)) || []
@@ -119,7 +115,7 @@ export default {
           required: ['who'],
           execute: async ({ who }) => memory.lookupPerson(chat, who, senders()),
         }),
-        ...(chat.kind === 'group' || String(chat.userId) === String(api.config().ownerQQ || '') ? [defineTool({
+        ...(chat.kind === 'group' || String(chat.userId) === String(ctx.root.config.ownerQQ || '') ? [defineTool({
           name: 'chat_impression',
           description: chat.kind === 'group' ? '想一想你对这个群的印象：气氛、常聊什么、怎么相处。' : '查你对某个群的印象。group 写群号或群名，不写就列出有印象的群。',
           properties: chat.kind === 'group' ? {} : { group: str('群号或群名，可选') },
@@ -151,7 +147,7 @@ export default {
           execute: async ({ query, period }) => {
             // 群聊 / 非主人私聊里只翻「这个人自己」的记忆，不能把主人的私事翻出来。
             // F2：群聊的 onlyAbout 必须是本轮说话的人（以前 chat.userId 为空 → 完全不按人物过滤，能翻到不在场的人）。
-            const owner = chat.kind === 'private' && String(chat.userId) === String(api.config().ownerQQ || '')
+            const owner = chat.kind === 'private' && String(chat.userId) === String(ctx.root.config.ownerQQ || '')
             const speakers = owner ? []
               : chat.kind === 'group'
                 // 群聊 = 本轮所有说话人；拿不到本轮记录就退回 hub 能提供的说话人（都拿不到时 fail closed）
@@ -164,14 +160,14 @@ export default {
             const window = period ? parsePeriod(period) : null
             if (period && !window) return { ok: false, message: 'period 没认出来，写 2026-03-05 或 2026-03-01..2026-03-31' }
             const vectorHits = await memory.vectorHits(query)
-            const hits = await memory.recallAsync(String(query || ''), { about, onlyAbout, requireAbout: !owner, excludeAbout: owner ? '' : api.config().ownerQQ, includeGroup: owner, groupChatId: chat.kind === 'group' ? current : '', limit: 8, where: current + '（翻记忆）', vectorHits, period: window ?? undefined })
+            const hits = await memory.recallAsync(String(query || ''), { about, onlyAbout, requireAbout: !owner, excludeAbout: owner ? '' : ctx.root.config.ownerQQ, includeGroup: owner, groupChatId: chat.kind === 'group' ? current : '', limit: 8, where: current + '（翻记忆）', vectorHits, period: window ?? undefined })
             return hits.length ? { ok: true, message: hits.map((h) => memoryLine(h.it)).join('；') } : { ok: true, message: '没想起相关的事' }
           },
         }),
       ]
     })
 
-    api.route('/memories', async (req) => {
+    ctx.server.get('/memories', async (req) => {
       const q = http.query(req)
       // 面板「翻一翻」也带向量检索：只按字面找的话，搜「最近老是睡不好」是找不到「主人经常熬夜」的
       let vec = []
@@ -186,10 +182,10 @@ export default {
     })
     // 面板「联想预览」：走真正的 recall 路径，能看见 A→B→C 到底带出了什么、第几跳、打了几折。
     // /memories 用的是 list()，不经过联想扩散，所以那边看不到跳数。
-    api.route('/memory/assoc/preview', async (req) => {
+    ctx.server.get('/memory/assoc/preview', async (req) => {
       const q = String(http.query(req).q || '').trim()
       if (!q) return { ok: false, message: '给个查询词' }
-      const owner = String(api.config().ownerQQ || '')
+      const owner = String(ctx.root.config.ownerQQ || '')
       const chatId = owner ? `private:${owner}` : ''
       let vec = []
       try { vec = await memory.vectorHits(q) } catch (error) {}
@@ -203,13 +199,13 @@ export default {
         via: h.assocOf || '',
         why: (h.why || []).join('　'),
       }))
-      const ap = api.config().memory.assoc || {}
+      const ap = ctx.root.config.memory.assoc || {}
       return { ok: true, query: q, hops: ap.hops ?? 2, recall: ap.recall ?? 3, items: rows,
         counts: { direct: rows.filter((r) => !r.hop).length, hop1: rows.filter((r) => r.hop === 1).length, hop2: rows.filter((r) => r.hop === 2).length, hop3: rows.filter((r) => r.hop === 3).length } }
     })
     // 面板「立即重建联想」：平时 tick 会自动建，这里给手动排查用
-    api.route('/memory/assoc/rebuild', async () => memory.buildAssoc())
-    api.route('/memory/add', async (req) => {
+    ctx.server.get('/memory/assoc/rebuild', async () => memory.buildAssoc())
+    ctx.server.get('/memory/add', async (req) => {
       const b = await http.body(req)
       // tier 以前漏传了：面板/星图选「临时/长期/永久」加进来的记忆一律变成默认档。
       // 另外面板传的是字符串（short/long/core），而 memory.add 只认 0~3 的整数，
@@ -221,34 +217,34 @@ export default {
         tier: toHostTier(b.tier) ?? undefined,
       })
     })
-    api.route('/memory/update', async (req) => {
+    ctx.server.get('/memory/update', async (req) => {
       const b = await http.body(req)
       return memory.update(b.id, b)
     })
-    api.route('/memory/delete', async (req) => {
+    ctx.server.get('/memory/delete', async (req) => {
       const b = await http.body(req)
       return memory.remove(b.id)
     })
-    api.route('/insights', async () => ({ ok: true, items: memory.insights(), styles: memory.styles() }))
+    ctx.server.get('/insights', async () => ({ ok: true, items: memory.insights(), styles: memory.styles() }))
     // beta 侧的回忆清单分页
-    api.route('/memory/recalls', async (req) => {
+    ctx.server.get('/memory/recalls', async (req) => {
       const limit = Math.min(200, Math.max(1, Math.trunc(Number(http.query(req).limit) || 20)))
       const all = memory.recalls()
       return { ok: true, list: all.slice(0, limit), total: all.length, hasMore: all.length > limit }
     })
     // beta 侧的面板折叠状态持久化
-    api.route('/memory/ui', async (req) => {
+    ctx.server.get('/memory/ui', async (req) => {
       const b = await http.body(req)
       const key = String(b.key || '')
       const allowed = ['people', 'tiers', 'vector', 'rerank']
       if (!allowed.includes(key)) return { ok: false, message: '未知的折叠区域' }
-      const cur = api.config().memory || {}
-      api.setConfig({ memory: { ...cur, uiCollapsed: { ...(cur.uiCollapsed || {}), [key]: Boolean(b.collapsed) } } })
+      const cur = ctx.root.config.memory || {}
+      ctx.root.update({ memory: { ...cur, uiCollapsed: { ...(cur.uiCollapsed || {}), [key]: Boolean(b.collapsed) } } })
       return { ok: true, message: b.collapsed ? '已收起' : '已展开' }
     })
     // 面板「立即重建联想」：平时 tick 会自动建，这里给手动排查用
-    api.route('/memory/assoc/rebuild', async () => memory.buildAssoc())
-    api.route('/memory/restore', async (req) => memory.restore((await http.body(req)).id))
+    ctx.server.get('/memory/assoc/rebuild', async () => memory.buildAssoc())
+    ctx.server.get('/memory/restore', async (req) => memory.restore((await http.body(req)).id))
     // ═══════════════════════════════════════════════════════════
     // 记忆星图（memory-graph.js）
     // 只做可视化与它的交互，**不接管自动回忆**、不搬中枢的 assoc/pipeline。
@@ -260,13 +256,13 @@ export default {
       // 星图跟着人格的记忆走：根目录人格沿用模块数据目录，其他人格放在自己的 persona-data/<id>/ 里
       const graphFile = () => {
         try {
-          if (typeof api.dataDir !== 'function') return null
-          const dir = personaDataDir(api.config(), personaNow(api.config()))
-          return dir === dataDir() ? api.dataDir('graph-state.json') : join(dir, 'graph-state.json')
+          if (typeof ctx.dataDir !== 'function') return null
+          const dir = personaDataDir(ctx.root.config, personaNow(ctx.root.config))
+          return dir === dataDir() ? ctx.dataDir('graph-state.json') : join(dir, 'graph-state.json')
         } catch { return null }
       }
       const readGraph = () => { const file = graphFile(); if (!file) return {}; try { return JSON.parse(readFileSync(file, 'utf8')) } catch { return {} } }
-      const writeGraph = (s) => { const file = graphFile(); if (!file) return; try { writeFileSync(file, JSON.stringify(s)) } catch (error) { api.log.warn?.('星图状态保存失败：' + error.message) } }
+      const writeGraph = (s) => { const file = graphFile(); if (!file) return; try { writeFileSync(file, JSON.stringify(s)) } catch (error) { ctx.logger.warn?.('星图状态保存失败：' + error.message) } }
 
       /** 组装一颗星：记忆条目 + 中枢算法要的清晰度参数（tier 翻成 short/long/core）。 */
       const starOf = (m, meta) => {
@@ -333,13 +329,13 @@ export default {
         return { ok: true, version: out.version, radius: out.radius, layout, stats: stat, groups: out.groups, clusters: out.clusters, childOf: out.childOf, settle: out.settle, edges, stars }
       }
 
-      api.route('/memory/graph', async (req) => {
+      ctx.server.get('/memory/graph', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         return buildGraph(Number(body.day) || 0)
       })
       // 点击复习：真的改 hitDays/lastHit（用户要的「主动加深」，和被动联想加深并存）
-      api.route('/memory/graph/review', async (req) => {
+      ctx.server.get('/memory/graph/review', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const id = String(body.id || '')
@@ -354,7 +350,7 @@ export default {
           return { ok: true, message: `已确认还记得（${STAR_TIER_LABEL[toStarTier(fresh.tier)] || '长期'}，清晰度 ${Math.round(b * 100)}%）` }
         } catch (error) { return { ok: false, message: '复习失败：' + error.message } }
       })
-      api.route('/memory/graph/restore', async (req) => {
+      ctx.server.get('/memory/graph/restore', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const id = String(body.id || '')
@@ -362,7 +358,7 @@ export default {
         const r = memory.restore(id)
         return r?.ok ? { ok: true, message: '已恢复这条记忆' } : { ok: false, message: r?.message || '恢复失败' }
       })
-      api.route('/memory/graph/update', async (req) => {
+      ctx.server.get('/memory/graph/update', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const id = String(body.id || '')
@@ -376,7 +372,7 @@ export default {
         }
         return memory.update(id, patch)
       })
-      api.route('/memory/graph/remove', async (req) => {
+      ctx.server.get('/memory/graph/remove', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const id = String(body.id || '')
@@ -388,7 +384,7 @@ export default {
         const r: any = memory.remove(id)
         return r?.ok ? { ok: true, message: '已删除这条记忆' } : { ok: false, message: r?.message || '删除失败' }
       })
-      api.route('/memory/graph/add', async (req) => {
+      ctx.server.get('/memory/graph/add', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const text = String(body.text || '').trim().slice(0, 200)
@@ -406,7 +402,7 @@ export default {
         const label = tier === undefined ? '未分档' : (STAR_TIER_LABEL[String(body.tier)] || '长期')
         return { ...r, message: r.updated ? '已更新一条相似的记忆' : `已新增到${label}记忆` }
       })
-      api.route('/memory/graph/tier', async (req) => {
+      ctx.server.get('/memory/graph/tier', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const t = toHostTier(body.tier)
@@ -432,7 +428,7 @@ export default {
         return memory.setTier(id, t)
       })
       // 批量复习：右键「全部复习一次」。和单条一样真的涨 hitDays / 刷新 lastHit。
-      api.route('/memory/graph/review-many', async (req) => {
+      ctx.server.get('/memory/graph/review-many', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         const ids = Array.isArray(body.ids) ? body.ids.map((x) => String(x)).filter(Boolean).slice(0, 200) : []
@@ -445,15 +441,15 @@ export default {
           return { ok: true, message: `已复习 ${hit.length} 条`, done: hit.length }
         } catch (error) { return { ok: false, message: '复习失败：' + error.message } }
       })
-      api.route('/memory/graph/sync', async () => buildGraph())
-      api.route('/memory/graph/optimize', async () => {
+      ctx.server.get('/memory/graph/sync', async () => buildGraph())
+      ctx.server.get('/memory/graph/optimize', async () => {
         const r = buildGraph()
         const moved = (r?.settle && r.settle.maxMove) || 0
         return { ...r, message: moved > 2 ? `已优化星团位置，最大移动 ${Math.round(moved)}` : '星团位置已经是最优的' }
       })
       // /state 是**只读**统计接口：不能调 buildGraph，那会顺带把布局写盘（副作用）。
       // 这里直接拿原始数据算，开销也小得多（buildGraph 要建边 + 跑布局，约 79ms）。
-      api.route('/memory/graph/state', async () => {
+      ctx.server.get('/memory/graph/state', async () => {
         const now = Date.now()
         const meta = new Map<string, any>((memory.metaAll() || []).map((x) => [x.id, x]))
         const live = (memory.list('') || []).filter((m) => !m.invalidAt)
@@ -474,7 +470,7 @@ export default {
         const cachedGroups = cached && cached.layout && Array.isArray(cached.layout.groups) ? cached.layout.groups.length : 0
         return {
           ok: true,
-          setting: { autoRecall: api.config().memory.recallMode !== 'trigger' },
+          setting: { autoRecall: ctx.root.config.memory.recallMode !== 'trigger' },
           stats: {
             total: live.length + arch.length,
             live: live.length,
@@ -487,47 +483,47 @@ export default {
           },
         }
       })
-      api.route('/memory/graph/autorecall', async (req) => {
+      ctx.server.get('/memory/graph/autorecall', async (req) => {
         let body: Record<string, any> = {}
         try { body = (await http.body(req)) || {} } catch {}
         return memory.setAutoRecall(Boolean(body.on))
       })
     }
-    api.route('/persona/overview', async () => ({ ok: true, list: memory.personaOverview() }))
-    api.route('/persona/graph', async () => ({ ok: true, ...memory.personaGraph() }))
-    api.route('/memory/platforms', async () => ({ ok: true, list: memory.platformStats() }))
-    api.route('/memory/related', async (req) => {
+    ctx.server.get('/persona/overview', async () => ({ ok: true, list: memory.personaOverview() }))
+    ctx.server.get('/persona/graph', async () => ({ ok: true, ...memory.personaGraph() }))
+    ctx.server.get('/memory/platforms', async () => ({ ok: true, list: memory.platformStats() }))
+    ctx.server.get('/memory/related', async (req) => {
       const { id, kind } = http.query(req)
       return { ok: true, list: memory.recommendations({ id, kind }) }
     })
-    api.route('/persona/person', async (req) => {
+    ctx.server.get('/persona/person', async (req) => {
       const q = http.query(req)
       const notesLimit = Math.min(100, Math.max(1, Math.trunc(Number(q.notesLimit) || 20)))
       const detail = memory.personaPerson(q.qq || '', { notesLimit })
       return detail ? { ok: true, ...detail } : { ok: false, message: '没有找到这个人' }
     })
-    api.route('/persona/person/notes', async (req) => {
+    ctx.server.get('/persona/person/notes', async (req) => {
       const q = http.query(req)
       const limit = Math.min(100, Math.max(1, Math.trunc(Number(q.limit) || 20)))
       const offset = Math.max(0, Math.trunc(Number(q.offset) || 0))
       const detail = memory.personaNotes(q.qq || '', { limit, offset })
       return detail ? { ok: true, ...detail } : { ok: false, message: '没有找到这个人' }
     })
-    api.route('/persona/person/save', async (req) => {
+    ctx.server.get('/persona/person/save', async (req) => {
       const b = await http.body(req)
       return memory.savePersonaPerson(b.qq, b)
     })
-    api.route('/persona/person/delete', async (req) => memory.deletePerson((await http.body(req)).qq))
-    api.route('/persona/person/reset', async (req) => {
+    ctx.server.get('/persona/person/delete', async (req) => memory.deletePerson((await http.body(req)).qq))
+    ctx.server.get('/persona/person/reset', async (req) => {
       if (req.method !== 'POST' || !/^application\/json(?:\s*;|$)/i.test(String(req.headers?.['content-type'] || ''))) return { ok: false, message: '清理记忆需要 POST JSON 请求' }
       return memory.resetPerson((await http.body(req))?.qq)
     }, { access: 'panel' })
-    api.route('/persona/person/no-memory', async (req) => {
+    ctx.server.get('/persona/person/no-memory', async (req) => {
       const b = await http.body(req)
       return memory.setNoMemory(b.qq, b.enabled, { deleteExisting: b.deleteExisting === true })
     })
-    api.route('/memory/relations/delete', async (req) => memory.deleteRelation((await http.body(req)).id))
-    api.route('/memory/relations/save', async (req) => {
+    ctx.server.get('/memory/relations/delete', async (req) => memory.deleteRelation((await http.body(req)).id))
+    ctx.server.get('/memory/relations/save', async (req) => {
       const b = await http.body(req)
       if (!b || !String(b.id || '').trim() || !String(b.subj || '').trim() || !String(b.pred || '').trim() || !String(b.obj || '').trim()) return { ok: false, message: '关系要写全主语、关系、宾语' }
       memory.saveRelation({
@@ -536,16 +532,16 @@ export default {
       })
       return { ok: true, message: '关系已修改' }
     })
-    api.route('/memory/chats', async () => ({ ok: true, list: memory.chats() }))
-    api.route('/memory/chats/save', async (req) => {
+    ctx.server.get('/memory/chats', async () => ({ ok: true, list: memory.chats() }))
+    ctx.server.get('/memory/chats/save', async (req) => {
       const b = await http.body(req)
       return memory.saveChat(b.chatId, b)
     })
-    api.route('/memory/gists', async (req) => {
+    ctx.server.get('/memory/gists', async (req) => {
       const q = http.query(req)
       return { ok: true, list: memory.gists({ chatId: q.chatId || '', level: q.level || '', about: q.about || '' }) }
     })
-    api.route('/memory/timeline', async (req) => {
+    ctx.server.get('/memory/timeline', async (req) => {
       const q = http.query(req)
       const limit = Math.min(200, Math.max(1, Math.trunc(Number(q.limit) || 50)))
       const offset = Math.max(0, Math.trunc(Number(q.offset) || 0))
@@ -564,14 +560,14 @@ export default {
         },
       }
     })
-    api.route('/memory/gists/delete', async (req) => memory.deleteGist((await http.body(req)).id))
-    api.route('/profiles', async () => ({ ok: true, list: memory.profiles() }))
-    api.route('/profiles/save', async (req) => {
+    ctx.server.get('/memory/gists/delete', async (req) => memory.deleteGist((await http.body(req)).id))
+    ctx.server.get('/profiles', async () => ({ ok: true, list: memory.profiles() }))
+    ctx.server.get('/profiles/save', async (req) => {
       const b = await http.body(req)
       if (memory.setProfile(String(b.qq || ''), String(b.text || '')) === false) return { ok: false, message: '这个人尚未有直接互动，或已设置不再记住' }
       return { ok: true, message: b.text ? '小档案已保存' : '小档案已清空' }
     })
-    api.route('/profiles/rebuild', async (req) => {
+    ctx.server.get('/profiles/rebuild', async (req) => {
       const b = await http.body(req)
       try {
         return (await memory.buildProfile(String(b.qq || ''))) ? { ok: true, message: '按记忆重写好了' } : { ok: false, message: '关于 TA 的记忆还太少（至少 3 条）' }
@@ -579,11 +575,11 @@ export default {
         return { ok: false, message: error.message }
       }
     })
-    api.route('/memory/import', async (req) => {
+    ctx.server.get('/memory/import', async (req) => {
       const b = await http.body(req)
       try { return { ok: true, list: await memory.importCandidates(String(b.text || '').slice(0, 30000)) } } catch (error) { return { ok: false, message: error.message, list: [] } }
     })
-    api.route('/memory/import/commit', async (req) => {
+    ctx.server.get('/memory/import/commit', async (req) => {
       const n = memory.importCommit((await http.body(req)).items || [])
       return { ok: true, message: `存进记忆库 ${n} 条` }
     })
@@ -592,7 +588,7 @@ export default {
     // 面板先要计划、再一批批请求（进度条按批走，失败只重试那一批），最后提交勾选的。
     // 每一步都核对当前人格还是开始时那个：切了人格就作废，免得写进别的人格。
     function inheritPair(b) {
-      const cfg = api.config()
+      const cfg = ctx.root.config
       const to = personaNow(cfg)
       const from = safeId(b?.from)
       if (b?.to !== undefined && safeId(b.to) !== to) return { ok: false, message: '人格已经切换了，请重新导入' }
@@ -606,7 +602,7 @@ export default {
       const chars = asked.reduce((n, b) => n + b.records.reduce((m, r) => m + r.text.length + (r.note || '').length + 20, 0), 0)
       return { calls: asked.length, tokens: Math.round((chars * 2.5 + asked.length * 2500) * 0.7) } // 粗估：输入 + 输出（改后文字和理由），中文约 0.7 token / 字
     }
-    api.route('/memory/inherit/plan', async (req) => {
+    ctx.server.get('/memory/inherit/plan', async (req) => {
       const pair = inheritPair(await http.body(req))
       if (!pair.ok) return pair
       const batches = storeOf(pair.from).inheritPlan()
@@ -617,7 +613,7 @@ export default {
         batches: batches.map(({ kind, label, part, parts, records }) => ({ kind, label, part, parts, count: records.length })),
       }
     })
-    api.route('/memory/inherit/batch', async (req) => {
+    ctx.server.get('/memory/inherit/batch', async (req) => {
       const b = await http.body(req)
       const pair = inheritPair(b)
       if (!pair.ok) return pair
@@ -628,41 +624,41 @@ export default {
         return { ok: true, kind: batch.kind, label: batch.label, part: batch.part, parts: batch.parts, results }
       } catch (error) { return { ok: false, message: `${batch.label}这一批没整理成：${error.message}` } }
     })
-    api.route('/memory/inherit/commit', async (req) => {
+    ctx.server.get('/memory/inherit/commit', async (req) => {
       const b = await http.body(req)
       const pair = inheritPair(b)
       if (!pair.ok) return pair
       return storeOf(pair.to).inheritCommit(storeOf(pair.from).inheritState(), Array.isArray(b.items) ? b.items : [], pair.from)
     })
-    api.route('/style/save', async (req) => {
+    ctx.server.get('/style/save', async (req) => {
       const b = await http.body(req)
       if (memory.setStyle(String(b.key || ''), (b.list || []).map((t) => String(t).trim()).filter(Boolean)) === false) return { ok: false, message: '这个人尚未有直接互动，或已设置不再记住' }
       return { ok: true, message: '说话方式已保存' }
     })
-    api.route('/insights/save', async (req) => {
+    ctx.server.get('/insights/save', async (req) => {
       const b = await http.body(req)
       if (memory.setInsights(String(b.key || ''), (b.list || []).map((t) => String(t).trim()).filter(Boolean)) === false) return { ok: false, message: '这个人尚未有直接互动，或已设置不再记住' }
       return { ok: true, message: '相处经验已保存' }
     })
-    api.route('/memory/extract', async (req) => {
+    ctx.server.get('/memory/extract', async (req) => {
       const b = await http.body(req)
       // 立即整理一次：连今天的也提炼（今天的聊天流水不删，写日记还要用）
       return memory.consolidate({ includeToday: b.includeToday !== false })
     })
     // 语义检索（Embedding RAG）：状态 / 连通性测试 / 清空重建
-    api.route('/memory/vector/status', async () => ({ ok: true, ...memory.vectorStatus() }))
-    api.route('/memory/vector/test', async (req) => {
+    ctx.server.get('/memory/vector/status', async () => ({ ok: true, ...memory.vectorStatus() }))
+    ctx.server.get('/memory/vector/test', async (req) => {
       const b = await http.body(req)
       try { return { ok: true, ...(await memory.vectorTest(String(b.text || '今天想吃白米饭'))) } } catch (error) { return { ok: false, message: error.message } }
     })
-    api.route('/memory/vector/rebuild', async () => {
+    ctx.server.get('/memory/vector/rebuild', async () => {
       if (!memory.vectorReset()) return { ok: false, message: '先开启向量检索并填好服务地址、模型和 Key' }
       await memory.vectorSync()
       return { ok: true, message: '本机向量已清空，正在按当前记忆重新同步', ...memory.vectorStatus() }
     })
     // 重排（Reranker）：状态 / 连通性测试
-    api.route('/memory/rerank/status', async () => ({ ok: true, ...memory.rerankStatus() }))
-    api.route('/memory/rerank/test', async (req) => {
+    ctx.server.get('/memory/rerank/status', async () => ({ ok: true, ...memory.rerankStatus() }))
+    ctx.server.get('/memory/rerank/test', async (req) => {
       const b = await http.body(req)
       try { return { ok: true, ...(await memory.rerankTest(String(b.text || '今天想吃白米饭'))) } } catch (error) { return { ok: false, message: error.message } }
     })

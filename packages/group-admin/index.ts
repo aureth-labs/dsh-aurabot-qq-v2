@@ -7,10 +7,10 @@ export default {
   name: '群管',
   version: '1.0.0',
   description: '主人要求时禁言 / 解禁 / 踢人 / 改头衔 / 发公告（qq_group_admin）；告诉她自己在群里有没有管理权限',
-  setup(api) {
-    const { hub, onebot, groupRoles } = api.core
+  apply(ctx, config) {
+    const { hub, onebot, groupRoles } = ctx.host
 
-    api.context(({ chat }) => {
+    ctx.prompt(({ chat }) => {
       if (chat.kind !== 'group') return ''
       const role = groupRoles.peek(chat.groupId)
       if (!role) return ''
@@ -18,7 +18,7 @@ export default {
     })
 
     // 工具层校验：这一轮说话的人里要有主人
-    api.tool(({ chat, level, sessionId }) => {
+    ctx.tool(({ chat, level, sessionId }) => {
       if (!(chat.kind === 'group' || level === 'full')) return []
       return defineTool({
         name: 'qq_group_admin',
@@ -34,7 +34,7 @@ export default {
         execute: async ({ action, group_id, user_id, minutes, text }) => {
           // 必须是主人单独发话：同轮只要混进别人，就不能拿群管去对付人
           if (!hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人能让我做群管操作' }
-          const cfg = api.config()
+          const cfg = ctx.root.config
           const gid = Number(group_id || (chat.kind === 'group' ? chat.groupId : 0))
           if (!gid) return { ok: false, message: '不知道是哪个群' }
           if (!cfg.allow.groups.includes(String(gid))) return { ok: false, message: '这个群不在白名单里' }
@@ -61,8 +61,8 @@ export default {
       })
     })
 
-    api.route('/groups/roles', async () => {
-      const cfg = api.config()
+    ctx.server.get('/groups/roles', async () => {
+      const cfg = ctx.root.config
       const list = await Promise.all(cfg.allow.groups.map(async (gid) => {
         const role = await groupRoles.get(gid, { fresh: true })
         return { groupId: gid, name: await hub.groupName(String(gid)), role, label: role ? groupRoles.label(role) : '查不到（她在群里吗？）', canManage: groupRoles.canManage(role) }

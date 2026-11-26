@@ -29,14 +29,14 @@ function outputFolder(value) {
   return root
 }
 
-export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir('archive-cache')), now = Date.now } : CreateDiaryArchiveOptions = {}) {
-  const settings = () => api.config().diary.archive || {}
-  const file = () => api.dataDir('archives', sourceId(settings().folder || '') + '.json')
+export function createDiaryArchive(env, { assets = createDiaryAssets(env.dataDir('archive-cache')), now = Date.now } : CreateDiaryArchiveOptions = {}) {
+  const settings = () => env.root.read().diary.archive || {}
+  const file = () => env.dataDir('archives', sourceId(settings().folder || '') + '.json')
   const load = () => readJson(file(), () => ({ items: [], lastAt: 0, error: '' }))
   let busy = false
   let stopped = false
   function assertActive(folder) {
-    const cfg = api.config()
+    const cfg = env.root.read()
     if (stopped || !cfg.enabled || cfg.diary.archive?.enabled !== true || cfg.diary.archive.folder !== folder) throw new Error('归档已停止或目录设置已变化，本次停止保存')
     return outputFolder(folder)
   }
@@ -55,7 +55,7 @@ export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir
     try {
       const initial = load()
       const seen = new Set(initial.items.map((item) => item.sourceId))
-      const pictures = collectSources(api, { browsing: true }, [], now()).pictures
+      const pictures = collectSources(env, { browsing: true }, [], now()).pictures
         .filter((picture) => picture.kind === 'browsing' && !seen.has(picture.id)).slice(0, 8)
       for (const picture of pictures) {
         try {

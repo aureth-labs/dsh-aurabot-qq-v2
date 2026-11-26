@@ -44,9 +44,9 @@ export function withCredits(text, images) {
   return [text, ...new Set(credits)].join('\n\n')
 }
 
-export function createDiaryMedia(api, { assets = createDiaryAssets(api.dataDir('images')), now = Date.now } : CreateDiaryMediaOptions = {}) {
+export function createDiaryMedia(env, { assets = createDiaryAssets(env.dataDir('images')), now = Date.now } : CreateDiaryMediaOptions = {}) {
   let stopped = false
-  const settings = () => api.config().diary.rich || {}
+  const settings = () => env.root.read().diary.rich || {}
   const assertActive = () => {
     if (stopped || settings().enabled !== true) throw new Error('图文日记已关闭，本次未发布')
   }
@@ -60,8 +60,8 @@ export function createDiaryMedia(api, { assets = createDiaryAssets(api.dataDir('
   async function compose({ history = [] } : ComposeOptions = {}) {
     assertActive()
     const snapshot = { ...settings() }
-    const cfg = api.config().diary
-    const pool = collectSources(api, snapshot, history, now())
+    const cfg = env.root.read().diary
+    const pool = collectSources(env, snapshot, history, now())
     const candidates = ['browsing', 'local', 'sticker'].flatMap((kind) =>
       pool.pictures.filter((picture) => picture.kind === kind).sort((a, b) => Number(a.recent) - Number(b.recent) || b.at - a.at).slice(0, 12))
     const maxImages = Math.max(1, Math.min(4, Math.floor(Number(snapshot.maxImages) || 2)))
@@ -74,7 +74,7 @@ export function createDiaryMedia(api, { assets = createDiaryAssets(api.dataDir('
       `只输出 JSON：{"text":"正文","imageIds":["候选id"]}。最多 ${maxImages} 张，没有合适的就留空。不输出路径、网址、图片标签或 Markdown。`,
     ].join('\n\n')
     // 独立系统会话，不挂工具；预览时模型也不能通过工具发布说说。
-    const output = await api.core.hub.runSystemTurn('diary', '空间图文日记', prompt, { noTools: true, key: 'media' })
+    const output = await env.host.hub.runSystemTurn('diary', '空间图文日记', prompt, { noTools: true, key: 'media' })
     canPublish(snapshot)
     const draft = parseDraft(output, candidates, cfg.maxChars)
     const images = []

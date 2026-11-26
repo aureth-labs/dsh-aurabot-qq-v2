@@ -17,7 +17,6 @@ export default {
   version: '1.0.0',
   description: '像人一样主动找主人搭话：攒素材 → 记观察 → 立目标假设 → 挑一个候选，到点了才来找你。默认开启（主动搭话已并入目的引擎）；显式关过的不会被默认值洗回。',
   tab: 'speakup',
-  files: ['packages/modules/purpose/impl/module/index.js', 'packages/modules/purpose/impl/engine/index.js'],
   defaults: {
     enabled: true,
     minMaterials: 2, // 素材少于这个数（也没有惦记的事/人格卡）就不硬找话
@@ -31,36 +30,36 @@ export default {
     { key: 'initialDelayMinutes', label: '启动延迟（分钟）', type: 'number', min: 1, max: 720, hint: '插件启动后第一次主动搭话前先等多久' },
     { key: 'maxCandidates', label: '候选方向数', type: 'number', min: 3, max: 10 },
   ],
-  setup(api) {
+  apply(ctx, config) {
     // ---------- P1 播种（方案 §3.1，只发生一次） ----------
-    const seedCfg = api.config()
+    const seedCfg = ctx.root.config
     const seedExt = (seedCfg.ext && seedCfg.ext.purpose) || {}
     if (seedCfg.speakUp?.enabled === true && seedExt.enabled !== false && !seedExt.seededFromSpeakup) {
       try {
-        api.setConfig({ ext: { purpose: { enabled: true, seededFromSpeakup: true } } })
-        api.log.info('主动搭话已并入目的引擎，已为你开启目的引擎（醒着时间/频率/白名单都沿用原设置）')
+        ctx.root.update({ ext: { purpose: { enabled: true, seededFromSpeakup: true } } })
+        ctx.logger.info('主动搭话已并入目的引擎，已为你开启目的引擎（醒着时间/频率/白名单都沿用原设置）')
       } catch (error) {
-        api.log.warn('播种目的引擎开关失败（不影响本轮运行）：', error?.message)
+        ctx.logger.warn('播种目的引擎开关失败（不影响本轮运行）：', error?.message)
       }
     }
     const purpose = createPurpose({
-      getConfig: api.config,
-      setConfig: api.setConfig,
-      hub: api.core.hub,
-      log: api.log,
-      isMuted: (chatId) => { try { return api.core.mutes.muted(chatId) } catch { return false } },
-      mood: () => api.use('mood'),
-      memory: () => api.use('memory'),
-      pet: () => api.use('pet'),
-      use: (id) => api.use(id),
-      personaText: () => { try { return api.core.personas?.current?.() || '' } catch { return '' } },
+      getConfig: ctx.root.read,
+      setConfig: ctx.root.update,
+      hub: ctx.host.hub,
+      log: ctx.logger,
+      isMuted: (chatId) => { try { return ctx.host.mutes.muted(chatId) } catch { return false } },
+      mood: () => ctx.get('mood'),
+      memory: () => ctx.get('memory'),
+      pet: () => ctx.get('pet'),
+      use: (id) => ctx.get(id),
+      personaText: () => { try { return ctx.host.personas?.current?.() || '' } catch { return '' } },
     })
-    const gatewayIdle = () => !(api.core.bots?.list?.() || []).some((b) => b.status === 'online')
-    api.every(60_000, () => (gatewayIdle() ? undefined : purpose.tick()), '目的引擎')
+    const gatewayIdle = () => !(ctx.host.bots?.list?.() || []).some((b) => b.status === 'online')
+    ctx.setInterval(60_000, () => (gatewayIdle() ? undefined : purpose.tick()), '目的引擎')
     // ---------- 她的小闹钟（P2b 自 speakup 迁入，Q2 拍板） ----------
-    const ownerChat = (chat) => chat?.kind === 'private' && String(chat.userId) === String(api.config().ownerQQ)
-    api.tool(({ chat }) => {
-      if (!ownerChat(chat) || ((api.config().ext && api.config().ext.purpose) || {}).enabled === false) return []
+    const ownerChat = (chat) => chat?.kind === 'private' && String(chat.userId) === String(ctx.root.config.ownerQQ)
+    ctx.tool(({ chat }) => {
+      if (!ownerChat(chat) || ((ctx.root.config.ext && ctx.root.config.ext.purpose) || {}).enabled === false) return []
       return [
         defineTool({
           name: 'qq_set_reminder',
@@ -87,18 +86,18 @@ export default {
         }),
       ]
     })
-    api.context(({ chat }) => {
-      if (!ownerChat(chat) || api.config().speakUp?.reminderEnabled !== true) return ''
+    ctx.prompt(({ chat }) => {
+      if (!ownerChat(chat) || ctx.root.config.speakUp?.reminderEnabled !== true) return ''
       const list = purpose.reminders()
       if (!list.length) return ''
       return '【她的小闹钟】\n' + list.map((r) => `- ${r.id}｜${r.atText}｜${r.note}`).join('\n') + '\n要关闭某条用 qq_close_reminder。'
     })
-    api.route('/purpose/reminder/close', async (req) => {
-      const body = await api.core.http.body(req).catch(() => ({}))
+    ctx.server.get('/purpose/reminder/close', async (req) => {
+      const body = await ctx.host.http.body(req).catch(() => ({}))
       return purpose.closeReminder(body?.id)
     })
-    api.route('/purpose/fire', async () => {
-      if (!api.settings().enabled) return { ok: false, message: '目的引擎没开（主动搭话页可以打开）' }
+    ctx.server.get('/purpose/fire', async () => {
+      if (!ctx.config.enabled) return { ok: false, message: '目的引擎没开（主动搭话页可以打开）' }
       const r = await purpose.fire('手动')
       if (!r) return { ok: false, message: '没有结果' }
       if (r.outcome === 'sent') return { ok: true, message: '已经去找你了' }
@@ -107,8 +106,8 @@ export default {
       if (r.outcome === 'disabled') return { ok: false, message: '目的引擎开关是关的' }
       return { ok: true, message: `这轮结束：${r.outcome}` }
     })
-    api.route('/purpose/status', async () => ({ ok: true, status: purpose.status(), state: purpose.state() }))
-    api.route('/purpose/preview', async () => ({ ok: true, preview: await purpose.preview() }))
+    ctx.server.get('/purpose/status', async () => ({ ok: true, status: purpose.status(), state: purpose.state() }))
+    ctx.server.get('/purpose/preview', async () => ({ ok: true, preview: await purpose.preview() }))
     // 代发决断面：宿主投递器在 broker 档发送前调用（见 purpose/module.js 的 brokerReview）。
     // 模块不直接用它；host.js 的 wirePolicySources 经 use('purpose') 取到。
     // （createPurpose 返回的对象方法都走闭包，无 this 依赖，直接透传即可。）
@@ -116,7 +115,7 @@ export default {
     // 引擎投递时经 deliver 的 enginePolicy 路径 reserve/commit，不再被包装层门闸二次拦。
     // 驱动向量 → 提示层：把「最近比较想要什么」轻描淡写地附在本轮消息末尾（引擎关着时返回空）。
     // 和心情一样不进系统提示词：它会随驱动变化，放在开头一变就让整段历史的前缀缓存失效。
-    api.on('prompt', (content, { chat }) => {
+    ctx.on('prompt', (content, { chat }) => {
       if (chat.kind === 'system') return content
       const line = purpose.drivesRule()
       return line ? [...content, { type: 'text', text: line }] : content

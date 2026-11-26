@@ -161,59 +161,108 @@ export interface PluginContextExtras {
   llm?: LlmFacade
   tts?: TtsFacade
   startAdapter?: (spec: AdapterSpec, config: unknown) => Promise<AdapterHandle>
+  /** 注册面板页面（内核把页面表交给前端侧栏）。 */
+  registerPage?: (page: PluginPage) => () => void
+  /** 记忆模块的本地预览入口（内核注入，只有 memory 用）。 */
+  nativePreview?: (read: any) => () => void
 }
 
-export interface PluginContext extends ApiLike, ScopeFactory {
-  /** 随模块卸载自动清掉的定时器（Cordis 的 effect 语义），别用裸 setInterval。 */
+export interface PluginPage {
+  /** 面板路由路径，例如 /sandbox 或 /adapters/qq。 */
+  path: string
+  /** 侧栏显示的名字。 */
+  name: string
+  /** 图标（emoji 或内置图标名）。 */
+  icon?: string
+  /** 排序权重，小的在前。 */
+  order?: number
+}
+
+/**
+ * 插件上下文：只暴露 v2 的能力，不再有 v1 的 `setup(api)` 字段。
+ *
+ * `ctx.config` 是本插件自己的配置（面板按 config.ts 的 Schema 渲染）；
+ * `ctx.root.config` 是全局配置。两者都是活对象，改配置后读到的就是最新值。
+ */
+export interface PluginContext extends ScopeFactory {
+  readonly id: string
+  readonly version: string
+  readonly apiVersion: number
+  /** 插件自己的源码目录（只读；要写数据用 dataDir）。 */
+  readonly baseDir: string
+  /** 本插件的配置对象（活值）。 */
+  readonly config: Record<string, any>
+  /** 全局配置。 */
+  readonly root: { readonly config: Record<string, any>; read(): Record<string, any>; update(patch: any): unknown }
+  /** 保存本插件的配置。 */
+  updateConfig(patch: Record<string, any> | ((current: Record<string, any>) => Record<string, any>)): Record<string, any>
+  /** 定时器随模块卸载自动回收（Cordis 的 effect 语义），不要用裸 setInterval。 */
   setInterval: (ms: number, fn: () => unknown, label?: string) => () => void
   setTimeout: (ms: number, fn: () => unknown) => () => void
   effect: (fn: unknown) => () => void
   /** 入站中间件，默认挂在 `middleware` 段。 */
   middleware: (fn: Middleware, options?: MiddlewareOptions) => () => void
-  /**
-   * 注册本地指令：**不经过 AI**，用户发「/名字 参数」就直接命中。
-   *
-   * 两种写法都认：
-   * ```ts
-   * ctx.command('ping', (session) => session.send('pong'))
-   * ctx.command('hello <text:string>').description('打招呼').action(({ session }, text) => session.send(text))
-   * ```
-   */
+  /** 注册本地指令：不经过 AI，用户发「/名字 参数」直接命中。 */
   command: {
     (signature: string): CommandBuilder
     (signature: string, handler: (...args: any[]) => unknown): () => void
-    /** v1 兼容：api.command({ name, run }) 注册的是「给 AI 调用的命令」。 */
-    (builder: any): () => void
   }
   /** 注册给 AI 调用的工具：用户不能直接触发，得模型自己决定调用并传参。 */
   tool: (builder: unknown) => () => void
+  /** 构建工具定义（纯构造，不注册）；多个工具用 ctx.tool(工厂函数) 一起挂。 */
+  defineTool: (spec: any) => any
   /** 给面板加 HTTP 接口（`/aurabot/api/ext/<id>/…`）。 */
   server: ServerFacade
-  /** 和 `ctx.log` 同一个东西，写惯了 Koishi 的可以直接用。 */
-  logger?: { info: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void; debug: (...args: any[]) => void }
-  /** 注册一个适配器实例：连接 → 上线 → 可用；模块卸载时自动断开。 */
+  /** 在面板侧栏注册一个页面。 */
+  page: (page: PluginPage) => () => void
+  /** 日志：info / warn / debug / error；debug 只在调试模式输出。 */
+  logger: { info: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void; debug: (...args: any[]) => void }
+  /** 宿主核心（hub / onebot / local / http 等）；不要直接改它。 */
+  host: Record<string, any>
+  /** DeepSeek Harness 的 ctx。 */
+  harness: Record<string, any>
+  /** 取另一个模块的导出对象；没在跑返回 null。 */
+  get: <T = unknown>(id: string) => T | null
+  /** 取另一个模块导出对象的懒代理（对方晚加载也能用）。 */
+  lazy: <T = unknown>(id: string) => T
+  /** 另一个模块是否在跑。 */
+  has: (id: string) => boolean
+  /** 每轮回复前追加一段上下文。 */
+  prompt: (fn: (args: any) => unknown) => () => void
+  /** 追加到系统提示的规则行。 */
+  rule: (fn: any) => () => void
+  /** 主动发一条消息：chatId 形如 private:<id> / group:<id>；按当前可用机器人发。 */
+  sendTo: (chatId: string, content: unknown, options?: any) => Promise<any>
+  /** 按 chatId 的前缀发图。 */
+  sendImage: (chatId: string, src: unknown) => Promise<any>
+  /** 按 chatId 的前缀发文件。 */
+  sendFile: (chatId: string, file: unknown, name?: string) => Promise<any>
+  /** 按 chatId 的前缀发语音文件。 */
+  sendVoiceFile: (chatId: string, file: unknown, note?: string) => Promise<any>
+  /** 回复某条消息。 */
+  reply: (msg: any, content: unknown) => Promise<any>
+  /** 出站治理面。 */
+  proactive: { available: boolean; submit(input?: any): any; statusOf(id: any): any }
+  /** 直接问一次模型（不进会话）。 */
+  ask: (options: any) => Promise<any>
+  /** 当前 QQ 适配器的底层调用；新插件优先用 ctx.bot(id)。 */
+  onebot: { call(action: string, params?: any, options?: any): Promise<any> }
+  /** 适配器实例：连接 → 上线 → 可用；模块卸载时自动断开。 */
   adapter: (spec: AdapterSpec, config?: unknown) => Promise<AdapterHandle>
   /** 已上线的机器人：`ctx.bots[0]` / `ctx.bots('号')` / `ctx.bots.list()`。 */
   bots?: BotsAccessor
   /** 按 id 取机器人：`ctx.bot()` 默认、`ctx.bot('号')` 指定。 */
   bot?: BotAccessor
-  /**
-   * 给一批目标各发一条。目标里写了 `botId` 就用那个实例，
-   * 没写就在同平台里挑一个在线的。单条失败不影响其它条。
-   */
   broadcast: (targets: Target[], content: unknown, options?: { timeoutMs?: number }) => Promise<BroadcastResult[]>
   /** 往模块总线发一个自定义事件（别的模块 `ctx.on(名字)` 能收到）。 */
   emit: (event: string, ...args: any[]) => void
-  /** 根上下文：读宿主的全局配置用。 */
-  root: { config: Record<string, any> }
+  /** 事件：`dispose` 走卸载队列，其它自定义事件照常。 */
+  on: (event: string, fn: (...args: any[]) => unknown) => () => void
   /** 这个模块专属的数据目录（自动建好）：`modules-data/<id>/`，多实例时按实例分开。 */
   dataDir: (...parts: string[]) => string
-  /** 取另一个模块的导出对象（模块间调用）；模块没在跑时返回空对象。 */
-  use: <T = unknown>(id: string) => T
-  /** 另一个模块是否在跑。 */
-  has: (id: string) => boolean
   Schema?: unknown
   h?: ElementFactory
   llm?: LlmFacade
   tts?: TtsFacade
+  [key: string]: any
 }

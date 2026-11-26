@@ -8,13 +8,12 @@ export default {
   version: '1.0.0',
   description: '逛好友的 QQ 空间点赞评论，回复自己说说下的评论',
   tab: 'diary',
-  files: ['src/features/qzone/social.js'],
-  setup(api) {
-    const { hub, onebot } = api.core
-    const social = createQzoneSocial({ getConfig: api.config, onebot, hub, memory: api.lazy('memory'), log: api.log })
-    api.every(60_000, () => (api.core.onebot?.state && api.core.onebot.state !== 'connected' ? undefined : social.tick()), '空间互动')
-    api.route('/qzone/social/run', async () => social.run({ force: true }))
-    api.route('/qzone/social/state', async () => ({ ok: true, ...social.state() }))
+  apply(ctx, config) {
+    const { hub, onebot } = ctx.host
+    const social = createQzoneSocial({ getConfig: ctx.root.read, onebot, hub, memory: ctx.lazy('memory'), log: ctx.logger })
+    ctx.setInterval(60_000, () => (ctx.host.onebot?.state && ctx.host.onebot.state !== 'connected' ? undefined : social.tick()), '空间互动')
+    ctx.server.get('/qzone/social/run', async () => social.run({ force: true }))
+    ctx.server.get('/qzone/social/state', async () => ({ ok: true, ...social.state() }))
     return social
   },
 }
