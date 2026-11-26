@@ -14,7 +14,7 @@ export interface CommunityModuleEntry {
   minPluginVersion: string
   api: number
   requires?: string[]
-  artifact: { url: string; size: number; sha256: string }
+  artifact: { url: string; size: number; sha256: string; mirror?: string }
 }
 
 export interface CommunityIndex {
@@ -38,6 +38,7 @@ export function parseCatalog(value: unknown): CommunityIndex {
     ids.add(entry.id)
     const artifact = entry.artifact
     if (!artifact || !/^https:\/\//i.test(artifact.url) || !/^[a-f0-9]{64}$/.test(artifact.sha256)
+      || (artifact.mirror !== undefined && artifact.mirror !== 'artifacts/' + artifact.sha256 + '.zip')
       || !Number.isSafeInteger(artifact.size) || artifact.size <= 0 || artifact.size > MAX_ZIP_BYTES) {
       throw new Error(entry.id + ' 的发行包信息无效')
     }

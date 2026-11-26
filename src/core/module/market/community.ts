@@ -100,10 +100,15 @@ export function createCommunity({ mods, getConfig, setConfig, log, version, regi
     return { list: [...entries, ...delisted], revoked, generatedAt: index.generatedAt, downloads: { at: 0, source: '' } }
   }
 
-  async function download(entry: CommunityModuleEntry) {
+  async function download(entry: CommunityModuleEntry, registryUrl: string) {
     const { url, size, sha256 } = entry.artifact
     progress = { id: entry.id, name: entry.displayName || entry.name, stage: 'download', total: size, received: 0 }
-    const response = await fetchResponse(url, 120_000)
+    const mirror = entry.artifact.mirror
+    let response: Response
+    if (mirror) {
+      try { response = await fetchResponse(new URL(mirror,registryUrl).href, 120_000) }
+      catch { response = await fetchResponse(url, 120_000) }
+    } else response = await fetchResponse(url, 120_000)
     if (!response.body) throw new Error('安装包为空')
     const chunks: Uint8Array[] = []
     for await (const chunk of response.body) {
@@ -129,6 +134,7 @@ export function createCommunity({ mods, getConfig, setConfig, log, version, regi
   const install = (id: string, _options?: { confirmReplace?: boolean }) => exclusive(async () => {
     if (!ID_RE.test(id) || !id.includes('/')) throw new Error('请输入市场插件的 owner/name')
     progress = { id, name: id, stage: 'index', received: 0, total: 0 }
+    const catalogUrl = registry()
     const index = await loadIndex(true)
     const entry = index.entries.find(e => e.id === id)
     if (!entry) throw new Error('社区库里没有「' + id + '」')
@@ -140,7 +146,7 @@ export function createCommunity({ mods, getConfig, setConfig, log, version, regi
     directory(parent)
     if (readManifest(parent).manifest) throw new Error('作者目录已被本地插件占用')
     if (existsSync(target) && (!lstatSync(target).isDirectory() || !readSource(id))) throw new Error('这是你自己的文件夹，请先移走它')
-    const files = await download(entry)
+    const files = await download(entry, catalogUrl)
     progress.stage = 'install'
     const stage = mkdtempSync(join(userDir(), '.install-'))
     const backup = join(userDir(), '.previous-' + randomUUID())
