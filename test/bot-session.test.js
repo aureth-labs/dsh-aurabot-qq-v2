@@ -126,7 +126,7 @@ test('元素树发出前会被序列化成 OneBot 消息段', async () => {
   })
   bot.markOnline()
 
-  const { h } = await import('../src/core/message/element.ts')
+  const { h } = await import('../src/core/message/element/element.ts')
   await bot.sendMessage('123', [h.at('456'), h.text(' 你好'), h.image('http://x/y.png')])
 
   assert.deepEqual(calls[0].params.message, [

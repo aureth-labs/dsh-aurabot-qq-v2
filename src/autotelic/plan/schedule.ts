@@ -15,7 +15,7 @@
 // 判定复用 purpose 引擎的 inQuietHours——同一套跨天窗口口径，别另写一份）。
 
 import { readJson, writeJson } from '../../core/store/index.ts'
-import { quietWindowOf } from '../../core/support/time-window.ts'
+import { quietWindowOf } from '../../core/support/time/time-window.ts'
 import { inQuietHours, quietEndAfter, nextDayStartAfter, bestReplyHourShift } from '../../purpose/engine.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

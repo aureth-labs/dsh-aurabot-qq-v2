@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   inHourWindow, isFullDayWindow, nextWindowStart, quietWindowOf, inMinuteWindow, windowMinutes,
-} from '../src/core/support/time-window.ts'
+} from '../src/core/support/time/time-window.ts'
 
 const at = (h, m = 30) => new Date(2026, 0, 5, h, m, 0, 0)
 const norm = (x) => ((x % 24) + 24) % 24

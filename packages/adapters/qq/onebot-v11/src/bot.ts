@@ -13,8 +13,8 @@ import type {
   User,
 } from '../../../../../src/types/bot.ts'
 import { Bot, BotStateError } from '../../../../../src/core/bot/index.ts'
-import { toOneBot, isElement, normalize, degrade, fromOneBot, toText } from '../../../../../src/core/message/element.ts'
-import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/voice-element.ts'
+import { toOneBot, isElement, normalize, degrade, fromOneBot, toText } from '../../../../../src/core/message/element/element.ts'
+import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../../../src/core/message/element/voice-element.ts'
 
 export interface OneBotCall {
   (action: string, params?: Record<string, unknown>, options?: { retries?: number; timeoutMs?: number }): Promise<any>

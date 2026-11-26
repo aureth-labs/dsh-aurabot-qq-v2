@@ -10,7 +10,7 @@ import { dataDir } from '../../core/store/index.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
 import { drawFormat, gifFrameCount } from '../../features/media/format.ts'
 import { mergeFromPanel } from '../../core/config/index.ts'
-import { redact } from '../../core/support/redact.ts'
+import { redact } from '../../core/support/log/redact.ts'
 
 function reason(error) { if (error?.gifRequestError) return error.message; if (error?.imageStatus) return `接口返回 HTTP ${error.imageStatus}`; if (error?.imageNetworkFailure) return error.name === 'TimeoutError' ? '连接超时' : '连接失败'; const m = String(error?.message || ''); if (m.includes('不支持参考图')) return '该模型不支持参考图'; if (m.includes('登录')) return '订阅登录不可用'; return '生图请求失败' }
 

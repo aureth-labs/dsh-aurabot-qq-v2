@@ -6,7 +6,7 @@ import { normalizePools, maskPools, restorePoolKeys } from '../../voice/tts/key-
 import type { RawPools } from '../../voice/tts/key-pool.ts'
 import { normalizeMemberFilter } from '../../chat/inbound/member-filter.ts'
 import { normalizeChatEfforts } from '../../chat/commands/effort-command.ts'
-import { normalizeChatModels } from '../../chat/hub/chat-model.ts'
+import { normalizeChatModels } from '../../chat/hub/model/chat-model.ts'
 import { DEFAULT_GROUP_POLICY } from '../../chat/policy/group-policy.ts'
 import { LEVELS, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, profilePermDefault } from '../../chat/policy/access.ts'
 import { DELEGATED_COMMANDS, isDelegatedCommandKey } from '../../chat/commands/delegated-commands.ts'

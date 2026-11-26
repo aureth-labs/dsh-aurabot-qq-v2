@@ -48,7 +48,7 @@ export interface FetchInit { signal?: AbortSignal; cache?: 'no-store'; redirect?
 export type Fetcher = (url: string, init?: FetchInit) => Promise<Response>
 
 import type { AurabotConfig } from '../config/index.ts'
-import type { AreaLogger } from '../support/logger.ts'
+import type { AreaLogger } from '../support/log/logger.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type LoadIndexOptions = Partial<Record<'force', any>>

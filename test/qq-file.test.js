@@ -74,7 +74,7 @@ test('图片文件只在确认能看图时下载；大小、地址和文件内�
 })
 
 test('群内 JPEG 和 PNG 文件生成有尺寸上限的真实预览，只返回已登记附件', async (t) => {
-  const { findSharp } = await import('../src/core/message/img.ts')
+  const { findSharp } = await import('../src/core/message/media/img.ts')
   const sharp = await findSharp()
   if (!sharp) return t.skip('需要桌面宿主的 sharp 图片解码器')
   for (const format of ['jpeg', 'png']) {

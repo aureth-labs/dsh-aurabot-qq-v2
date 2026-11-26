@@ -10,7 +10,7 @@ import { createCodexAuth } from '../codex/auth.ts'
 import { createCodexImage } from '../codex/image.ts'
 import { mimeOf } from '../../chat/inbound/index.ts'
 import { drawFormat, gifError, gifSizeFor, gifFrameCount, GIF_FIELDS } from './format.ts'
-import { imageToolBlock } from '../../core/message/img.ts'
+import { imageToolBlock } from '../../core/message/media/img.ts'
 import { canSeeImages } from '../../core/llm/index.ts'
 import { imageSizeFor, normalizeRequestedSize } from './shape.ts'
 

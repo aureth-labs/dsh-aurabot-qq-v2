@@ -8,7 +8,7 @@ import type { PipelineResult, PipelineRunner } from '../../types/pipeline.ts'
 import type { SessionInit, SessionLike } from '../../types/session.ts'
 import type { Target, TargetType } from '../../types/target.ts'
 import { targetOfBot } from '../bot/index.ts'
-import { isElement, toText } from '../message/element.ts'
+import { isElement, toText } from '../message/element/element.ts'
 
 export type { SessionInit, SessionLike } from '../../types/session.ts'
 

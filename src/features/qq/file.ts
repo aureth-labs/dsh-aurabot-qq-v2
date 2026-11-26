@@ -2,7 +2,7 @@
 
 import { extname } from 'node:path'
 import { mimeOf } from '../../chat/inbound/index.ts'
-import { findSharp, imageToolBlock } from '../../core/message/img.ts'
+import { findSharp, imageToolBlock } from '../../core/message/media/img.ts'
 import { fetchImage } from '../../core/net/index.ts'
 import { cleanText, clipText } from '../../core/support/text.ts'
 

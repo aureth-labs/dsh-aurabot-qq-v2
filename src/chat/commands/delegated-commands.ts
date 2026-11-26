@@ -1,4 +1,4 @@
-import { resolveChatModel } from '../hub/chat-model.ts'
+import { resolveChatModel } from '../hub/model/chat-model.ts'
 
 const COMMAND_GRANTS = {
   help: '查看自己可用的命令',

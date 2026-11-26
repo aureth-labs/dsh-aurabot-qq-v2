@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { dataOwner, safeId } from '../../persona/personas.ts'
-import { confirmedChatDelivery } from '../../chat/hub/receipts.ts'
+import { confirmedChatDelivery } from '../../chat/hub/turn/receipts.ts'
 
 export const PERSONA_MEMORY_MODULE = 'persona-memory'
 

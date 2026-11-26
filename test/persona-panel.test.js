@@ -9,7 +9,7 @@ import { normalize } from '../src/core/config/index.ts'
 import { createMemoryStore } from '../src/features/memory/index.ts'
 import { readMemoryState } from './helpers/memory-state.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
-import { createConversationArchive } from '../src/chat/hub/conversation-context.ts'
+import { createConversationArchive } from '../src/chat/hub/context/conversation-context.ts'
 import memoryModule from '../src/modules/memory/index.ts'
 import { clientBundleText, injectExports } from './helpers/client-bundle.js'
 

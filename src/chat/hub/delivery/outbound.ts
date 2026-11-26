@@ -4,14 +4,14 @@
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { cleanOutboundText, cleanOutboundSegments, capOutboundSegments, stripAcpLeak } from '../reply/index.ts'
-import { textToSegments, stripFaceTags, splitSpeakable } from '../media/faces.ts'
-import { expandMentions, hasMention } from '../inbound/mentions.ts'
-import { activeCapture, failStore, MAX_IMAGE_BYTES, workspaceDirOf } from './context.ts'
-import type { OutputScope } from './context.ts'
-import { dataDir } from '../../core/store/index.ts'
-import { fetchImage } from '../../core/net/index.ts'
-import { isDefiniteFailure } from '../../../packages/adapters/qq/onebot-v11/src/client.ts'
+import { cleanOutboundText, cleanOutboundSegments, capOutboundSegments, stripAcpLeak } from '../../reply/index.ts'
+import { textToSegments, stripFaceTags, splitSpeakable } from '../../media/faces.ts'
+import { expandMentions, hasMention } from '../../inbound/mentions.ts'
+import { activeCapture, failStore, MAX_IMAGE_BYTES, workspaceDirOf } from '../context/context.ts'
+import type { OutputScope } from '../context/context.ts'
+import { dataDir } from '../../../core/store/index.ts'
+import { fetchImage } from '../../../core/net/index.ts'
+import { isDefiniteFailure } from '../../../../packages/adapters/qq/onebot-v11/src/client.ts'
 
 /** 出站用到的调用参数：字段名固定，值由调用方传。 */
 type SendOptions = Record<string, any>

@@ -11,12 +11,12 @@
 
 import { dataDir, readJson, writeJson } from '../core/store/index.ts'
 import { randomUUID } from 'node:crypto'
-import { quietWindowOf } from '../core/support/time-window.ts'
+import { quietWindowOf } from '../core/support/time/time-window.ts'
 import { cleanOutboundText } from '../chat/reply/index.ts'
-import { isSessionBackoff } from '../chat/hub/session-backoff.ts'
+import { isSessionBackoff } from '../chat/hub/turn/session-backoff.ts'
 import { followUpHint } from '../features/memory/index.ts'
 import { selfName, selfNames, personaDataDir, personaNow } from '../persona/personas.ts'
-import { normalizeSelection } from '../chat/hub/chat-model.ts'
+import { normalizeSelection } from '../chat/hub/model/chat-model.ts'
 import {
   DEFAULT_PURPOSE_CONFIG, PURPOSE_NEEDS, NEED_LABELS,
   normalizePurposeConfig, createPurposeState, normalizePurposeState,

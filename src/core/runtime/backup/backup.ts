@@ -11,8 +11,8 @@ import type { FileHandle } from 'node:fs/promises'
 import { crc32, deflateRawSync, inflateRawSync } from 'node:zlib'
 import { homedir } from 'node:os'
 import { join, parse, relative } from 'node:path'
-import { dataDir, dshHome } from '../store/index.ts'
-import { captureMemoryBackup, MEMORY_FILES } from '../../features/memory/store.ts'
+import { dataDir, dshHome } from '../../store/index.ts'
+import { captureMemoryBackup, MEMORY_FILES } from '../../../features/memory/store.ts'
 
 /** 已校验的目录边界：真实路径 + 目录身份，之后每次访问都比对。 */
 interface Boundary { root: string; id: string }

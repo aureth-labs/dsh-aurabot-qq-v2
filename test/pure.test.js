@@ -5,7 +5,7 @@ import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_P
 import { parseMessageEvent, isStickerSegment, stickerSizeOk, imageSize } from '../src/chat/inbound/index.ts'
 import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../src/chat/policy/access.ts'
 import { avatarSource } from '../src/modules/profile/index.ts'
-import { redact, registerSecret } from '../src/core/support/redact.ts'
+import { redact, registerSecret } from '../src/core/support/log/redact.ts'
 
 test('parseReply 拆 ||| 成多条', () => {
   const r = parseReply('在呢|||刚睡醒 嗯…|||你呢')

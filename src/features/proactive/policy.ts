@@ -43,7 +43,7 @@
 
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { inHourWindow, nextWindowStart } from '../../core/support/time-window.ts'
+import { inHourWindow, nextWindowStart } from '../../core/support/time/time-window.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateSharedBudgetOptions = Partial<Record<'ownerQQ' | 'dataDir' | 'now' | 'log' | 'dailyMax' | 'minGapMs', any>>

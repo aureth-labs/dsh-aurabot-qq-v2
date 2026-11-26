@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../src/core/config/index.ts'
 import { purposeConfig } from '../src/purpose/module.ts'
-import { quietWindowOf, inHourWindow } from '../src/core/support/time-window.ts'
+import { quietWindowOf, inHourWindow } from '../src/core/support/time/time-window.ts'
 import purposeDef from '../src/modules/purpose/index.ts'
 import { createModules } from '../src/core/module/index.ts'
 

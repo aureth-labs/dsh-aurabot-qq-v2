@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Pipeline } from '../src/core/pipeline/index.ts'
 import { Session, SENT_LOG_MAX, SENT_TEXT_MAX } from '../src/core/pipeline/session.ts'
-import { h } from '../src/core/message/element.ts'
+import { h } from '../src/core/message/element/element.ts'
 
 function fakeBot(overrides = {}) {
   const sent = []

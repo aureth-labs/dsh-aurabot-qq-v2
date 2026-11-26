@@ -22,9 +22,9 @@ import type {
   User,
 } from '../../../../src/types/bot.ts'
 import { Bot } from '../../../../src/core/bot/index.ts'
-import { isElement, toText } from '../../../../src/core/message/element.ts'
-import { fromSatori, toSatoriBody } from '../../../../src/core/message/satori.ts'
-import { SatoriClient, type SatoriEvent, type SatoriLogin } from '../../../../src/core/message/satori-client.ts'
+import { isElement, toText } from '../../../../src/core/message/element/element.ts'
+import { fromSatori, toSatoriBody } from '../../../../src/core/message/satori/satori.ts'
+import { SatoriClient, type SatoriEvent, type SatoriLogin } from '../../../../src/core/message/satori/satori-client.ts'
 
 export interface SatoriAdapterConfig {
   /** Satori 服务地址，`http://127.0.0.1:5140` / `ws://…` 都行。 */

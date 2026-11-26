@@ -38,7 +38,7 @@ export function asPcmWav (file, buf, ffmpegPath = '', { platform = process.platf
 
 import { asrConfigured, transcribeAudio } from '../../voice/asr/index.ts'
 import { mergeFromPanel, normalize } from '../../core/config/index.ts'
-import { findFfmpeg } from '../../core/message/img.ts'
+import { findFfmpeg } from '../../core/message/media/img.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type AsPcmWavOptions = Partial<Record<'platform' | 'findFfmpegFn' | 'runFn', any>>

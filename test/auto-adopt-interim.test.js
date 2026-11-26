@@ -2,7 +2,7 @@
 // 第一段还没发出去，必须收进 mergedText，不能整段丢。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { adoptInterim, mergeStepText, everyStepMode } from '../src/chat/hub/steps.ts'
+import { adoptInterim, mergeStepText, everyStepMode } from '../src/chat/hub/turn/steps.ts'
 
 const st = (patch = {}) => ({ interimTurn: -1, interimText: '', interimStep: -1, ...patch })
 

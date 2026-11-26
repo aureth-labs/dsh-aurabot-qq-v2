@@ -1,8 +1,8 @@
 // 轮次共享状态与守卫：谁在忙、这一轮还作不作数、卡住多久算超时。
 // 队列内容本身留在 hub/index.ts，这里只提供状态与判定。
 
-import { sessionKey } from './context.ts'
-import { levelFor, presetFor, groupResponseMode } from '../policy/access.ts'
+import { sessionKey } from '../context/context.ts'
+import { levelFor, presetFor, groupResponseMode } from '../../policy/access.ts'
 
 export interface TurnStateDeps {
   [key: string]: any

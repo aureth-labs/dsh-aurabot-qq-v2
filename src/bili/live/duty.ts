@@ -5,10 +5,10 @@ import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { isPeak } from '../../core/llm/offpeak.ts'
 import { createBiliApi, findVideoId, parseCookie } from '../api.ts'
 import { loginSessionKey, recoverLoginPause } from '../login/login-pause.ts'
-import { isSessionBackoff } from '../../chat/hub/session-backoff.ts'
+import { isSessionBackoff } from '../../chat/hub/turn/session-backoff.ts'
 import { lookWithVision, visionState } from '../media/vision.ts'
 import { createShotStore, shotPath, clockOf } from '../media/shots.ts'
-import { inHourWindow } from '../../core/support/time-window.ts'
+import { inHourWindow } from '../../core/support/time/time-window.ts'
 
 // 这些错误说明今天别再发了：没登录 / Cookie 过期、csrf 不对、风控、要验证码、太频繁
 const PAUSE_CODES = { '-101': 'B 站没登录或 Cookie 过期了', '-111': 'Cookie 里的 bili_jct 不对', '-352': '被 B 站风控了', '-509': '发得太频繁', '12015': 'B 站要求验证码' }
@@ -493,7 +493,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
 
   /** 太大就缩到 1024 以内、JPEG；缩不了返回 null。 */
   async function shrinkFace(buf) {
-    const { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } = await import('../../core/message/img.ts')
+    const { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } = await import('../../core/message/media/img.ts')
     const ffmpeg = findFfmpeg(cfg().bili && cfg().bili.ffmpegPath)
     let small = ffmpeg ? await shrinkImage(buf, 1024, ffmpeg) : null
     if (!small) small = await shrinkWithSharp(await findSharp(), buf, 1024)

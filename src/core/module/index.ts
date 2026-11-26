@@ -12,7 +12,7 @@ import { existsSync, readdirSync, statSync, lstatSync, mkdirSync, copyFileSync, 
 import { randomUUID } from 'node:crypto'
 import { createPluginContext } from './plugin-context.ts'
 import { isSchema, Schema } from '../config/schema.ts'
-import { h } from '../message/element.ts'
+import { h } from '../message/element/element.ts'
 import { readManifest, entryOf as entryOfManifest } from '../config/manifest.ts'
 import { join, dirname, relative, resolve, sep, isAbsolute } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'

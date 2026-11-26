@@ -12,7 +12,7 @@ import { defineTool } from '../../tools/index.ts'
 import type { JsonSchemaProp } from '../../tools/index.ts'
 import { selfName } from '../../persona/personas.ts'
 import type { AurabotConfig } from '../config/index.ts'
-import type { AreaLogger } from '../support/logger.ts'
+import type { AreaLogger } from '../support/log/logger.ts'
 
 const RING = 300
 

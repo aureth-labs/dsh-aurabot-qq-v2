@@ -8,10 +8,10 @@
 //
 // 不认识的类型照样能构造，能不能发出去由适配器能力表决定。
 
-import type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../../types/element.ts'
-import type { Capability } from '../../types/bot.ts'
+import type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../../../types/element.ts'
+import type { Capability } from '../../../types/bot.ts'
 
-export type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../../types/element.ts'
+export type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../../../types/element.ts'
 
 // voice 不在这里：`<voice>要念的话</voice>` 需要保留里面的文字，交给 TTS 换成音频。
 // 自闭合的 `<voice url="…"/>` 走 selfClose 分支，照样是空元素。

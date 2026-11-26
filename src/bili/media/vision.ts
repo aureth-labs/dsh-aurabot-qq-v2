@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process'
 import { UA } from '../api.ts'
 import { askModel, canSeeImages } from '../../core/llm/index.ts'
-import { findFfmpeg } from '../../core/message/img.ts'
+import { findFfmpeg } from '../../core/message/media/img.ts'
 import { assertPublicUrl } from '../../core/net/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

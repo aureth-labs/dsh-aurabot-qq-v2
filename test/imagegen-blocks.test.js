@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 const { drawResultBlocks, imageToolBlock, drawToolMessage, createImageGen } = await import('../src/features/media/imagegen.ts')
-const { shrinkImage, shrinkWithSharp, findSharp } = await import('../src/core/message/img.ts')
+const { shrinkImage, shrinkWithSharp, findSharp } = await import('../src/core/message/media/img.ts')
 const { defineTool } = await import('../src/tools/index.ts')
 
 test('drawResultBlocks：有图时文字 + image 块，没图时只有文字', () => {

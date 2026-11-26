@@ -3,7 +3,7 @@
 // 内部统一用 h 的元素树（type + attrs + children），Satori 只是「出站字符串」的一种编码；
 // 接新平台时只做这一层转换，不改消息语义。
 
-import { normalize, parse, type Element, type ElementSource } from './element.ts'
+import { normalize, parse, type Element, type ElementSource } from '../element/element.ts'
 
 /** 内部类型 → Satori 标签名 */
 const TO_SATORI: Record<string, string> = {

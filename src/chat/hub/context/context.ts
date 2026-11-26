@@ -5,7 +5,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { extractMarkedReply } from '../reply/reply-marker.ts'
+import { extractMarkedReply } from '../../reply/reply-marker.ts'
 
 // QQ 会话的工作区目录，第一次收到消息时自动创建。面板「连接」页能改（config.workspaceDir，#32）；
 // 没填就用环境变量 AURABOT_WORKSPACE，再没有：老安装沿用 C:\Aurabot\qq-chats，新安装放在用户目录下（不用往 C 盘根目录写）
@@ -55,7 +55,7 @@ export interface CapturedSend {
 /** 一轮投递期的固定快照：期间所有发送都归到这一轮。 */
 export interface OutputScope {
   chatId: string
-  sources: import('../../security/leak-guard.ts').PromptSources
+  sources: import('../../../security/leak-guard.ts').PromptSources
   incomingReply?: boolean
   sent: number
   sentTypes: Set<string>

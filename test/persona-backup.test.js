@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createMemoryStorage } from '../src/features/memory/store.ts'
-import { createBackup, stageRestore, applyPendingRestore } from '../src/core/runtime/backup.ts'
+import { createBackup, stageRestore, applyPendingRestore } from '../src/core/runtime/backup/backup.ts'
 
 let Database
 try { ({ DatabaseSync: Database } = await import('node:sqlite')) } catch {}

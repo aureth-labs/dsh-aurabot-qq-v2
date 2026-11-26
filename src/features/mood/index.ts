@@ -5,7 +5,7 @@ import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { askModel } from '../../core/llm/index.ts'
 import { cleanText, clipText } from '../../core/support/text.ts'
 import { shouldDeferBackground } from '../../core/llm/offpeak.ts'
-import { inHourWindow } from '../../core/support/time-window.ts'
+import { inHourWindow } from '../../core/support/time/time-window.ts'
 import { followUpHint } from '../memory/index.ts'
 import { moodReason } from './context.ts'
 import {

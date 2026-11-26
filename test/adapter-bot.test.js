@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { wrapAdapterBot } from '../src/core/bot/adapter-bot.ts'
-import { toText } from '../src/core/message/element.ts'
+import { toText } from '../src/core/message/element/element.ts'
 
 function fakeBot(capabilities = ['text']) {
   const sent = []

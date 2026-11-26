@@ -2,7 +2,7 @@
 
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 import { fetchImage } from '../../core/net/index.ts'
-import { windowMinutes } from '../../core/support/time-window.ts'
+import { windowMinutes } from '../../core/support/time/time-window.ts'
 import { resolveAudience } from './audience.ts'
 import { cleanOutboundText } from '../../chat/reply/index.ts'
 

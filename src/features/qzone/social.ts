@@ -2,7 +2,7 @@
 // 评论在专用的后台会话里按她的人格写；试运行时只记日志不发。
 
 import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
-import { inHourWindow } from '../../core/support/time-window.ts'
+import { inHourWindow } from '../../core/support/time/time-window.ts'
 import { isSilence, stripMarkdown, cleanOutboundText } from '../../chat/reply/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */

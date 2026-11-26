@@ -9,8 +9,8 @@
 // 断开连接时用的是原实例（见 core/adapter.ts）。
 
 import type { BotLike, Capability, SendOptions } from '../../types/bot.ts'
-import { degrade, isElement, normalize } from '../message/element.ts'
-import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../message/voice-element.ts'
+import { degrade, isElement, normalize } from '../message/element/element.ts'
+import { needsVoiceResolve, resolveVoice, type VoiceResolver } from '../message/element/voice-element.ts'
 
 export interface WrapAdapterBotOptions {
   /** 现在允许真发吗（总开关开着且不在试运行）。 */

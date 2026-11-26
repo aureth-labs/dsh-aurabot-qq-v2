@@ -20,7 +20,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameS
 import { devNull } from 'node:os'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { dataDir } from '../store/index.ts'
+import { dataDir } from '../../store/index.ts'
 
 const workDir = () => dataDir('backups', '.gitee')
 /** 仓库里的归档根：每份备份一个日期命名文件夹 backups/aurabot-backup-YYYYMMDD-HHMM/。 */

@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { createFakeDsh } from './helpers/fake-dsh.js'
 import { normalize } from '../src/core/config/index.ts'
 import { createHub } from '../src/chat/hub/index.ts'
-import { confirmedChatDelivery } from '../src/chat/hub/receipts.ts'
+import { confirmedChatDelivery } from '../src/chat/hub/turn/receipts.ts'
 import { buildWav } from '../src/voice/audio/wav.ts'
 
 const OWNER = '10001', CHAT = `private:${OWNER}`, GROUP = 'group:555'
