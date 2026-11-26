@@ -61,7 +61,7 @@ export function createTransport({
       if (hasListeners('before-parse')) {
         const elements = message.elements ?? (message.content ? [h.text(message.content)] : [])
         const draft = { platform: bot.platform, botId: bot.id, type: message.type, channelId: message.channelId,
-          guildId: message.guildId, userId: message.userId, elements: structuredClone(elements) }
+          guildId: message.guildId, userId: message.userId, messageId: message.messageId, elements: structuredClone(elements) }
         await emitAsync('before-parse', draft)
         if (Array.isArray(draft.elements) && draft.elements.every(isElement) && !isDeepStrictEqual(elements, draft.elements)) {
           const parsed = normalize(draft.elements)

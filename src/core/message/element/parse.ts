@@ -1,7 +1,7 @@
 import type { Element } from '../../../types/core/element.ts'
 
 const supported = new Set(['text', 'at', 'image', 'img', 'voice', 'audio', 'video', 'file', 'face', 'quote', 'reply', 'forward', 'message', 'author', 'br',
-  'sharp', 'emoji', 'a', 'b', 'strong', 'i', 'em', 'u', 'ins', 's', 'del', 'spl', 'code', 'sup', 'sub', 'p', 'button'])
+  'translatevoice', 'sharp', 'emoji', 'a', 'b', 'strong', 'i', 'em', 'u', 'ins', 's', 'del', 'spl', 'code', 'sup', 'sub', 'p', 'button'])
 const entities: Record<string, string> = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>' }
 
 function decode(value: string): string {
@@ -19,6 +19,7 @@ function finish({ type, attrs, children }: Frame): Element {
     attrs.url = attrs.src
     delete attrs.src
   }
+  if (type === 'translatevoice') type = 'translateVoice'
   if (type === 'img') type = 'image'
   if (type === 'audio') type = 'voice'
   if (type === 'text') return { type, attrs: { content: String(attrs.content ?? children.map(child => child.attrs.content ?? '').join('')) } }

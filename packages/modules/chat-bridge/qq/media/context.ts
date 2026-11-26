@@ -3,7 +3,6 @@ import { createImageReader } from './images.ts'
 import { createQuoteResolver } from '../format/quote.ts'
 import { segmentBytes } from '../../../../../src/core/net/index.ts'
 import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
-import { createTranscriber } from './transcribe.ts'
 import { readForward, forwardBody, applyForwardBodies } from '../../../../adapters/qq/onebot-v11/src/message/forward.ts'
 import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from '../context/group-media.ts'
 import { createGroupPromptBuilder } from '../context/group-prompt.ts'
@@ -11,7 +10,6 @@ import { createGroupPromptBuilder } from '../context/group-prompt.ts'
 export function createMessageMedia({
   getConfig,
   log,
-  dsh,
   onebot,
   store,
   groups,
@@ -21,7 +19,6 @@ export function createMessageMedia({
   sentIds,
   isDisposed,
   assertActive,
-  localApi,
   asr,
 }) {
   const { isBeforeMemoryReset, historyVisible } = store
@@ -99,7 +96,21 @@ export function createMessageMedia({
     return Boolean(q && q.ok && q.isBot)
   }
 
-  const { transcribe, localTranscribe } = createTranscriber({ dsh, onebot, getConfig, log, localApi, asr })
+  async function recognize(seg, messageId?, wav?, localOnly = false) {
+    const service = asr?.()
+    if (!service?.active()) return ''
+    const bot = onebot.bot
+    const input = wav ? { read: async () => wav }
+      : bot && service.resolve(bot.platform, bot.id, { type: 'voice', attrs: { ...seg.data, url: seg.data?.url || seg.data?.file } }, messageId)
+    if (!input) return ''
+    return (await service.recognize(input, localOnly)).text
+  }
+  async function transcribe(msg, wav?) {
+    if (!msg.records?.length) return ''
+    const text = await recognize(msg.records[0], msg.messageId, wav)
+    return text ? '[语音] ' + text : '[语音未能识别，内容可能有误]'
+  }
+  const localTranscribe = seg => recognize(seg, undefined, undefined, true)
 
   async function expandForwards(msg, text, { timeoutMs = 15000 }: { timeoutMs?: number } = {}) {
     const bodies = []

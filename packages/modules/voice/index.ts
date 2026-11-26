@@ -35,7 +35,6 @@ export function asPcmWav (file, buf, ffmpegPath = '', { platform = process.platf
   return converted
 }
 
-import { asrConfigured, transcribeAudio } from './asr/index.ts'
 import { mergeFromPanel, normalize } from '../../../src/core/config/index.ts'
 import { findFfmpeg } from '../../../src/core/message/media/img.ts'
 
@@ -107,7 +106,9 @@ export function apply(ctx, config) {
   ctx.server.post('/voice/asr-provider-test', async (req) => {
     const b = await http.body(req)
     const voice = voiceFromBody(b)
-    if (!asrConfigured(voice)) return { ok: false, message: '没配置云端识别（面板「语音 → 听语音」里选一个）' }
+    const asr = ctx.get('asr')
+    if (!asr?.active()) return { ok: false, message: '请先启用语音识别插件' }
+    if (!asr.configured(voice)) return { ok: false, message: '没配置云端识别（面板「语音 → 听语音」里选一个）' }
     const text = String(b.text || '今天想吃白米饭')
     let file
     try {
@@ -118,7 +119,8 @@ export function apply(ctx, config) {
     }
     try {
       const t = Date.now()
-      const heard = await transcribeAudio(readFileSync(file), voice, ctx.logger)
+      const wav = toMono16k(asPcmWav(file, readFileSync(file), ctx.root.config.local.ffmpegPath))
+      const heard = await asr.cloud(wav, voice)
       return { ok: Boolean(heard), said: text, heard, provider: voice.asrApi?.provider || '', ms: Date.now() - t }
     } catch (error) {
       return { ok: false, message: '识别失败：' + error.message }
@@ -223,10 +225,5 @@ ctx.setInterval(3600_000, () => autoClaimOnce(ctx.root.config, { log: ctx.logger
 
 ctx.provide('voice', { speak, edgeInstalled })
 ctx.provide('tts', { speak: async (text: string) => String((await speak(text))?.file ?? '') })
-// 语音识别也是服务：内核不再 import 本插件，谁提供都能用。
-ctx.provide('asr', {
-  configured: (voice) => asrConfigured(voice),
-  transcribe: (buffer, voice, log) => transcribeAudio(buffer, voice, log),
-})
 return { speak, edgeInstalled }
 }

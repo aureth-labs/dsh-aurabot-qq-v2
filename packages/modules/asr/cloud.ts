@@ -1,12 +1,3 @@
-
-
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type TranscribeAudioOptions = Partial<Record<'fetchImpl' | 'timeoutMs', any>>// 云端语音识别：把 QQ 语音转好的 16kHz 单声道 WAV 交给 OpenAI 兼容的
-// POST {baseUrl}/audio/transcriptions，换回文字。失败由聊天中枢继续试 QQ / DSH。
-//
-// 内置硅基流动（SenseVoiceSmall）和 OpenAI（whisper-1）；也可以选「自定义」填任意
-// 兼容 /audio/transcriptions 的服务。没有密钥的本地服务把 apiKey 留空即可。
-
 export const ASR_PRESETS = {
   siliconflow: {
     name: '硅基流动',
@@ -57,46 +48,34 @@ export function asrConfigured(voice) {
   return Boolean(asrSettings(voice))
 }
 
-function timeoutSignal(ms) {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(ms) || 60000))
-  return { signal: controller.signal, done: () => clearTimeout(timer) }
-}
 
-/**
- * @param {Buffer} buffer 16kHz 单声道 PCM16 WAV
- * @param {object} voice 整份 voice 配置
- * @returns {Promise<string>} 文字（可能为空）
- */
-export async function transcribeAudio(buffer, voice, log, { fetchImpl = globalThis.fetch, timeoutMs = 60000 } : TranscribeAudioOptions = {}) {
+export async function transcribeAudio(buffer: Buffer, voice, log, {
+  fetchImpl = globalThis.fetch, timeoutMs = 60000, signal,
+}: { fetchImpl?: typeof fetch; timeoutMs?: number; signal?: AbortSignal } = {}) {
   const c = asrSettings(voice)
   if (!c) throw new Error('没配置云端识别')
   if (!buffer || !buffer.length) throw new Error('没有音频')
   const form = new FormData()
-  form.append('file', new Blob([buffer], { type: 'audio/wav' }), 'voice.wav')
+  form.append('file', new Blob([new Uint8Array(buffer)], { type: 'audio/wav' }), 'voice.wav')
   form.append('model', c.model)
   if (c.language) form.append('language', c.language)
   const headers: Record<string, any> = {}
   if (c.apiKey) headers.Authorization = `Bearer ${c.apiKey}`
-  const t = timeoutSignal(timeoutMs)
+  const timeout = AbortSignal.timeout(timeoutMs)
   const started = Date.now()
-  try {
-    const r = await fetchImpl(`${c.baseUrl}/audio/transcriptions`, {
-      method: 'POST',
-      headers,
-      body: form,
-      signal: t.signal,
-      redirect: 'error',
-    })
-    const raw = await r.text().catch(() => '')
-    if (!r.ok) throw new Error(`HTTP ${r.status}${raw ? '：' + raw.slice(0, 160) : ''}`)
-    let json = null
-    try { json = JSON.parse(raw) } catch (error) {}
-    if (!json) throw new Error('识别服务返回的不是 JSON：' + raw.slice(0, 160))
-    const text = str(json.text || json.transcript)
-    log?.debug?.(`云端识别（${c.provider}）用时 ${Date.now() - started}ms，得到 ${text.length} 字`)
-    return text
-  } finally {
-    t.done()
-  }
+  const r = await fetchImpl(`${c.baseUrl}/audio/transcriptions`, {
+    method: 'POST',
+    headers,
+    body: form,
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    redirect: 'error',
+  })
+  const raw = await r.text().catch(() => '')
+  if (!r.ok) throw new Error(`HTTP ${r.status}${raw ? '：' + raw.slice(0, 160) : ''}`)
+  let json = null
+  try { json = JSON.parse(raw) } catch (error) {}
+  if (!json) throw new Error('识别服务返回的不是 JSON：' + raw.slice(0, 160))
+  const text = str(json.text || json.transcript)
+  log?.debug?.(`云端识别（${c.provider}）用时 ${Date.now() - started}ms，得到 ${text.length} 字`)
+  return text
 }

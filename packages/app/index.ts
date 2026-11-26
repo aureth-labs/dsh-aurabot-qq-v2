@@ -40,6 +40,7 @@ import { defaultOneBot, defaultOneBotId, primaryOneBot } from './onebot.ts'
 import { workspaceDirOf } from '../modules/chat-bridge/qq/index.ts'
 import { createPersonaMemoryRuntime } from './runtime/persona-memory.ts'
 import { realWorkspace } from '../../src/core/runtime/workspace-move.ts'
+import { checkAllowed } from '../../src/chat/policy/rules/access.ts'
 import { createLocal } from '../../src/local/index.ts'
 
 import { createSendEvents } from '../../src/core/bot/send-events.ts'
@@ -272,6 +273,9 @@ export function apply(ctx) {
     hub, onebot, local, groupRoles, mutes, logger, bridge: null as unknown,
     // S0：v2 发送面。ctx.bots[0] / ctx.bots('号') / ctx.bots.list()
     bots: createBotsAccessor(botRegistry),
+    canReadMedia: (bot, message) => bot !== onebot.bot || checkAllowed(getConfig(), {
+      kind: message.type, groupId: message.channelId, userId: message.userId,
+    }).allowed,
     // S5：入站管线（ctx.middleware / ctx.command 挂在这上面）
     pipeline,
     // S8：适配器插件化。插件调 ctx.adapter(spec, config) 就能挂一个平台上来

@@ -1,6 +1,7 @@
 import type { PluginContext } from '../../../../../src/types/plugin/ctx.ts'
 import type { AdapterSpec } from '../../../../../src/types/adapter/adapter.ts'
 import { createOneBotConnection } from './connection.ts'
+import { voiceSource } from './voice.ts'
 import { oneBotNotice } from './notices.ts'
 import { inboundOf, isMessageEvent } from './inbound.ts'
 import type { OneBotBot } from './bot.ts'
@@ -62,6 +63,7 @@ export function apply(ctx: PluginContext, config: Config) {
         },
       })
       ctx.provide('onebot/' + ctx.instanceId, connection)
+      ctx.provide('voice-source/' + JSON.stringify(['qq', ctx.instanceId]), { open: voiceSource(connection.bot) })
       const cancel = () => {
         connection.client.stop()
         ready.reject(new Error('OneBot 连接已停止'))

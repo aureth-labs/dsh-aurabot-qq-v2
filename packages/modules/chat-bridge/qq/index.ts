@@ -329,7 +329,6 @@ export function createHub({
   const media = createMessageMedia({
     getConfig,
     log,
-    dsh,
     onebot,
     store,
     groups,
@@ -339,7 +338,6 @@ export function createHub({
     sentIds,
     isDisposed,
     assertActive,
-    localApi,
     asr,
   })
   const {

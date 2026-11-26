@@ -8,6 +8,7 @@ import * as logger from './modules/logger/index.ts'
 import * as persona from './modules/persona/index.ts'
 import * as chatBridge from './modules/chat-bridge/index.ts'
 import * as stickers from './modules/stickers/index.ts'
+import * as asr from './modules/asr/index.ts'
 import * as voice from './modules/voice/index.ts'
 import * as mood from './modules/mood/index.ts'
 import * as memory from './modules/memory/index.ts'
@@ -31,6 +32,7 @@ const entries: Array<[string, Record<string, any>]> = [
   ['chat-bridge', chatBridge],
   ['stickers', stickers],
   ['voice', voice],
+  ['asr', asr],
   ['mood', mood],
   ['memory', memory],
   ['qq-tools', qqTools],

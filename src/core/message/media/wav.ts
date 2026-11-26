@@ -13,6 +13,7 @@ export function parseWav(buf) {
     else if (id === 'data') data = buf.subarray(start, Math.min(buf.length, start + size))
     off = start + size + (size & 1)
   }
+  if (fmt && (fmt.channels < 1 || fmt.channels > 64 || fmt.rate < 1000 || fmt.rate > 768000)) throw Error('WAV 声道或采样率无效')
   if (!fmt || !data) throw new Error('WAV 缺 fmt 或 data')
   if (fmt.format !== 1 || fmt.bits !== 16) throw new Error('只支持 PCM16')
   return { ...fmt, data }
@@ -41,6 +42,7 @@ export function buildWav(samples, rate) {
 export function toMono16k(buf, target = 16000) {
   const { channels, rate, data } = parseWav(buf)
   const frames = Math.floor(data.length / (2 * channels))
+  if (!frames || frames * target / rate > 16000 * 600) throw Error('语音时长无效或超过十分钟')
   const mono = new Float64Array(frames)
   for (let i = 0; i < frames; i++) {
     let s = 0

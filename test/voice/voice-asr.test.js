@@ -2,8 +2,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { normalize, publicConfig, mergeFromPanel } from '../../src/core/config/index.ts'
-import { asrConfigured, asrSettings, transcribeAudio, ASR_PRESETS } from '../../src/voice/asr/index.ts'
-import { buildWav } from '../../src/voice/audio/wav.ts'
+import { asrConfigured, asrSettings, transcribeAudio, ASR_PRESETS } from '../../packages/modules/asr/cloud.ts'
+import { buildWav } from '../../src/core/message/media/wav.ts'
 
 const log = { info() {}, warn() {}, debug() {} }
 const wav = () => buildWav(new Int16Array(24000), 24000)

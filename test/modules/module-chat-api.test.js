@@ -8,7 +8,8 @@ import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
 import { confirmedChatDelivery } from '../../packages/modules/chat-bridge/qq/turn/receipts.ts'
-import { buildWav } from '../../src/voice/audio/wav.ts'
+import { createRecognizer } from '../../packages/modules/asr/recognize.ts'
+import { buildWav } from '../../src/core/message/media/wav.ts'
 
 const OWNER = '10001', CHAT = `private:${OWNER}`, GROUP = 'group:555'
 const ownerChat = { chatId: CHAT, kind: 'private', userId: OWNER, groupId: '', nickname: '主人' }
@@ -18,12 +19,14 @@ function setup(t, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-module-chat-'))
   const before = { data: process.env.AURABOT_DATA_DIR, workspace: process.env.AURABOT_WORKSPACE }
   process.env.AURABOT_DATA_DIR = dir; process.env.AURABOT_WORKSPACE = join(dir, 'workspace')
-  const cfg = normalize({ enabled: true, dryRun: false, setupDone: true, ownerQQ: OWNER, botQQ: '20002',
+  const cfg = normalize({ enabled: true, setupDone: true, ownerQQ: OWNER, botQQ: '20002',
     allow: { private: ['10002'], groups: ['555'] }, voice: { enabled: false },
     stickers: { enabled: false }, conversationContext: { enabled: true }, model: { vision: 'on' }, merge: { enabled: false } })
   const fake = createFakeDsh({ brain: async () => '' }), rows = [], calls = [], memory = [], activity = [], deliveries = []
   let muted = false
-  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg,
+  const recognizer = createRecognizer({ harness: fake.ctx, root: { config: cfg }, host: {}, config: {}, logger: { debug() {} } },
+    join(dir, 'media'), new AbortController().signal)
+  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, asr: () => recognizer,
     log: { info() {}, warn() {}, debug() {}, error() {} },
     onebot: { connected: true, async call(action, params) {
       calls.push({ action, params })
@@ -121,9 +124,9 @@ test('已确认的 OneBot 送达使用稳定来源 ID，模拟或失败不会产
   assert.equal('text' in first, false)
   const captured = await s.hub.capture(() => s.hub.sendSegments(CHAT, message, '模拟'), { simulate: true })
   assert.equal(captured.sent.closed, true, '模拟结束后捕获上下文必须作废')
-  s.cfg.dryRun = true
-  await s.hub.sendSegments(CHAT, message, '不发送')
-  s.cfg.dryRun = false
+  s.cfg.debug = true
+  await s.hub.sendSegments(CHAT, message, '调试投递')
+  s.cfg.debug = false
   await s.hub.sendSegments(CHAT, message, '敏感', { sensitive: true })
   failed = true
   await s.hub.sendSegments(CHAT, message, '失败', { quiet: true })

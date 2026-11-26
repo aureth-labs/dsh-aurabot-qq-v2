@@ -1,5 +1,6 @@
 import type { InboundMessage } from '../../../../../src/types/adapter/adapter.ts'
 import type { Session } from '../../../../../src/core/pipeline/session.ts'
+import { h, toText } from '../../../../../src/core/message/element/element.ts'
 import { fromOneBot, toOneBot } from './element.ts'
 
 interface MessageEvent {
@@ -40,7 +41,11 @@ export function inboundOf(event: MessageEvent): InboundMessage {
 export function eventForHub(session: Session): unknown {
   if (!session.parent) {
     if (!session.reparsed || !session.raw || typeof session.raw !== 'object') return session.raw
-    return { ...session.raw, raw_message: session.content, message: toOneBot(session.elements) }
+    const elements = session.elements.map(el => {
+      const heard = el.type === 'voice' && el.children?.find(child => child.type === 'translateVoice')
+      return heard ? h.text('[语音] ' + toText(heard)) : el
+    })
+    return { ...session.raw, raw_message: session.content, message: toOneBot(elements) }
   }
   const source = session.parent.raw
   if (!source || typeof source !== 'object') return

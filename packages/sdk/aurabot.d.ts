@@ -184,6 +184,7 @@ export interface Session {
 }
 
 export interface MessageDraft {
+  readonly messageId?: string
   readonly platform: string
   readonly botId: string
   readonly type: Target['type']
