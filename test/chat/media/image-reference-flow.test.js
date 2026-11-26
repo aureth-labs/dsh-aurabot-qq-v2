@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../../src/core/config/index.ts'
 import { createHub } from '../../../src/chat/hub/index.ts'
-import imagegen from '../../../packages/imagegen/index.ts'
+import { apply as applyImagegen } from '../../../packages/imagegen/index.ts'
 import { createFakeDsh } from '../../helpers/fake-dsh.js'
 
 const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])
@@ -34,8 +34,8 @@ test('真实收图→合批→提示：混合照片/表情与下载失败不会�
     } },
     hooks: { groupDecide: () => ({ reply: true, mode: 'must' }), prompt: (content, info) => prompt(content, info) },
   })
-  imagegen.setup({ config: () => cfg, log, dsh: fake.ctx, lazy: () => ({}), route() {}, tool() {},
-    on: (event, fn) => { if (event === 'prompt') prompt = fn }, core: { hub, local: { active: () => true } },
+  applyImagegen({ root: {read: () => cfg, config:cfg}, logger:log, harness:fake.ctx, lazy: () => ({}), server:{get() {}}, effect:fn=>t.after(fn), prompt() {}, tool() {},
+    on: (event, fn) => { if (event === 'prompt') prompt = fn }, host: { hub, local: { active: () => true } },
   })
   fake.ctx.effect(() => fake.ctx.on('session/event', hub.onSessionEvent))
   t.after(() => { hub.dispose(); fake.dispose(); if (previous === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = previous; cleanupDir(dir) })

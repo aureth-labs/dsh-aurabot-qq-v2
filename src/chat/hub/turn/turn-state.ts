@@ -87,8 +87,19 @@ export function createTurnState(deps: TurnStateDeps) {
   }
 
 
+  function dispose() {
+    for (const entry of pending.values()) clearTimeout(entry.timer)
+    for (const timer of runningTimers.values()) clearTimeout(timer)
+    pending.clear()
+    runningTimers.clear()
+    busy.clear()
+    busyTurns.clear()
+    busySessions.clear()
+    running.clear()
+  }
+
   return {
-    pending, busy, busySessions, busyTurns, running, runningTimers, BUSY_MAX_MS, RANK,
+    dispose, pending, busy, busySessions, busyTurns, running, runningTimers, BUSY_MAX_MS, RANK,
     turnSignature, isCurrentSession, groupChatAllowed, checkTurn, isBusy, turnMaxMs, markRunning, clearRunning,
   }
 }

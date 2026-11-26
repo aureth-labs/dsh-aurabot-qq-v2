@@ -147,3 +147,20 @@ test('runTurnInChat：suppressDelivery 状态用完即清，不残留给下一�
   assert.ok(s.sent.length >= 1, '主人的正常消息必须照旧投递（suppressDelivery 不能泄漏到别人的轮次）')
   assert.match(JSON.stringify(s.sent), /主人的正常回复/)
 })
+
+test('卸载过程中立即归还工具，迟到的模型回复不能投递', {timeout:3000}, async t => {
+  const started=Promise.withResolvers()
+  const model=Promise.withResolvers()
+  const {hub,fake,sent}=setup(t,{brain:async()=>{started.resolve(); return model.promise}})
+  t.after(()=>model.resolve('[沉默]'))
+  const turn=hub.runTurnInChat(CHAT,'等一下',{noTools:true})
+  await started.promise
+  const agent=[...fake.agents.values()].at(-1)
+  assert.equal(agent.guestLocked,1)
+  hub.dispose()
+  assert.deepEqual(await turn,{ok:false,reason:'disposed'})
+  assert.equal(agent.guestLocked,0)
+  model.resolve('迟到的回复')
+  await settle()
+  assert.equal(sent.length,0)
+})
