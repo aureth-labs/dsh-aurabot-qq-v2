@@ -1,4 +1,4 @@
-import { cx, h } from '../ui/ui.ts'
+import { cx, h } from './ui/ui.ts'
 
 function LogLine({ e }) {
   return h('div', { className: cx('ab-log', e.level) }, h('span', { className: 't' }, e.time), h('span', { className: 'a' }, e.area), h('span', { className: 'm' }, e.text))

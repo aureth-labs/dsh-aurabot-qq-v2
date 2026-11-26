@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from '../../core/ui/react.ts'
 import { bustCache, get, getCached, post } from '../../core/api/api.ts'
 import { timeAgo } from '../../core/ui/format.ts'
-import { PERSON_FIELDS, PersonFace, faceColor, gistLevel, gistSource, memoryDate, memoryEnded, personName } from '../../core/memory/memory-model.ts'
+import { PERSON_FIELDS, PersonFace, faceColor, gistLevel, gistSource, memoryDate, memoryEnded, personName } from '../../core/memory.ts'
 import { Btn, Card, Empty, Row, Seg, Select, cx, h } from '../../core/ui/ui.ts'
 import { InsightCard } from '../memory/memory-parts.ts'
 

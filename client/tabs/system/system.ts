@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from '../../core/ui/react.ts'
 import { API, get, post } from '../../core/api/api.ts'
 import { fmtBytes, fmtDur, setPath, timeAgo } from '../../core/ui/format.ts'
-import { LogLine } from '../../core/log/log-line.ts'
+import { LogLine } from '../../core/log.ts'
 import { Btn, Card, Empty, Row, Seg, Select, Switch, cx, h, useField } from '../../core/ui/ui.ts'
 import { VoiceImport } from '../memory/memory.ts'
 

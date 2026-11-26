@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from '../../core/ui/react.ts'
 import { get, post } from '../../core/api/api.ts'
 import { setPath, timeAgo } from '../../core/ui/format.ts'
-import { ModOff, modOn } from '../../core/nav/nav.ts'
+import { ModOff, modOn } from '../../core/nav.ts'
 import { Btn, Card, Empty, Row, Select, h, useField } from '../../core/ui/ui.ts'
 import { OutboundPolicy, PurposeStatus } from '../agent/autotelic.ts'
 

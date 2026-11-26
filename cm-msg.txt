@@ -1,7 +1,0 @@
-refactor(test): 测试按域分层，修掉一批指向旧路径的死断言
-
-- test/ 从 335 个平铺文件改成 24 个目录（adapters/chat/memory/persona/panel/media/…），最深两层
-- 统一用 test/helpers/hub-source.js 取 hub 源码，递归覆盖 hub 子目录
-- 修掉指向已拆分的旧路径（autotelic/schedule、core/config、voice/tts、memory/vector、autotelic/skills）
-- 多文件模块测试的 import 路径写错（../lib → ./lib），热重载用例恢复正常
-- 源码契约测试补上 config/defaults 两个文件合并读取

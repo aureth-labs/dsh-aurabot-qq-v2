@@ -1,7 +1,7 @@
 import { useState, useEffect } from '../../core/ui/react.ts'
 import { get, getCached, post } from '../../core/api/api.ts'
 import { getPath, setPath } from '../../core/ui/format.ts'
-import { fmtNextChange, isPeakAt, nextChangeAt } from '../../core/time/offpeak.ts'
+import { fmtNextChange, isPeakAt, nextChangeAt } from '../../core/time.ts'
 import { Btn, Card, Empty, Row, Seg, Select, h, useField } from '../../core/ui/ui.ts'
 
 // 和 src/features/companion.js 的 moodEffects 严丝合缝：心情区间 → 贴表情系数

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, Fragment } from '../../core/ui/react.ts'
 import { clone, get, post } from '../../core/api/api.ts'
 import { getPath, pct, setPath } from '../../core/ui/format.ts'
-import { modOn } from '../../core/nav/nav.ts'
+import { modOn } from '../../core/nav.ts'
 import { Btn, Card, Choices, Empty, ListArea, Row, Seg, Select, Switch, cx, h, useField } from '../../core/ui/ui.ts'
 import { PersonMemoryReset } from '../persona/persona-graph.ts'
 import { NoticeWorkspaces } from '../persona/persona.ts'

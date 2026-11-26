@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from '../../core/ui/react.ts'
 import { API, get, post } from '../../core/api/api.ts'
 import { copy, getPath, setPath } from '../../core/ui/format.ts'
-import { PanelBoundary } from '../../core/nav/nav.ts'
+import { PanelBoundary } from '../../core/nav.ts'
 import { Btn, Card, Empty, Range, Row, Seg, Select, Switch, cx, h, useField } from '../../core/ui/ui.ts'
 
 // ---------------- 扩展：模块 ----------------

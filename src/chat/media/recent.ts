@@ -1,5 +1,5 @@
 // 最近图片 / 表情的短期引用：按聊天保留 6 张，重启恢复时不重置 30 分钟有效期。
-import { dataDir, readJson, writeJson } from '../../../core/store/index.ts'
+import { dataDir, readJson, writeJson } from '../../core/store/index.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateRecentMediaOptions = Partial<Record<'file' | 'log', any>>

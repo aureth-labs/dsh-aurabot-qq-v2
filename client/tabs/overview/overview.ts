@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, Fragment } from '../../core/ui/react.ts'
 import { API, get, post } from '../../core/api/api.ts'
 import { chatLabel, fmtCost, fmtTokens, getPath } from '../../core/ui/format.ts'
-import { LogLine } from '../../core/log/log-line.ts'
+import { LogLine } from '../../core/log.ts'
 import { Btn, Card, Empty, Switch, cx, h } from '../../core/ui/ui.ts'
 import { DebugChat } from '../system/system.ts'
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from '../../core/ui/react.ts'
 import { get } from '../../core/api/api.ts'
 import { setPath, timeAgo } from '../../core/ui/format.ts'
-import { ModOff, modOn } from '../../core/nav/nav.ts'
+import { ModOff, modOn } from '../../core/nav.ts'
 import { Btn, Card, Row, h, useField } from '../../core/ui/ui.ts'
 import { StyleEditor } from '../memory/memory-parts.ts'
 

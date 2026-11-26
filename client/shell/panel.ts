@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from '../core/ui/react.ts'
 import { PANEL_READ_TIMEOUT, bustPanelGet, clone, copySecretFlags, maskSecretFields, post, sharedGet, sharedPanelGet } from '../core/api/api.ts'
 import { getPath, ptrToDots, setPath, timeAgo } from '../core/ui/format.ts'
-import { NAV_GROUPS, NavBar, TABS, TAB_MODS, TabBoundary, connectionsToOnebot, navGroupById } from '../core/nav/nav.ts'
+import { NAV_GROUPS, NavBar, TABS, TAB_MODS, TabBoundary, connectionsToOnebot, navGroupById } from '../core/nav.ts'
 import { Btn, Switch, cx, h, useStyle } from '../core/ui/ui.ts'
 import { Access, Group } from '../tabs/chat/access.ts'
 import { Autotelic } from '../tabs/agent/autotelic.ts'

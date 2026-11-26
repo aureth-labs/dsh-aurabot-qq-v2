@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from '../ui/react.ts'
-import { navIcon } from '../ui/icons.ts'
-import { Btn, Card, cx, h } from '../ui/ui.ts'
+import React, { useState, useEffect, useRef } from './ui/react.ts'
+import { navIcon } from './ui/icons.ts'
+import { Btn, Card, cx, h } from './ui/ui.ts'
 
 // ---------------- 标签页 ----------------
 type TabDef = { id: string; label: string; flag?: string; flagFn?: (cfg: any) => boolean; flagDefault?: any; ext?: any }
