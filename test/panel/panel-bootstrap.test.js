@@ -87,7 +87,7 @@ async function callRaw(path, { method, headers = {}, body } = {}) {
 const get = (path) => fake.call(path)
 const jsonOf = async (path) => (await fake.call(path)).json()
 
-const hostSource = () => readFileSync(new URL('../../packages/app/index.ts', import.meta.url), 'utf8')
+import { registerBootstrap } from '../../packages/app/panel/system/bootstrap.ts'
 
 // ================= 1. 三接口契约 =================
 
@@ -156,16 +156,18 @@ test('三条 GET 都带 no-store（首屏轮询绝不能被缓存）', async () 
 
 // ================= 2. 503 BOOTSTRAPPING =================
 
-test('503 闸：三条路由都先过 bootstrapping 闸（静态契约），就绪后 200（动态）', async () => {
-  const src = hostSource()
-  // 闸本体：未就绪 → 503 + { ok:false, code:'BOOTSTRAPPING', bootId }
-  assert.match(src, /const bootstrapping = \(res\) => \{[\s\S]{0,200}?panelCoreReady[\s\S]{0,200}?send\(res, 503, \{ ok: false, code: 'BOOTSTRAPPING', bootId \}\)/, '要有 503 BOOTSTRAPPING 闸')
-  // 三条路由都在第一行过闸
-  for (const p of ['/panel/bootstrap', '/panel/pulse', '/panel/config']) {
-    assert.match(src, new RegExp(`route\\('${p.replace(/\//g, '\\/')}', async \\(req, res\\) => \\{\\s*if \\(bootstrapping\\(res\\)\\) return`), `${p} 必须先过 503 闸`)
+test('三个首屏入口在启动中返回 503，就绪后返回 200', async () => {
+  const routes = new Map()
+  registerBootstrap({
+    bootId: 'starting', coreIsReady: () => false,
+    http: { route: (path, fn) => routes.set(path, fn), send: (res, status, body) => Object.assign(res, { status, body }) },
+  })
+  for (const path of ['/panel/bootstrap', '/panel/pulse', '/panel/config']) {
+    const res = {}
+    await routes.get(path)({}, res)
+    assert.equal(res.status, 503)
+    assert.deepEqual(res.body, { ok: false, code: 'BOOTSTRAPPING', bootId: 'starting' })
   }
-  // panelCoreReady 在三条路由注册完才放开
-  assert.match(src, /panelCoreReady = true/, '要有就绪开关')
   // 动态：宿主就绪后绝不回 503
   for (const p of ['/panel/bootstrap', '/panel/pulse', '/panel/config']) {
     const r = await get(p)

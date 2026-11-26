@@ -29,6 +29,7 @@ export function createNoticeRelay({ getConfig, workspaceOf, compose, log, window
   const seen = new Map()
   const buf = new Map()
   let timer = null
+  let disposed = false
   let retry = 0
   /** 合并窗口：每次攒批现读 config.notice.windowSec，面板改完保存即生效（不用重启）。 */
   function windowMsNow() {
@@ -42,7 +43,7 @@ export function createNoticeRelay({ getConfig, workspaceOf, compose, log, window
   /** 这个会话的这一类事要不要上报：先看总开关，再看工作区覆盖。没配主人号就不报（发不出去）。 */
   function enabled(kind, sessionId) {
     const cfg = getConfig?.() || {}
-    if (!cfg.enabled || !cfg.ownerQQ) return false
+    if (disposed || !cfg.enabled || !cfg.ownerQQ) return false
     const n = cfg.notice || {}
     if (n.enabled === false) return false
     if (n[kind] === false) return false
@@ -92,6 +93,7 @@ export function createNoticeRelay({ getConfig, workspaceOf, compose, log, window
     }
     retry += 1
     log?.info?.(`上报推送没成功（第 ${retry} 次重试）：${items.length} 条`)
+    if (disposed) return false
     for (const it of items) buf.set(it.id, it)
     schedule(retryDelayMs)
     return false
@@ -129,5 +131,6 @@ export function createNoticeRelay({ getConfig, workspaceOf, compose, log, window
     return had
   }
 
-  return { announce, enabled, cancel, flush, pending: () => buf.size, seen }
+  function dispose() { disposed = true; take(); seen.clear() }
+  return { announce, enabled, cancel, flush, dispose, pending: () => buf.size, seen }
 }
