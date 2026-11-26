@@ -23,6 +23,10 @@ import { Backup, Browser, LocalApi, Logs, Security, Song } from '../tabs/system/
 import { VoiceTab } from '../tabs/chat/voice.ts'
 
 // ---------------- 面板主体 ----------------
+function PanelLayout({ navigation, children }) {
+  return h('div', { className: 'ab-wrap' }, navigation, h('main', { className: 'ab-content' }, children))
+}
+
 function AurabotPage() {
   useStyle()
   const [st, setSt] = useState(null)
@@ -259,16 +263,7 @@ function AurabotPage() {
     return () => { stopped = true; clear(); document.removeEventListener('visibilitychange', onVis) }
   }, [ready])
   const go = (id) => { setTab(id); try { localStorage.setItem('aurabot.tab', id) } catch (e) {} }
-  // 标签多、一屏放不下：滚轮横着滚，选中的标签自动滚进视野
-  const tabsRef = useRef(null)
-  useEffect(() => {
-    const el = tabsRef.current
-    if (!el) return
-    const onWheel = (e) => { if (el.scrollWidth > el.clientWidth && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { el.scrollLeft += e.deltaY; e.preventDefault() } }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  })
-  useEffect(() => { tabsRef.current?.querySelector('.ab-tab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }) }, [tab])
+
   // 未保存标记对的是「草稿基线」（/panel/config 快照），不再是 /state 的配置——
   // pulse 和 /save 返回的配置只更新展示，不回灌草稿，也不做基线。
   const dirty = useMemo(() => Boolean(draft && draftBaseRef.current) && JSON.stringify(draft) !== JSON.stringify(draftBaseRef.current), [draft])
@@ -415,7 +410,7 @@ function AurabotPage() {
     const shellTabs = TABS
     const shellCur = shellTabs.find((t) => t.id === tab) || shellTabs[0]
     return h('div', { className: 'ab-root' },
-      h('div', { className: 'ab-wrap' },
+      h(PanelLayout, { navigation: h(NavBar, { tabs: shellTabs, cur: shellCur, go, mark: () => null }) },
         h('div', { className: 'ab-hero' },
           h('div', { className: 'ab-avatar', style: { display: 'grid', placeItems: 'center', fontSize: 34 } }, '🐋'),
           h('div', { className: 'ab-hero-main' },
@@ -427,7 +422,6 @@ function AurabotPage() {
             h('div', { className: 'ab-switch-row' }, h('span', null, '总开关'), h(Switch, { on: false, disabled: true, onChange: () => {} })),
             h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试模式'), h(Switch, { on: false, disabled: true, onChange: () => {} })),
             h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试'), h(Switch, { on: false, disabled: true, onChange: () => {} })))),
-        h(NavBar, { tabs: shellTabs, cur: shellCur, go, dirtyOf: () => false, subRef: tabsRef, mark: () => null }),
         h('div', { className: 'ab-boot-note' },
           bootErr
             ? h(Fragment, null, h('b', null, hint), h('div', { className: 'ab-spacer' }),
@@ -499,7 +493,15 @@ function AurabotPage() {
     return (TAB_KEYS[id] || []).some((k) => JSON.stringify(draft[k]) !== JSON.stringify(base[k]))
   }
   return h('div', { className: 'ab-root' },
-    h('div', { className: 'ab-wrap' },
+    h(PanelLayout, { navigation: h(NavBar, {
+        tabs, cur: curTab, go,
+        mark: (t) => {
+          if (tabDirty(t.id)) return h('i', { className: 'dirty', title: '有没保存的改动' })
+          if (!t.flag && !t.flagFn) return null
+          const flag = t.flagFn ? t.flagFn(cfg) : t.flag === 'group' ? cfg.allow.groups.length > 0 : getPath(cfg, t.flag) ?? t.flagDefault
+          return h('i', { className: cx('ab-dot', flag && 'ok'), title: flag ? '开着' : '关着' })
+        },
+      }) },
       h('div', { className: 'ab-hero' },
         h('button', { type: 'button', className: 'ab-avatar-btn', title: '点击换头像', onClick: () => pickAvatar(toast, reload) }, h('img', { className: 'ab-avatar', src: avatarSrc(st), alt: '头像' }), h('span', { className: 'ab-avatar-tip' }, '换头像')),
         h('div', { className: 'ab-hero-main' },
@@ -513,15 +515,6 @@ function AurabotPage() {
         h('div', { className: 'ab-hero-side' },
           h('div', { className: 'ab-switch-row' }, h('span', null, '总开关'), h(Switch, { on: cfg.enabled, onChange: (v) => quickToggle('enabled', v) })),
           h('div', { className: 'ab-switch-row' }, h('span', { className: 'ab-muted' }, '调试日志'), h(Switch, { on: cfg.debug, onChange: (v) => toggleRun('debug', v), title: '开：日志页显示 debug 级别的输出；关：只显示 info / warn / error' })))),
-      h(NavBar, {
-        tabs, cur: curTab, go, dirtyOf: tabDirty, subRef: tabsRef,
-        mark: (t) => {
-          if (tabDirty(t.id)) return h('i', { className: 'dirty', title: '有没保存的改动' })
-          if (!t.flag && !t.flagFn) return null
-          const flag = t.flagFn ? t.flagFn(cfg) : t.flag === 'group' ? cfg.allow.groups.length > 0 : getPath(cfg, t.flag) ?? t.flagDefault
-          return h('i', { className: cx('ab-dot', flag && 'ok'), title: flag ? '开着' : '关着' })
-        },
-      }),
       saveConflict ? h('div', { className: 'ab-note err', role: 'alert' }, saveConflict, h(Btn, { small: true, onClick: discardDraft }, '读取最新设置')) : null,
       h(TabBoundary, { key: curTab.id, onHome: () => go('overview') }, h(body, { ...props, page: curTab.page, mod: curTab.ext, extensions: voiceExtensions })),
       // dsh-image 已经嵌进「生图」页的「接口格式」里了，这里再渲染一次就是同一张卡出现两遍。
