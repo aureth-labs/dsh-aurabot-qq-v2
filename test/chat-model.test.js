@@ -122,7 +122,7 @@ before(async () => {
     enabled: true, dryRun: false, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
     allow: { private: [OWNER, FRIEND], groups: ['777', '888'] },
     group: { interjectChance: 0 },
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, dir: join(dataDir, 'no-snowluma') },
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0 }, stickers: { autoChance: 0 },
     merge: { waitSec: 0.2, maxSec: 2 },
     modules: { bili: { enabled: false } },

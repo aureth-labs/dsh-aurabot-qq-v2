@@ -96,6 +96,17 @@ function normalizeNotice (v: unknown, legacyNotify: unknown): AurabotConfig['not
 
 export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   const c = deepMerge<AurabotConfig>(DEFAULTS, raw)
+  // v1 的 snowluma 段只保留连接地址，迁到通用的 onebot 段；其余启动/注入字段一律丢弃。
+  const legacySnow = isObj(raw?.snowluma) ? raw.snowluma : {}
+  const rawOnebot = isObj(raw?.onebot) ? raw.onebot : legacySnow
+  c.onebot = {
+    httpUrl: String(rawOnebot.httpUrl || '').trim(),
+    wsUrl: String(rawOnebot.wsUrl || '').trim(),
+    httpToken: String(rawOnebot.httpToken || '').trim(),
+    wsToken: String(rawOnebot.wsToken || '').trim(),
+  }
+  delete (c as RawConfig).snowluma
+  delete (c as RawConfig).gateway
   // 几个老字段是从原始配置里直接读的（不经过 deepMerge），先摘出来，免得每处都判一遍
   const rawMemory = isObj(raw?.memory) ? raw.memory : {} as RawConfig
   const rawDouyin = isObj(raw?.douyin) ? raw.douyin : {} as RawConfig
@@ -124,7 +135,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   const approvalSec = Number(c.approvalTimeoutSec)
   c.approvalTimeoutSec = Number.isFinite(approvalSec) ? Math.min(1800, Math.max(30, Math.round(approvalSec))) : 300
   c.qqApi.enabled = bool(c.qqApi.enabled, true)
-  c.gateway = c.gateway === 'onebot' ? 'onebot' : 'snowluma'
   // 只认绝对路径（Windows 的 D:\\… 或 Linux 的 /…），别的当没填
   c.workspaceDir = String(c.workspaceDir || '').trim()
   if (c.workspaceDir && !/^([a-zA-Z]:[\\/]|\/)/.test(c.workspaceDir)) c.workspaceDir = ''
@@ -427,7 +437,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   for (const k of ['atOwnerOnLikeChance', 'minimize', 'socialInterruptBrowse', 'replyPollMinutes']) delete d[k]
 
   delete c.mood.maxInjectPerDay // 旧版的「每天最多提醒几次」，现在心情明显时每轮都会带上
-  c.snowluma.webuiPort = num(c.snowluma.webuiPort, 15099, 1, 65535)
   // 老配置只有一个 consolidateAt：换成两个时间点（它 + 12 小时后）
   if (!Array.isArray(rawMemory.consolidateTimes) && rawMemory.consolidateAt) {
     const [hh, mm] = hhmm(rawMemory.consolidateAt, '04:00').split(':').map(Number)
@@ -727,7 +736,7 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
 }
 
 // 面板里不回传原文的字段：路径（几层都行）
-const SECRETS = [['voice', 'fishApiKey'], ['snowluma', 'webuiPassword'], ['snowluma', 'httpToken'], ['snowluma', 'wsToken'], ['imageGen', 'apiKey'], ['imageGen', 'minimax', 'apiKey'], ['voice', 'asrApi', 'apiKey'], ['memory', 'vector', 'apiKey'], ['memory', 'rerank', 'apiKey'], ['song', 'neteaseCookie'], ['bili', 'cookie'], ['bili', 'sessdata'], ['bili', 'biliJct'], ['heybox', 'cookie'], ['bridge', 'token'], ['video', 'minimax', 'apiKey'], ['video', 'custom', 'headers'], ['voice', 'volcano', 'apiKey'], ['voice', 'breeze', 'key'], ['voice', 'breeze', 'password'], ['voice', 'minimax', 'apiKey'], ['backup', 'remote', 'token'], ['backup', 'remote', 'webdav', 'password']]
+const SECRETS = [['voice', 'fishApiKey'], ['onebot', 'httpToken'], ['onebot', 'wsToken'], ['imageGen', 'apiKey'], ['imageGen', 'minimax', 'apiKey'], ['voice', 'asrApi', 'apiKey'], ['memory', 'vector', 'apiKey'], ['memory', 'rerank', 'apiKey'], ['song', 'neteaseCookie'], ['bili', 'cookie'], ['bili', 'sessdata'], ['bili', 'biliJct'], ['heybox', 'cookie'], ['bridge', 'token'], ['video', 'minimax', 'apiKey'], ['video', 'custom', 'headers'], ['voice', 'volcano', 'apiKey'], ['voice', 'breeze', 'key'], ['voice', 'breeze', 'password'], ['voice', 'minimax', 'apiKey'], ['backup', 'remote', 'token'], ['backup', 'remote', 'webdav', 'password']]
 // 扩展模块设置里的密码类字段（模块加载时登记）：['ext', 模块id, 字段]
 const extraSecrets = new Map()
 export function registerSecretField(path) { extraSecrets.set(path.join('\u0000'), path) }

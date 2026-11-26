@@ -1,4 +1,4 @@
-// SnowLuma 的 OneBot 接口清单：qq_api 工具按这张表放行。
+// OneBot 扩展接口清单：qq_api 工具按这张表放行。
 // 每项是 [谁能用, 参数（! = 必填）, 说明]。open：这一轮谁都能用，只能查当前群；owner：只有主人开口才行。
 // 没列的就是不开放：取 Cookie 和凭据、发原始包、读写本机路径、绕过发送闸门的 send_msg、删好友、退群。
 
@@ -70,7 +70,7 @@ export const QQ_API = {
   get_share_link: ['owner', 'fileset_id!', '获取指定闪传文件集的分享链接'],
   get_status: ['owner', '', '获取账号在线状态、链路健康状态和实例运行时间'],
   get_unidirectional_friend_list: ['owner', '', '获取单向好友列表'],
-  get_version_info: ['owner', '', '获取 SnowLuma 实现版本与 OneBot 协议版本'],
+  get_version_info: ['owner', '', '获取协议端实现版本与 OneBot 协议版本'],
   group_poke: ['owner', 'group_id!,user_id!', '在群内向指定成员发送拍一拍'],
   list_filesets: ['owner', '', '列出当前账号的闪传文件集'],
   mark_group_msg_as_read: ['owner', 'message_id!,group_id', '按消息标识将对应群会话标记已读'],

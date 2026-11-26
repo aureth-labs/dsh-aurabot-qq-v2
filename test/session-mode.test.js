@@ -18,7 +18,7 @@ const MAP = join(dataDir, 'sessions.json')
 writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
   enabled: true, dryRun: true, debug: false, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
   allow: { private: [], groups: [] },
-  snowluma: { autoStart: false, autoAttach: false, dir: join(dataDir, 'none') },
+  onebot: {},
   voice: { enabled: false }, merge: { enabled: false },
 }))
 

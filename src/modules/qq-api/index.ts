@@ -1,4 +1,4 @@
-// 内置模块：QQ 接口。SnowLuma 能做的事太多，不一个个写工具：一张权限表（actions.js）加两个工具，
+// 内置模块：QQ 接口。协议端能做的事太多，不一个个写工具：一张权限表（actions.js）加两个工具，
 // 工具定义短，不占提示词；她要用时先查再调。
 
 import { defineTool, str } from '../../tools/index.ts'
@@ -111,7 +111,7 @@ export default {
   id: 'qq-api',
   name: 'QQ 接口',
   version: '1.0.0',
-  description: '把 SnowLuma 的 QQ 能力交给她：查群公告、精华、荣誉、群文件，主人开口时还能撤回、设精华、改群名片等（qq_api_find / qq_api_call）',
+  description: '把协议端的 QQ 能力交给她：查群公告、精华、荣誉、群文件，主人开口时还能撤回、设精华、改群名片等（qq_api_find / qq_api_call）',
   api: 1,
   setup(api) {
     const { hub, onebot } = api.core

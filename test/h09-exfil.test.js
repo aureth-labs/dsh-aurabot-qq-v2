@@ -48,7 +48,7 @@ before(async () => {
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
     enabled: true, dryRun: false, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
     allow: { private: [OWNER, GUEST], groups: [G555] },
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, dir: join(dataDir, 'none') },
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0, enabled: false },
     stickers: { autoChance: 0, enabled: false },
     memory: { enabled: false },

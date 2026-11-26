@@ -166,7 +166,7 @@ export async function fetchGuarded (url: string, o: GuardedOptions = {}): Promis
 
 /**
  * 取一个 OneBot 图片 / 表情段的字节：先试 url，再试 file；都不行就问网关 get_image 换真实地址。
- * （SnowLuma 对内联来源的图片只给 `file: <md5>.png`，url 为空。）
+ * （部分协议端对内联来源的图片只给 `file: <md5>.png`，url 为空。）
  */
 export async function segmentBytes (seg: ImageSegment | null | undefined, onebot?: OneBotGateway | null, o: FetchOptions = {}): Promise<Buffer> {
   const d = (seg && seg.data) || {}

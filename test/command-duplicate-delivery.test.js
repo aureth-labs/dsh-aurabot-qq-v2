@@ -35,7 +35,7 @@ before(async () => {
     botQQ: BOT,
     ownerQQ: OWNER,
     allow: { private: [OWNER], groups: [] },
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, dir: join(dataDir, 'no-snowluma') },
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { enabled: false },
     stickers: { autoChance: 0, collect: false },
     merge: { enabled: false },

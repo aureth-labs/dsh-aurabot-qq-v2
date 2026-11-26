@@ -62,9 +62,8 @@ export const DEFAULTS = {
   // 定时任务这类没人应答的场合，只有打开这个开关才允许派活。关着 = 一律拒绝（一审 #177 的审批策略）。
   subagentBackground: false,
   allow: { private: [] as string[], groups: [] as string[] }, // 主人永远能私聊，不用写进白名单
-  // 用什么接 QQ：snowluma = 插件帮你管 SnowLuma（Windows）；onebot = 接你已有的 OneBot v11 机器人（NapCat、LLOneBot、Lagrange、Docker 里的 SnowLuma……），
-  // 这时只按下面 snowluma.httpUrl / wsUrl / token 去连，不启动、不注入任何东西
-  gateway: 'snowluma',
+  // OneBot v11 连接：NapCat、LLOneBot、Lagrange、Docker 里的协议端都行，插件只连接。
+  onebot: { httpUrl: '', wsUrl: '', httpToken: '', wsToken: '' },
   workspaceDir: '', // QQ 会话放在哪个文件夹（DSH 里的「Aurabot · QQ」工作区）；留空 = 默认（用户目录下 Aurabot\\qq-chats）
   // 发文件（#52）：默认开但限制很多——她只能把 QQ 工作区（workspaceDir）和 dirs 里列的目录中的文件当文件发出去；
   // 单个文件有大小上限；主人私聊里能触发，群里只在主人开口那一轮能触发（可以发给白名单里的人和群）。日志里会记下发了什么。
@@ -85,18 +84,6 @@ export const DEFAULTS = {
   // 聊天回复/工具/审批/定时任务本身不变。offPeakHolidays 是中国法定节假日（北京时间日期 'YYYY-MM-DD'）。
   cost: { offPeak: false, offPeakHolidays: [] as string[] },
   update: { unstable: null as string | null }, // 订阅不稳定版本（beta、rc）；null = 没选过，按正在用的版本定
-  snowluma: {
-    dir: 'C:\\Aurabot\\snowluma', // 主人自己下载解压到这里（EULA 不允许自动部署）
-    autoStart: true, // 随 DSH 启动它（只启动主人已安装并同意过协议的副本）
-    webuiPort: 15099, // SnowLuma 控制台端口；5099 在开了 Hyper-V 的 Windows 上常落在系统保留段，默认改用 15099
-    webuiPassword: '', // 插件自动生成并保存（第一次启动 SnowLuma 时）；用来调 /api/processes 只给机器人号注入
-    passwordAuto: false,
-    autoAttach: true, // 自动给机器人号所在的 QQ 进程注入（绝不碰别的号）
-    httpUrl: '', // 留空 = 从 SnowLuma 配置里自动读
-    wsUrl: '',
-    httpToken: '',
-    wsToken: '',
-  },
   model: { provider: '', model: '', reasoningEffort: 'low', vision: 'auto' }, // 留空 = 跟随 DSH 默认；vision: auto/on/off
   // 按聊天选模型（主人在面板「模型」页设）：私聊 QQ 号 > 群号 > 所有私聊 / 所有群默认 > 上面的全局模型；没写的一级退到下一级
   chatEfforts: {}, // QQ 聊天单独选择的思考档位

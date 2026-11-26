@@ -39,7 +39,7 @@ function config () {
   return normalize({
     enabled: true, dryRun: false, setupDone: true, ownerQQ: OWNER, botQQ: '20000002',
     allow: { private: [OTHER], groups: [GROUP] }, voice: { enabled: false }, merge: { enabled: false },
-    stickers: { collect: false, autoChance: 0 }, snowluma: { autoStart: false, autoAttach: false, dir: join(root, 'no-snowluma') },
+    stickers: { collect: false, autoChance: 0 }, onebot: {},
   })
 }
 

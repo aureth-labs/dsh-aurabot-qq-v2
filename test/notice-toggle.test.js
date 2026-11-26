@@ -22,7 +22,7 @@ before(async () => {
     botQQ: BOT,
     ownerQQ: OWNER,
     allow: { private: [OWNER], groups: ['555'] },
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9', dir: join(dataDir, 'no-snowluma') },
+    onebot: { httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9' },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
   const host = await import('../src/plugin/index.ts')

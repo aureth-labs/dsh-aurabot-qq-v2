@@ -1,31 +1,24 @@
-import { useState, useEffect } from './core/ui/react.ts'
+import { useState } from './core/ui/react.ts'
 import { get, post } from './core/api/api.ts'
 import { Btn, Choices, Row, cx, h, useField } from './core/ui/ui.ts'
-import { Agreement, GatewayChoice, OneBotFields, SnowLumaAuth } from './tabs/chat/connect.ts'
+import { OneBotFields } from './tabs/chat/connect.ts'
 import { Backup } from './tabs/system/system.ts'
 
 // ---------------- 首次使用向导 ----------------
-const WIZ_STEPS = ['你们的 QQ 号', '接 QQ 网关', '启动并同意协议', '连上机器人号', '完成']
+const WIZ_STEPS = ['你们的 QQ 号', '接上机器人', '完成']
 
 function Wizard({ st, draft, setDraft, save, toast, reload, onClose }) {
   const [step, setStep] = useState(() => { try { return Number(localStorage.getItem('aurabot.wiz') || 0) } catch (e) { return 0 } })
   const go = (i) => { setStep(i); try { localStorage.setItem('aurabot.wiz', String(i)) } catch (e) {} }
   const f = useField(draft, setDraft)
-  const sl = st.snowluma
   const conn = st.onebot.state === 'connected'
   const login = st.onebot.login
-  const [procs, setProcs] = useState(null)
   const [live, setLive] = useState('dry')
-  // 接入机器人号：按钮 busy、45 秒还没连上就提示、以及一键诊断结果
-  const [attachBusy, setAttachBusy] = useState(false)
-  const [attachAt, setAttachAt] = useState(0)
-  const [slowAttach, setSlowAttach] = useState(false)
   const [diag, setDiag] = useState(null)
   const [diagBusy, setDiagBusy] = useState(false)
   const qqOk = /^\d{5,11}$/.test(draft.botQQ || '') && /^\d{5,11}$/.test(draft.ownerQQ || '') && draft.botQQ !== draft.ownerQQ
-  const external = draft.gateway === 'onebot'
   const verified = conn && login && String(login.uin) === String(st.config.botQQ) && !st.onebot.problem
-  const canNext = [qqOk, external ? Boolean(draft.snowluma.wsUrl || st.config.snowluma.wsUrl) : sl.installed, external || (sl.running && sl.consented), verified, true][step]
+  const canNext = [qqOk, Boolean(draft.onebot.wsUrl || st.config.onebot.wsUrl), true][step]
   const next = async () => {
     if ((step === 0 || step === 1) && !(await save({ ...draft, enabled: true }))) return
     go(Math.min(step + 1, WIZ_STEPS.length - 1))
@@ -36,31 +29,9 @@ function Wizard({ st, draft, setDraft, save, toast, reload, onClose }) {
     toast(r.message, r.ok ? 'ok' : 'err')
     if (r.ok) { try { localStorage.removeItem('aurabot.wiz') } catch (e) {} reload(); onClose && onClose() }
   }
-  // 点了接入之后每 2 秒刷新一次状态；45 秒还没好就提示去看诊断
-  useEffect(() => {
-    if (!attachAt || verified) return undefined
-    const slow = setTimeout(() => setSlowAttach(true), 45000)
-    const timer = setInterval(() => reload(), 2000)
-    return () => { clearTimeout(slow); clearInterval(timer) }
-  }, [attachAt, verified])
-  const attach = async () => {
-    if (attachBusy) return
-    setAttachBusy(true)
-    setAttachAt(Date.now())
-    setSlowAttach(false)
-    try {
-      const r = await Promise.race([
-        post('/snowluma/attach'),
-        new Promise((resolve) => setTimeout(() => resolve({ ok: false, message: '接入超时（35 秒）：SnowLuma 控制台或 QQ 可能卡住了，点「一键诊断」看看' }), 35000)),
-      ])
-      toast(r.message, r.ok ? 'ok' : 'err')
-    } catch (e) { toast('接入失败：' + (e.message || e), 'err') }
-    setAttachBusy(false)
-    reload()
-  }
   const diagnose = async () => {
     setDiagBusy(true)
-    const r = await get('/snowluma/diagnose')
+    const r = await get('/diagnose')
     setDiagBusy(false)
     setDiag(r)
   }
@@ -73,58 +44,26 @@ function Wizard({ st, draft, setDraft, save, toast, reload, onClose }) {
       h(Row, { label: 'ta怎么称呼你' }, f.text('ownerName', { placeholder: '主人' })),
       h(Row, { label: '工作区文件夹', hint: 'ta在 QQ 会话里读写文件的地方，C 盘空间紧就放到别的盘，比如 D:\\Aurabot\\qq-chats。填完整路径，留空用默认位置。以后想换，在「连接」页能搬。聊天记录和记忆在用户目录的 .dsh 里，不在这个文件夹' }, f.text('workspaceDir', { size: 'wide', placeholder: st.workspaceDir || '' })),
       draft.botQQ && draft.ownerQQ && draft.botQQ === draft.ownerQQ ? h('div', { className: 'ab-note err' }, '机器人号和主人号不能是同一个。') : null),
-    // 1. SnowLuma，或接已有的 OneBot 机器人
-    external ? h('div', null,
-      h(GatewayChoice, { draft, setDraft }),
-      h('p', { className: 'ab-desc', style: { marginTop: 10 } }, '让你的 OneBot 服务（NapCat、LLOneBot、Lagrange、Docker 里的 SnowLuma……）登录机器人号，把它的正向 WebSocket 地址填在下面。插件只连接，不会启动或注入任何东西。'),
-      h(OneBotFields, { draft, f })) :
+    // 1. OneBot 地址
     h('div', null,
-      h(GatewayChoice, { draft, setDraft }),
-      h('p', { className: 'ab-desc', style: { marginTop: 10 } }, 'SnowLuma 是让机器人号上线的 QQ 网关。它的协议不允许别的程序自动下载安装，所以这一步要你自己来（只用做一次）。'),
-      h('div', { className: 'ab-steps' },
-        h('div', { className: 'ab-step' }, h('div', null, h('b', null, '下载'), h('div', { className: 'ab-muted ab-small' }, '下载 Windows 完整版，文件名类似 SnowLuma-v2.x.x-win-x64.zip（不带 lite）。'),
-          h('div', { style: { marginTop: 6 } }, h(Btn, { small: true, onClick: () => window.open(sl.downloadPage, '_blank') }, '打开下载页 ↗')))),
-        h('div', { className: cx('ab-step', sl.installed && 'done') }, h('div', null, h('b', null, '解压到纯英文目录'), h('div', { className: 'ab-muted ab-small' }, '推荐 C:\\Aurabot\\snowluma，解压后目录里能直接看到 index.mjs。'),
-          h('div', { className: 'ab-flex', style: { marginTop: 6 } }, f.text('snowluma.dir', { size: 'wide', placeholder: 'C:\\Aurabot\\snowluma' }), h(Btn, { small: true, onClick: async () => { await save(draft); reload() } }, '检查')),
-          h('div', { className: 'ab-small', style: { marginTop: 4, color: sl.installed && (!sl.compat || sl.compat.status === 'ok') ? 'var(--ab-ok)' : 'var(--ab-warn)' } }, sl.installed ? '✓ 找到了 SnowLuma v' + sl.version + (sl.compat ? '（' + sl.compat.label + '）' : '') : sl.reason))))),
-    // 2. 启动 + 协议（接自己的 OneBot 时不用）
-    external ? h('div', null, h('p', { className: 'ab-desc' }, '用的是你自己的 OneBot 服务，这一步不用做，直接下一步。')) :
+      h('p', { className: 'ab-desc' }, '让你的 OneBot v11 服务（NapCat、LLOneBot、Lagrange、Docker 里的实现等）登录机器人号，把它的正向 WebSocket 地址填在下面。插件只连接，不会启动或注入任何东西；连上后会先核对登录的是不是机器人号，不是就断开。'),
+      h(OneBotFields, { draft, f }),
+      h(Row, { label: '机器人 QQ 号' }, f.text('botQQ'))),
+    // 2. 完成
     h('div', null,
-      h('p', { className: 'ab-desc' }, '点启动后它在后台运行（不弹窗口），控制台密码由插件自动生成和保存，你不用记。'),
-      h('div', { className: 'ab-flex', style: { marginBottom: 10 } },
-        h(Btn, { kind: 'primary', small: true, disabled: sl.running, onClick: async () => { toast('正在启动…'); const r = await post('/snowluma/start'); toast(r.message); reload() } }, sl.running ? '✓ 已在运行' : '启动 SnowLuma'),
-        h(SnowLumaAuth, { running: sl.running, toast, onChange: reload })),
-      h(Agreement, { running: sl.running, toast, onChange: reload })),
-    // 3. 接入
-    h('div', null,
-      external ? h('p', { className: 'ab-desc' }, '确认你的 OneBot 服务登录的是机器人号 ' + (st.config.botQQ || '') + '，然后点「测试连接」。插件连上后会先核对登录的号，不是机器人号就断开。') :
-      h('p', { className: 'ab-desc' }, '在这台电脑上另开一个 QQ，登录机器人号 ' + (st.config.botQQ || '') + '（可以最小化）。你的大号 QQ 照常开着就行——插件只会接入机器人号，绝不碰别的号。QQ 需要 NT 9.9.33 及以上（SnowLuma 2.4 的要求）：旧版 QQ 注入不了，先升级 QQ。'),
-      external ? h('div', { className: 'ab-flex' },
-        h(Btn, { kind: 'primary', small: true, onClick: async () => { const r = await post('/onebot/reconnect'); toast(r.message, r.ok ? 'ok' : 'err'); reload() } }, '连接'),
-        h(Btn, { small: true, onClick: async () => { const r = await get('/onebot/test'); toast(r.message) } }, '测试连接')) :
-      h('div', { className: 'ab-flex', style: { flexWrap: 'wrap', gap: 8 } },
-        h(Btn, { kind: 'primary', small: true, disabled: attachBusy, onClick: attach }, attachBusy ? '接入中…' : '接入机器人号'),
-        h(Btn, { small: true, disabled: diagBusy, onClick: diagnose }, diagBusy ? '诊断中…' : '一键诊断'),
-        h(Btn, { small: true, onClick: async () => { const r = await get('/snowluma/processes'); setProcs(r.list || []); if (!r.ok) toast(r.message) } }, '看看有哪些 QQ 进程'),
-        h(Btn, { small: true, onClick: async () => { const r = await get('/onebot/test'); toast(r.message) } }, '测试连接')),
-      sl.lastAttach && sl.lastAttach.at ? h('div', { className: 'ab-small', style: { marginTop: 8, color: sl.lastAttach.ok ? 'var(--ab-ok)' : 'var(--ab-warn)' } }, sl.lastAttach.message) : null,
-      conn && login
-        ? h('div', { className: 'ab-note', style: { marginTop: 10 } }, login.uin === st.config.botQQ ? '✓ 连上了：' + login.nickname + '（' + login.uin + '）' : '⚠ 连上的是 ' + login.uin + '，不是机器人号')
-        : h('div', null,
-          st.onebot.problem ? h('div', { className: 'ab-note warn', style: { marginTop: 10 } }, h('b', null, '还连不上的原因：'), st.onebot.problem,
-            slowAttach ? h('div', { className: 'ab-small', style: { marginTop: 6 } }, '已经等了 45 秒还没连上：先按上面的原因排查，或者点「一键诊断」。') : null) : null,
-          h('div', { className: 'ab-muted ab-small', style: { marginTop: 8 } }, '接入后一般十几秒内会连上；连不上时这里会直接写出卡在哪一步。')),
+      h('p', { className: 'ab-desc' }, '连接状态：' + (conn ? (login ? '已连上 ' + login.nickname + '（' + login.uin + '）' : '已连上') : '还没连上')),
+      h('div', { className: 'ab-flex', style: { flexWrap: 'wrap', gap: 8, marginBottom: 10 } },
+        h(Btn, { small: true, onClick: async () => { const r = await post('/onebot/reconnect'); toast(r.message, r.ok ? 'ok' : 'err'); reload() } }, '连接 / 重新连接'),
+        h(Btn, { small: true, onClick: async () => { const r = await get('/onebot/test'); toast(r.message) } }, '测试连接'),
+        h(Btn, { small: true, disabled: diagBusy, onClick: diagnose }, diagBusy ? '诊断中…' : '一键诊断')),
+      !conn && st.onebot.problem ? h('div', { className: 'ab-note warn' }, h('b', null, '还连不上的原因：'), st.onebot.problem) : null,
       diag ? h('div', { className: 'ab-note', style: { marginTop: 10 } },
-        h('div', { className: 'ab-small' }, '诊断结果：' + (diag.ok ? ((diag.items || []).some((it) => it.warn) ? '正常，有提示项（橙色 !）' : '全部正常') : '有问题，看下面带 ✗ 的项')),
+        h('div', { className: 'ab-small' }, '诊断结果：' + (diag.ok ? '全部正常' : '有问题，看下面带 ✗ 的项')),
         (diag.items || []).map((it) => h('div', { key: it.id, className: 'ab-small', style: { padding: '5px 0', borderTop: '1px solid var(--ab-line)' } },
-          h('span', { style: { color: it.warn ? '#e6a23c' : it.ok ? 'var(--ab-ok)' : 'var(--ab-warn)' } }, it.warn ? '! ' : it.ok ? '✓ ' : '✗ '),
-          h('b', { style: it.warn ? { color: '#e6a23c' } : null }, it.label + '：'), it.detail,
-          (it.warn || !it.ok) && it.hint ? h('div', { className: 'ab-muted' }, '→ ' + it.hint) : null)),
-        diag.problem ? h('div', { className: 'ab-muted ab-small', style: { marginTop: 6 } }, '当前提示：' + diag.problem) : null) : null,
-      procs ? h('table', { className: 'ab-table', style: { marginTop: 10 } }, h('tbody', null, procs.map((p) => h('tr', { key: p.pid }, h('td', null, p.pid), h('td', null, p.uin || '识别不出'), h('td', null, p.nickname || ''), h('td', null, p.isBot ? h('span', { className: 'ab-badge' }, '机器人号') : h('span', { className: 'ab-muted ab-small' }, '不会碰')))))) : null),
-    // 4. 完成
-    h('div', null,
-      h('p', { className: 'ab-desc' }, '都准备好了！最后选一下ta怎么上线：'),
+          h('span', { style: { color: it.ok ? 'var(--ab-ok)' : 'var(--ab-warn)' } }, it.ok ? '✓ ' : '✗ '),
+          h('b', null, it.label + '：'), it.detail,
+          !it.ok && it.hint ? h('div', { className: 'ab-muted' }, '→ ' + it.hint) : null))) : null,
+      h('p', { className: 'ab-desc', style: { marginTop: 14 } }, '最后选一下ta怎么上线：'),
       h(Choices, { value: live, onChange: setLive, options: [
         { value: 'dry', label: '先试运行', desc: 'ta会照常思考，但只写进日志、不真的发出去。看几条没问题再在右上角关掉试运行' },
         { value: 'live', label: '直接上线', desc: '马上开始真的回 QQ 消息' },

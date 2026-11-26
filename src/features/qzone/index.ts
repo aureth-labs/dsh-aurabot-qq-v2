@@ -115,7 +115,7 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
         let total = null
         let complete = false
         let pos = 0
-        // #70：SnowLuma 单页上限约 30，请求 num=100 会被网关截断成 10 条（num=200 直接 0 条），
+        // #70：协议端单页上限约 30，请求 num=100 会被截断成 10 条（num=200 直接 0 条），
         // 再按 100 步进 pos 会错位、读不全。现在按 30 一页、按实际返回条数推进，
         // 并以「没有新 id / 没有新页」作为停止条件，不假设网关一定按请求页大小给。
         const PAGE = 30

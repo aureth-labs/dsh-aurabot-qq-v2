@@ -10,7 +10,7 @@ test('真实 QQ 命令入口绕过模型：单群、批量确认、面板同步�
   process.env.AURABOT_DATA_DIR = root; process.env.AURABOT_WORKSPACE = join(root, 'workspace')
   writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true,
     ownerQQ: OWNER, botQQ: '20000002', allow: { private: ['10000002'], groups: [G] }, voice: { enabled: false },
-    snowluma: { autoStart: false, autoAttach: false, dir: join(root, 'no-snowluma') }, merge: { enabled: false } }))
+    onebot: {}, merge: { enabled: false } }))
   const fake = createFakeDsh({ brain: async () => { throw new Error('命令不能进入 LLM') } })
   const app = (await import('../src/plugin/index.ts')).apply(fake.ctx)
   t.after(async () => { fake.dispose(); await app.dispose?.(); rmSync(root, { recursive: true, force: true }) })

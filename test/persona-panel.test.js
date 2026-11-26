@@ -401,7 +401,7 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify({ chats: { [chatId]: { sessionId: oldSession, sessions: { live: oldSession, debug: debugSession } } } }))
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: true, dryRun: true, setupDone: true,
     ownerQQ: OWNER, botQQ: '20000002', allow: { private: [ALICE, BOB] }, workspaceDir: join(dir, 'workspace'),
-    snowluma: { autoStart: false, autoAttach: false }, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
+    onebot: {  }, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
   const fake = createFakeDsh({ brain: async () => '' })
   try {
     const { apply } = await import('../src/plugin/index.ts')

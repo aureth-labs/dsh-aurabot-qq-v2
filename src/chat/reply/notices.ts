@@ -1,7 +1,7 @@
 
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type NoticeTextOptions = Partial<Record<'botQQ' | 'name' | 'ownMessage' | 'faceName', any>>// QQ 通知事件翻成她能看懂的一句话。字段按 SnowLuma 的事件来；这里只管翻译，要不要记由中枢决定。
+type NoticeTextOptions = Partial<Record<'botQQ' | 'name' | 'ownMessage' | 'faceName', any>>// QQ 通知事件翻成她能看懂的一句话。字段按 OneBot v11 的事件来；这里只管翻译，要不要记由中枢决定。
 
 /** @returns {{chatId:string, text:string}|null} 不用让她知道的事件返回 null。name(qq) 把 QQ 号换成称呼。 */
 export function noticeText(ev, { botQQ, name = (qq) => String(qq), ownMessage = (_id?: unknown) => false, faceName = (_id?: unknown) => undefined as string | undefined } : NoticeTextOptions = {}) {
@@ -32,7 +32,7 @@ export function noticeText(ev, { botQQ, name = (qq) => String(qq), ownMessage = 
     case 'group_card':
       return group(`${who(ev.user_id)}把群名片改成了「${String(ev.card_new || '').slice(0, 30)}」`)
     case 'group_msg_emoji_like': {
-      // NapCat 直连时没有 sub_type，只有 is_add；SnowLuma 网关则是 sub_type=add/remove。
+      // 不同协议端的字段不一致：有的只给 is_add，有的给 sub_type=add/remove。
       const isAdd = typeof ev.is_add === 'boolean' ? ev.is_add : sub === 'add'
       if (!isAdd || !ownMessage(ev.message_id)) return null
       const list = (Array.isArray(ev.likes) ? ev.likes : [])

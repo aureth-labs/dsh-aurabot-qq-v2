@@ -133,7 +133,7 @@ before(async () => {
     allow: { private: [OWNER], groups: ['555', '556', '557', '558', '559'] },
     // 556 专门测按头衔不理
     titleFilter: { enabled: true, groups: ['556'], title: '大肥鱼' },
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, dir: join(dataDir, 'no-snowluma') },
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0 },
     stickers: { autoChance: 0, collectMode: 'auto' },
     // 大多数用例要的是「每次都回」，刹车放宽；558/559 专门测一段一回和刹车
@@ -765,8 +765,8 @@ test('面板接口：概览、人格切换', async () => {
   const s = (await fake.call('/state')).json()
   assert.equal(s.ok, true)
   assert.equal(s.onebot.state, 'connected')
-  assert.equal(s.config.snowluma.httpToken, '', '令牌不回传给面板')
-  assert.equal(s.config.snowluma.httpTokenSet, true)
+  assert.equal(s.config.onebot.httpToken, '', '令牌不回传给面板')
+  assert.equal(s.config.onebot.httpTokenSet, true)
   const p = (await fake.call('/personas')).json()
   assert.ok(p.list.some((x) => x.id === 'dafeiyu'))
   const saved = (await fake.call('/persona/save', { id: 'test2', name: '测试', body: '你是测试人格小蓝。' })).json()
@@ -1258,7 +1258,7 @@ test('翻聊天记录：读当前聊天更早的消息', async () => {
 
 const lastCall = (word) => until(() => { const t = fake.turns.at(-1); return t && String(t.userText || t.inputText || '').includes(word) && t.toolCalls.length ? t.toolCalls[0] : null })
 
-test('#6 改资料：默认仅主人私聊，昵称 / 签名 / 头像走 SnowLuma 对应动作', async () => {
+test('#6 改资料：默认仅主人私聊，昵称 / 签名 / 头像走协议端对应动作', async () => {
   mock.push(priv(OWNER, text('改昵称测试')))
   let c = await lastCall('改昵称测试')
   assert.equal(c.result.ok, true, c.result.message)

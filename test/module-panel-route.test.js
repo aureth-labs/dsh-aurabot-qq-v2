@@ -17,7 +17,7 @@ test('模块声明 panel 路由复用完整管理闸，普通客户端路由保�
       return { }
     }
   }`)
-  writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: true, dryRun: true, setupDone: true, ownerQQ: '10001', botQQ: '20002', voice: { enabled: false }, snowluma: { autoStart: false, autoAttach: false, dir: join(dir, 'no-snowluma') } }))
+  writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: true, dryRun: true, setupDone: true, ownerQQ: '10001', botQQ: '20002', voice: { enabled: false }, onebot: {} }))
   const fake = createFakeDsh({ brain: async () => '' })
   t.after(async () => {
     fake.dispose(); await new Promise(setImmediate)

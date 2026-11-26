@@ -205,7 +205,7 @@ test('过期表情不能经过现有保存工具绕过有效期', async (t) => {
 
 test('宿主卸载会关闭媒体缓存，旧中枢不能继续读写暂存文件', async () => {
   const s = setup()
-  writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, snowluma: { ...s.cfg.snowluma, autoStart: false, autoAttach: false, dir: join(s.dir, 'none') } }))
+  writeFileSync(join(s.dir, 'config.json'), JSON.stringify({ ...s.cfg, onebot: { ...s.cfg.onebot } }))
   const { createFakeDsh } = await import('./helpers/fake-dsh.js')
   const { apply } = await import('../src/plugin/index.ts')
   const fake = createFakeDsh({ brain: async () => '' }), api = apply(fake.ctx)

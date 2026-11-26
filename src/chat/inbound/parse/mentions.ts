@@ -25,7 +25,7 @@ export function memberNames(members) {
 
 /**
  * 名字或 QQ 号 → 唯一的 QQ 号；名字认不出或有重名返回空。
- * 数字 QQ 直接信任：群成员列表可能拉取失败/不全（SnowLuma 限流时），
+ * 数字 QQ 直接信任：群成员列表可能拉取失败/不全（协议端限流时），
  * 不能因为列表里没有就把她明确写的 <at:QQ号> 降级成文字（#77）。
  */
 export function resolveMember(who, byName, qqs?) {

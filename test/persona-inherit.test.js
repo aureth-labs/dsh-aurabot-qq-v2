@@ -41,7 +41,7 @@ before(async () => {
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
     enabled: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
     allow: { private: [OWNER], groups: [] },
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9', dir: join(dataDir, 'no-snowluma') },
+    onebot: { httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9' },
   }))
   fake = createFakeDsh({ brain: async () => '嗯' })
   fake.ctx.llm.stream = stream

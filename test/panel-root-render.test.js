@@ -105,7 +105,7 @@ const minimalSt = {
     persona: { current: 'dafeiyu' }, personas: PERSONAS,
     allow: { private: [], groups: [] },
     voice: { enabled: true, engine: 'windows' }, stickers: { enabled: true }, imageGen: { enabled: false },
-    memory: {}, snowluma: {}, security: {}, modules: {}, song: {}, diary: {}, speakUp: {}, group: {},
+    memory: {}, onebot: {  }, security: {}, modules: {}, song: {}, diary: {}, speakUp: {}, group: {},
   },
   onebot: { state: 'unconfigured', login: { uin: '20000002', nickname: '大肥鱼' } },
   personas: PERSONAS,
@@ -119,7 +119,7 @@ const minimalSt = {
   ],
   voice: { edgeInstalled: false },
   mood: { label: '开心' },
-  snowluma: { installed: false, running: false },
+  onebot: { installed: false, running: false },
   bridge: { http: false }, backup: {}, browser: {}, usage: {}, approvals: { list: [] }, tasks: [],
   chats: [], channels: [],
   stats: {},
@@ -127,7 +127,7 @@ const minimalSt = {
 const minimalDraft = {
   persona: { current: 'dafeiyu' },
   voice: { enabled: true, engine: 'windows', asr: false, asrApi: {} },
-  memory: {}, stickers: {}, imageGen: {}, snowluma: {}, security: {}, modules: {},
+  memory: {}, stickers: {}, imageGen: {}, onebot: {  }, security: {}, modules: {},
   song: {}, diary: {}, speakUp: {}, group: {}, bili: {}, douyin: {}, heybox: {}, video: {}, local: {},
 }
 const minimalBoot = {

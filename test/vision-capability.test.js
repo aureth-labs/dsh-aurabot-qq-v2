@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const REPO = new URL('..', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')
-const { modelVision, canSeeImages, clearVisionCache } = await import(`file:///${REPO}/src/core/llm.ts`)
+const { modelVision, canSeeImages, clearVisionCache } = await import('../src/core/llm/index.ts')
 
 const stub = (resolveModelInfo) => ({ llm: { resolveModelInfo }, get: () => null })
 
@@ -59,7 +59,7 @@ writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
   enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
   model: { provider: 'p', model: 'blind', reasoningEffort: '' },
   allow: { private: [], groups: [] },
-  snowluma: { autoStart: false, autoAttach: false, dir: join(dataDir, 'none') },
+  onebot: {},
   voice: { enabled: false }, merge: { enabled: false },
 }))
 

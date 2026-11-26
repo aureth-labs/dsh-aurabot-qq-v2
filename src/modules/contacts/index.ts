@@ -1,8 +1,8 @@
 // 内置模块：好友 / 加群申请与白名单。
 //  · qq_list_friend_requests：列出收到过的好友申请（QQ 号未知、被 QQ 过滤的也会列出来），按序号 / flag 处理。
-//  · qq_handle_friend_request：通过 / 拒绝别人加她为好友的申请（SnowLuma：set_friend_add_request；被 QQ 过滤的「可能认识的人」走 set_doubt_friends_add_request）。
+//  · qq_handle_friend_request：通过 / 拒绝别人加她为好友的申请（set_friend_add_request；被 QQ 过滤的「可能认识的人」走 set_doubt_friends_add_request）。
 //  · qq_whitelist：听主人的话把 QQ 号 / 群号加进、移出白名单（allow.private / allow.groups），写进配置并保存。
-// 「她主动加别人为好友」没做：SnowLuma（v2.2.0）没有这个接口，维护者明确说公开版不会加（SnowLuma#480）。
+// 「她主动加别人为好友」没做：OneBot v11 没有这个接口，上游实现也不打算加（SnowLuma#480）。
 // 好友申请 / 加群申请 / 白名单工具共用「处理好友申请」这一档权限（面板「权限」页）：off 关 / owner 仅主人私聊（默认）/ all 所有人。
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -23,7 +23,7 @@ export function cleanId(v) {
   return ID_RE.test(s) ? s : ''
 }
 
-/** 申请人的 QQ 号是否未知：SnowLuma 把 uid 解析不成 QQ 号时会给 user_id=0。 */
+/** 申请人的 QQ 号是否未知：协议端把 uid 解析不成 QQ 号时会给 user_id=0。 */
 export function isUnknownUser(v) {
   return !v || String(v) === '0'
 }
@@ -124,7 +124,7 @@ export default {
       if (!ev || ev.post_type !== 'request') return
       if (ev.request_type === 'group') return onGroupRequest(ev)
       if (ev.request_type !== 'friend' || !ev.flag) return
-      // SnowLuma 解析不出 QQ 号时 user_id 会是 0（比如被 QQ 过滤的「可能认识的人」）：
+      // 协议端解析不出 QQ 号时 user_id 会是 0（比如被 QQ 过滤的「可能认识的人」）：
       // 这种申请也要记下来，flag 就是底层能直接处理的 uid，丢了主人就没法代为通过。
       const userId = String(ev.user_id || '0')
       const list = loadPending()

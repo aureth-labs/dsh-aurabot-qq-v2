@@ -19,7 +19,7 @@ before(async () => {
   process.env.AURABOT_WORKSPACE = join(dir, 'workspace')
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: false, dryRun: true, setupDone: true,
     ownerQQ: '10000001', botQQ: '20000002', voice: { enabled: false },
-    snowluma: { autoStart: false, autoAttach: false, dir: join(dir, 'no-snowluma') } }))
+    onebot: {} }))
   fake = createFakeDsh({ brain: async () => { throw new Error('设置保存不应开启对话') } })
   app = (await import('../src/plugin/index.ts')).apply(fake.ctx)
   await app.ready

@@ -1,4 +1,4 @@
-// OneBot v11（SnowLuma）的 Bot 实现。
+// OneBot v11 的 Bot 实现。
 // 只做「平台动作 → OneBot action」的翻译，不碰业务逻辑，也不改消息内容。
 
 import type {

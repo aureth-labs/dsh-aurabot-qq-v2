@@ -23,7 +23,7 @@ writeFileSync(LIB, JSON.stringify({ items: [{ md5: 'throwaway', file: 'throwaway
 writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
   enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
   allow: { private: [], groups: [String(GROUP)] },
-  snowluma: { autoStart: false, autoAttach: false, dir: join(dataDir, 'none') },
+  onebot: {},
   voice: { enabled: false },
   merge: { enabled: true, waitSec: 0.1, maxSec: 1, groupWaitSec: 0.1, groupMaxSec: 1 },
   stickers: { enabled: true, collect: true, collectMode: 'ask', caption: false, autoChance: 0, maxSide: 1600 },

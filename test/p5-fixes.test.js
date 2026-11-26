@@ -23,7 +23,7 @@ before(async () => {
     botQQ: '20000002',
     ownerQQ: '10000001',
     allow: { private: ['10000001'], groups: [] },
-    snowluma: { autoStart: false, autoAttach: false, dir: join(dataDir, 'no-snowluma') },
+    onebot: {},
     voice: { autoChance: 0 },
     stickers: { autoChance: 0 },
   }))

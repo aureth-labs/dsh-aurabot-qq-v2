@@ -5,25 +5,6 @@ import { LogLine } from '../../core/log/log-line.ts'
 import { Btn, Card, Empty, Switch, cx, h } from '../../core/ui/ui.ts'
 import { DebugChat } from '../system/system.ts'
 
-// SnowLuma 版本提醒：只针对「低于最低支持版本」弹一次；升级到 >= 2.3.4 或点过「不再提示」就不再出现
-const SNOWLUMA_WARN_KEY = 'aurabot.snowlumaCompatDismissed'
-
-function SnowLumaCompatBanner({ st, go }) {
-  const compat = st && st.snowluma && st.snowluma.compat
-  const [dismissed, setDismissed] = useState(() => { try { return localStorage.getItem(SNOWLUMA_WARN_KEY) === '1' } catch (e) { return false } })
-  if (!compat || compat.status !== 'outdated' || dismissed) return null
-  const dismiss = () => { try { localStorage.setItem(SNOWLUMA_WARN_KEY, '1') } catch (e) {} setDismissed(true) }
-  return h('div', { className: 'ab-note warn', style: { marginTop: 12 } },
-    h('div', { className: 'ab-flex', style: { alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-      h('b', null, '建议升级 SnowLuma'),
-      h('div', { className: 'ab-spacer' }),
-      h(Btn, { small: true, kind: 'ghost', onClick: dismiss }, '不再提示')),
-    h('div', { style: { marginTop: 6 } }, compat.message),
-    h('div', { className: 'ab-flex', style: { marginTop: 8, gap: 8, flexWrap: 'wrap' } },
-      h(Btn, { small: true, kind: 'primary', onClick: () => window.open(st.snowluma.downloadPage, '_blank') }, '打开下载页 ↗'),
-      h(Btn, { small: true, onClick: () => go('connect') }, '去连接页看看')))
-}
-
 /** 更新提示：GitHub 上有新版本时给「跟当前系统/形态对应」的命令、链接和更新按钮；刚更新完显示一次这次更新了什么。 */
 
 function UpdateNotes({ st, toast }) {
@@ -206,7 +187,7 @@ function Overview({ st, toast, go }) {
     cfg.enabled && cfg.debug ? h(Card, { title: '调试对话', desc: '在这里直接跟她说话：走她的人格和工具，但不经过 QQ、不写记忆。和左侧栏那个调试会话是同一个会话。' }, h(DebugChat, { toast })) : null,
     cfg.enabled && !cfg.debug && cfg.dryRun ? h('div', { className: 'ab-note' }, '现在是试运行：她会照常思考回复，但只写进日志，不会真的发到 QQ。注意试运行**会照常写记忆**；只想试人格、不想留痕迹请切到「调试」。') : null,
     st.outbox && st.outbox.count ? h('div', { className: 'ab-note warn' }, `网关还没就绪：已有 ${st.outbox.count} 条消息排队，连接后会自动补发。`) : null,
-    cfg.enabled && !conn ? h('div', { className: 'ab-note err' }, '还没连上 QQ 网关' + (st.onebot.problem ? '：' + st.onebot.problem + '。' : '。去「连接」标签看看 SnowLuma 有没有装好、启动没有。') + ' ', h('a', { href: '#', onClick: (e) => { e.preventDefault(); go('connect') } }, '去连接 →')) : null,
+    cfg.enabled && !conn ? h('div', { className: 'ab-note err' }, '还没连上 OneBot' + (st.onebot.problem ? '：' + st.onebot.problem + '。' : '。去「连接」标签检查地址和令牌。') + ' ', h('a', { href: '#', onClick: (e) => { e.preventDefault(); go('connect') } }, '去连接 →')) : null,
     st.outbox && st.outbox.count ? h('div', { className: 'ab-note warn' }, `网关还没就绪：已有 ${st.outbox.count} 条消息排队，连接后会自动补发。`) : null,
     h('div', { className: 'ab-grid ab-g4' },
       [['今天收到', s.received, '📥'], ['今天发出', s.sent, '📤'], ['语音条', s.voice, '🎙️'], ['表情包', s.stickers, '😺']].map(([l, n, ic]) => h('div', { key: l, className: 'ab-card ab-stat' }, h('span', { className: 'ic', 'aria-hidden': true }, ic), h('div', { className: 'n' }, n || 0), h('div', { className: 'l' }, l))),
@@ -353,7 +334,7 @@ function About({ st }) {
     h('div', { className: 'inner' }, children))
   return h('div', { className: 'ab-grid' },
     h(Card, { className: 'ab-about-lead', title: 'Aurabot · 住在 QQ 里的 AI 伙伴「大肥鱼」🐟', desc: 'v' + st.version + ' · 面板 API v' + (st.apiVersion || '?') },
-      h('p', null, '一个 DeepSeek Harness 插件，由 aureth-labs 组织维护，经 SnowLuma（OneBot v11 网关）接入 QQ。聊天、语音、表情包、日记这些是插件自带的本事；桌宠、抖音、小黑盒、群管这些本事在「模块市场」一键安装，模块本体都在模块仓库里，也可以自己写。'),
+      h('p', null, '一个 DeepSeek Harness 插件，由 aureth-labs 组织维护，经 OneBot v11 适配器接入 QQ。聊天、语音、表情包、日记这些是插件自带的本事；桌宠、抖音、小黑盒、群管这些本事在「模块市场」一键安装，模块本体都在模块仓库里，也可以自己写。'),
       h('div', { className: 'ab-flex', style: { marginTop: 14 } },
         h('a', { key: 'repo', className: 'ab-btn sm', href: repo, target: '_blank', rel: 'noreferrer' }, 'GitHub 主仓库'),
         h('a', { key: 'mods', className: 'ab-btn sm', href: mods, target: '_blank', rel: 'noreferrer' }, '模块仓库'),
@@ -416,4 +397,4 @@ function RecentLogs({ go }) {
       h('div', { className: 'ab-logs', style: { maxHeight: 240 } }, items.slice().reverse().map((e, i) => h(LogLine, { key: i, e }))))
 }
 
-export { SNOWLUMA_WARN_KEY, SnowLumaCompatBanner, UpdateNotes, ClaimBanner, usageCurrencies, usageCodes, usageMoney, UsageSummary, Overview, MANAGE_FEATURES, Manage, About, RecentLogs }
+export { UpdateNotes, ClaimBanner, usageCurrencies, usageCodes, usageMoney, UsageSummary, Overview, MANAGE_FEATURES, Manage, About, RecentLogs }

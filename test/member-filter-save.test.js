@@ -7,7 +7,7 @@ import { createFakeDsh } from './helpers/fake-dsh.js'
 let dir, fake, app
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'aurabot-filter-save-')); process.env.AURABOT_DATA_DIR = dir; process.env.AURABOT_WORKSPACE = join(dir, 'ws')
-  writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: false, setupDone: true, ownerQQ: '10000001', botQQ: '20000002', snowluma: { autoStart: false, autoAttach: false, dir: join(dir, 'no') } }))
+  writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: false, setupDone: true, ownerQQ: '10000001', botQQ: '20000002', onebot: {} }))
   fake = createFakeDsh({ brain: async () => 'unused' }); app = (await import('../src/plugin/index.ts')).apply(fake.ctx); await app.ready
 })
 after(() => { fake?.dispose(); rmSync(dir, { recursive: true, force: true }) })

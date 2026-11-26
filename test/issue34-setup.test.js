@@ -19,7 +19,7 @@ test('未核对不能跳过；已有连接核对机器人号后可以完成并�
   t.after(async () => { fake.dispose(); await mock.close() })
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
     enabled: true, setupDone: false, botQQ: BOT, ownerQQ: OWNER,
-    snowluma: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
   }))
   const { apply } = await import('../src/plugin/index.ts')
   const api = apply(fake.ctx)

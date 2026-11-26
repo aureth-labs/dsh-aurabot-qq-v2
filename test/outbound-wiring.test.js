@@ -743,7 +743,7 @@ test('面板路由：/panel/outbound-policy 能读能写，且只认合法档位
   writeF(pjoin(dir, 'config.json'), JSON.stringify({
     enabled: true, dryRun: true, setupDone: true, ownerQQ: '10001',
     allow: { private: ['10001'], groups: [] },
-    snowluma: { autoStart: false, autoAttach: false, dir: pjoin(dir, 'no-snowluma') },
+    onebot: {},
     voice: { enabled: false }, stickers: { enabled: false, autoChance: 0 },
   }))
   const fake = createFakeDsh({ brain: async () => '嗯' })

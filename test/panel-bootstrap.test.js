@@ -37,7 +37,7 @@ before(async () => {
     ownerQQ: OWNER,
     ownerName: '主人',
     allow: { private: [OWNER], groups: [] },
-    snowluma: { autoStart: false, autoAttach: false, dir: join(dataDir, 'no-snowluma'), webuiPassword: 'pw-secret-12345', httpToken: 'tok-secret-6789' },
+    onebot: { httpToken: 'tok-secret-6789', wsToken: 'tok-secret-1234' },
     imageGen: { enabled: false, apiKey: 'img-key-98765' },
     voice: { engine: 'windows', autoChance: 0 },
     stickers: { autoChance: 0 },
@@ -127,7 +127,7 @@ test('connections：只读快照，网关没配时 stage=unconfigured，不连�
   for (const k of ['platform', 'instanceId', 'enabled', 'stage', 'verified', 'reason', 'login', 'warmupSeconds']) {
     assert.ok(Object.hasOwn(qq, k), `connections.qq 缺字段 ${k}`)
   }
-  // 没配网关时：SnowLuma 未装是 disconnected / 完全没配是 unconfigured（两者都算「没连上」）
+  // 没配网关时：没填地址是 unconfigured（算「没连上」）
   assert.ok(['unconfigured', 'disconnected'].includes(qq.stage), `没配网关时应是 unconfigured/disconnected，实际 ${qq.stage}`)
   assert.equal(qq.verified, false)
   assert.equal(qq.login, null, '未核验时 login 必须是 null（不回登录信息）')
@@ -135,10 +135,10 @@ test('connections：只读快照，网关没配时 stage=unconfigured，不连�
 
 test('/panel/config 走 publicConfig 脱敏：密钥不回原文，只回 *Set 标记', async () => {
   const { config } = await jsonOf('/panel/config')
-  assert.equal(config.snowluma.webuiPassword, '', 'webuiPassword 不能回原文')
-  assert.equal(config.snowluma.webuiPasswordSet, true, '要回 webuiPasswordSet=true 告诉面板已设置')
-  assert.equal(config.snowluma.httpToken, '')
-  assert.equal(config.snowluma.httpTokenSet, true)
+  assert.equal(config.onebot.httpToken, '', 'httpToken 不能回原文')
+  assert.equal(config.onebot.httpTokenSet, true, '要回 httpTokenSet=true 告诉面板已设置')
+  assert.equal(config.onebot.wsToken, '')
+  assert.equal(config.onebot.wsTokenSet, true)
   assert.equal(config.imageGen.apiKey, '')
   assert.equal(config.imageGen.apiKeySet, true)
   assert.equal(Object.hasOwn(config, 'ownerAuthorization'), false, '主人授权内部记录不能回面板')
@@ -177,7 +177,7 @@ test('503 闸：三条路由都先过 bootstrapping 闸（静态契约），就�
 
 // ================= 3. 无探测隔离 =================
 
-test('无探测隔离：三条 GET 期间全局 fetch 0 次调用（不打 SnowLuma/OneBot）', async () => {
+test('无探测隔离：三条 GET 期间全局 fetch 0 次调用（不打 OneBot）', async () => {
   const realFetch = globalThis.fetch
   let calls = 0
   globalThis.fetch = (...args) => { calls++; return realFetch(...args) }
@@ -235,16 +235,6 @@ test('保存回执：校验失败 → committed/unchanged 都是空数组 + 当�
   assert.deepEqual(r.unchangedPaths, [], '校验失败也不能有 unchangedPaths')
   assert.equal(r.configRevision, revBefore, '失败的保存不递增版本')
   assert.match(r.bootId, UUID_RE)
-})
-
-test('保存回执：部分失败（控制台密码没改成）→ 回执仍含已落盘字段与其版本', async () => {
-  const revBefore = (await jsonOf('/panel/pulse')).configRevision
-  const r = (await fake.call('/save', { ownerName: '回执测试主人', snowluma: { webuiPassword: 'weak' } })).json()
-  assert.equal(r.ok, false, '弱密码改控制台密码要失败')
-  assert.match(String(r.message || ''), /控制台密码没改/)
-  assert.ok(r.committedPaths.includes('/ownerName'), '其他已落盘字段要如实进 committedPaths')
-  assert.ok(r.configRevision > revBefore, '已落盘的提交要推进版本')
-  assert.equal(api.getConfig().ownerName, '回执测试主人', '除密码外的字段要真的保存了')
 })
 
 // ================= 5. 版本语义 =================

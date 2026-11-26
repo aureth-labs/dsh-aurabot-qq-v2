@@ -45,7 +45,7 @@ test('执行时复查主人、名单权限与本轮来源，不依赖已经挂�
   assert.equal(s.saves(), 0)
 })
 test('查看不写配置、不返回私密字段；只开放固定参数', async () => {
-  const s = setup({ snowluma: { httpToken: 'test-private-token' } })
+  const s = setup({ onebot: { httpToken: 'test-private-token' } })
   const r = await read(s)
   assert.equal(r.ok, true); assert.equal(r.state.group_id, G); assert.equal(s.saves(), 0)
   assert.equal(JSON.stringify(r).includes('test-private-token'), false)

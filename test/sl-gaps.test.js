@@ -205,7 +205,7 @@ function setupTools({ chat = otherChat, level = 'social', cfg = {}, hub = {}, ca
   return { config, calls, sent, tools: Object.fromEntries(builder({ chat, level, sessionId: 's' }).map((tool) => [tool.name, tool])) }
 }
 
-test('卡片工具在群和普通私聊可用，按 SnowLuma 字段发送', async () => {
+test('卡片工具在群和普通私聊可用，按 OneBot 扩展字段发送', async () => {
   const s = setupTools()
   const tool = s.tools.qq_send_card
   const cases = [
@@ -341,7 +341,7 @@ test('账号离线只记 warn，不走聊天通知或发送 QQ 消息', { timeou
   const mock = await startMockOneBot({ selfId: BOT })
   const fake = createFakeDsh({ brain: async () => '' })
   t.after(async () => { fake.dispose(); await mock.close() })
-  writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true, gateway: 'onebot', botQQ: BOT, ownerQQ: OWNER, snowluma: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, autoStart: false, autoAttach: false } }))
+  writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true, gateway: 'onebot', botQQ: BOT, ownerQQ: OWNER, onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token } }))
   const { apply } = await import('../src/plugin/index.ts')
   const app = apply(fake.ctx)
   await app.ready

@@ -45,8 +45,7 @@ async function setup(t, { connect = false, safeMode = false } = {}) {
   writeFileSync(join(root, 'config.json'), JSON.stringify({
     enabled: connect, dryRun: !connect, setupDone: true, safeMode, ownerQQ: OWNER, botQQ: BOT,
     persona: { current: PERSONA, dataOwner: PERSONA },
-    snowluma: { autoStart: false, autoAttach: false, dir: join(root, 'no-snowluma'),
-      httpUrl: mock?.httpUrl, wsUrl: mock?.wsUrl, httpToken: mock?.token, wsToken: mock?.token },
+    onebot: { httpUrl: mock?.httpUrl, wsUrl: mock?.wsUrl, httpToken: mock?.token, wsToken: mock?.token },
     modules: { bili: { enabled: false } }, memory: { enabled: true, auto: false },
   }))
   const app = apply(fake.ctx)

@@ -46,8 +46,8 @@ before(async () => {
     botQQ: BOT,
     ownerQQ: OWNER,
     allow: { private: [OWNER], groups: [] },
-    // 连的是 mock，不是真的 SnowLuma
-    snowluma: { autoStart: false, autoAttach: false, httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token, dir: join(dataDir, 'no-snowluma') },
+    // 连的是 mock，不是真的协议端
+    onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { enabled: false },
     stickers: { autoChance: 0, collect: false },
     merge: { enabled: false },

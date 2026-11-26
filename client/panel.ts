@@ -14,7 +14,7 @@ import { MemoryTab } from './tabs/memory/memory.ts'
 import { Model } from './tabs/chat/model.ts'
 import { ExtPage, Market, Modules } from './tabs/system/modules.ts'
 import { Mood } from './tabs/chat/mood.ts'
-import { About, Manage, Overview, SnowLumaCompatBanner } from './tabs/overview/overview.ts'
+import { About, Manage, Overview } from './tabs/overview/overview.ts'
 import { Persona } from './tabs/persona/persona.ts'
 import { PetPanel } from './tabs/agent/pet.ts'
 import { Stickers } from './tabs/content/stickers.ts'
@@ -492,7 +492,7 @@ function AurabotPage() {
   }[curTab.id] || Overview
   // 哪些标签有没保存的改动
   // group 键补上 files/forward：整理合并转发/发文件是聊天页的独立配置域，不补则改动不显示未保存标记
-  const TAB_KEYS = { character: ['personaLook'], connect: ['snowluma', 'botQQ'], access: ['ownerQQ', 'ownerName', 'ownerLevel', 'approvalNotify', 'approvalViaQQ', 'qqApi', 'longTasks', 'profilePerms', 'subagentBackground'], group: ['group', 'merge', 'titleFilter', 'memberFilter', 'chat', 'files', 'forward'], model: ['model', 'chatModels'], voice: ['voice'], stickers: ['stickers'], imagegen: ['imageGen'], video: ['video', 'local'], diary: ['diary', 'qzoneSocial'], speakup: ['speakUp', 'ext'], autotelic: [], pet: [], mood: ['mood', 'memory'], song: ['song'], content: ['bili', 'douyin', 'heybox'], local: ['local'], browser: ['browser'], security: ['security', 'update'] }
+  const TAB_KEYS = { character: ['personaLook'], connect: ['onebot', 'botQQ', 'workspaceDir'], access: ['ownerQQ', 'ownerName', 'ownerLevel', 'approvalNotify', 'approvalViaQQ', 'qqApi', 'longTasks', 'profilePerms', 'subagentBackground'], group: ['group', 'merge', 'titleFilter', 'memberFilter', 'chat', 'files', 'forward'], model: ['model', 'chatModels'], voice: ['voice'], stickers: ['stickers'], imagegen: ['imageGen'], video: ['video', 'local'], diary: ['diary', 'qzoneSocial'], speakup: ['speakUp', 'ext'], autotelic: [], pet: [], mood: ['mood', 'memory'], song: ['song'], content: ['bili', 'douyin', 'heybox'], local: ['local'], browser: ['browser'], security: ['security', 'update'] }
   const tabDirty = (id) => {
     if (!dirty) return false
     // 对基线（/panel/config 快照）比对，不对比 st.config——pulse 只更新展示，不代表草稿基线
@@ -513,7 +513,7 @@ function AurabotPage() {
           h('div', { className: 'ab-sub' }, 'QQ ' + cfg.botQQ + ' · ' + (persona ? persona.name : '默认人格') + ' · ' + st.mood.label),
           h('div', { className: 'ab-pills' },
             h('span', { className: 'ab-pill' }, h('i', { className: cx('ab-dot', status.cls) }), status.text),
-            h('span', { className: 'ab-pill' }, 'SnowLuma ' + (st.snowluma.installed ? (st.snowluma.running ? '运行中' : '没启动') : '未安装')),
+            h('span', { className: 'ab-pill' }, 'OneBot ' + ({ connected: '已连上', connecting: '连接中' }[st.onebot.state] || '未连接')),
             h('span', { className: 'ab-pill' }, 'Aurabot v' + st.version),
             lastSyncAt ? h('span', { className: 'ab-pill', title: '面板状态上次成功刷新的时间' }, '状态 ' + timeAgo(lastSyncAt)) : null)),
         h('div', { className: 'ab-hero-side' },
@@ -530,7 +530,6 @@ function AurabotPage() {
           return h('i', { className: cx('ab-dot', flag && 'ok'), title: flag ? '开着' : '关着' })
         },
       }),
-      showWizard ? null : h(SnowLumaCompatBanner, { st, go }),
       saveConflict ? h('div', { className: 'ab-note err', role: 'alert' }, saveConflict, h(Btn, { small: true, onClick: discardDraft }, '读取最新设置')) : null,
       showWizard ? null : h(TabBoundary, { key: curTab.id, onHome: () => go('overview') }, h(body, { ...props, mod: curTab.ext, extensions: voiceExtensions })),
       // dsh-image 已经嵌进「生图」页的「接口格式」里了，这里再渲染一次就是同一张卡出现两遍。

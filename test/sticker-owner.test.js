@@ -20,7 +20,7 @@ const LIB = join(dataDir, 'stickers', 'index.json')
 writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
   enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
   allow: { private: [], groups: [String(GROUP)] },
-  snowluma: { autoStart: false, autoAttach: false, dir: join(dataDir, 'none') },
+  onebot: {},
   voice: { enabled: false }, merge: { enabled: false },
   stickers: { enabled: true, collect: true, collectMode: 'owner', caption: false, autoChance: 0, maxSide: 1600 },
 }))

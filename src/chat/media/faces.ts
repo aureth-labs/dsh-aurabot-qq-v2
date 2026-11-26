@@ -1,5 +1,5 @@
 // QQ 系统表情（小黄脸）：名字 ↔ 编号。她在回复里写 <face:捂脸>，发的时候换成 QQ 自带的表情，和文字在同一条消息里。
-// 目录从网关现取（SnowLuma 的 fetch_sys_faces，缓存一天）；接的是别的 OneBot、取不到时用下面这份常用的兜底。
+// 目录从协议端现取（扩展动作 fetch_sys_faces，缓存一天）；取不到时用下面这份常用的兜底。
 
 import { FACE_TABLE } from './face-table.ts'
 

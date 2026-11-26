@@ -50,7 +50,7 @@ test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和�
   process.env.AURABOT_DATA_DIR = dir
   const config = { enabled: true, dryRun: true, setupDone: true, ownerQQ: owner, botQQ: '20000002',
     allow: { private: [guest], groups: ['30000003'] }, commandAllow: { reset: [guest], model: [guest], 'ext:probe:hello': [guest] },
-    snowluma: { autoStart: false, autoAttach: false }, merge: { enabled: false } }
+    onebot: {  }, merge: { enabled: false } }
   writeFileSync(join(dir, 'config.json'), JSON.stringify(config))
   mkdirSync(join(dir, 'modules', 'probe'), { recursive: true })
   writeFileSync(join(dir, 'modules', 'probe', 'index.mjs'), `export default { id: 'probe', api: 1, setup(api) { api.command({ name: 'hello', delegatable: true, run: () => { globalThis.__delegatedProbe = (globalThis.__delegatedProbe || 0) + 1; return 'ok' } }) } }`)
