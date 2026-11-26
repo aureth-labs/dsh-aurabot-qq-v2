@@ -7,7 +7,6 @@ import { normalizeChatModels } from '../../../chat/hub/store/chat-model.ts'
 import { DEFAULT_GROUP_POLICY } from '../../../chat/policy/rules/group.ts'
 import { LEVELS, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, profilePermDefault } from '../../../chat/policy/rules/access.ts'
 import { DELEGATED_COMMANDS, isDelegatedCommandKey } from '../../../chat/commands/delegated-commands.ts'
-import { DIARY_AUDIENCES } from '../../../features/qzone/audience.ts'
 import { DEFAULT_TIER_DAYS } from '../../../features/memory/query/rules.ts'
 import { normalizeEmotions } from '../../../features/mood/emotions.ts'
 import { DEFAULTS } from '../shape/defaults.ts'
@@ -282,25 +281,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   const lookProvider = typeof lookModel.provider === 'string' ? lookModel.provider.trim() : ''
   const lookName = typeof lookModel.model === 'string' ? lookModel.model.trim() : ''
   c.personaLook = { visionModel: lookProvider && lookName ? { provider: lookProvider, model: lookName } : { provider: '', model: '' } }
-  c.diary.timesPerDay = num(c.diary.timesPerDay, 2, 0, 48)
-  c.diary.windowStart = hhmm(c.diary.windowStart, '10:00')
-  c.diary.windowEnd = hhmm(c.diary.windowEnd, '23:30')
-  c.diary.minGapMinutes = num(c.diary.minGapMinutes, 180, 0, 1440)
-  c.diary.attachImage = bool(c.diary.attachImage, true)
-  if (!isObj(c.diary.rich)) c.diary.rich = { ...DEFAULTS.diary.rich }
-  for (const key of ['enabled', 'stickers', 'browsing', 'local']) c.diary.rich[key] = bool(c.diary.rich[key], DEFAULTS.diary.rich[key])
-  c.diary.rich.folder = typeof c.diary.rich.folder === 'string' ? c.diary.rich.folder.trim() : ''
-  if (c.diary.rich.folder && !/^([a-zA-Z]:[\\/]|\/)/.test(c.diary.rich.folder)) c.diary.rich.folder = ''
-  delete c.diary.rich.cards
-  c.diary.rich.maxImages = Math.round(num(c.diary.rich.maxImages, 2, 1, 9))
-  if (!isObj(c.diary.archive)) c.diary.archive = { ...DEFAULTS.diary.archive }
-  c.diary.archive.enabled = bool(c.diary.archive.enabled, false)
-  c.diary.archive.folder = typeof c.diary.archive.folder === 'string' ? c.diary.archive.folder.trim() : ''
-  if (c.diary.archive.folder && !/^([a-zA-Z]:[\\/]|\/)/.test(c.diary.archive.folder)) c.diary.archive.folder = ''
-  c.diary.minChars = num(c.diary.minChars, 60, 1, BIG)
-  c.diary.maxChars = num(c.diary.maxChars, 140, 1, BIG)
-  c.diary.visibility = DIARY_AUDIENCES.includes(c.diary.visibility) ? c.diary.visibility : 'all'
-  c.diary.audienceQQs = qqList(c.diary.audienceQQs).slice(0, 200).join('\n')
   c.speakUp.idleMinutes = num(c.speakUp.idleMinutes, 40, 1, BIG)
   c.speakUp.nudge = bool(c.speakUp.nudge, true)
   c.speakUp.minIntervalMinutes = num(c.speakUp.minIntervalMinutes, 90, 1, BIG)
@@ -312,15 +292,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.speakUp.reminderLimit = Math.min(10, Math.max(1, Math.round(num(c.speakUp.reminderLimit, 5, 1, 10))))
   c.speakUp.reminderRetry = bool(c.speakUp.reminderRetry, true)
   c.speakUp.allow = [...new Set((Array.isArray(c.speakUp.allow) ? c.speakUp.allow : []).map((q) => String(q).trim()).filter((q) => /^\d{5,}$/.test(q)))]
-  const q = c.qzoneSocial
-  q.enabled = bool(q.enabled, true)
-  q.replyOwn = bool(q.replyOwn, true)
-  q.commentFriends = bool(q.commentFriends, true)
-  q.like = bool(q.like, true)
-  q.friendChance = num(q.friendChance, 0.3, 0, 1)
-  q.ownerChance = num(q.ownerChance, 0.7, 0, 1)
-  q.maxPerDay = num(q.maxPerDay, 8, 0, BIG)
-  q.intervalMin = num(q.intervalMin, 30, 1, BIG)
   c.mood.halfLifeHours = num(c.mood.halfLifeHours, 3, 0.1, BIG)
   c.mood.base = num(c.mood.base, 60, 0, 100)
   c.mood.judge = bool(c.mood.judge, true)

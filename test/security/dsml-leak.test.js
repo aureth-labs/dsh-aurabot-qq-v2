@@ -8,8 +8,6 @@ import { cleanOutboundText, cleanOutboundSegments, stripToolText, parseReply } f
 import { createHub } from '../../src/chat/hub/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { createBiliApi } from '../../packages/bili/impl/api.ts'
-import { createQzone } from '../../src/features/qzone/index.ts'
-import { cleanComment } from '../../packages/qzone-social/src/social.ts'
 import { cleanReply } from '../../packages/purpose/impl/module/index.ts'
 
 const screenshot = ['@苏眠眠 </ | | DSML | | invoke>', '</ | | DSML | | calls>']
@@ -207,14 +205,7 @@ test('B 站评论出口复用清洗，纯调用不请求网络，正常正文保
   assert.equal(warnings.length, 2)
 })
 
-test('空间和桌宠的独立路径复用同一清洗，截断及去 HTML 前先删除工具参数', async (t) => {
-  const s = setup(t)
-  const calls = []
-  const qzone = createQzone({ getConfig: () => s.cfg, log: s.log, onebot: { async call(action, params) { calls.push({ action, params }); return { tid: '1' } } } })
-  await qzone.post(block)
-  assert.equal(calls.length, 0)
-  assert.equal(cleanComment(block), '')
-  assert.equal(cleanComment(`前${block}后`), '前后')
+test('桌宠的独立出口清洗正文', () => {
   assert.equal(cleanReply(`大肥鱼：${block}`), '')
   assert.equal(cleanReply(`前${block}后`), '前后')
 })

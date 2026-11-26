@@ -11,8 +11,6 @@ import * as memory from './memory/index.ts'
 import * as qqTools from './qq-tools/index.ts'
 import * as qqApi from './qq-api/index.ts'
 import * as imagegen from './imagegen/index.ts'
-import * as diary from './diary/index.ts'
-import * as qzoneSocial from './qzone-social/index.ts'
 import * as purpose from './purpose/index.ts'
 import * as autotelic from './autotelic/index.ts'
 import * as bili from './bili/index.ts'
@@ -35,8 +33,6 @@ const entries: Array<[string, Record<string, any>]> = [
   ['qq-tools', qqTools],
   ['qq-api', qqApi],
   ['imagegen', imagegen],
-  ['diary', diary],
-  ['qzone-social', qzoneSocial],
   ['purpose', purpose],
   ['autotelic', autotelic],
   ['bili', bili],

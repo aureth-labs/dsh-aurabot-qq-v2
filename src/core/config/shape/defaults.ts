@@ -199,21 +199,6 @@ export const DEFAULTS = {
     // 起名单独挑的模型：{ provider, model }；留空 = 跟随聊天用的模型
     captionModel: { provider: '', model: '' },
   },
-  diary: {
-    enabled: true,
-    timesPerDay: 2,
-    windowStart: '10:00',
-    windowEnd: '23:30',
-    minGapMinutes: 180,
-    attachImage: true, // 写日记时配一张图（优先今天她画的，其次今天收的表情包）
-    // 可选图文日记：关着时沿用原来的聊天摘录和配图流程；本地目录必须由主人填写。
-    rich: { enabled: false, stickers: false, browsing: false, local: false, folder: '', maxImages: 2 },
-    archive: { enabled: false, folder: '' }, // 已有公开浏览图按浏览日期归档；必须由主人指定输出目录
-    minChars: 60,
-    maxChars: 140,
-    visibility: 'all', // all | friends | selected | self | excluded，和 QQ 空间自身的可见范围一致
-    audienceQQs: '', // selected / excluded 时可见（或不可见）的好友 QQ 号，换行或逗号分隔
-  },
   // 本地接口：数据目录 local/ 里的脚本接管这几项（文件要在、开关要开）
   local: { tts: false, image: false, song: false, asr: false, video: false, videoTimeoutMin: 20 },
   bili: {
@@ -310,16 +295,6 @@ export const DEFAULTS = {
     peakStartPM: 14, // 下午峰时开始（含）
     peakEndPM: 18, // 下午峰时结束（不含）
     peakWeekend: false, // 周末是否也算峰时（默认不算，周末全天可逛）
-  },
-  qzoneSocial: {
-    enabled: true,
-    replyOwn: true, // 回复自己说说下别人的新评论
-    commentFriends: true, // 逛好友动态，偶尔评论
-    friendChance: 0.3, // 看到一条好友说说时互动（点赞 + 可能评论）的概率
-    ownerChance: 0.7, // 主人的说说互动概率
-    like: true, // 互动时顺手点赞
-    maxPerDay: 8, // 每天最多评论几条（点赞不算）
-    intervalMin: 30, // 多久逛一次空间
   },
   speakUp: {
     // ⚠ 语义归属（Q3/Q4 拍板，P5 注记）：主动搭话已并入目的引擎（ext.purpose，P1 起默认开），
@@ -488,10 +463,6 @@ type MemoryConfig = Replace<typeof DEFAULTS.memory, {
   vector: Replace<typeof DEFAULTS.memory.vector, { mode?: string; modeExplicit?: boolean }>
 }>
 
-/** 日记：rich.cards 是旧字段，载入时删掉。 */
-type DiaryConfig = Replace<typeof DEFAULTS.diary, {
-  rich: Replace<typeof DEFAULTS.diary.rich, { cards?: unknown }>
-}>
 
 /**
  * 插件配置的唯一形状来源：DEFAULTS 定全集，这里补上 normalize 派生出来的字段。
@@ -505,7 +476,6 @@ export type AurabotConfig = Replace<typeof DEFAULTS, {
   mood: MoodConfig
   chat: ChatConfig
   memory: MemoryConfig
-  diary: DiaryConfig
   bili: Replace<typeof DEFAULTS.bili, { groupShare: Replace<typeof DEFAULTS.bili.groupShare, { groups: string[] }> }>
   voice: Replace<typeof DEFAULTS.voice, { keyPools?: KeyPools }>
 }>

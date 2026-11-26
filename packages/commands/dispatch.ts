@@ -42,7 +42,7 @@ const ALIASES = {
   模型: 'model', 换模型: 'model',
   思考: 'effort', 思考强度: 'effort',
   唱: 'sing', 点歌: 'sing', 翻唱: 'sing',
-  状态: 'status', 心情: 'mood', 日记: 'diary', 记住: 'remember', 记一下: 'remember',
+  状态: 'status', 心情: 'mood', 记住: 'remember', 记一下: 'remember',
   搭话: 'speak', 主动搭话: 'speak',
   重开: 'reset', 开机: 'on', 关机: 'off', 帮助: 'help', 命令: 'help', h: 'help',
 }
@@ -57,7 +57,6 @@ const COMMANDS = {
   effort: '查看当前聊天的模型思考档位；发 /effort 序号 或 档位名切换，/effort 默认恢复跟随',
   status: '看她现在的状态',
   mood: '看她现在的心情',
-  diary: '马上写一篇空间日记',
   remember: '让她记住一件事，如 /remember 我不吃香菜',
   speak: '管主动搭话白名单：/speak 看名单，/speak add QQ 号 加人，/speak del QQ 号 移除',
   reset: '这个聊天重新开始（旧的对话在 DSH 侧栏里还能找回）',
@@ -104,10 +103,10 @@ export function createMutes() {
 
 /**
  * 执行命令，返回要回给主人的话。
- * @param {object} deps { getConfig, setConfig, mutes, hub, mood, memory, qzone, onebot }
+ * @param {object} deps { getConfig, setConfig, mutes, hub, mood, memory, onebot }
  */
 export async function runCommand(cmd, msg, deps) {
-  const { getConfig, setConfig, mutes, hub, mood, memory, qzone } = deps
+  const { getConfig, setConfig, mutes, hub, mood, memory } = deps
   const cfg = getConfig()
   const inGroup = msg.kind === 'group'
   const here = inGroup ? '这个群' : '这里'
@@ -174,14 +173,6 @@ export async function runCommand(cmd, msg, deps) {
       return runEffortCommand(cmd.arg, msg, deps)
     case 'mood':
       return mood ? `现在${mood.label()}` : '心情模块关着'
-    case 'diary': {
-      if (!qzone) return '空间日记没开'
-      const r = await qzone.writeDiary()
-      if (r.ok) return '写好发出去啦，去空间看看'
-      deps.log?.warn?.('日记命令失败：', r.message)
-      const known = ['上一篇还在写', '她这次没写出来', '总开关关着', '说说是空的', '发布前开关已变化，本次未发布。', '说说可见范围配置无效，已停止发布。', '未知的说说可见范围，已停止发布。', '选择了部分好友范围，但 QQ 名单为空，已停止发布；不会改成公开。']
-      return known.includes(r.message) ? '没写成：' + r.message : '日记发布未确认，请先查看空间是否已发出，再决定是否重试；详细原因请主人查看本机日志。'
-    }
     case 'remember': {
       if (!memory) return '记忆模块关着'
       if (!cmd.arg) return '要我记住什么呀？比如 /remember 我不吃香菜'

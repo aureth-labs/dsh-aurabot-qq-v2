@@ -23,16 +23,14 @@ test('斜杠命令异常只回安全提示，详细错误留日志，下一条�
  assert.ok(logs.some(s=>s.includes('config.json')))
  failing=false;await hub.onMessage(event('/status'));assert.ok(JSON.stringify(sent.at(-1)).includes('状态正常'));assert.equal(fake.turns.length,0)
 })
-test('日记和记忆返回失败对象也不能把内部原因拼进聊天',async()=>{
+test('记忆返回失败对象也不能把内部原因拼进聊天',async()=>{
  for(const message of errors){
-  const deps={getConfig:()=>cfg,qzone:{writeDiary:async()=>({ok:false,message})},memory:{add:()=>({ok:false,message})},log:{warn(){}}}
-  for(const text of ['/diary','/remember 测试']){
+  const deps={getConfig:()=>cfg,memory:{add:()=>({ok:false,message})},log:{warn(){}}}
+  for(const text of ['/remember 测试']){
    const r=await runCommand(parseCommand(text),{kind:'private',chatId:'private:'+owner},deps)
    assert.match(r,/未确认/);assert.doesNotMatch(r,/Private|private|wsl|Traceback|password|ENOENT|run\.js/)
   }
  }
- const r=await runCommand(parseCommand('/diary'),{kind:'private'}, {getConfig:()=>cfg,qzone:{writeDiary:async()=>({ok:false,message:'上一篇还在写'})}})
- assert.match(r,/上一篇还在写/)
 })
 test('翻唱排队异常不透传，模型收到的失败概括不含路径代码',()=>{
  for(const message of errors){

@@ -1,3 +1,4 @@
+import { migrateQzone } from './migrations/qzone.ts'
 import { validMemberFilter } from '../../src/chat/inbound/filter/member-filter.ts'
 import { registerOutboundPanelRoutes } from './outbound-panel.ts'
 import { readFileSync, existsSync, writeFileSync, unlinkSync, statSync, mkdirSync, rmSync } from 'node:fs'
@@ -104,6 +105,7 @@ export function apply(ctx) {
     const restored = applyPendingRestore()
     if (restored) log.info(`已恢复备份：${restored} 个文件，原来的文件在 backups/ 里留了底`)
   } catch (error) { log.error('恢复备份失败：', error.message) }
+  migrateQzone()
   let cfg = loadConfig()
   debugSwitch.on = Boolean(cfg.debug)
   if (cfg.ownerQQ && !ownerAuthorizationRevision(cfg)) {
@@ -456,7 +458,7 @@ export function apply(ctx) {
         return String((await cmd.ext.run(cmd.arg, msg)) ?? '')
       }
       if (['permissions', 'groupsettings'].includes(cmd.name) && !markSensitive(cmd.name)) return ''
-      return runCommand(cmd, msg, { getConfig, setConfig, mutes, hub, onebot, ownerStillCurrent, log: logger, mood: use('mood'), memory: use('memory'), qzone: use('diary'), song: use('song'), listModels, reasoningFor: (provider, model) => modelReasoning(ctx, provider, model, { refresh: true }), defaultModel: () => defaultModel(ctx, { model: {} }), extraCommands: mods.commands() })
+      return runCommand(cmd, msg, { getConfig, setConfig, mutes, hub, onebot, ownerStillCurrent, log: logger, mood: use('mood'), memory: use('memory'), song: use('song'), listModels, reasoningFor: (provider, model) => modelReasoning(ctx, provider, model, { refresh: true }), defaultModel: () => defaultModel(ctx, { model: {} }), extraCommands: mods.commands() })
     },
     isMuted: (chatId) => mutes.muted(chatId),
     moodEffects: () => use('mood')?.effects?.() ?? null,
@@ -1013,7 +1015,6 @@ export function apply(ctx) {
         login = { uin: String(info?.user_id ?? ''), nickname: info?.nickname || '' }
       } catch (error) {}
     }
-    const diary = use('diary')
     const memory = use('memory')
     const moodState = use('mood')?.state?.() ?? { value: 0, label: '心情模块关着', reason: '', history: [] }
     const { history: _moodHistory, ...moodSummary } = moodState
@@ -1029,8 +1030,6 @@ export function apply(ctx) {
       // 模块关着时给个空壳，面板照常显示
       mood: moodSummary,
       stickers: { count: stickers.library().items.length },
-      diary: diary ? { next: diary.nextTime(), last: diary.history()[0] || null } : { next: 0, last: null },
-      qzoneSocial: use('qzone-social')?.state?.() ?? null,
       // P3：今日次数改读目的引擎（主动搭话已并入 purpose；speakup 策略源不再注册）
       speakUp: use('purpose')?.state?.() ?? { count: 0 },
       purpose: purposeOverview(),
@@ -2395,7 +2394,6 @@ export function apply(ctx) {
   return {
     hub, onebot, getConfig, setConfig, logger, modules: mods, bridge, ready: booted,
     get stickers() { return use('stickers') },
-    get qzone() { return use('diary') },
     get mood() { return use('mood') },
     get memory() { return use('memory') },
   }

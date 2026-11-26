@@ -44,7 +44,6 @@ async function brain({ preset, text, images, callTool }) {
   if (text.includes('慢工具测试')) { const r = await callTool('slow74', {}); return r ? '慢工具好了' : '没有慢工具' }
   if (text.includes('排队权限测试0') || text.includes('排队权限测试2')) { const r = await callTool('permprobe90', {}); return r ? String(r.message || '') : '没有探针' }
   if (text.includes('排队权限测试1')) { await sleep(1200); return '第一轮好了' }
-  if (text.includes('【空间互动')) { qzonePrompts.push(text); return '哈哈好看' }
   if (/【(私聊|群聊)/.test(text) && text.includes('戳了戳你')) return '干嘛戳我<poke>'
   if (/【私聊/.test(text) && text.includes('表情改名测试')) { const m = text.match(/把「(.+?)」/); const r = await callTool('qq_edit_sticker', { sticker: m[1], new_name: '改过的名字', tags: ['开心'] }); return r.message }
   if (/【私聊/.test(text) && text.includes('表情删除测试')) { const r = await callTool('qq_edit_sticker', { sticker: '改过的名字', delete: true }); return r.message }
@@ -102,7 +101,6 @@ async function brain({ preset, text, images, callTool }) {
 }
 
 let mock
-const qzonePrompts = []
 let fake
 let api
 let dataDir
@@ -139,8 +137,6 @@ before(async () => {
     stickers: { autoChance: 0, collectMode: 'auto' },
     // 大多数用例要的是「每次都回」，刹车放宽；558/559 专门测一段一回和刹车
     group: { interjectChance: 0, burstMax: 50, overrides: { 557: { interjectChance: 1, minRelevance: 0, minRecentMessages: 0, cooldownSec: 0, quietHours: [0, 0] }, 559: { burstMax: 2 } } },
-    diary: { enabled: true },
-    qzoneSocial: { friendChance: 1, ownerChance: 1, intervalMin: 1440 },
     merge: { waitSec: 0.4, maxSec: 3, groupWaitSec: 0.4, groupMaxSec: 3 },
     files: { enabled: true, maxMB: 1, dirs: [] },
     // 内置命令表默认关（框架出厂零指令），这组用例要测 /silent、/active，显式打开
@@ -184,7 +180,7 @@ test('主人私聊「在吗」：建会话（完整权限 preset）、按 ||| �
   assert.ok(ws && ws.sessionIds.length === 1, '会话放进了 Aurabot 工作区')
   // 主人私聊的会话里有完整工具
   const agent = fake.agents.get(ws.sessionIds[0])
-  assert.ok(agent.tools.has('qq_send_qzone'))
+  assert.ok(!agent.tools.has('qq_send_qzone'), '空间工具只在安装社区包后可用')
   assert.ok(agent.tools.has('qq_group_admin'))
 })
 
@@ -393,49 +389,6 @@ test('群聊引用回复：她写 <reply:编号>，发出去的那条带上对�
   assert.deepEqual(quoted.params.message[1], { type: 'at', data: { qq: '731' } })
   assert.equal(quoted.params.message.at(-1).data.text, '收到这条啦')
   assert.equal(plain.params.message[0].type, 'text', '其余的照常发，不引用')
-})
-
-test('空间互动：回复自己说说下的新评论、评论好友说说并点赞，不重复', async () => {
-  const now = Math.floor(Date.now() / 1000)
-  mock.state.qzoneList = [{ tid: 't1', content: '今天吃了白米饭', time: now - 600, comment_num: 1, is_private: false, images: [] }]
-  mock.state.qzoneDetail = {
-    t1: { tid: 't1', content: '今天吃了白米饭', comment_num: 1, comments: [{ uin: 777, name: '群友', time: now - 300, content: '好可爱', comment_id: 'c1', replies: [] }] },
-    f1: { tid: 'f1', content: '周末去看海了', comment_num: 1, comments: [{ uin: 888, name: '路人甲', time: now - 50, content: '真羡慕', comment_id: 'x1', replies: [] }] },
-  }
-  mock.state.feeds = [
-    { uin: Number(OWNER), nickname: 'xiaoming', time: now - 100, appid: 311, key: 'f1', html: '<div>周末去看海了</div>' },
-    { uin: 0, nickname: '', time: now, appid: 6600, key: 'advertisement_outlink_0', html: '广告' },
-    { uin: Number(BOT), nickname: '大肥鱼', time: now - 50, appid: 311, key: 't1', html: '今天吃了白米饭' },
-  ]
-  const r = (await fake.call('/qzone/social/run')).json()
-  assert.equal(r.ok, true, r.message)
-  const comments = mock.sent('comment_qzone').map((c) => c.params)
-  assert.deepEqual(comments.find((c) => c.tid === 't1'), { tid: 't1', content: '回复 群友：哈哈好看' })
-  assert.deepEqual(comments.find((c) => c.tid === 'f1'), { tid: 'f1', content: '哈哈好看', target_uin: Number(OWNER) })
-  assert.equal(comments.length, 2, '广告和她自己的说说不碰')
-  assert.equal(mock.sent('like_qzone')[0].params.tid, 'f1')
-  assert.ok(qzonePrompts.some((p) => p.includes('周末去看海了') && p.includes('已经有这些评论') && p.includes('真羡慕')), '评好友说说时带上了说说内容和楼里的评论')
-  await fake.call('/qzone/social/run')
-  assert.equal(mock.sent('comment_qzone').length, 2, '同一条评论、同一条说说不会再评')
-  const st = (await fake.call('/qzone/social/state')).json()
-  assert.equal(st.count, 2)
-  // 她在空间评论过谁，记成了自己的经历
-  assert.ok(api.memory.recentEvents(24, 10).some((m) => m.text.includes('评论了') && m.about === OWNER))
-})
-
-test('空间互动：别人在她的评论下面接着回她，她会接着回（一串只回一次）', async () => {
-  const now = Math.floor(Date.now() / 1000)
-  const before = mock.sent('comment_qzone').length
-  mock.state.feeds = []
-  mock.state.qzoneDetail.t1.comments.push({
-    uin: Number(BOT), name: '大肥鱼', time: now - 200, content: '回复 群友：哈哈好看', comment_id: 'c2',
-    replies: [{ uin: 777, name: '群友', time: now - 100, content: '你也好看', comment_id: 'r1' }, { uin: 777, name: '群友', time: now - 90, content: '真的', comment_id: 'r2' }],
-  })
-  await fake.call('/qzone/social/run')
-  const added = mock.sent('comment_qzone').slice(before).map((c) => c.params)
-  assert.deepEqual(added, [{ tid: 't1', content: '回复 群友：哈哈好看' }], '两条新回复合起来只回一次')
-  await fake.call('/qzone/social/run')
-  assert.equal(mock.sent('comment_qzone').length, before + 1, '回过的不再回')
 })
 
 test('戳一戳：主人戳她，她会回话，还会戳回去；20 秒内重复戳只算一次', async () => {
@@ -714,54 +667,6 @@ test('引用消息：拉不到内容时明确告诉她没读到（不装看见�
   } finally {
     mock.state.failGetMsg = false
   }
-})
-
-test('空间日记：手动写一篇（仅自己可见），配今天画的图，不往聊天里发，然后删除', async () => {
-  const { savePainting } = await import('../../src/features/media/generate/paintings.ts')
-  const { unlinkSync } = await import('node:fs')
-  const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
-  const painting = savePainting(png, '日记配图测试', { now: new Date() })
-  // 只统计这次调用里产生的投递：前一条消息的回复可能还在异步发送，
-  // 用「调用前后全局条数」判断会偶发失败（就是那个 27 !== 26 的老毛病）
-  const { result, sent } = await api.hub.capture(() => fake.call('/diary/run', { visibility: 'self' }))
-  const r = result.json()
-  assert.equal(r.ok, true, r.message)
-  assert.equal(r.images, 1, '今天画了图，日记应该配一张')
-  const q = mock.sent('send_qzone_msg')[0]
-  assert.equal(q.params.ugc_right, 64)
-  assert.match(q.params.content, /白米饭/)
-  assert.equal(q.params.images.length, 1, '说说带了一张图')
-  assert.match(q.params.images[0], /^base64:\/\//)
-  assert.deepEqual(sent, [], '日记那一轮没转发到聊天里')
-  const d = (await fake.call('/qzone/delete', { tid: r.tid })).json()
-  assert.equal(d.ok, true)
-  assert.equal(mock.qzone.size, 0)
-
-  // 面板关掉「日记配图」：只发文字
-  await fake.call('/save', { diary: { attachImage: false } })
-  const r2 = (await api.hub.capture(() => fake.call('/diary/run', { visibility: 'self' }))).result.json()
-  assert.equal(r2.ok, true, r2.message)
-  assert.equal(r2.images, 0)
-  const q2 = mock.sent('send_qzone_msg')[1]
-  assert.equal(q2.params.images, undefined, '关掉后不带图')
-  await fake.call('/qzone/delete', { tid: r2.tid })
-
-  // 配图发不出去（空间不认这张图）：不能憋住整篇日记，退回只发文字
-  const painting2 = savePainting(png, '日记配图失败测试', { now: new Date() })
-  mock.state.failQzoneImage = true
-  try {
-    const r3 = (await api.hub.capture(() => fake.call('/diary/run', { visibility: 'self' }))).result.json()
-    assert.equal(r3.ok, true, '配图失败也要把日记发出去')
-    assert.equal(r3.images, 0, '最后没配成图')
-    const q3 = mock.sent('send_qzone_msg')[2]
-    assert.equal(q3.params.images, undefined, '退回只发文字的说说')
-    await fake.call('/qzone/delete', { tid: r3.tid })
-  } finally {
-    mock.state.failQzoneImage = false
-    await fake.call('/save', { diary: { attachImage: true } })
-  }
-  try { unlinkSync(painting2) } catch (error) {}
-  try { unlinkSync(painting) } catch (error) {}
 })
 
 test('面板接口：概览、人格切换', async () => {
@@ -1217,7 +1122,7 @@ test('换头像：主人发来的图也能用，不能被「她的画作」抢�
   assert.deepEqual(sent, png, '换上去的是主人发的那张图，不是她自己的画')
 })
 
-test('每日整理：往日的临时流水整理后清空，今天的保留；空间日记进了记忆库', async () => {
+test('每日整理：往日的临时流水整理后清空，今天的保留', async () => {
   const { storeOf } = await import('../helpers/chatlog.mjs')
   const store = storeOf(dataDir)
   for (const [i, text] of ['你好', '我喜欢吃辣', '周末一起打游戏吧', '好呀'].entries()) {
@@ -1229,8 +1134,6 @@ test('每日整理：往日的临时流水整理后清空，今天的保留；�
   const today = new Date()
   const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   assert.equal(store.days().includes(key), true, '今天的流水保留')
-  const mem = (await fake.call('/memories?limit=200')).json()
-  assert.ok(mem.items.some((m) => m.source === 'diary' && m.text.includes('白米饭')), '空间日记进了记忆库')
 })
 
 test('表情包她自己整理：改名、改标签（同步到 QQ 收藏备注）、删掉', async () => {
