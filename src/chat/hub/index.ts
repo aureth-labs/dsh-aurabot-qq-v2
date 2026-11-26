@@ -171,6 +171,8 @@ import { createGroupEvents } from './events/group.ts'
 import { createMemberLookup, createNoticeHandler } from './events/notices.ts'
 import { createSubagent } from './subagent/index.ts'
 import { createOutboundGuard } from './delivery/guard.ts'
+import { createFriends } from './events/friends.ts'
+import { createReact } from './media/react.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -272,24 +274,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   const groupEngagedRun = new Map() // groupId → 没人叫她、连着接了几次话
   const ENGAGE_MS = 3 * 60_000
   const groupNames = new Map()
-  const friendIds = new Set()
-  let friendsAt = 0
-  let friendsPending = null
-  function refreshFriends() {
-    if (friendsPending) return friendsPending
-    if (Date.now() - friendsAt < 300_000) return Promise.resolve()
-    friendsAt = Date.now()
-    friendsPending = (async () => {
-      try {
-        const result = await onebot.call('get_friend_list', {}, { timeoutMs: 3000, retries: 0 })
-        const list = Array.isArray(result) ? result : result?.friends
-        if (!Array.isArray(list)) return
-        friendIds.clear()
-        for (const friend of list) if (friend?.user_id) friendIds.add(String(friend.user_id))
-      } catch (error) { log.debug?.('暂时取不到 QQ 好友列表：', error.message) }
-    })().finally(() => { friendsPending = null })
-    return friendsPending
-  }
+  const { refreshFriends, friendIds } = createFriends({ onebot, log }) // 好友列表缓存（5 分钟）
   const privateSources = new Map() // 私聊 QQ 号 → 最近一次临时会话的来源群
   const recentMedia = createRecentMedia({ log }) // 最近发来的图片和表情，短期落盘恢复
   const recentMediaOf = (chatId, userId?) => recentMedia.get(chatId, userId).filter((item) => !isBeforeMemoryReset(chatId, item.userId, item.at))
@@ -319,47 +304,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     return next
   }
   const faces = createFaces({ onebot, log }) // QQ 系统表情：<face:名字> ↔ 编号
-  // 主动贴表情：看到消息就可能贴一个，跟「回不回复」无关——她可以只窥屏、不出声。
-  // 概率跟 stickers.autoChance 同源（reactChance 留空即完全跟随），同样吃心情系数；
-  // 每个会话每小时有上限（reactMaxPerHour），免得在热闹的群里变成刷屏。
-  // 自己被禁言（isMuted）时不贴；自己发的消息在入口就 filtered 掉了。
-  const reactStamps = new Map() // chatId → [时间戳]
-  const REACT_POOL = ['呲牙', '偷笑', '调皮', '赞', '爱心', '笑哭', '捂脸', '玫瑰']
-  async function maybeReact(msg) {
-    try {
-      const cfg = getConfig()
-      // 贴表情也是「对外做了个动作」，必须和发消息走同一套闸（#216 review）：
-      // 总开关关掉就什么都不做；试运行开着只记一笔，不真往对方消息上贴。
-      if (cfg.enabled === false) return
-      if (cfg.dryRun) {
-        log.debug?.(`${msg.chatId}：试运行模式，不真贴表情`)
-        return
-      }
-      if (cfg.stickers?.enabled === false || cfg.stickers?.react === false) return
-      const chance = cfg.stickers?.reactChance ?? 0
-      if (!(chance > 0) || !msg.messageId || msg.messageId === '0') return
-      if (Math.random() >= chance * mood().sticker) return
-      const cap = cfg.stickers?.reactMaxPerHour ?? 10
-      const ts = Date.now()
-      const recent = (reactStamps.get(msg.chatId) || []).filter((t) => ts - t < 3600_000)
-      if (cap <= 0 || recent.length >= cap) { reactStamps.set(msg.chatId, recent); return }
-      const name = REACT_POOL[Math.floor(Math.random() * REACT_POOL.length)]
-      const id = faces.idOf(name)
-      if (!id) return
-      // NapCat 只按位数猜类型（data length > 3 → emoji 码点，否则系统表情）：
-      // 四位以上的编号（EMCode 那种）会被当成码点送出去，QQ 收下但不渲染，贴出来是空白，直接不贴。
-      if (String(id).length > 3) {
-        log.debug?.(`跳过「${name}」（${id}）：编号超过三位，贴出去会是空白`)
-        return
-      }
-      await onebot.call('set_msg_emoji_like', { message_id: String(msg.messageId), emoji_id: String(id), set: true }, { timeoutMs: 10000 })
-      recent.push(ts)
-      reactStamps.set(msg.chatId, recent)
-      log.info(`${msg.chatId}：给这条消息贴了个「${name}」（${id}）`)
-    } catch (error) {
-      log.debug?.('贴表情失败：', error?.message || error)
-    }
-  }
+  const { maybeReact } = createReact({ getConfig, log, onebot, faces, mood })
   const titleFilter = createTitleFilter({ getConfig, onebot, log }) // 勾选的群里，头衔是某个词的成员（别的机器人）不理
   const { membersOf } = createMemberLookup({ onebot, log })
   const noticesFor = new Map() // chatId → [一句话]  下次交给她时带上的群事件（撤回、禁言、进群……）
