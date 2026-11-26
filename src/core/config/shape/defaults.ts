@@ -36,8 +36,7 @@ export interface NoticeWorkspace { approval?: boolean; question?: boolean }
 
 export const DEFAULTS = {
   enabled: false, // 总开关：关着一句都不发
-  dryRun: true, // 试运行：只记日志不真发
-  debug: false, // 调试：不真发 + 不写记忆/流水，只在日志里看（和试运行互斥）
+  debug: false, // 调试：不写记忆/流水，只在日志里看；debug 日志只写进日志
   // 入站管线（开发中配置项）：指令前缀 null = 无前缀；中间件默认排在指令之后、模型之前
   commandPrefixes: [null, '/'],
   middlewareAfterCommand: false, // 指令消费后要不要继续走中间件（默认 false，和 Koishi 一致）

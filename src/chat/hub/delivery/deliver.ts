@@ -309,8 +309,8 @@ export function createDeliver(deps: DeliverDeps) {
       log.warn(`${chatId}：这一轮有 ${unattempted}/${items.length} 段没发出去（${failures[0]}），流水只记了实际发出的 ${sentItems.length} 段`)
     }
     // 不是这个聊天自己那一轮发的（主人在私聊里让她去群里说、扩展模块代发）：记下来，下次这个聊天交给她时告诉她自己说过什么。
-    // 只记实际发出去的文本（sentTexts），且试运行（dryRun）没真发也不记——她没说出口的话不能算说过（#211 review）。
-    if (!opts.own && sentTexts.length && !cfg.dryRun) saidElsewhere.set(chatId, [...(saidElsewhere.get(chatId) || []), { at: Date.now(), text: sentTexts.join(' ').slice(0, 300) }].slice(-5))
+    // 只记实际发出去的文本（sentTexts）——她没说出口的话不能算说过（#211 review）。
+    if (!opts.own && sentTexts.length) saidElsewhere.set(chatId, [...(saidElsewhere.get(chatId) || []), { at: Date.now(), text: sentTexts.join(' ').slice(0, 300) }].slice(-5))
     // #349：活动时间与「她刚跟主人说过」只认真发出去的条目。
     noteTurnActivity(chatId, sentItems)
     onActivity?.({ kind: 'out', chatId, reply: text, userText: opts.userText || '' })

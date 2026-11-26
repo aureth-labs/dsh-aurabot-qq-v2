@@ -245,7 +245,6 @@ export default {
             if (!req.ok) return req
             const verb = approve ? '通过' : '拒绝'
             const label = requestLabel(req.userId)
-            if (c.dryRun) return { ok: true, message: `试运行：本来要${verb} ${label} 的好友申请` }
             try {
               if (req.via === 'event') await onebot.call('set_friend_add_request', { flag: req.flag, approve }, { timeoutMs: 15000 })
               else await onebot.call('set_doubt_friends_add_request', { flag: req.flag, approve }, { timeoutMs: 15000 })
@@ -281,7 +280,6 @@ export default {
             if (!req) return { ok: false, message: '没找到这条待处理的加群申请或邀请' }
             const verb = approve ? '通过' : '拒绝'
             const label = groupRequestText(req, c.botQQ)
-            if (c.dryRun) return { ok: true, message: `试运行：本来要${verb}「${label}」` }
             if (groupInFlight.has(req.flag)) return { ok: false, message: '这条申请正在处理' }
             groupInFlight.add(req.flag)
             try {
@@ -302,7 +300,6 @@ export default {
         execute: guarded('whitelist', chat, sessionId, async (args, c) => {
           const plan = planWhitelist(c, args)
           if (!plan.ok || !plan.changed) return plan
-          if (c.dryRun) return { ok: true, message: `试运行：本来要${plan.message}` }
           const key = String(args.kind).trim().toLowerCase() === 'private' ? 'private' : 'groups'
           // 用保存那一刻最新的配置再算一遍，免得盖掉面板刚改的
           let result = plan

@@ -150,7 +150,7 @@ export default {
           const r = await hub.sendSegments(chat.chatId, [card.segment], `[卡片] ${card.segment.type}`, { throwOnError: true })
           if (!r) {
             const cfg = api.config()
-            return { ok: false, message: !cfg.enabled ? '总开关关着，没发' : cfg.dryRun ? '试运行，只记了日志，没真发' : '卡片没发出去' }
+            return { ok: false, message: !cfg.enabled ? '总开关关着，没发' : '卡片没发出去' }
           }
           return { ok: true, message: card.segment.type === 'share' && card.segment.data.image
             ? '已发送网页分享卡片，封面没有作为单独的图片发送。' : '卡片发出去了' }
@@ -255,7 +255,7 @@ export default {
             }
           }
           const r = await hub.sendFile(chatId, abs, name ? String(name) : '')
-          if (!r) return { ok: false, message: !cfg.enabled ? '总开关关着，没发' : cfg.dryRun ? '试运行，只记了日志，没真发' : '没发出去' }
+          if (!r) return { ok: false, message: !cfg.enabled ? '总开关关着，没发' : '没发出去' }
           return { ok: true, message: `文件发出去了：${label}` }
         },
       }))

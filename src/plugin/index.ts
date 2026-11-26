@@ -353,8 +353,8 @@ export function apply(ctx) {
     // 试运行 / 总开关关着时，v2 的 send 也不许真发出去——和旧链路一个口径。
     call: (action, params, options) => {
       const live = getConfig()
-      if (!live.enabled || live.dryRun) {
-        log.info(`试运行（v2 没真发）→ ${action} ${params?.group_id ?? params?.user_id ?? ''}`)
+      if (!live.enabled) {
+        log.info(`总开关关着（v2 没发）→ ${action} ${params?.group_id ?? params?.user_id ?? ''}`)
         return Promise.resolve({ ok: false, simulated: true })
       }
       return onebot.call(action, params, options)
@@ -387,7 +387,7 @@ export function apply(ctx) {
     wrapBot: (bot) => wrapAdapterBot(bot, {
       allowed: () => {
         const live = getConfig()
-        return Boolean(live.enabled) && !live.dryRun
+        return Boolean(live.enabled)
       },
       log: (message) => logger.child('adapter').info(message),
       speak: async (text) => String((await tts.speak(text))?.file ?? ''),
@@ -762,7 +762,6 @@ export function apply(ctx) {
   // 常用开关的界面显示值（试运行口径与 publicConfig 相同：调试开着时试运行显示为关）。
   const controlsView = () => ({
     enabled: Boolean(cfg.enabled),
-    dryRun: Boolean(cfg.dryRun && !cfg.debug),
     debug: Boolean(cfg.debug),
     safeMode: Boolean(cfg.safeMode),
   })
@@ -1090,7 +1089,7 @@ export function apply(ctx) {
   })
   async function notifyApproval(session, event) {
     try {
-      if (!cfg.enabled || cfg.dryRun) return
+      if (!cfg.enabled) return
       const d = event.data || {}
       const id = String(d.id || '')
       if (!id) return
@@ -1358,7 +1357,7 @@ export function apply(ctx) {
     if (changedConn && onebot.state !== 'stopped') onebot.restart()
     if (!before.enabled && cfg.enabled) setTimeout(safe(watchdog, '看门狗'), 100)
     if (before.enabled && !cfg.enabled) onebot.stop()
-    log.info(`设置已保存｜总开关 ${cfg.enabled ? '开' : '关'}｜试运行 ${cfg.dryRun && !cfg.debug ? '开' : '关'}｜调试 ${cfg.debug ? '开' : '关'}`)
+    log.info(`设置已保存｜总开关 ${cfg.enabled ? '开' : '关'}｜调试 ${cfg.debug ? '开' : '关'}`)
     await mods.sync().catch(() => {})
     // 模块启停 / 生图开关变化后工具清单可能变了：已挂载的会话重新挂一遍
     try { hub.remountAll?.('设置已保存') } catch (error) { log.debug('重挂工具失败：', error.message) }
@@ -2098,7 +2097,6 @@ export function apply(ctx) {
   })
   route('/test-send', async () => {
     if (!cfg.enabled) return { ok: false, message: '先打开总开关' }
-    if (cfg.dryRun) return { ok: false, message: '现在是试运行，先关掉试运行再测' }
     const r = await hub.sendText(`private:${cfg.ownerQQ}`, '【Aurabot 自测】大肥鱼到此一游～')
     return r ? { ok: true, message: '发给主人了，去 QQ 看看' } : { ok: false, message: '没发出去（看日志）' }
   })
@@ -2660,7 +2658,7 @@ export function apply(ctx) {
   })
 
   scheduleRemoteBackup() // 云备份：到点自动打包推送（配置里关着就是空操作）
-  log.info(`Aurabot v${VERSION} 已加载｜总开关 ${cfg.enabled ? '开' : '关'}｜试运行 ${cfg.dryRun ? '开' : '关'}｜工作区 ${workspaceDirOf(cfg)}`)
+  log.info(`Aurabot v${VERSION} 已加载｜总开关 ${cfg.enabled ? '开' : '关'}｜工作区 ${workspaceDirOf(cfg)}`)
 
   return {
     hub, onebot, getConfig, setConfig, logger, modules: mods, bridge, ready: booted,

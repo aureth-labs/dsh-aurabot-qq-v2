@@ -99,7 +99,7 @@ export function collectSources(api, settings, history = [], now = Date.now()) {
   const events = []
   const pictures = []
   const seen = new Set()
-  const used = new Set(history.filter((row) => row.ok && !row.dryRun).slice(0, 4).flatMap((row) => (row.media || []).map((image) => image.sourceId)))
+  const used = new Set(history.filter((row) => row.ok).slice(0, 4).flatMap((row) => (row.media || []).map((image) => image.sourceId)))
   const add = (picture) => {
     if (!picture.src || seen.has(picture.src)) return
     seen.add(picture.src)
@@ -119,7 +119,7 @@ export function collectSources(api, settings, history = [], now = Date.now()) {
       if (!Array.isArray(rows)) continue
       for (const row of rows.slice(0, 80)) {
         if (!row || typeof row !== 'object') continue
-        if (!kinds.includes(row.kind) || row.ok === false || row.dryRun || !(row.at >= now - 48 * 3600_000 && row.at <= now)) continue
+        if (!kinds.includes(row.kind) || row.ok === false || !(row.at >= now - 48 * 3600_000 && row.at <= now)) continue
         const items = row.note ? [row.note] : row.item ? [row.item] : Array.isArray(row.items) ? row.items.slice(0, 2) : [row]
         for (const item of items) {
           if (!item || typeof item !== 'object') continue

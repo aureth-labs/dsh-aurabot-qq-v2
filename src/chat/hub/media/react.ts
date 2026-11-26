@@ -10,9 +10,8 @@ export function createReact({ getConfig, log, onebot, faces, mood }: { getConfig
   async function maybeReact(msg: any) {
     try {
       const cfg = getConfig()
-      // 贴表情也是对外动作，必须和发消息走同一套闸：总开关关掉不做；试运行只记一笔。
+      // 贴表情也是对外动作，必须和发消息走同一套闸：总开关关掉不做。
       if (cfg.enabled === false) return
-      if (cfg.dryRun) { log.debug?.(`${msg.chatId}：试运行模式，不真贴表情`); return }
       if (cfg.stickers?.enabled === false || cfg.stickers?.react === false) return
       const chance = cfg.stickers?.reactChance ?? 0
       if (!(chance > 0) || !msg.messageId || msg.messageId === '0') return

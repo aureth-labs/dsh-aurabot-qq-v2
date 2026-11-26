@@ -141,14 +141,13 @@ function Diary({ st, draft, setDraft, toast }) {
         toast('ta在写了…')
         try {
           const r = await post('/diary/run', {})
-          const message = r.dryRun ? '写好了（试运行，没真发）' : '发出去了'
-          toast(r.ok ? [message, ...(r.warnings || [])].join('；') : r.message)
+          toast(r.ok ? ['发出去了', ...(r.warnings || [])].join('；') : r.message)
         } catch (e) { toast(e.message) }
         finally { await load() }
       } }, '现在写一篇')) },
       !data ? h(Empty, { icon: '⏳', text: '加载中…' }) : !data.items || data.items.length === 0 ? h(Empty, { icon: '📔', text: '还没写过日记。' }) :
         h('div', { className: 'ab-list' }, data.items.map((d, i) => h('div', { key: i, className: 'ab-li' },
-          h('div', { className: 'meta' }, new Date(d.at).toLocaleString(), h('br'), d.deletedAt ? '已从空间删除' : d.dryRun ? '试运行' : d.ok ? (AUDIENCE_LABEL[d.visibility] || '已发布') : '失败'),
+          h('div', { className: 'meta' }, new Date(d.at).toLocaleString(), h('br'), d.deletedAt ? '已从空间删除' : d.ok ? (AUDIENCE_LABEL[d.visibility] || '已发布') : '失败'),
           h('div', { className: 'body' }, d.text,
             (d.warnings || []).map((warning, index) => h('div', { key: index, className: 'ab-small', style: { color: 'var(--ab-warn)' } }, warning)),
             d.error ? h('div', { className: 'ab-small', style: { color: 'var(--ab-err)' } }, d.error) : null),

@@ -173,7 +173,7 @@ export async function runCommand(cmd, msg, deps) {
       const st = hub.stats()
       const mu = mutes.until(msg.chatId)
       const lines = [
-        `总开关：${cfg.enabled ? '开' : '关'}${cfg.dryRun ? '（试运行，不真发）' : ''}`,
+        `总开关：${cfg.enabled ? '开' : '关'}`,
         ...(mood ? [`心情：${mood.label()}`] : []),
         `今天：收到 ${st.received} 条，发出 ${st.sent} 条`,
         `${here}：${mu === undefined ? '正常说话' : mu === 0 ? '闭嘴中' : '闭嘴到 ' + new Date(mu).toLocaleTimeString().slice(0, 5)}`,
@@ -222,7 +222,7 @@ export async function runCommand(cmd, msg, deps) {
     case 'diary': {
       if (!qzone) return '空间日记没开'
       const r = await qzone.writeDiary()
-      if (r.ok) return r.dryRun ? '写好了，不过现在是试运行，没真发' : '写好发出去啦，去空间看看'
+      if (r.ok) return '写好发出去啦，去空间看看'
       deps.log?.warn?.('日记命令失败：', r.message)
       const known = ['上一篇还在写', '她这次没写出来', '总开关关着', '说说是空的', '发布前开关已变化，本次未发布。', '说说可见范围配置无效，已停止发布。', '未知的说说可见范围，已停止发布。', '选择了部分好友范围，但 QQ 名单为空，已停止发布；不会改成公开。']
       return known.includes(r.message) ? '没写成：' + r.message : '日记发布未确认，请先查看空间是否已发出，再决定是否重试；详细原因请主人查看本机日志。'
@@ -240,7 +240,7 @@ export async function runCommand(cmd, msg, deps) {
       return '好，我们重新开始'
     case 'on':
       setConfig({ ...cfg, enabled: true })
-      return cfg.dryRun ? '总开关打开了（现在是试运行，我说的话只进日志）' : '我上线啦'
+      return '我上线啦'
     case 'off':
       setConfig({ ...cfg, enabled: false })
       return '好，我先下线了。发 /on 叫我回来'

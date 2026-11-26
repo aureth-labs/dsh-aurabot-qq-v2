@@ -13,7 +13,7 @@ export function createTyping({ isDisposed, getConfig, onebot }: TypingDeps) {
   function startTyping(key: string, chat: any) {
     if (isDisposed()) return
     const cfg = getConfig()
-    if (chat.kind !== 'private' || !cfg.enabled || cfg.dryRun || typing.has(key)) return
+    if (chat.kind !== 'private' || !cfg.enabled || typing.has(key)) return
     const ping = () => { if (!isDisposed()) onebot.call('set_input_status', { user_id: Number(chat.userId), event_type: 1 }, { timeoutMs: 5000 }).catch(() => {}) }
     ping()
     const started = Date.now()

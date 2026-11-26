@@ -80,10 +80,6 @@ export function createQzoneSocial({ getConfig, onebot, hub, log, memory }) {
 
   async function sendComment(tid, content, targetUin?) {
     const cfg = getConfig()
-    if (cfg.dryRun) {
-      log.info(`试运行：本来要在空间评论（${targetUin || '自己'} / ${tid}）：${content}`)
-      return true
-    }
     await onebot.call('comment_qzone', { tid, content, ...(targetUin ? { target_uin: Number(targetUin) } : {}) }, { timeoutMs: 30000 })
     log.info(`空间评论（${targetUin || '自己的说说'}）：${content}`)
     return true
@@ -152,7 +148,7 @@ export function createQzoneSocial({ getConfig, onebot, hub, log, memory }) {
         content = String(f.html || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
       }
       images = (String(f.html || '').match(/<img/g) || []).length
-      if (c.like && !getConfig().dryRun) {
+      if (c.like) {
         try { await onebot.call('like_qzone', { tid: f.key, target_uin: Number(f.uin), abstime: Number(f.time) || 0 }, { timeoutMs: 20000 }) } catch (error) { log.debug('点赞失败：', error.message) }
       }
       const text = await write(`你在刷 QQ 空间，看到${isOwner ? `你的${owner()}` : `好友 ${f.nickname}`}发的说说：「${content.slice(0, 300) || '（只有图片）'}」${images ? `（配了图）` : ''}\n` +

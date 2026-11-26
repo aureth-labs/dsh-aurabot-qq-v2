@@ -59,7 +59,6 @@ export default {
     const applyAvatar = async (buf, c, okMessage) => {
       const small = await smallerForAvatar(buf, c)
       if (!small) return { ok: false, message: `这张图太大（${Math.round(buf.length / 1024)} KB），换头像最多 2 MB，本机也没有 ffmpeg / sharp 可以缩小 —— 先裁小一点再试` }
-      if (c.dryRun) return { ok: true, message: `试运行：本来要换 QQ 头像（图片 ${Math.round(small.length / 1024)} KB）` }
       const tmpDir = dataDir('tmp')
       const tmp = join(tmpDir, `avatar-${process.pid}-${Date.now()}.jpg`)
       let lastError = null
@@ -115,9 +114,9 @@ export default {
             const ready = () => {
               reader.assertCurrent(String(api.config().botQQ || ''))
               if (!api.config().enabled) throw new Error('插件总开关已关闭，未发送头像')
-              return api.config().dryRun || api.config().debug
+              return api.config().debug
             }
-            if (ready()) return { ok: true, sent: false, simulated: true, message: '试运行或调试模式：不会真实发送 QQ 头像' }
+            if (ready()) return { ok: true, sent: false, simulated: true, message: '调试模式：不会真实发送 QQ 头像' }
             const avatar = await reader.avatar()
             reader.assertCurrent(avatar.qq)
             if (!allowed()) throw new Error('主人身份已变化，未发送头像')
@@ -141,7 +140,6 @@ export default {
           const nick = String(name || '').trim()
           if (!nick) return { ok: false, message: '昵称不能是空的' }
           if ([...nick].length > NICK_MAX) return { ok: false, message: `昵称最多 ${NICK_MAX} 个字` }
-          if (c.dryRun) return { ok: true, message: `试运行：本来要把 QQ 昵称改成：${nick}` }
           await onebot.call('set_qq_profile', { nickname: nick }, { timeoutMs: 15000 })
           return { ok: true, message: `QQ 昵称改好了：${nick}` }
         }),
@@ -155,7 +153,6 @@ export default {
           const sign = String(text || '').trim()
           if (!sign) return { ok: false, message: '签名不能是空的' }
           if ([...sign].length > SIGN_MAX) return { ok: false, message: `签名最多 ${SIGN_MAX} 个字` }
-          if (c.dryRun) return { ok: true, message: `试运行：本来要把 QQ 签名改成：${sign}` }
           await onebot.call('set_self_longnick', { longNick: sign }, { timeoutMs: 15000 })
           return { ok: true, message: `QQ 签名改好了：${sign}` }
         }),
@@ -186,7 +183,6 @@ export default {
           if (/^https?:\/\//i.test(raw)) {
             const src = avatarSource(raw)
             if (!src.ok) return src
-            if (c.dryRun) return { ok: true, message: `试运行：本来要把 QQ 头像换成：${src.file}` }
             await onebot.call('set_qq_avatar', { file: src.file }, { timeoutMs: 30000 })
             return { ok: true, message: 'QQ 头像换好了' }
           }

@@ -88,7 +88,7 @@ function plan(cfg, request, ids) {
 // 只关心会影响这批操作的设置；别的群或模型设置变化不造成冲突，也不会被覆盖。
 function baseline(cfg, ids) {
   const { overrides, moduleOnlyGroups, ...defaults } = cfg.group
-  return structuredClone({ owner: cfg.ownerQQ, defaults, enabled: cfg.enabled, dryRun: cfg.dryRun, debug: cfg.debug,
+  return structuredClone({ owner: cfg.ownerQQ, defaults, enabled: cfg.enabled, debug: cfg.debug,
     memoryEnabled: cfg.memory.enabled,
     groups: ids.map(id => ({ id, moduleOnly: (moduleOnlyGroups || []).includes(id), override: overrides[id], allowed: cfg.allow.groups.includes(id), passive: cfg.memory.passiveGroups.includes(id) })) })
 }
@@ -119,7 +119,6 @@ function chatSummary(cfg, s) {
   else if (s.response_mode === 'modules') reasons.push('仅模块，AI 不接话')
   if (!cfg.enabled) reasons.push('总开关关闭')
   else if (cfg.debug) reasons.push('调试模式')
-  else if (cfg.dryRun) reasons.push('试运行')
   if (s.reply_paused) reasons.push('已暂停')
   return reasons.length ? '暂不回复（' + reasons.join('、') + '）' : '按规则回复'
 }
@@ -188,7 +187,7 @@ export async function runGroupSettingsCommand(arg, msg, deps) {
       session.pending = null // 一次性确认；失败也要先查设置，再重新发起，不能重放。
       const current = getConfig()
       if (!isDeepStrictEqual(pending.base, baseline(current, pending.ids))) return '预览后相关设置已变化，未执行旧操作。请重新发修改指令。'
-      if (current.dryRun || current.debug) return '试运行或调试中，未保存。'
+      if (current.debug) return '调试中，未保存。'
       const result = plan(current, pending.request, pending.ids)
       if (result.changed) setConfig(result.next)
       return `已${result.changed ? '保存' : '检查，设置没变'} ${pending.ids.length} 个群\n${groupIds(pending.ids)}\n\n${changeText(pending.request)}\n\n${consequences(pending.request, current, pending.ids)}\n可用 /群设置 查看 群号 核对。`
@@ -215,14 +214,14 @@ export async function runGroupSettingsCommand(arg, msg, deps) {
       return [`共 ${ids.length} 个群，第 ${request.page}/${pages} 页。`,
         ...slice.map(id => groupReport(cfg, report(cfg, id), { name: names.get(id), brief: true })),
         '非白名单群不接话；白名单群的记忆不受旁听名单控制。',
-        !cfg.enabled ? '总开关关闭，不发消息也不新增旁听。' : cfg.debug ? '调试中，不发消息也不新增旁听。' : cfg.dryRun ? '试运行，不发消息但仍可能记录记忆。' : '',
+        !cfg.enabled ? '总开关关闭，不发消息也不新增旁听。' : cfg.debug ? '调试中，不发消息也不新增旁听。' : '',
         request.page < pages ? `下一页：/群设置 查看 ${request.target} ${request.page + 1}` : '已到末页。'].filter(Boolean).join('\n\n')
     }
     if (ids.length > MAX_BATCH) return '一次最多修改 100 个群，请用逗号分隔群号分批操作；本次未修改。'
     const result = plan(cfg, request, ids)
     if (!result.changed) return '设置没变。\n' + (ids.length === 1 ? groupReport(cfg, report(cfg, ids[0])) : changeText(request))
     const summary = `${ids.length} 个群\n${groupIds(ids)}\n\n${changeText(request)}\n\n${consequences(request, cfg, ids)}`
-    if (cfg.dryRun || cfg.debug) return '试运行或调试：仅预览，未保存。\n' + summary
+    if (cfg.debug) return '调试：仅预览，未保存。\n' + summary
     if (ids.length > 1 || request.target === '全部') {
       const code = String(randomInt(100000, 1000000))
       session.pending = { code, ids, request, expires: Date.now() + TTL, base: baseline(cfg, ids) }

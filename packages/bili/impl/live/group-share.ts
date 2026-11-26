@@ -160,7 +160,6 @@ export function createGroupShare({ getConfig, hub, log = console, think: thinkIn
     const c = cfg()
     if (!c.enabled || !String(c.groupId || '').trim()) return { ok: false, why: '群分享没开（没配群号）' }
     if (!g.enabled) return { ok: false, why: '总开关关着' }
-    if (g.dryRun) return { ok: false, why: '试运行，不攒待批' }
     if (!g.ownerQQ) return { ok: false, why: '没配主人的 QQ' }
     const s = load()
     if (s.sentToday >= Number(c.dailyLimit)) return { ok: false, why: `今天已经发够 ${c.dailyLimit} 条了` }
@@ -256,7 +255,6 @@ export function createGroupShare({ getConfig, hub, log = console, think: thinkIn
       if (action === 'skip') { it.state = 'rejected'; it.decidedAt = Date.now(); save(s); dropped++; touched.push(it); continue }
       if (!legal.length) continue
       if (s.sentToday >= Number(c.dailyLimit)) continue // 额度用尽的留在 pending，等明天或主人处理
-      if (getConfig().dryRun) { it.state = 'dry'; it.decidedAt = Date.now(); save(s); dropped++; touched.push(it); continue }
       let okThis = 0
       let failThis = 0
       for (const gid of legal) {

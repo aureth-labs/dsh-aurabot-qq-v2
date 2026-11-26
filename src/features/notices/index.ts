@@ -42,7 +42,7 @@ export function createNoticeRelay({ getConfig, workspaceOf, compose, log, window
   /** 这个会话的这一类事要不要上报：先看总开关，再看工作区覆盖。没配主人号就不报（发不出去）。 */
   function enabled(kind, sessionId) {
     const cfg = getConfig?.() || {}
-    if (!cfg.enabled || cfg.dryRun || !cfg.ownerQQ) return false
+    if (!cfg.enabled || !cfg.ownerQQ) return false
     const n = cfg.notice || {}
     if (n.enabled === false) return false
     if (n[kind] === false) return false

@@ -52,10 +52,6 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
     let audience
     try { audience = resolveAudience(cfg, visibility) } catch (error) { return { ok: false, message: error.message } }
     if (!cfg.enabled) return { ok: false, message: '总开关关着' }
-    if (cfg.dryRun) {
-      log.info(`试运行：本来要发说说（${audience.label}）：${text.slice(0, 60)}`)
-      return { ok: true, tid: '', dryRun: true, visibility: audience.visibility, label: audience.label, target_uins: audience.target_uins || [] }
-    }
     const imgs = []
     const imageIndexes = []
     for (const [index, src] of images.entries()) {
@@ -70,12 +66,12 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
       // 下载图片可能花几秒，发布前用最新配置再算一次，免得中途改了范围还按旧的发出去。
       const latest = getConfig()
       audience = resolveAudience(latest, visibility)
-      if (!latest.enabled || latest.dryRun) return { ok: false, message: '发布前开关已变化，本次未发布。' }
+      if (!latest.enabled) return { ok: false, message: '发布前开关已变化，本次未发布。' }
       beforeSend?.()
       // 说说走 QQ 空间（公开 / 部分好友可见），**不是私聊主人**，所以不进出站门闸：
       // 主动发言策略治理的是「主动私聊当前 owner」这个场景（设计稿 §2 范围），
       // 空间动态不影响主人的私聊体验，也没有「打扰主人几次」的额度概念。
-      // 它有自己的开关（qzone.enabled / visibility）和 dryRun，不走 proactive 账本。
+      // 它有自己的开关（qzone.enabled / visibility），不走 proactive 账本。
       const r = await onebot.call('send_qzone_msg', { content: text, ugc_right: audience.ugc_right, ...(audience.target_uins ? { target_uins: audience.target_uins } : {}), ...(imgs.length ? { images: imgs } : {}) }, { timeoutMs: 60000 })
       const tid = String(r?.tid ?? r?.id ?? r ?? '')
       log.info(`发了一条说说（${audience.label}，tid ${tid || '?'}）`)
@@ -108,7 +104,7 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
   function syncHistory() {
     if (syncingHistory) return syncingHistory
     syncingHistory = (async () => {
-      if (!state().history.some((d) => d.tid && d.ok && !d.dryRun && !d.deletedAt)) return { ok: true }
+      if (!state().history.some((d) => d.tid && d.ok && !d.deletedAt)) return { ok: true }
       try {
         const startedAt = Date.now()
         const ids = new Set()
@@ -138,7 +134,7 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
         const s = state()
         const checkedAt = Date.now()
         for (const entry of s.history) {
-          if (!entry.tid || !entry.ok || entry.dryRun || entry.deletedAt || entry.at > startedAt) continue
+          if (!entry.tid || !entry.ok || entry.deletedAt || entry.at > startedAt) continue
           if (ids.has(String(entry.tid))) entry.remoteCheckedAt = checkedAt
           else if (complete) { entry.deletedAt = checkedAt; entry.deletedSource = 'space-list' }
         }
@@ -176,14 +172,14 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
         const r = await post(draft.text, { images: draft.images, visibility, beforeSend: draft.beforeSend })
         const s = state()
         s.history.unshift({
-          at: Date.now(), text: draft.text, ok: r.ok, tid: r.tid || '', dryRun: Boolean(r.dryRun),
+          at: Date.now(), text: draft.text, ok: r.ok, tid: r.tid || '',
           visibility: r.visibility || audience.visibility, target_uins: r.target_uins || [],
           error: r.ok ? '' : r.message, media: (r.imageIndexes || []).map((index) => draft.media[index]),
           imageCount: r.imageCount || 0, warnings: draft.warnings,
         })
         s.history = s.history.slice(0, 100)
         save(s)
-        if (r.ok && !r.dryRun) {
+        if (r.ok) {
           try { onDiary?.(draft.text) } catch (error) {}
         }
         return { ...details, ...r, images: r.imageCount || 0 }
@@ -221,10 +217,10 @@ export function createQzone({ getConfig, onebot, hub, log, onDiary, pickImage, c
         r = await post(text, { visibility })
       }
       const s = state()
-      s.history.unshift({ at: Date.now(), text, ok: r.ok, tid: r.tid || '', dryRun: Boolean(r.dryRun), visibility: r.visibility || visibility || cfg.visibility, target_uins: r.target_uins || [], error: r.ok ? '' : r.message })
+      s.history.unshift({ at: Date.now(), text, ok: r.ok, tid: r.tid || '', visibility: r.visibility || visibility || cfg.visibility, target_uins: r.target_uins || [], error: r.ok ? '' : r.message })
       s.history = s.history.slice(0, 100)
       save(s)
-      if (r.ok && !r.dryRun) {
+      if (r.ok) {
         try { onDiary?.(text) } catch (error) {}
       }
       return { ...r, text, images: images.length }

@@ -86,9 +86,7 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   const rawMemory = isObj(raw?.memory) ? raw.memory : {} as RawConfig
   const rawDouyin = isObj(raw?.douyin) ? raw.douyin : {} as RawConfig
   c.enabled = bool(c.enabled, false)
-  c.dryRun = bool(c.dryRun, true)
   c.debug = bool(c.debug, false)
-  if (c.debug) c.dryRun = true
   // 指令前缀：只认字符串和 null（null = 无前缀），去重、去空串；坏数据落回默认
   const prefixes = Array.isArray(c.commandPrefixes) ? c.commandPrefixes : []
   const cleaned = []

@@ -69,11 +69,11 @@ export function createPersonaMemoryRuntime({ getConfig }) {
     },
     captureDelivery(chatId, personaId, botQQ) {
       const from = { chatId, personaId, botQQ: String(botQQ || '') }
-      if (getConfig().dryRun || !validSubscription() || !sameScope(subscription.scope, from)) return null
+      if (!validSubscription() || !sameScope(subscription.scope, from)) return null
       return Object.freeze({ ...from, subscriptionId: subscription.id })
     },
     confirmDelivery(chatId, messageId, from) {
-      if (getConfig().dryRun || !validSubscription() || !from || subscription.id !== from.subscriptionId ||
+      if (!validSubscription() || !from || subscription.id !== from.subscriptionId ||
           !sameScope(subscription.scope, from) || from.chatId !== chatId) return
       const receipt = confirmedChatDelivery(chatId, messageId, from.botQQ)
       const { listener, seen } = subscription

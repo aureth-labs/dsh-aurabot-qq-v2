@@ -198,9 +198,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
     if (marketId) item.market = { emojiId: marketId, packageId: Number(d.emoji_package_id ?? d.emojiPackageId ?? 0) || 0, key: String(d.key ?? '') }
     recent.push(now)
     // 收藏到 QQ
-    if (!getConfig().dryRun) {
-      item.emojiId = await addToQQ(join(dir(), file), '自动收藏')
-    }
+    item.emojiId = await addToQQ(join(dir(), file), '自动收藏')
     lib.items.push(item)
     saveLibrary(lib)
     log.info(`收了一张表情 ${md5.slice(0, 8)}（${width}x${height}）`)
@@ -264,7 +262,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
     writeFileSync(join(dir(), file), buf)
     const { width, height } = imageSize(buf)
     const item = { md5, file, name: String(name).slice(0, 12), tags, from, at: Date.now(), width, height, bytes: buf.length, emojiId: '' }
-    if (toQQ && !getConfig().dryRun) {
+    if (toQQ) {
       item.emojiId = await addToQQ(join(dir(), file), '手动收藏')
       if (item.emojiId && item.name) {
         try { await onebot.call('modify_custom_face', { emoji_id: item.emojiId, desc: item.name }) } catch (error) { log.debug('收藏备注写回失败：', error.message) }
@@ -318,7 +316,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
     const found = loadLibrary().items.filter((i) => list.includes(i.md5))
     if (!found.length) return { ok: false, removed: 0, message: '这些表情已经不在库里了' }
     let qqFailed = 0
-    if (fromQQ && !getConfig().dryRun) {
+    if (fromQQ) {
       for (const it of found) {
         if (!it.emojiId) continue
         try { await onebot.call('delete_custom_face', { emoji_id: it.emojiId }) } catch (error) { qqFailed++; log.warn('从 QQ 收藏里删除失败：', error.message) }
@@ -341,7 +339,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
     if (name !== undefined) it.name = String(name).trim().slice(0, 12)
     if (tags !== undefined) it.tags = [...new Set((Array.isArray(tags) ? tags : []).map((t) => String(t).replace(/^#/, '').trim().slice(0, 8)).filter(Boolean))].slice(0, 5)
     saveLibrary(lib)
-    if (it.emojiId && !getConfig().dryRun) onebot.call('modify_custom_face', { emoji_id: it.emojiId, desc: it.name }).catch(() => {})
+    if (it.emojiId) onebot.call('modify_custom_face', { emoji_id: it.emojiId, desc: it.name }).catch(() => {})
     return { ok: true, item: it }
   }
 
@@ -492,7 +490,7 @@ export function createStickerStore({ dsh, getConfig, onebot, log }) {
         cur.name = name
         if (tags.length) cur.tags = tags
         saveLibrary(l)
-        if (cur.emojiId && !getConfig().dryRun) {
+        if (cur.emojiId) {
           try { await onebot.call('modify_custom_face', { emoji_id: cur.emojiId, desc: cur.name.slice(0, 20) }) } catch (error) { log.warn('写回 QQ 备注失败：', error.message) }
         }
         job.ok++

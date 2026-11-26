@@ -117,7 +117,6 @@ export function createDanmaku(api, { prepare = prepareDanmaku, now = Date.now, r
     let info
     try {
       active(key, auto)
-      if (api.config().dryRun) return { ok: true, dryRun: true, message: '试运行：未向 B 站发送弹幕', input }
       if (today().length >= limit()) return { ok: false, message: '今天的弹幕提交次数已达上限' }
       const recent = rows().filter((row) => row.submitted)
       if (recent.some((row) => row.fingerprint === fingerprint && now() - row.at < 86400_000)) return { ok: false, message: '这条弹幕已提交过，避免重复发送；结果不确定时请先到 B 站确认' }
@@ -127,7 +126,6 @@ export function createDanmaku(api, { prepare = prepareDanmaku, now = Date.now, r
         video: input.video, part: input.part, signal: controller.signal,
         beforePost() {
           active(key, auto)
-          if (api.config().dryRun) throw new Error('试运行已开启，弹幕未提交')
           if (today().length >= limit()) throw new Error('弹幕提交次数已达上限')
           submitted = true
           // 请求前留痕，超时或异常时也不会自动重发同一条。
@@ -139,7 +137,6 @@ export function createDanmaku(api, { prepare = prepareDanmaku, now = Date.now, r
       fingerprint = digest(JSON.stringify([info.cid, progress, input.text]))
       if (rows().some((row) => row.submitted && row.fingerprint === fingerprint && now() - row.at < 86400_000)) throw new Error('这条弹幕已提交过，请先到 B 站确认，避免重复发送')
       active(key, auto)
-      if (api.config().dryRun) throw new Error('试运行已开启，弹幕未提交')
       const result = await prepared.post(input.text, progress, modes[input.position])
       const id = String(result?.dmid_str ?? (Number.isSafeInteger(result?.dmid) ? result.dmid : ''))
       if (!/^[1-9]\d*$/.test(id)) throw new Error('平台未返回弹幕编号，结果待确认')
@@ -178,7 +175,7 @@ export function createDanmaku(api, { prepare = prepareDanmaku, now = Date.now, r
   }
   async function afterBrowse(watched) {
     if (stopped || settings().danmakuEnabled !== true || settings().autoDanmaku !== true
-      || !api.config().enabled || !settings().enabled || api.config().dryRun || !session()) return
+      || !api.config().enabled || !settings().enabled || !session()) return
     const key = session()
     for (const row of watched.slice(0, 3)) {
       if (today().length >= limit() || rows().some((old) => old.auto && old.bvid === row.bvid && dayKey(old.at) === dayKey(now()))) continue

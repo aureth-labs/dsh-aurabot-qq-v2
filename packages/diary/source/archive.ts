@@ -37,7 +37,7 @@ export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir
   let stopped = false
   function assertActive(folder) {
     const cfg = api.config()
-    if (stopped || !cfg.enabled || cfg.dryRun || cfg.diary.archive?.enabled !== true || cfg.diary.archive.folder !== folder) throw new Error('归档已停止、试运行开启或目录设置已变化，本次停止保存')
+    if (stopped || !cfg.enabled || cfg.diary.archive?.enabled !== true || cfg.diary.archive.folder !== folder) throw new Error('归档已停止或目录设置已变化，本次停止保存')
     return outputFolder(folder)
   }
   function state() {

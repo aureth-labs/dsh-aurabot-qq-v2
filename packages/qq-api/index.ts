@@ -28,7 +28,7 @@ export function refusal({ action, params, cfg, owner, chat }) {
   if (!entry) return '这个接口不开放'
   for (const p of paramsOf(action)) if (p.required && (params[p.name] === undefined || params[p.name] === '')) return `缺参数 ${p.name}`
   if (owner) {
-    if (entry[0] === 'owner' && (cfg.dryRun || !cfg.enabled)) return '现在是试运行，不真的执行'
+    if (entry[0] === 'owner' && !cfg.enabled) return '总开关关着，不真的执行'
     const out = outboundRefusal({ action, params, cfg })
     if (out) return out
     return ''

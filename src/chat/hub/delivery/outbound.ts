@@ -139,14 +139,10 @@ export function createOutbound(deps: OutboundDeps) {
       log.info(`总开关关着，没发 → ${chatId}：${note}`)
       return settleOutboundFailed(verdict)
     }
-    else if (cfg.dryRun) {
-      log.info(`试运行（没真发）→ ${chatId}：${note}`)
-      return settleOutboundFailed(verdict)
-    }
     const action = tgt.kind === 'group' ? 'send_group_msg' : 'send_private_msg'
     const sourceGroupId = tgt.kind === 'private' ? privateSources.get(tgt.id) : ''
     const params = tgt.kind === 'group' ? { group_id: Number(tgt.id), message } : { user_id: Number(tgt.id), ...(sourceGroupId ? { group_id: Number(sourceGroupId) } : {}), message }
-    const deliveryScope = !sensitive && !cfg.debug && !cfg.dryRun
+    const deliveryScope = !sensitive && !cfg.debug
       ? hooks?.deliveryScope?.(chatId, pnow(), cfg.botQQ)
       : null
     try {
@@ -251,13 +247,13 @@ export function createOutbound(deps: OutboundDeps) {
     if (replyId || userId) log.debug(`语音条不能带引用/@（QQ 限制），单独发：${chatId}`)
     try {
       const r = await sendSegments(chatId, [{ type: 'record', data: { file: 'base64://' + b64 } }], `[语音·${engine}] ${text.slice(0, 40)}`, { throwOnError: true, timeoutMs: FILE_TIMEOUT_MS })
-      if (r || getConfig().dryRun || !getConfig().enabled) {
+      if (r || !getConfig().enabled) {
         bump('voice')
         // 表情不念出来，但要补上：语音条发完再单独发一条文字里的表情（用户反馈：希望表情和语音分开发）
         if (extras && getConfig().voice.emojiSeparate !== false) {
           // 补发是额外的一条：失败只记日志，不算这一轮发失败（不然语音明明发出去了也会被当成没发）
           try {
-            if (getConfig().enabled && !getConfig().dryRun && !opts.simulate) await pause(1200)
+            if (getConfig().enabled && !opts.simulate) await pause(1200)
             const sent = await sendText(chatId, extras, undefined, undefined, undefined, { quiet: true })
             log.debug(sent ? `语音后面补发了一条表情：${chatId}` : '表情没补发出去（不影响语音条）')
           } catch (error) {
@@ -295,7 +291,7 @@ export function createOutbound(deps: OutboundDeps) {
     const group = chatId.startsWith('group:') ? chatId.slice(6) : ''
     const target = group ? lastPoker.get(chatId) || lastSpeaker.get(chatId) : chatId.slice(8)
     if (!target) return
-    if (!cfg.enabled || cfg.dryRun) return log.info(`试运行（没真戳）→ ${chatId}：戳了戳 ${target}`)
+    if (!cfg.enabled) return log.info(`总开关关着（没真戳）→ ${chatId}：戳了戳 ${target}`)
     try {
       await onebot.call('send_poke', { user_id: Number(target), ...(group ? { group_id: Number(group) } : {}) }, { timeoutMs: 10000 })
       recordDeliveryTypes(chatId, [{ type: 'poke' }])
@@ -310,8 +306,8 @@ export function createOutbound(deps: OutboundDeps) {
     if (isDisposed()) return null
     const b64 = readFileSync(file).toString('base64')
     const r = await sendSegments(chatId, [{ type: 'record', data: { file: 'base64://' + b64 } }], note || '[语音]')
-    if (r || getConfig().dryRun || !getConfig().enabled) bump('voice')
-    if (!r && getConfig().enabled && !getConfig().dryRun) throw new Error('网关没接受这条语音')
+    if (r || !getConfig().enabled) bump('voice')
+    if (!r && getConfig().enabled) throw new Error('网关没接受这条语音')
     return r
   }
 
@@ -373,7 +369,6 @@ export function createOutbound(deps: OutboundDeps) {
       return { message_id: 'sim-' + cap.length }
     }
     if (!cfg.enabled) { log.info(`总开关关着，没发 → ${chatId}：[文件] ${label}`); return null }
-    if (cfg.dryRun) { log.info(`试运行（没真发）→ ${chatId}：[文件] ${label}`); return null }
     const action = tgt.kind === 'group' ? 'upload_group_file' : 'upload_private_file'
     const params = tgt.kind === 'group'
       ? { group_id: Number(tgt.id), file: src, name: label }

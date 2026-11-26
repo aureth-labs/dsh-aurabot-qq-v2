@@ -1802,7 +1802,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     historySeeded.add(key)
     try {
       const cfg = getConfig()
-      if (!cfg.enabled || cfg.dryRun) return content
+      if (!cfg.enabled) return content
       if (!cfg.chat?.seedHistory) return content
       const count = Math.min(50, Math.max(1, Number(cfg.chat?.seedHistoryCount) || 20))
       const tgt = targetOf(chat.chatId)

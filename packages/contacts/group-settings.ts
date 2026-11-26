@@ -27,7 +27,7 @@ export function readSettings(cfg, id, pausedUntil?) {
     engaged_max: policy.engagedMax, quiet_hours: policy.quietHours,
     in_quiet_hours: inQuietHours(new Date().getHours(), policy.quietHours),
   }
-  state.can_reply_by_settings = state.response_mode === 'chat' && cfg.enabled === true && !cfg.dryRun && !cfg.debug && !state.reply_paused
+  state.can_reply_by_settings = state.response_mode === 'chat' && cfg.enabled === true && !cfg.debug && !state.reply_paused
   const on = value => value ? '开' : '关'
   const lines = [
     `群 ${id}（接话设置：${state.follows_defaults ? '跟随全局' : '此群单独设置'}）`,
@@ -44,7 +44,6 @@ export function readSettings(cfg, id, pausedUntil?) {
   else notices.push('白名单群的记忆另按原有设置处理，移出旁听名单不等于停止记录。')
   if (!cfg.enabled) notices.push('总开关已关闭：不会回复，也不新增旁听记录。')
   else if (cfg.debug) notices.push('调试模式：不发消息，也不新增旁听记录。')
-  else if (cfg.dryRun) notices.push('试运行：不发消息，但仍可能记录记忆。')
   if (state.reply_paused) notices.push('这个群已暂停聊天；在该群发 /active 恢复。修改接话开关不会解除暂停。')
   if (state.proactive && policy.maxPerHour === 0) notices.push('每小时插话上限为 0，主动加入仍不会发生。')
   if (state.engaged && policy.engagedMax === 0) notices.push('连续接话次数为 0，窗口内仍不会接话。')
@@ -151,19 +150,18 @@ export function groupSettingsTool(api, { chat, sessionId }) {
         const notes = ['接话开关仅在「允许 AI 聊天」时生效。白名单群记忆按原有设置处理，不受旁听名单控制；非白名单群只有加入旁听名单才会额外记录。']
         if (!current.enabled) notes.push('总开关已关闭，不发消息，也不新增旁听记录。')
         else if (current.debug) notes.push('调试模式：不发消息，也不新增旁听记录。')
-        else if (current.dryRun) notes.push('试运行：不发消息，但仍可能记录记忆。')
         return { ok: true, changed: false, total: joined.length, offset, next_offset: next, complete: next === null, groups, message: [heading, ...lines, ...(joined.length ? notes : [])].join('\n') }
       }
       let plan = planGroupSettings(cfg, args)
       if (!plan.ok) return plan
       if (args.action === 'get') return { ok: true, changed: false, ...report(cfg, plan.id) }
-      if (cfg.dryRun || cfg.debug) return { ok: true, changed: false, preview: true, state: report(cfg, plan.id).state,
-        message: '试运行或调试：未保存。预计结果：' + report(plan.next, plan.id).message }
+      if (cfg.debug) return { ok: true, changed: false, preview: true, state: report(cfg, plan.id).state,
+        message: '调试模式：未保存。预计结果：' + report(plan.next, plan.id).message }
       if (!plan.changed) { const result = report(cfg, plan.id); return { ok: true, changed: false, ...result, message: '设置没变。\n' + result.message } }
       try {
         // updater 取最新配置再检查、规划；没有网络等待，不用旧快照覆盖面板或命令。
         api.setConfig(cur => {
-          if (!permitted(cur) || cur.dryRun || cur.debug) throw new Error('群设置权限或运行模式已变化')
+          if (!permitted(cur) || cur.debug) throw new Error('群设置权限或运行模式已变化')
           plan = planGroupSettings(cur, args)
           if (!plan.ok) throw new Error('群设置参数无效')
           return plan.next

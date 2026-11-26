@@ -186,7 +186,7 @@ export default {
         // 「正在做」提示已经以 notice 发出去了：立刻登记，hub 的慢工具兜底（1.5s 定时器）就不再发
         // 她当轮正文——否则 notice 和兜底各发一遍，同样的话出现两次（2026-11-18 主人私聊实测）。
         if (acknowledged && typeof hub.markSlowNotice === 'function') hub.markSlowNotice(sessionId)
-        const simulatedNotice = () => acknowledged === null && Boolean(cfg.debug || cfg.dryRun)
+        const simulatedNotice = () => acknowledged === null && Boolean(cfg.debug)
         if (!acknowledged && !simulatedNotice()) acknowledged = await hub.sendText(chat.chatId, '好，我来画。', undefined, undefined, undefined, NOTICE_OPTS)
         if (!acknowledged && !simulatedNotice()) return { ok: false, message: '没能发送画图回复，请检查 QQ 网关' }
         const progress = async (error, retrying) => {
@@ -254,8 +254,8 @@ export default {
         const sent = await hub.sendSegments(chat.chatId, bufs.map((item) => ({ type: 'image', data: { file: 'base64://' + item.toString('base64') } })), `[生图] ${String(prompt).slice(0, 30)}`)
         // 调试 / 试运行下本来就不真发（sendSegments 只记日志、返回 null）：
         // 这一轮仍算画好了 —— 存盘、给编号、能看图，只是 QQ 里收不到；不能当失败。
-        // 只有 null 才是“试运行/调试拦下”；明确的 false 仍按发送失败处理。
-        const simulated = sent === null && Boolean(cfg.debug || cfg.dryRun)
+        // 只有 null 才是“调试拦下”；明确的 false 仍按发送失败处理。
+        const simulated = sent === null && Boolean(cfg.debug)
         if (!sent && !simulated) return { ok: false, message: '画好了，但没有发到 QQ（请检查网关）' }
         const saved = bufs.map((item) => savePainting(item, String(prompt || ''))).filter(Boolean)
         for (const path of saved) api.log.debug(`生图已存盘：${path}`)

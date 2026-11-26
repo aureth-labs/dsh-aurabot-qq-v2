@@ -15,8 +15,6 @@ export function publicConfig(cfg) {
   // 旧配置里从派生值过来的情形，不额外造字段。
   if (c.memory?.vector && cfg?.memory?.vector?.mode) c.memory.vector.mode = cfg.memory.vector.mode
   delete c.ownerAuthorization
-  // 面板上的「试运行」只表示「试运行但不调试」：调试开着时它显示为关
-  c.dryRun = Boolean(c.dryRun && !c.debug)
   // 面板要能显示/修改「单个聊天的思考档位」（chatEfforts），所以回传这份配置；
   // 它本来就不含敏感内容，只是「聊天 → 模型 → 档位」的映射。
   for (const [g, k] of HINTED) c[g][`${k}Hint`] = c[g][k] ? '…' + String(c[g][k]).slice(-4) : ''

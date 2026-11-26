@@ -197,7 +197,6 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
       }
     }
     if (!shots.exists(it)) return { ok: false, message: '那张截图的文件已经没有了' }
-    if (g.dryRun) return { ok: true, sent: false, simulated: true, message: `试运行：准备发送《${it.title}》${clockOf(it.sec)} 的截图，未实际发送` }
     let r
     try { r = await hub.sendImage(chatId, shotPath(it)) } catch (error) {
       return { ok: false, sent: false, message: '图没发出去：' + error.message }
@@ -280,7 +279,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
       if (!looked.length) return { ok: false, message: '视频都打不开' }
       const commentLeft = c.comment && canPost(s) ? Math.max(0, c.maxCommentsPerDay - s.comments) : 0
       // 群分享开着才让她想群里的话（关着就不往提示词里塞，省 token）
-      const groupShareOn = Boolean(groupShare && c.groupShare && c.groupShare.enabled && c.groupShare.groupId && !getConfig().dryRun)
+      const groupShareOn = Boolean(groupShare && c.groupShare && c.groupShare.enabled && c.groupShare.groupId)
       const out = await think(`你在 B 站刷到了这几个视频：\n\n${looked.map((x, i) => `【${i + 1}】${x.digest}`).join('\n\n')}\n\n` +
         `看完说说你的想法。对每个视频给一个对象：{"i":序号, "feeling":"一句你的真实感受", "comment":"想在视频下发的评论（像普通观众，一两句、别打广告，不想评就空字符串）", "share":"想私聊分享给${owner()}的话（觉得${owner()}会喜欢才写，不然空字符串；不要自己贴 bilibili.com/video 链接，系统会自动附上能在 QQ 里直接播放的播放器链接）"` +
         (groupShareOn ? `, "shareGroup":"想发到群里跟群友一起看的话（群里说话的口吻，一两句；没什么值得说就空字符串）"` : '') +
@@ -303,8 +302,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
         const comment = cleanOutboundText(atOwner(d.comment || ''), { warn: (message) => log.warn(`B 站评论：${message}`) }).trim().slice(0, 200)
         if (comment && !isSilence(comment) && commented < commentLeft && canPost(s)) {
           try {
-            if (getConfig().dryRun) log.info(`试运行：本来要在 B 站《${v.title}》下评论：${comment}`)
-            else await api.postComment(v.aid, comment)
+            await api.postComment(v.aid, comment)
             commented++
             s.comments++
             memory?.addEvent?.({ text: `在B站《${v.title}》下评论：${comment.slice(0, 60)}`, tags: ['B站'], importance: 0.4 })
@@ -315,7 +313,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
             record(s, { kind: 'error', title: v.title, bvid: v.bvid, text: '评论没发出去：' + error.message })
           }
         }
-        if (c.like && !getConfig().dryRun) api.likeVideo(v.aid).catch(() => {})
+        if (c.like) api.likeVideo(v.aid).catch(() => {})
         const share = cleanOutboundText(d.share, { warn: (message) => log.warn(`B 站分享：${message}`) }).trim()
         if (share && !isSilence(share) && c.shareToOwner && getConfig().ownerQQ) {
           // proactive：真发出去才记账（聊天流水 + 她下次在私聊里认得出自己发过什么）；试运行/排队补发不算
@@ -339,7 +337,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
       }
       let shotSent = 0
       const shotTo = getConfig().ownerQQ ? `private:${getConfig().ownerQQ}` : ''
-      if (shotTo && c.enabled && getConfig().enabled && !getConfig().dryRun && Number(c.shotChance) > 0) {
+      if (shotTo && c.enabled && getConfig().enabled && Number(c.shotChance) > 0) {
         const pool = looked.filter((x) => x.shotIds && x.shotIds.length)
         if (pool.length && Math.random() < Number(c.shotChance)) {
           const x = pool[Math.floor(Math.random() * pool.length)]
@@ -402,8 +400,7 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
         const reply = cleanOutboundText(out, { warn: (message) => log.warn(`B 站回复：${message}`) }).trim().split(/\n+/)[0]
         if (!reply || isSilence(reply)) continue
         try {
-          if (getConfig().dryRun) log.info(`试运行：本来要在 B 站回复 ${x.name}：${reply}`)
-          else await api.postComment(x.oid, `回复 @${x.name} :${reply}`.slice(0, 200), { root: x.root, parent: x.parent })
+          await api.postComment(x.oid, `回复 @${x.name} :${reply}`.slice(0, 200), { root: x.root, parent: x.parent })
           s.replies++
           n++
           memory?.addEvent?.({ text: `在B站回复了 ${x.name}：${reply.slice(0, 50)}`, tags: ['B站'], importance: 0.35 })
@@ -443,7 +440,6 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
     if (!message.trim()) return { ok: true, silent: true, message: '本轮保持沉默，未发送评论' }
     const w = await watch(text)
     if (!w.ok) return w
-    if (getConfig().dryRun) return { ok: true, message: `试运行：本来要在《${w.title}》下评论：${message}` }
     const r = await api.postComment(w.aid, message)
     memory?.addEvent?.({ text: `在B站《${w.title}》下评论：${String(message).slice(0, 60)}`, tags: ['B站'], importance: 0.45 })
     const s = load(); record(s, { kind: 'comment', title: w.title, bvid: w.bvid, text: message }); save(s)
@@ -455,7 +451,6 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
     const sign = cleanOutboundText(text, { warn: (message) => log.warn(`B 站签名：${message}`) }).trim()
     if (!sign) return { ok: false, message: '签名不能是空的' }
     if ([...sign].length > 70) return { ok: false, message: 'B 站签名最多 70 个字' }
-    if (getConfig().dryRun) return { ok: true, message: `试运行：本来要把 B 站签名改成：${sign}` }
     if (!parseCookie(cfg().cookie).bili_jct) return { ok: false, message: '没登录 B 站，改不了签名' }
     await api.setSign(sign)
     memory?.addEvent?.({ text: `把B站签名改成了：${sign.slice(0, 70)}`, tags: ['B站'], importance: 0.35 })
@@ -466,9 +461,6 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
   async function setAvatar(file) {
     const isBuf = Buffer.isBuffer(file)
     if (!isBuf && !/^https?:\/\//i.test(String(file || ''))) return { ok: false, message: '头像只能用网址图片、「刚才那张图」或「画作 #1」' }
-    if (getConfig().dryRun) {
-      return { ok: true, message: isBuf ? `试运行：本来要用这张图（${Math.round(file.length / 1024)} KB）换 B 站头像` : `试运行：本来要把 B 站头像换成：${file}` }
-    }
     if (!parseCookie(cfg().cookie).bili_jct) return { ok: false, message: '没登录 B 站，换不了头像' }
     try {
       if (isBuf) {

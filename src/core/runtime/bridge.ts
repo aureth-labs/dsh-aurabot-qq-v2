@@ -43,7 +43,7 @@ interface BridgeModules {
 /** 面板首屏那点状态。 */
 interface BridgeOverview {
   onebot: { state: string; login?: string }
-  config: { enabled: boolean; dryRun: boolean }
+  config: { enabled: boolean }
   mood?: { label?: string } | null
 }
 
@@ -118,7 +118,7 @@ export function createBridge ({ ctx, getConfig, setConfig, hub, mods, log, versi
       return {
         ok: true, version, apiVersion,
         online: o.onebot.state === 'connected', login: o.onebot.login,
-        enabled: o.config.enabled, dryRun: o.config.dryRun, mood: o.mood?.label || '',
+        enabled: o.config.enabled, mood: o.mood?.label || '',
         modules: mods.status().map((m) => ({ id: m.id, name: m.name, running: m.running })),
       }
     },
@@ -130,7 +130,7 @@ export function createBridge ({ ctx, getConfig, setConfig, hub, mods, log, versi
       if (!String(body || '').trim()) return { ok: false, message: '要说点什么' }
       await hub.deliver(t, String(body))
       const cfg = getConfig()
-      return { ok: true, message: !cfg.enabled ? '总开关关着，没真发' : cfg.dryRun ? '试运行，只进了日志' : '发出去了' }
+      return { ok: true, message: !cfg.enabled ? '总开关关着，没真发' : '发出去了' }
     },
     /** 让她自己想一想再说（走她的人格和记忆）。to 填了就把她的回答发过去。 */
     think: async ({ prompt, to }: ThinkArgs = {}) => {

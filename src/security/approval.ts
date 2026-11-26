@@ -26,7 +26,7 @@ export function createApprovalRelay({ getConfig, deliver, chatOfSession, timeout
   /** 这个会话的授权请求归 QQ 问：通知那边就不用再发一条。 */
   function handles(sessionId) {
     const cfg = getConfig()
-    return !disposed && cfg.enabled && !cfg.dryRun && cfg.approvalViaQQ === true && Boolean(cfg.ownerQQ) && chatOfSession(sessionId) === ownerChat()
+    return !disposed && cfg.enabled && cfg.approvalViaQQ === true && Boolean(cfg.ownerQQ) && chatOfSession(sessionId) === ownerChat()
   }
 
   function ask(item) {

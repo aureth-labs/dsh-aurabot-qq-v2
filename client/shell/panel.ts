@@ -221,13 +221,12 @@ function AurabotPage() {
         if (retryRef.current) retryRef.current()
         return
       }
-      // 轻量合并：controls（总开关/试运行/调试）与 connections 快照就地更新到 st；草稿一律不动
+      // 轻量合并：controls（总开关/调试）与 connections 快照就地更新到 st；草稿一律不动
       if (r.controls) {
         if (bootRef.current) bootRef.current = { ...bootRef.current, controls: r.controls }
         setSt((prev) => (prev ? { ...prev, config: {
           ...prev.config,
           enabled: r.controls.enabled != null ? Boolean(r.controls.enabled) : prev.config.enabled,
-          dryRun: r.controls.dryRun != null ? Boolean(r.controls.dryRun) : prev.config.dryRun,
           debug: r.controls.debug != null ? Boolean(r.controls.debug) : prev.config.debug,
         } } : prev))
       }
@@ -382,13 +381,10 @@ function AurabotPage() {
   const quickToggle = async (path, v) => {
     await save(setPath(dirtyRef.current ? draft : clone(draftBaseRef.current || st.config), path, v))
   }
-  // 试运行 / 调试互斥：开一个就自动关另一个。
-  // 关掉「调试」退回「试运行」（而不是直接上线）—— 上线必须自己关掉「试运行」那个开关。
+  // 调试日志开关：开了日志页才显示 debug 级别
   const toggleRun = async (which, v) => {
     const base = clone(dirtyRef.current ? draft : (draftBaseRef.current || st.config))
-    const debug = which === 'debug' ? Boolean(v) : false
-    const dryRun = which === 'debug' ? !v : Boolean(v)
-    await save(setPath(setPath(base, 'debug', debug), 'dryRun', dryRun))
+    await save(setPath(base, 'debug', Boolean(v)))
   }
   // Ctrl/⌘ + S 保存
   useEffect(() => {
