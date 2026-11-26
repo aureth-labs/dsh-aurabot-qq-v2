@@ -47,6 +47,7 @@ function ModuleRow({ m, draft, setModules, toast, reload }) {
     h('div', { className: 'main' },
       h('div', { className: 'nm' }, m.name, h('code', null, m.id),
         h('span', { className: cx('ab-badge', s.cls) }, s.text),
+        m.kind === 'adapter' ? h('span', { className: 'ab-badge', title: '适配器插件：把某个平台接进框架' }, '适配器') : null,
         m.outdated ? h('span', { className: 'ab-badge warn', title: '你复制 / 替换时内置的是 ' + m.forkedFrom + '，现在是 ' + m.builtinVersion }, '内置版本更新了') : null),
       m.description ? h('div', { className: 'ds' }, m.description) : null,
       what ? h('div', { className: 'what' }, what) : null,
