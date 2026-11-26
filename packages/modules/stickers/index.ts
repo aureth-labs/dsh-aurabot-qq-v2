@@ -23,7 +23,6 @@ export default {
       if (chat.kind === 'system') return []
       const current = chat.chatId
       const tools = [
-        // 表情包关着就不挂「发表情」（整理表情库的工具照样留着）
         ...(api.config().stickers.enabled ? [defineTool({
           name: 'qq_send_sticker',
           description: '在当前 QQ 聊天里发一张表情包。name 写表情的名字或情绪（如「委屈」「开心」「早晚安」），会在表情库里模糊匹配。一般直接在回复里写 <sticker:名字> 就行，这个工具用于回复之外单独补发。',

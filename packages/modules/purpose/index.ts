@@ -19,9 +19,6 @@ export default {
   tab: 'speakup',
   files: ['packages/modules/purpose/impl/module/index.js', 'packages/modules/purpose/impl/engine/index.js'],
   defaults: {
-    // P1/Q1 拍板：新装也默认开启。modules.js 的 defaults 填充只补「缺失键」，
-    // 用户显式写过的 enabled:false 不会被这里的 true 洗掉（运行期语义在 purposeConfig 再兜一层：
-    // ext.purpose.enabled 缺省视为开、显式 false 尊重）。
     enabled: true,
     minMaterials: 2, // 素材少于这个数（也没有惦记的事/人格卡）就不硬找话
     initialDelayMinutes: 15, // 启动后的第一枪延迟
@@ -36,10 +33,6 @@ export default {
   ],
   setup(api) {
     // ---------- P1 播种（方案 §3.1，只发生一次） ----------
-    // 老用户（speakUp.enabled=true、ext.purpose.enabled 从未显式设置）升级瞬间由
-    // defaults 填充把 enabled 补成 true；这里负责把「这次是无感迁移」记下来：
-    // 写播种标记 seededFromSpeakup + 打一行迁移日志，之后重启不再重复。
-    // 显式关过（ext.purpose.enabled === false）的不覆盖、不打标、不再提示。
     const seedCfg = api.config()
     const seedExt = (seedCfg.ext && seedCfg.ext.purpose) || {}
     if (seedCfg.speakUp?.enabled === true && seedExt.enabled !== false && !seedExt.seededFromSpeakup) {
@@ -58,18 +51,13 @@ export default {
       isMuted: (chatId) => { try { return api.core.mutes.muted(chatId) } catch { return false } },
       mood: () => api.use('mood'),
       memory: () => api.use('memory'),
-      // 载体分发用（面板里 carrier=pet 时推桌宠气泡；桌宠没开是 null，按离线回落处理）
       pet: () => api.use('pet'),
-      // 素材口：浏览型模块（rss-reader「自主上网」等）的素材按需取用；没装/没开是 null。
       use: (id) => api.use(id),
       personaText: () => { try { return api.core.personas?.current?.() || '' } catch { return '' } },
     })
-    // 没有可用 bot 时 tick 只会白烧请求和日志（小闹钟也走 pushToSession → 网关）。
     const gatewayIdle = () => !(api.core.bots?.list?.() || []).some((b) => b.status === 'online')
     api.every(60_000, () => (gatewayIdle() ? undefined : purpose.tick()), '目的引擎')
     // ---------- 她的小闹钟（P2b 自 speakup 迁入，Q2 拍板） ----------
-    // 工具常驻在主人私聊里；「小闹钟」开关（speakUp.reminderEnabled，键冻结 Q3 口径）关着时
-    // 执行层如实拒绝。数据兼容读旧 speakup-reminders.json、新写 purpose/reminders.json。
     const ownerChat = (chat) => chat?.kind === 'private' && String(chat.userId) === String(api.config().ownerQQ)
     api.tool(({ chat }) => {
       if (!ownerChat(chat) || ((api.config().ext && api.config().ext.purpose) || {}).enabled === false) return []

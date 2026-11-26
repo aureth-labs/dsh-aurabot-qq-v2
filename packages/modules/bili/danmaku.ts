@@ -57,7 +57,6 @@ export function createDanmaku(api, { prepare = prepareDanmaku, now = Date.now, r
   const settings = () => api.config().bili
   const cookie = () => settings().cookie || ''
   const session = () => loginSessionKey(cookie())
-  // 内置模块只有一个登录槽位；换 Cookie 也不能重置当天限额或绕过重复提交保护。
   const quotaKey = () => 'bili'
   const limit = () => Math.max(1, Math.min(20, Math.floor(Number(settings().maxDanmakuPerDay) || 3)))
   const controllers = new Set<AbortController>()

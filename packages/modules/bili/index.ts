@@ -22,13 +22,10 @@ export default {
   setup(api) {
     const { hub } = api.core
     const lastImage = new Map() // chatId → 最近一张图的网址（给 bili_set_avatar 的 last 用）
-    // 想发到群里的视频先攒成待批，主人在私聊里回「发 1」才真发
     const groupShare = createGroupShare({
       getConfig: api.config, hub, log: api.log,
-      // 截图库和「补一张」都在 createBili 里：用闭包延迟取，建完之后才真的被调用
       shotPathOf: (name) => bili.shotFileOf(name),
       captureShot: (bvid) => bili.captureShot(bvid),
-      // 群名：缓存命中直接用，没命中由 hub 走一次 get_group_info（拿不到就退回群号）
       groupNameOf: (gid) => hub.groupName(gid),
     })
     api.on('message', (msg) => {
@@ -43,7 +40,6 @@ export default {
     })
     api.every(60_000, () => (api.core.onebot?.state && api.core.onebot.state !== 'connected' ? undefined : bili.tick()), '刷B站')
 
-    // 看视频谁发的链接都能看，评论要主人开口
     api.tool(({ chat, sessionId }) => {
       if (!api.config().bili.enabled || chat.kind === 'system') return []
       return [
@@ -60,14 +56,12 @@ export default {
           properties: { link: str('B 站链接或 BV 号'), text: str('评论内容') },
           required: ['link', 'text'],
           execute: async ({ link, text }) => {
-            // 评论权限：off / owner / all；owner 模式要求本轮所有说话人都是主人
             const perm = permOf(api.config(), 'biliComment')
             if (perm === 'off') return { ok: false, message: '这个操作在面板里关掉了' }
             if (perm === 'owner' && !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人能让我去发评论' }
             return bili.comment(String(link || ''), String(text || ''))
           },
         }),
-        // 截图：刷 B 站看画面时截下来的那些帧，存在本机，随时能挑一张发出来
         defineTool({
           name: 'qq_send_shot',
           description: '把你在 B 站视频里截到的画面发到当前聊天。主人说「发张截图」「给我看看你刷到的」「刚才那个视频长啥样」这类话时用。query 填视频标题里的词或想看的内容，不填就挑最近的一张。',
@@ -91,7 +85,6 @@ export default {
       ]
     })
 
-    // 改 B 站头像 / 签名：权限在面板「权限」页（关 / 仅主人私聊 / 所有人），默认仅主人私聊
     api.tool(({ chat, sessionId }) => {
       const cfg = api.config()
       if (!cfg.bili.enabled) return []
@@ -108,7 +101,6 @@ export default {
           if (!p.ok) return p
           const chatId = hub.chatOfSession?.(sessionId) || chat.chatId
           const raw = String(image || '').trim()
-          // ① 自己画的图：按编号取文件（不让她接触路径）
           const looksLikePath = /^https?:\/\//i.test(raw) || /^[a-zA-Z]:[\\/]|^\/(?!\/)|^file:|^base64:/i.test(raw)
           const pref = /^画作/i.test(raw) ? (raw.replace(/^画作\s*[:：#]?\s*/i, '').trim() || '画作') : raw
           const isPainting = !looksLikePath && (/^#?\d{1,2}$/.test(pref) || /^画作$/i.test(pref) || /\.(png|jpe?g|webp|gif)$/i.test(pref))

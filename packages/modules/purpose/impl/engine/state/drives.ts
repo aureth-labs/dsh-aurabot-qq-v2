@@ -10,11 +10,6 @@ export const PLAN_RE = /明天|后天|周末|下周|考试|面试|加班|出差|
 export const QUESTION_RE = /[?？]|吗|呢|怎么|为什么|有没有|要不要|能不能|是不是|咋/;
 export const PROMISE_RE = /回头|下次|改天|待会|晚点|明天|之后|再聊|再告诉|再说/;
 
-// ── 需求维度：把「看到的东西」抽象成「我想要什么」────────────────────────────
-// 这不是心理学定论，而是一套可解释、可单测的近似：
-//   注意力（哪条记忆值得看）→ 抽象（它指向哪种需要）→ 情绪（它让我什么感觉）
-//   → 意图（我想做什么）→ 行动（分享 / 索取 / 邀请 / 倾诉）。
-// 目的不是关键词映射，而是这五步的合流。
 export const PURPOSE_NEEDS = Object.freeze([
   'play', 'learn', 'install', 'connect', 'care', 'share', 'identity', 'create', 'consume',
 ]);
@@ -30,10 +25,6 @@ export const ACTION_LABELS = Object.freeze({
 
 export const EMOTION_LABELS = emotionLabels(DEFAULT_EMOTIONS);
 
-// 情绪的二维画像：valence（正负 -1~1）与 arousal（强弱 0~1）。
-// 离散标签好让模型读懂，数值好让桌宠表情/语气跟着强度走。
-// 2026-11-17 起这张表由「心情项」配置生成（features/mood-emotions.js），
-// 这里保留默认十项的快照只为兼容旧调用；真正取值一律走 emotionProfile(emotion, emotions)。
 export const EMOTION_PROFILES = emotionProfiles(DEFAULT_EMOTIONS);
 
 /** 情绪 → { valence, arousal }；未知情绪回中性偏弱。emotions 不传时按出厂十项。 */
@@ -65,9 +56,6 @@ const NEED_WORDS = Object.freeze({
   consume: ['想吃', '想喝', '想买', '想去', '展览', '店', '旅行', '门票', '礼物', '好吃', '好喝'],
 });
 
-// 人格卡里的「我是一个什么样的人」→ 动机先验。不是给模型看的标签，
-// 而是让同一套机制在载入不同人格卡时，天然偏向不同的需要（爱玩的人更容易想玩，
-// 黏人的人更容易想陪，技术宅更容易想装/学）。
 const PERSONA_WORDS = Object.freeze({
   play: ['游戏', '爱玩', '贪玩', '娱乐', '二次元', '番剧', '梗', '好玩', '轻松'],
   learn: ['好奇', '好学', '学习', '研究', '知识', '技术', '原理', '聪明', '思考'],
@@ -86,9 +74,6 @@ const AROUSAL_RE = /笑死|炸|疯|激动|震撼|刺激|太|超|绝了|!!!|！�
 export const RELATION_RE = /爱|关系|人机|机器人|ai|寂寞|孤独|陪|想你|主人/;
 const SELF_REF_RE = /ai|人工智能|机器人|模型|人格|插件|harness|dsh/;
 
-// ── 否定前缀守卫 ────────────────────────────────────────────────────────────
-// 「不想玩」「别装了」这类话若按裸关键词计数，会被误算成正面欲望。
-// 约定：命中词往前看 4 个字符，出现否定前缀就视作反义。
 const NEG_PREFIX_RE = /(?:不想|不要|不用|没有|没什么|别|不爱|懒得|不打算|无意|拒绝|取消|放弃)/;
 
 /** 命中位置是否被否定前缀覆盖。 */
@@ -135,14 +120,11 @@ export function needAffinity(text, roleName = '', roleAliases = []) {
     if (value > 0) any += 1;
   }
   if (!any) out.share = 0.3;
-  // 交叉增强：提到「插件/AI/自己」时，既可能是「装」也可能是「自我」；
-  // 游戏 + 一起/主人 时，既可能是「玩」也可能是「陪」。
   if (out.install > 0 && out.identity > 0) out.identity = Math.min(1, out.identity + 0.2);
   if (out.play > 0 && out.connect > 0) out.play = Math.min(1, out.play + 0.15);
   return out;
 }
 
-// 人格卡里的「性格倾向」→ 引擎参数覆写。只认显式写的词，第一个命中的词生效。
 const PERSONA_OVERRIDES = Object.freeze([
   { key: 'riskScale', value: 1.25, words: ['胆小', '谨慎', '怕麻烦', '稳重点', '别乱花钱'] },
   { key: 'riskScale', value: 0.8, words: ['大胆', '敢试', '爱折腾', '勇于尝试'] },
@@ -168,8 +150,6 @@ export function analyzePersona(text) {
     if (hits > 0) traits.push({ need, label: NEED_LABELS[need], hits, bias: value });
   }
   traits.sort((a, b) => b.hits - a.hits || b.bias - a.bias);
-  // 性格覆写：胆量 / 话多程度 / 黏人地板。同 key 有多个规则命中时，
-  // 按「词在文本里出现得更早」的生效（主人先写的性格优先）。
   const overrides: Record<string, any> = {};
   const bestIdx: Record<string, any> = {};
   for (const rule of PERSONA_OVERRIDES) {

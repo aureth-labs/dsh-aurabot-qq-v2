@@ -8,8 +8,6 @@ import { cleanOutboundText } from '../../../src/chat/reply/index.ts'
 
 const RESULT_CHARS = 3000
 
-// 会把内容/动作发到「目标」的接口：主人开口也不许发给白名单外的人/群，
-// 否则模型被诱导就能把消息/转发/拍一拍/点赞发到任意 QQ（qq_send_message 的白名单在这里也得有）。
 const OUT_USER_TARGET = new Set(['forward_friend_single_msg', 'send_private_forward_msg', 'send_forward_msg', 'send_custom_face', 'friend_poke', 'send_like', 'send_tuwen_ark', 'set_friend_remark', 'set_qzone_ban'])
 const OUT_GROUP_TARGET = new Set(['forward_group_single_msg', 'send_group_forward_msg', 'send_forward_msg', 'send_custom_face', 'group_poke', 'send_tuwen_ark', 'set_group_remark', 'set_group_card', 'set_group_admin', 'set_group_kick_members', 'set_group_name', 'set_group_whole_ban'])
 

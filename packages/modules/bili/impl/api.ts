@@ -149,7 +149,6 @@ export function createBiliApi({ getCookie, log, fetchImpl = fetch }) {
   /** 视频信息。 */
   async function view({ bvid, aid }) {
     await ensureBuvid()
-    // 不签名的旧接口经常被风控（412），用 WBI 签名的那个
     const d = await req(await signed('https://api.bilibili.com/x/web-interface/wbi/view', bvid ? { bvid } : { aid }))
     return {
       bvid: d.bvid, aid: d.aid, cid: d.cid, title: d.title, desc: String(d.desc || '').slice(0, 600), author: d.owner?.name, authorMid: d.owner?.mid,
@@ -160,12 +159,10 @@ export function createBiliApi({ getCookie, log, fetchImpl = fetch }) {
   /** DASH / 渐进式音视频流地址，视频流供 ffmpeg 定位抽帧。 */
   async function playurl({ bvid, aid, cid, qn = 64 }) {
     await ensureBuvid()
-    // fnval 4048 = DASH + HDR + 4K + 杜比等全要；很多账号 / 视频现在只回 durl（渐进式 MP4），所以两种都带出去。
     const d = await req(await signed('https://api.bilibili.com/x/player/wbi/playurl', {
       ...(bvid ? { bvid } : { aid }), cid, qn, fnval: 4048, fnver: 0, fourk: 1,
     }))
     const one = (x) => (x ? { id: x.id, width: x.width, height: x.height, codecs: x.codecs || '', bandwidth: x.bandwidth || 0, baseUrl: x.baseUrl || x.base_url || '' } : null)
-    // 没有 DASH 时退回 durl：每段是渐进式 MP4，length 是这一段的毫秒数（按顺序拼起来是全片）。
     const durl = (d.durl || [])
       .map((x) => ({ order: Number(x.order) || 0, url: x.url || '', length: Number(x.length) || 0, size: Number(x.size) || 0 }))
       .filter((x) => x.url)

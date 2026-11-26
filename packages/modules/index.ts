@@ -9,8 +9,6 @@ import qqApi from './qq-api/index.ts'
 import imagegen from './imagegen/index.ts'
 import diary from './diary/index.ts'
 import qzoneSocial from './qzone-social/index.ts'
-// P4（speakup → purpose 迁移，docs/SPEAKUP-INTO-PURPOSE-PLAN.md §4）：主动搭话模块已退场，
-// 能力并入 purpose（P1 默认开+播种保证老用户无感切换；P2b 小闹钟、P3 策略源均已收拢）。
 import purpose from './purpose/index.ts'
 import autotelic from './autotelic/index.ts'
 import bili from './bili/index.ts'

@@ -32,7 +32,6 @@ export default {
       getConfig: api.config, onebot, hub, log: api.log,
       pickImage: () => pickDiaryImage(),
       composeDiary: media.compose,
-      // 写过的空间日记也进记忆库：以后聊到相关的事，她会想起自己那天写过什么
       onDiary: (text) => memory.add?.({ text: `我在 QQ 空间写过：${text}`, importance: 0.55, tags: ['空间日记'], source: 'diary' }),
     })
     api.every(60_000, () => (api.core.onebot?.state && api.core.onebot.state !== 'connected' ? undefined : qzone.tick()), '空间日记')

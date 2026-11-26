@@ -27,7 +27,6 @@ export function videoPart(data, part) {
   }
 }
 
-// 使用无鼠标采样的初始参数；这不是验证码解算，也不会在风控失败后重试。
 export function danmakuParams() {
   const b64 = (s) => Buffer.from(s).toString('base64').replace(/=+$/, '')
   const offset = randomInt(1, 351)
@@ -46,7 +45,6 @@ export function danmakuResponse(body) {
   for (const key of ['action', 'animation', 'colorful_src', 'dm_content', 'visible']) {
     if (Object.hasOwn(data, key)) result.data[key] = data[key]
   }
-  // 大整数只能信字符串，拒绝已经丢失精度的 JSON 数字。
   const id = data.dmid_str ?? (Number.isSafeInteger(data.dmid) ? String(data.dmid) : '')
   if (id) result.data.dmid_str = String(id)
   return result

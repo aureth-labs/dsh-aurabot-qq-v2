@@ -33,8 +33,6 @@ type ListOptions = Partial<Record<'since' | 'until' | 'source' | 'tag' | 'limit'
 export const OBSERVE_SOURCES = ['chat', 'emotion', 'activity', 'note']
 
 // —— 主人纠偏语句（§3.6 最高优先级反馈）：「别做X / 别再X / 不要再X / 别X了」——
-// 命中后：写一条 source=note 的高显著度观察 + emit 事件（抑制表 feedback.json 归成员 C，
-// 这里只观察+发事件，绝不碰 feedback.json）。
 const CORRECTION_RES = [
   /(?:^|[，。！？,.!?\s])(?:别|不要?再?|不许|不准)\s*(?:再)?(?:做|弄|搞|玩|刷|提|说|聊|碰)\s*([^\s，。！？,.!?了啦吧哦]{1,16})/,
   /(?:^|[，。！？,.!?\s])别\s*([^\s，。！？,.!?]{1,16}?)了(?:[，。！？,.!?]|$)/,
@@ -47,7 +45,6 @@ export function matchCorrection(text) {
   for (const re of CORRECTION_RES) {
     const m = re.exec(s)
     if (m) {
-      // 去掉句尾语气字与句首的「再」（「别再刷B站了」→ 抑制对象是「刷B站」/「熬夜」）
       const target = String(m[1] || '')
         .replace(/[了啦吧哦]+$/, '')
         .replace(/^再/, '')
@@ -117,7 +114,6 @@ export function createObserve({
     try {
       write(f, batch.map((r) => JSON.stringify(r)).join('\n') + '\n')
     } catch (error) {
-      // 落盘失败静默（观察层不许拖垮主流程）；把批次放回队头，下次 flush 重试
       buffer = [...batch, ...buffer]
       hooks.onError?.(error)
     }
@@ -153,7 +149,6 @@ export function createObserve({
     const hit = matchCorrection(text)
     if (!hit) return null
     const tags = tagsOf() || DEFAULT_TAGS
-    // 纠偏观察的 tag：优先用被抑制行为自己的 tag（调用方传入且合法），否则落一个合法默认
     const rowTag = isValidTag(tag, tags) ? tag : (isValidTag('牵挂', tags) ? '牵挂' : tags[0])
     const r = append({ source: 'note', tag: rowTag, text: `主人纠偏：${hit.phrase}`, salience: 1 })
     if (r.ok) hooks.onCorrection?.({ target: hit.target, tag: rowTag, text: String(text ?? ''), row: r.row })

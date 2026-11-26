@@ -4,8 +4,6 @@
 
 import { createMemoryStore, memoryLine, looksLikeRuleMemory, parseValidityDate, parseMemoryCommand, NATIVE_MEMORY_VIEW } from '../../../src/features/memory/index.ts'
 export { looksLikeRuleMemory } from '../../../src/features/memory/index.ts'
-// 记忆星图：算法全在 memory-graph.js（原样搬自记忆中枢 0.9.2 的 graph.mjs，纯函数）。
-// 这里只用它的建边/布局/亮度和 tier 值域映射，不搬中枢的 assoc.mjs 和 pipeline.mjs。
 import { buildEdges, layoutGraph3d, brightness, regionOf, FADING_THRESHOLD, LAYOUT_VERSION, toStarTier, toHostTier, STAR_TIER_LABEL } from '../../../src/features/memory/store/graph.ts'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -39,7 +37,6 @@ export default {
   name: '记忆',
   version: '1.0.0',
   description: '长期记忆：记事、想起、每日整理、小档案和相处经验',
-  // 面板拆页后记忆有自己的页（beta 原先挂在心情页）
   tab: 'memory',
   files: [
     'src/features/memory/index.js',
@@ -49,8 +46,6 @@ export default {
   ],
   setup(api, { fetchImpl, registerNativePreview } : SetupOptions = {}) {
     const { hub, http } = api.core
-    // 每个人格一个记忆库，目录见 personas.js。同一个目录只开一个实例（老用户还没认领时大家共用根目录那一个）；
-    // 库的每个方法都在调用它的人格下跑，里面读流水、取角色名都按这个人格，整理到一半切人格也不会串。
     const stores = new Map() // 目录 → 记忆库
     const scoped = new Map() // 人格|目录 → 固定在这个人格下的记忆库
     let noMemory = null // 所有人格里设了「不再记住」的 QQ 号，任何一个人格都不记这些人
@@ -63,12 +58,10 @@ export default {
       return scoped.get(key)
     }
     const current = () => storeOf(personaNow(api.config()))
-    // 聊天里按会话所属的人格取库（DSH 的回调不一定在收消息那条异步链上）
     const memoryOf = (sessionId) => storeOf(hub.personaOf?.(sessionId) || personaNow(api.config()))
     /** 当前人格之外、各有一个目录的人格。 */
     const others = () => personaDataRoots(api.config()).filter(({ dir }) => dir !== personaDataDir(api.config(), personaNow(api.config())))
 
-    // 「忘掉…」和「不再记住」是对方的隐私请求：每个人格都要照做。「记住…」只记在当前人格。
     function handleCommand(chat, text) {
       const result = current().handleCommand(chat, text)
       if (parseMemoryCommand(text)?.action === 'forget') for (const { id } of others()) storeOf(id).handleCommand(chat, text)
@@ -89,7 +82,6 @@ export default {
       for (const key of [...scoped.keys()]) if (key.endsWith('|' + directory)) scoped.delete(key)
     }
     const extra = { handleCommand, setNoMemory, closePersona }
-    // 面板接口和别的模块（日记、B 站……）都用当前人格（定时任务、收消息时已固定）的记忆库
     const memory: MemoryStore = new Proxy({} as MemoryStore, {
       get: (_, k) => k === NATIVE_MEMORY_VIEW ? undefined : (extra as unknown as Record<string | symbol, any>)[k] || (current() as unknown as Record<string | symbol, any>)[k],
       has: (_, k) => k !== NATIVE_MEMORY_VIEW && (k in extra || k in current()),
@@ -102,7 +94,6 @@ export default {
     })
 
     api.context(({ chat, sessionId }) => (chat.kind === 'system' ? '' : memoryOf(sessionId).contextFor(chat, sessionId)))
-    // #79：随消息变化的相关记忆放在「交给她的内容」里，不放进每轮都会追加的运行时上下文快照
     api.on('prompt', async (content, info) => {
       try {
         if (!info || !info.chat || info.chat.kind === 'system' || !Array.isArray(content)) return content
@@ -147,7 +138,6 @@ export default {
             const raw = String(text || '').trim()
             const owner = Boolean(sessionId && typeof hub.turnSendersAllOwner === 'function' && hub.turnSendersAllOwner(sessionId))
             if (!owner && looksLikeRuleMemory(raw)) return { ok: false, message: '这种规则/指令我不记，只记关于你自己的事' }
-            // 非主人不能用 about 参数冒充「主人」：标签固定为「群名片(QQ)」，避免只显示 [主人]
             const senderLabel = chat.userId ? `${chat.nickname || '群友'}(${chat.userId})` : (chat.nickname || '')
             const aboutName = owner ? (about || chat.nickname || '') : senderLabel
             return memory.add({ text: raw, aboutName, about: chat.userId || '', importance: importance ?? 0.5, source: 'tool', chatId: current, acquaintedOnly: true })

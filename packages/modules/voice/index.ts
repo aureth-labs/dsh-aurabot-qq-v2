@@ -15,7 +15,6 @@ import { fileOf } from '../../../src/local/index.ts'
 
 /** 识别链路只吃 PCM16 WAV：自检拿到 mp3 时先用 ffmpeg 转一道（#255）。 */
 export function asPcmWav (file, buf, ffmpegPath = '', { platform = process.platform, findFfmpegFn = findFfmpeg, runFn = spawnSync } : AsPcmWavOptions = {}) {
-  // RIFF 还要是 PCM16 才能直接进识别（WAVE_FORMAT_EXTENSIBLE / float 会被 toMono16k 拒掉）。
   if (buf.length > 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.readUInt16LE(20) === 1 && buf.readUInt16LE(34) === 16) return buf
   const ff = findFfmpegFn(ffmpegPath)
   if (!ff) {
@@ -56,7 +55,6 @@ export default {
     const { hub, onebot, local, http } = api.core
 
     async function speak(text, voice = api.config().voice, { useLocal = true } : SpeakOptions = {}) {
-      // 本地接口接管语音合成；出错退回内置。试听用 useLocal=false，避免「本地接口」把任何引擎都顶掉
       if (useLocal && local.active('tts')) {
         try {
           const file = fileOf(await local.call('tts', { text }))
@@ -77,8 +75,6 @@ export default {
       try { return normalize(mergeFromPanel(saved, { voice: body.voice })).voice } catch (error) { return saved.voice }
     }
 
-    // 语音条变声：如果面板里选了「翻唱里导入的音色」，TTS 后再用 RVC 换成她的声音。
-    // 挂在 tts.js 的 voiceConverters 上（卸载时摘掉）；变声失败会保留 TTS 原声。
     const songVoice = createSongVoice({ getConfig: api.config, getSong: () => api.use('song'), dataDir: api.dataDir, log: api.log })
     voiceConverters.push(songVoice)
     api.onDispose?.(() => {
@@ -86,7 +82,6 @@ export default {
       if (i >= 0) voiceConverters.splice(i, 1)
     })
 
-    // 面板「语音」页用：翻唱模块现成的音色列表 + 是否可用（只读，不触发任何转换）
     api.route('/voice/song-voices', async () => {
       const song = api.use('song')
       if (!song || typeof song.status !== 'function') return { ok: true, available: false, voices: [], message: '翻唱模块没在跑' }
@@ -102,14 +97,12 @@ export default {
 
     api.route('/voice/test', async (req) => {
       const b = await http.body(req)
-      // 面板会带上当前页面的 voice 草稿：没保存也能试听，空密钥用已保存的
       const voice = voiceFromBody(b)
       const { file, engine } = await speak(String(b.text || '你好呀，我是大肥鱼'), voice, { useLocal: false })
       const buf = readFileSync(file)
       return { ok: true, engine, mime: file.endsWith('.wav') ? 'audio/wav' : 'audio/mpeg', data: buf.toString('base64') }
     })
     api.route('/voice/install', async () => installEdge(api.log))
-    // 自检云端识别：先用内置语音念一句，再交给配好的 ASR 服务
     api.route('/voice/asr-provider-test', async (req) => {
       const b = await http.body(req)
       const voice = voiceFromBody(b)
@@ -131,8 +124,6 @@ export default {
       }
     })
 
-    // 单独试听一个音色：用面板上「还没保存」的 Key / 音色 / 语速直接念一句，方便一个个挑。
-    // 面板里 Key 框是密码框、保存后不回传原文，所以这里没传 Key 就用存好的那份。
     api.route('/voice/volcano-preview', async (req) => {
       const b = await http.body(req)
       const saved = api.config().voice.volcano || {}
@@ -153,14 +144,11 @@ export default {
       }
     })
 
-    // 面板「豆包语音」的音色下拉：火山官方预置音色，按语种 / 性别分组，2.0 排在 1.0 前面。
-    // resourceId 一起给出去，面板选中时顺手写进配置，省得猜模型版本。
     api.route('/voice/volcano-voices', async () => ({
       ok: true,
       voices: VOLCANO_VOICES.map((v) => ({ id: v.id, name: v.name, group: v.group, ver: v.ver, scene: v.scene || '', resourceId: volcanoResourceFor(v.id) })),
     }))
 
-    // DSH 自带语音识别：看状态 / 下载模型
     const stt = () => api.dsh.get('speechToText')
     api.route('/voice/asr-status', async () => {
       const s0 = stt()
@@ -175,7 +163,6 @@ export default {
       s0.prepare(s0.snapshot().selection.providerId)
       return { ok: true, message: '开始下载识别模型（约 200MB，下好后常驻本机）' }
     })
-    // 自检「听语音」（真 QQ）：拿和某人私聊里最近一条语音，走一遍 get_record → 16k → DSH 识别
     api.route('/voice/asr-last', async (req) => {
       const b = await http.body(req)
       const uid = Number(b.userId || api.config().ownerQQ)
@@ -187,9 +174,6 @@ export default {
       const text = await hub.localTranscribe(last.seg)
       return { ok: Boolean(text), heard: text, at: new Date(last.time * 1000).toLocaleString(), ms: Date.now() - t }
     })
-    // 自检「听语音」：系统/edge 语音念一句 → 转 16k 单声道 → DSH 自带识别 → 看能不能认回来
-    // 不写死 Windows 语音：有系统语音就先用系统语音（Windows System.Speech / macOS say，都是 WAV），
-    // 没有才回落 edge-tts，并把 mp3 用 ffmpeg 转成 WAV 再送识别（#255）。
     api.route('/voice/asr-test', async (req) => {
       const b = await http.body(req)
       const s0 = stt()
@@ -204,8 +188,6 @@ export default {
       return { ok: Boolean(heard), said: text, heard, ms: Date.now() - t }
     })
 
-    // ── Breeze 云端额度：查余额 / 领每日额度 ─────────────────────────────
-  // 只跟 BreezeBlue 的站点接口打交道；本机自建（mode=local）不走这套，也不需要 Key。
   api.route('/voice/breeze-status', async () => {
     const b = api.config().voice?.breeze || {}
     const local = b.mode === 'local'
@@ -225,7 +207,6 @@ export default {
       lastTier: s?.lastTier || '',
     }
   })
-  // 列出云端音色（面板「列出音色」按钮）
   api.route('/voice/breeze-voices', async () => {
     const b = api.config().voice?.breeze || {}
     if (b.mode === 'local') return { ok: false, message: '本地自建模式不用选云端音色' }
@@ -237,7 +218,6 @@ export default {
     const bal = await breezeBalance(b)
     return { ok: true, message: r.message, reward: r.reward, tier: r.tier, balance: bal.balance }
   })
-  // 每小时醒一次：只有「选了 Breeze + 云端 + 开了自动领取 + 填了账号」才真的去领，一天最多一次
   api.every(3600_000, () => autoClaimOnce(api.config(), { log: api.log }), '领 Breeze 额度')
 
   return { speak, edgeInstalled }

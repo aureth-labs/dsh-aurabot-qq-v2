@@ -17,9 +17,6 @@ const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1
 export const linkOf = (bvid) => (bvid ? `https://www.bilibili.com/video/${bvid}` : '')
 const clip = (s, n) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n)
 
-// 只认「发 / 发送」开头：批准、同意、允许、拒绝、取消这些词 DSH 的工具授权中继也在用
-// （src/security/approval.js 的 APPROVE_RE / REJECT_RE，在消息进到模块之前就被它消费），
-// 这里再用同一批词会抢词、让主人搞不清自己刚批准了哪件事。
 const SEND_ONE = /^(?:发|发送)#?(\d{1,2})$/
 const SEND_ALL = /^(?:都发|全发|全都发|(?:发|发送)(?:全部|所有|都发|全发))$/
 const SEND_BARE = /^(?:发|发送)$/
@@ -68,11 +65,9 @@ export function parsePlan(raw) {
 }
 
 export function createGroupShare({ getConfig, hub, log = console, think: thinkInjected = null, groupNameOf, shotPathOf, captureShot } : CreateGroupShareOptions = {}) {
-  // 默认借她自己的后台会话写话/读话：人设、语气都现成，不用另外拼 prompt 风格
   const think = thinkInjected || (async (kind, prompt) => {
     if (!hub?.runSystemTurn) return ''
     const title = kind === 'ask' ? 'QQ · 群分享问一句' : kind === 'receipt' ? 'QQ · 群分享回执' : 'QQ · 读懂回复'
-    // 用「主人私聊」那档预设：她本人在跟主人说话，不是群里的样子
     return String(await hub.runSystemTurn('bili-groupshare', title, prompt, { level: 'full', timeoutMs: 60_000, key: kind }))
   })
   const file = () => dataDir('bili-group-share.json')
@@ -87,8 +82,6 @@ export function createGroupShare({ getConfig, hub, log = console, think: thinkIn
   const save = (s) => writeJson(file(), s)
   const cfg = () => getConfig().bili?.groupShare || {}
   const pendingOf = (s) => s.items.filter((x) => x.state === 'pending')
-  // 所有「处理待批」的动作排一条链：decide 会 await 发群，期间再来一条命令（主人连发两次「发 1」）
-  // 若各自拿一份内存状态副本，就会双发群、sentToday 互相覆盖。串行 + 每步重新 load 才稳。
   let chain = Promise.resolve()
   const enqueue = (task) => {
     chain = chain.then(task).catch((error) => log.warn('处理群分享出错：', error.message))
@@ -145,8 +138,6 @@ export function createGroupShare({ getConfig, hub, log = console, think: thinkIn
     if (!list.length) return true
     const groups = allowedGroups().slice(0, 1)
     const speech = await askSpeech(list, groups)
-    // 编号 → 条目 id 的快照：之后有过期或已处理，编号也不会错位到别的条目。
-    // 必须在这里落盘：submit 是先 save 再 ask 的，不存的话主人回复时就只剩「当前顺序」。
     s.lastAsked = { at: Date.now(), ids: list.map((x) => x.id) }
     save(s)
     try {

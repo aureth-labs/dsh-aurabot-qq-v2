@@ -10,7 +10,6 @@ export default {
   setup(api) {
     const { hub, onebot, groupRoles } = api.core
 
-    // 她在这个群的身份：没管理权限就别答应禁言踢人
     api.context(({ chat }) => {
       if (chat.kind !== 'group') return ''
       const role = groupRoles.peek(chat.groupId)

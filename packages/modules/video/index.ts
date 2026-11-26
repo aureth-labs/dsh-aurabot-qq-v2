@@ -82,7 +82,6 @@ export function minimaxBody({ prompt, seconds, image, cfg }) {
   const model = MINIMAX_MODELS.includes(m.model) ? m.model : 'MiniMax-H3'
   const minDur = model === 'MiniMax-H3-Max' ? 5 : 4
   const duration = Math.max(minDur, Math.min(15, Math.round(Number(seconds) || Number(m.duration) || 5)))
-  // 文生视频必须有具体比例（不能 adaptive）；带首帧时由服务端按图片自适应
   const ratio = image ? 'adaptive' : (RATIOS.includes(m.ratio) && m.ratio !== 'adaptive' ? m.ratio : '16:9')
   const content: any[] = [{ type: 'text', text: String(prompt || '') }]
   if (image) content.push({ type: 'image_url', image_url: { url: image }, role: 'first_frame' })

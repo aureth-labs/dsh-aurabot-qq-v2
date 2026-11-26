@@ -31,7 +31,6 @@ function outputFolder(value) {
 
 export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir('archive-cache')), now = Date.now } : CreateDiaryArchiveOptions = {}) {
   const settings = () => api.config().diary.archive || {}
-  // 换目录时单独记账，不因旧目录已保存过而跳过新目录；切回旧目录也保留去重记录。
   const file = () => api.dataDir('archives', sourceId(settings().folder || '') + '.json')
   const load = () => readJson(file(), () => ({ items: [], lastAt: 0, error: '' }))
   let busy = false
@@ -48,7 +47,6 @@ export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir
   async function collect() {
     if (busy) return { ok: false, message: '上一轮图片还在归档' }
     const snapshot = { ...settings() }
-    // 开关、试运行或空目录时不取素材、不创建目录，也不改归档记录。
     try { assertActive(snapshot.folder) }
     catch (error) { return { ok: false, message: error.message } }
     busy = true
@@ -75,7 +73,6 @@ export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir
           }
           const day = archiveDate(picture.at)
           const dir = join(root, day)
-          // 下载期间路径可能被替换；落盘前再次检查每一层。
           outputFolder(dir)
           mkdirSync(dir, { recursive: true })
           if (!insideFolder(realpathSync(root), realpathSync(dir))) throw new Error('归档目录越界')
@@ -86,7 +83,6 @@ export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir
             schema: 1, kind: 'browsing', platform: image.platform, title: image.title,
             author: image.author, url: image.url, at: picture.at, collectedAt: now(), hash,
           }
-          // 先写来源说明；任何一步失败均不覆盖已有文件。
           writeFileSync(dest + '.json', JSON.stringify(metadata, null, 2), { flag: 'wx' })
           try { writeFileSync(dest, bytes, { flag: 'wx' }) }
           catch (error) { unlinkSync(dest + '.json'); throw error }
@@ -97,7 +93,6 @@ export function createDiaryArchive(api, { assets = createDiaryAssets(api.dataDir
           writeJson(file(), current)
           saved++
         } catch (error) {
-          // 撤销权限后不再开始下一张，也不写错误状态到用户选定的目录。
           assertActive(snapshot.folder)
           failed++
         }

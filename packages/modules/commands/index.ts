@@ -9,7 +9,6 @@ export default {
   version: '1.0.0',
   description: 'QQ 里的 /silent、/model、/sing 等主人命令；关掉后框架不认任何指令，插件命令仍可用',
   setup() {
-    // 命令分发在消息管线里按「这个模块在不在」判断，所以这里只要有实例就够。
     return { enabled: true }
   },
 }

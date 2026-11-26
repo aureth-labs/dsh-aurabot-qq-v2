@@ -170,7 +170,6 @@ export function normalizeGoals(goals, now = Date.now()) {
   return (Array.isArray(goals) ? goals : []).map((g) => normalizeGoal(g, now)).filter(Boolean).slice(-40);
 }
 
-// 风险表：什么需要、什么行动算「大胆」。纯数据，想调性格就覆写它或乘 riskScale。
 const DEFAULT_RISK_TABLE = Object.freeze({
   install: { ask: 0.55, other: 0.82 },
   consume: { ask: 0.6, other: 0.85 },
@@ -265,7 +264,6 @@ function hypothesesForEvent(event, { drives, now, lastMasterAt, hoursSinceMaster
   const relation = RELATION_RE.test(event.text) && /人机|机器人|ai|爱情|关系|陪伴/.test(event.text.toLowerCase());
 
   if (event.subject === 'owner') {
-    // 「早早」「晚安」这种招呼不构成一个持续目标；只有当主人说了具体的事/计划/问题时才算。
     const ownerText = String(event.material?.text ?? '').trim();
     const convKey = String(event.material?.meta?.key ?? '');
     const isPrivate = convKey.startsWith('private:');
@@ -274,11 +272,9 @@ function hypothesesForEvent(event, { drives, now, lastMasterAt, hoursSinceMaster
       || PLAN_RE.test(ownerText) || NEGATIVE_RE.test(ownerText) || POSITIVE_RE.test(ownerText);
     const meaningful = (ownerText.length >= 6 || looksPlan)
       && !/^(早|早安|晚安|在吗|在嘛|嗨|哈喽|你好|好|嗯|哦|哈哈)[~～!！。. ]*$/.test(ownerText);
-    // 群聊里主人说的话不是「主动私聊找主人」的素材：那是群聊回合该处理的事。
     if (!isPrivate) return out;
     if (!meaningful) return out;
     if (!isLife) {
-      // 私聊里主人在聊技术/作品/见闻：不要写成高置信度的「关心」，只记成「想接着聊」。
       out.push(makeGoal({
         owner: 'owner', domain: event.domain, object: event.object,
         intent: `主人刚提到「${clip(objectName, 24)}」，想接着聊聊`,

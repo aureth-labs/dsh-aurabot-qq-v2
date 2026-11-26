@@ -27,7 +27,6 @@ import {
   minePurposeSeeds, selectPurpose, buildPurposePrompt, parsePurposeMemo, emotionProfile,
   summarizePurposeState, recordOwnerReplyHours, formatMaterialLine,
 } from '../engine/index.ts'
-// 心情项的唯一真相在心情模块：这里只读配置、不自己存一份情绪表。
 import { normalizeEmotions, resolveEmotion } from '../../../../../src/features/mood/emotions.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -38,12 +37,9 @@ type RunOnceOptions = Partial<Record<'reason' | 'config' | 'state' | 'force' | '
 type BrokerReviewOptions = Partial<Record<'to' | 'text' | 'moduleId' | 'itemId', any>>
 
 const MINUTE = 60_000
-// mood 模块靠 userText 的「【系统提醒」前缀把主动回合判成 origin='speak-up'（mood/index.js 的判定），
-// deliver 路径本身没有 userText，这里补一个同款前缀，保住心情判定链路。
 const MOOD_PREFIX = '【系统提醒，不是主人说的话】（她主动找你）'
 const SILENCE = '[沉默]'
 
-// 文本截断：模块内随手用（引擎侧有同名工具，这里不跨文件依赖）。
 const clip = (text, max = 120) => {
   const s = String(text ?? '').replace(/\s+/g, ' ').trim()
   return s.length > max ? `${s.slice(0, max)}…` : s
@@ -289,8 +285,6 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     try { return JSON.parse(s.slice(start, end + 1)) } catch { return null }
   }
 
-  // 「自主上网」等浏览型模块的素材口（可选）：模块没装/没开就返回空，行为与从前一致。
-  // 取 use('rss-reader').materials() —— 那些是模块已经筛过、交给决策层的条目（纯文本、已截断）。
   function rssEntries(friend = '') {
     if (friend) return [] // 朋友的线不喂全站浏览素材：那是主人自己的阅读兴趣
     try {
@@ -299,7 +293,6 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
       if (!Array.isArray(list)) return []
       return list.slice(0, 10).map((m) => ({
         id: String(m?.id || ''),
-        // 引擎素材分类里「外部看到的东西」走 video 这一支（权重低于主人私聊、高于群聊）
         type: 'video',
         title: clip(String(m?.title || ''), 90),
         text: clip(String(m?.text || ''), 200),
@@ -311,7 +304,6 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     }
   }
 
-  // ①~④ 收素材 → 驱动 → 目标假设 → 候选（不落盘；打分配了模型才有一次额外回合）
   async function prepare(cfg, config, state, now = Date.now(), friend = '') {
     const followUp = memoryOf()?.dueFollowUp?.(friend || cfg.ownerQQ, now) || null
     const materials = collectMaterials({
@@ -325,8 +317,6 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
       followUpRecords: followUp ? [followUp] : [],
     })
     await scoreMaterials(config, materials.items, now)
-    // 人格卡只作用于主人这条线：朋友的排程不吃主人人格卡里的黏人/话痨等覆写，
-    // 否则对朋友的主动搭话频率与方向会被主人的人格先验带偏（review 意见）。
     const persona = friend ? null : personaOf(cfg)
     const lastMasterAt = lastPrivateAt(cfg, friend)
     const { drives } = deriveDrives({
@@ -336,7 +326,6 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
       connectFloor: persona?.overrides?.connectFloor,
     })
     const { goals, observations, needFeedback } = formGoalHypotheses({
-      // 跟进的排程和次数只属于事实，不再生成另一份目标或观察账本。
       materials: materials.items.filter((m) => m.kind !== 'memory-follow-up'), goals: state.goals, observations: state.observations,
       drives, now, lastMasterAt, config, roleName: selfName(cfg), persona,
     })

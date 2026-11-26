@@ -13,7 +13,6 @@ import { assertPublicUrl } from '../../../../../src/core/net/index.ts'
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type GrabFrameOptions = Partial<Record<'width' | 'timeoutMs' | 'maxBytes', any>>
 
-// ffmpeg 的查找已经抽到 core/img.js（生图那边也要用），这里保留导出，老的引用不受影响
 export { findFfmpeg }
 
 /** 抽帧时间点（秒）：跳过开头结尾各 5%，中间均匀铺开。 */
@@ -49,7 +48,6 @@ export function grabFrame(ffmpeg, url, at, { width = 512, timeoutMs = 15000, max
     try {
       proc = spawn(ffmpeg, [
         '-hide_banner', '-loglevel', 'error', '-nostdin',
-        // B 站 CDN 要 Referer，否则 403
         '-headers', `Referer: https://www.bilibili.com/\r\nUser-Agent: ${UA}\r\n`,
         '-rw_timeout', String(timeoutMs * 1000),
         '-protocol_whitelist', 'http,https,tcp,tls,crypto',

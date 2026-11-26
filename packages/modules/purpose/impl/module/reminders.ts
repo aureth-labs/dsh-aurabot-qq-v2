@@ -11,10 +11,6 @@ export interface CreateRemindersOptions {
 }
 
 export function createReminders({ getConfig, log, hub, purposeDir }: CreateRemindersOptions) {  // ---------- 她的小闹钟（P2b 自 speakup 迁入，Q2 拍板 §2.2-A） ----------
-  // 每条提醒都是她自己在对话里设的一次性闹钟；到点只负责把她叫醒（pushToSession 进主人私聊
-  // 的真实会话），不直接替她发消息。数据：新写 purpose/reminders.json；新文件还没建过时
-  // 兼容读旧 speakup-reminders.json（只读不写回，首次保存后旧文件冻结、不删，便于审计）。
-  // 配置键冻结在 speakUp.reminder*（Q3/Q4 同口径：键留在 speakUp 命名空间，由 purpose 维护）。
   const REMINDER_GRACE_MS = 15 * 60_000
   const REMINDER_RETRY_MS = 5 * 60_000
   const REMINDER_WAIT_MS = 4 * 60_000

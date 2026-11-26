@@ -17,7 +17,6 @@ export default {
     selfId: 'sandbox-bot',
     selfName: '沙盒机器人',
     platform: 'sandbox',
-    // 网页里默认以主人身份说话：白名单、权限都按主人算，沙盒里试插件最省事
     defaultUserId: '',
     defaultUserName: '',
     autoConnect: true,
@@ -47,14 +46,12 @@ export default {
     })
     let handle = null
     let stopped = false
-    // 内置模块的 setup 必须同步返回：服务在后台起来，起不来只记一条警告，不拖垮插件加载。
     const ready = server.start()
       .then(() => {
         if (stopped || settings.autoConnect === false) return
         return api.core.adapters
           .start(satoriAdapter(), { endpoint: server.url, token: String(settings.token || ''), platform: String(settings.platform || 'sandbox') })
           .then((started) => {
-            // 模块可能已经停了：连上就立刻断，别留一个幽灵连接
             if (stopped) {
               started.dispose?.().catch?.(() => {})
               return

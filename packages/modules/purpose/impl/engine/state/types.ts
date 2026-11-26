@@ -69,7 +69,6 @@ export type AddPendingPurposeOptions = Partial<Record<'text' | 'kind' | 'need' |
 export type SummarizePurposeStateOptions = Partial<Record<'config' | 'now' | 'emotions', any>>
 
 export const PURPOSE_STATE_VERSION = 1;
-// 到期事实优先关心；只由记忆库提供到期的一件，不在目的状态里复制排程。
 export const FOLLOW_UP_WEIGHT = 4;
 
 /** 默认值刻意保守：白天每 2.5~5 小时最多一次，一天最多 4 次，23:30~08:30 不打扰。 */
@@ -105,7 +104,6 @@ export interface PurposeConfigShape {
 
 export const DEFAULT_PURPOSE_CONFIG: Readonly<PurposeConfigShape> = Object.freeze({
   enabled: true,
-  // 空 = 用 config.json 的 ownerQQ；一般不需要改。
   ownerUin: '',
   gapMinMs: 150 * 60 * 1000,
   gapMaxMs: 300 * 60 * 1000,
@@ -113,12 +111,10 @@ export const DEFAULT_PURPOSE_CONFIG: Readonly<PurposeConfigShape> = Object.freez
   dailyMax: 4,
   quietStart: '23:30',
   quietEnd: '08:30',
-  // 主人最近说过话 / 她最近发过言时先不打扰，避免在正在进行的聊天里硬插一句。
   idleThresholdMs: 30 * 60 * 1000,
   materialWindowHours: 72,
   biliWindowDays: 7,
   maxMaterials: 36,
-  // 素材太少就别硬找话；有「心里惦记的事」时例外。
   minMaterials: 2,
   retryMs: 15 * 60 * 1000,
   maxAttempts: 3,
@@ -126,16 +122,12 @@ export const DEFAULT_PURPOSE_CONFIG: Readonly<PurposeConfigShape> = Object.freez
   pendingTtlDays: 14,
   maxCandidates: 6,
   promptMaxChars: 16000,
-  // ── 选择层与驱动调参（面板可调；0~1 / 权重见 normalizePurposeConfig 的钳制）──
-  // 有一半概率优先处理「心里惦记的事」；寂寞/羡慕情绪的排序加成；连续同需要的降权。
   pendingShareProbability: 0.5,
   lonelyEmotionWeight: 1.2,
   enviousEmotionWeight: 1.1,
   needRepeatPenalty: 0.72,
   needRepeatPenalty2: 0.65,
-  // 驱动向默认值衰减的半衰期（小时）。
   driveHalfLifeHours: 8,
-  // 人格「胆量」：风险全表乘数（1 = 原表；人格卡可覆写）。
   riskScale: 1,
 });
 

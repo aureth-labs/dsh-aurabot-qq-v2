@@ -66,7 +66,6 @@ export function createDiaryAssets(dir, { download = downloadImage } : CreateDiar
     let bytes
     if (picture.kind === 'browsing' && !picture.localShot) bytes = await download(picture.src)
     else {
-      // 目录扫描与实际读取之间再次检查，链接或越界文件不能混进选图。
       if (picture.root) {
         if (lstatSync(picture.src).isSymbolicLink() || !insideFolder(picture.root, realpathSync(picture.src))) throw new Error('配图已经移出授权目录')
       }

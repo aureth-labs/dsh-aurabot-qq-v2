@@ -103,7 +103,6 @@ export function createSchedule({ settings, file = '', run, now = () => Date.now(
 
   function load(nowMs = now()) {
     const f = fileOf()
-    // 没接状态文件（测试/内存态）：只初始化一次，绝不用空态覆盖内存里的账
     if (!f) {
       if (!state) state = {}
     } else {
@@ -111,7 +110,6 @@ export function createSchedule({ settings, file = '', run, now = () => Date.now(
       state = raw && typeof raw === 'object' ? raw : {}
     }
     if (state.day !== dayKeyOf(nowMs)) {
-      // 跨天：当日计数清零（直方图与 seen 保留）
       state.day = dayKeyOf(nowMs)
       state.countToday = 0
     }
@@ -155,7 +153,6 @@ export function createSchedule({ settings, file = '', run, now = () => Date.now(
       state.lastOutcome = `${meta.scheduled ? 'tick' : reason}${tail ? `→${tail}` : ''}`
       state.lastSkip = null
       save()
-      // 定时轨：跑完立刻排下一次（含直方图轻推）
       if (meta.scheduled) state.nextFireAt = computeNextFire({ now: nowMs, cfg: scheduleConfig(settings()), lastRunAt: state.lastRunAt, countToday: state.countToday, replyHours: state.replyHours, random })
       save()
       return { outcome: 'run', result, reason }
@@ -185,7 +182,6 @@ export function createSchedule({ settings, file = '', run, now = () => Date.now(
     if (cfg.maxPerDay > 0 && state.countToday >= cfg.maxPerDay) {
       return { action: 'wait', reason: 'daily-max', nextFireAt: nextDayStartAfter(nowMs, qcfg) }
     }
-    // 首次（无 nextFireAt）先排一次再等
     if (!state.nextFireAt) {
       state.nextFireAt = computeNextFire({ now: nowMs, cfg, lastRunAt: state.lastRunAt, countToday: state.countToday, replyHours: state.replyHours, random })
       save()

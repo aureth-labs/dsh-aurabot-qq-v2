@@ -82,7 +82,6 @@ export default {
       return { ok: false, message: '换头像失败：网关不接受这张图（' + (lastError && lastError.message ? lastError.message : '未知错误') + '）' }
     }
 
-    // 统一套路：dryRun 只说不做；执行前再按最新配置查一遍权限
     const guarded = (key, chat, sessionId, run) => async (args) => {
       const cfg = api.config()
       const p = profilePermits(cfg, key, chat, hub.turnSendersAllOwner(sessionId))
@@ -95,7 +94,6 @@ export default {
       const cfg = api.config()
       const tools = []
       const allowed = () => chat.kind === 'private' && isOwner(api.config(), chat.userId) && hub.turnSendersAllOwner(sessionId)
-      // 查询权限独立于修改权限，始终只给主人私聊，读取对象固定为机器人自己。
       if (chat.kind === 'private' && isOwner(cfg, chat.userId)) tools.push(defineTool({
         name: 'qq_get_profile',
         description: '查看你自己的当前 QQ 昵称、个性签名和头像地址。主人私聊谈到资料时可主动查询；需要看头像长什么样、评价头像时传 view_avatar=true，返回实际头像图片附件及辅助描述。只读，不发送图片或修改资料；主人要你发头像时用 qq_send_avatar。',

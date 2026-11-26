@@ -10,7 +10,6 @@ import { lookWithVision, visionState } from '../media/vision.ts'
 import { createShotStore, shotPath, clockOf } from '../media/shots.ts'
 import { inHourWindow } from '../../../../../src/core/support/time/time-window.ts'
 
-// 这些错误说明今天别再发了：没登录 / Cookie 过期、csrf 不对、风控、要验证码、太频繁
 const PAUSE_CODES = { '-101': 'B 站没登录或 Cookie 过期了', '-111': 'Cookie 里的 bili_jct 不对', '-352': '被 B 站风控了', '-509': '发得太频繁', '12015': 'B 站要求验证码' }
 import { isSilence, cleanOutboundText } from '../../../../../src/chat/reply/index.ts'
 import { reallySent } from '../../../../../src/chat/hub/index.ts'
@@ -29,8 +28,6 @@ type RunOptions = Partial<Record<'force', any>>
 const FACE_MAX = 2 * 1024 * 1024 // B 站头像上限（api.js 里也有一份，这里给缩图判断用）
 const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 export const link = (bvid) => `https://www.bilibili.com/video/${bvid}`
-// QQ 里点得开的是网页播放器：点开直接播；video/ 普通链接常被拦去外部浏览器或要重新登录（#334）。
-// 记忆/流水里仍存 link() 的正式地址，便于回溯与去重。
 export const playerLink = (bvid, p = 1) =>
   `https://www.bilibili.com/blackboard/webplayer/mbplayer.html?bvid=${bvid}&p=${p}&autoplay=true`
 
@@ -340,7 +337,6 @@ export function createBili({ getConfig, hub, memory, log, dsh, api: injected = n
         if (asked.ok) awaiting = asked.n
         log.info(`B 站群分享：${asked.ok ? `${asked.n} 条等主人批准` : `没攒（${asked.why}）`}`)
       }
-      // 刷完按概率顺手甩一张截图给主人：默认概率和发一张表情包一样，0 = 从不
       let shotSent = 0
       const shotTo = getConfig().ownerQQ ? `private:${getConfig().ownerQQ}` : ''
       if (shotTo && c.enabled && getConfig().enabled && !getConfig().dryRun && Number(c.shotChance) > 0) {

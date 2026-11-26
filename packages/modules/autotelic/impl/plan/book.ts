@@ -29,7 +29,6 @@ function normalize(raw) {
     actions: Array.isArray(t.actions) ? t.actions.filter((n) => Number(n) > 0) : [], // 动作时间戳（预算用）
     ticks: Array.isArray(t.ticks) ? t.ticks.slice(-6) : [], // 最近 6 次心跳（§10.2 面板看节奏）
     lastTick: t.lastTick || null,
-    // 立项前预审否决过的素材（2026-11-05 少爷定）：sourceId + 时间 + 理由
     screenVetoes: Array.isArray(t.screenVetoes) ? t.screenVetoes.filter((x) => x && x.id).slice(-MAX_SCREEN_VETO) : [],
   }
 }
@@ -51,7 +50,6 @@ export function createBook({ file = '', now = () => Date.now(), maxActive = MAX_
   const active = () => state.tasks.filter((t) => t.status === 'active')
 
   function pruneLedger() {
-    // 活跃上限漂移的兜底（正常路径 addTask 会在超限时拒绝，见场景 7）
     const act = active()
     if (act.length > maxActive) {
       for (const t of act.slice(0, act.length - maxActive)) {

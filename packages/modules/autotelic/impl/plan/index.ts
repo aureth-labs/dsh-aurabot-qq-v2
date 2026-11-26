@@ -45,10 +45,6 @@ type DecideRoundOptions = Partial<Record<'round' | 'persona' | 'constraintRulesT
 type ReviewRoundOptions = Partial<Record<'decisionFile' | 'reviewTurn' | 'hub' | 'settings' | 'now' | 'log', any>>
 
 // ————— tag 封闭词表（§3.3：≤20 个，面板可维护，防换词绕过；抑制表与频控锚定其上） —————
-//
-// 词表名单以 tags.js 为**唯一来源**（集成裁决 2026-11-17，此前本文件内嵌的 12 个名单
-// 与 A 的 11 个名单漂移）：本文件只维护 tag 的元数据（描述 + 是否 touch-owner 类），
-// 名单本身从 tags.js 的 DEFAULT_TAGS 解析。要增删 tag 只改 tags.js。
 
 /** tag 元数据表：desc 展示用；owner=true 即 touch-owner 类行动单（buildTicket 据此走硬闸）。 */
 const TAG_META = Object.freeze({
@@ -625,7 +621,6 @@ export async function reviewRound(ticketResult, { decisionFile = '', reviewTurn 
   })
   const budgetKey = 'reviewMaxInputTokens'
   const maxIn = Number(settings()?.[budgetKey]) || DEFAULT_BUDGETS[budgetKey]
-  // 预算降级（§9.3）：行动单只留步骤与终态——契约里 steps 本就只带 desc/status，超预算时截 steps 条数
   let steps = Array.isArray(t.steps) ? t.steps : []
   let clipped = 0
   const base = JSON.stringify({ ...t, steps: [] })

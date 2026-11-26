@@ -38,7 +38,6 @@ export function minePurposeSeeds({
   const seeds = [];
   const query = normalizeDrives(drives);
   const hoursSinceMaster = lastMasterAt > 0 ? Math.max(0, (now - lastMasterAt) / HOUR) : 24;
-  // 「主人问过、她回没回」只看主人私聊里的她，不能被她在群里说话误判成已答。
   const selfTimes = materials
     .filter((m) => m.kind === 'self' && (!m.meta?.key || String(m.meta.key).startsWith('private:')))
     .map((m) => Number(m.at) || 0);

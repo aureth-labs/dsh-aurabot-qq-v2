@@ -26,7 +26,6 @@ export function insideFolder(root, file) {
   return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
 }
 
-// 只信任本模块的归档格式；重新校验链接，避免手改 sidecar 把登录参数带回空间。
 function archiveMetadata(file) {
   try {
     const sidecar = file + '.json'
@@ -86,7 +85,6 @@ function remoteImage(value) {
   } catch (error) { return '' }
 }
 
-// 公开作品链接重新构造，不把 Cookie、分享令牌或任意查询参数带进正文。
 function sourceLink(platform, item) {
   const id = String(item.id || item.bvid || '')
   if (platform === 'B站' && /^BV[\w]{10}$/.test(id)) return 'https://www.bilibili.com/video/' + id
@@ -131,7 +129,6 @@ export function collectSources(api, settings, history = [], now = Date.now()) {
           if (!title || !url || !publicText(title + author)) continue
           const key = id + ':' + sourceId(url)
           if (events.some((event) => event.id === key)) continue
-          // 不沿用评论、私信或模型旧感想，避免把私人信息写进公开日记。
           events.push({ id: key, text: `浏览了${platform}的公开作品《${title}》`, at: Number(row.at) })
           add({ id: key, kind: 'browsing', src: remoteImage(item.cover || item.images?.[0]), caption: platform + '《' + title + '》', title, author, platform, url, at: Number(row.at) })
         }

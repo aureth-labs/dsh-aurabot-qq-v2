@@ -142,7 +142,6 @@ export function createQrLogin({ log, dataDir } : CreateQrLoginOptions = {}) {
     session.child = null
     if (!child || child.exitCode !== null || child.signalCode) return Promise.resolve()
     return new Promise<void>((resolve) => {
-      // SIGKILL 通常立刻退；3 秒还没退就不等了，别把调用方卡住
       const timer = setTimeout(() => resolve(), 3_000)
       timer.unref?.()
       child.once('exit', () => { clearTimeout(timer); resolve() })
@@ -157,7 +156,6 @@ export function createQrLogin({ log, dataDir } : CreateQrLoginOptions = {}) {
     session.dir = ''
   }
 
-  // 宿主进程退出时兜底：不留孤儿 chrome，也不留临时 profile
   const onExit = () => {
     for (const session of sessions.values()) {
       killTree(session.child)

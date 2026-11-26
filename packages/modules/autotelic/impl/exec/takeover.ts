@@ -10,22 +10,6 @@ type RestoreTakeoverOptions = Partial<Record<'getConfig' | 'setConfig' | 'backup
 type FindFlippedOptions = Partial<Record<'getConfig' | 'backup', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RepressTakeoverOptions = Partial<Record<'getConfig' | 'setConfig' | 'backup', any>>// 自驱引擎 · 浏览模块接管（docs/AUTOTELIC-TAKEOVER.md）。
-//
-// 语义（主人定的两条口径）：
-//   1. 一键关闭「不自动做」——面板按钮，主人手动点才生效；
-//   2. 接管的除了自主循环，还有「兴趣」——刷什么、什么有意思，决定权归自驱引擎。
-//
-// 脑和手的分工：模块只剩「手」（平台机器 / cookie / 浏览器），
-// 「脑」（什么时候刷、看什么、什么值得说）归 autotelic。
-//
-// 实现要点：
-//   · 压制靠写配置实现——浏览型模块每次运行都现读 settings，改了立即生效（不改它们一行代码）；
-//   · 探测式：扫在跑模块的配置，凡含 autoBrowse 的就是「有自主循环」的家族
-//     （douyin/bili/heybox/tieba-reader/phone 全是这个键；tophub 例外用 tourTimes/shareLimit）；
-//   · **不关模块总开关**（enabled）——关了 `api.use('douyin')` 就拿不到，她的手就断了；
-//   · 恢复接管（2026-11-05 主人定）：重启后重新压制（幂等），不还原——接管是他的一次性职责移交。
-//
-// 纯逻辑、可单测：配置的读写由调用方（模块壳）注入，这里不碰 api。
 
 /** 常见浏览型模块的自主循环键（探测式兜底清单；不在清单里但有 autoBrowse 的也会被扫到）。 */
 export const AUTONOMY_KEY = 'autoBrowse'
