@@ -3,7 +3,7 @@
 
 import type { BotLike, BotStatus, Capability, SendOptions } from '../../../types/bot.ts'
 import { BotStateError } from '../../../core/bot.ts'
-import { toOneBot, isElement, normalize } from '../../../core/element.ts'
+import { toOneBot, isElement, normalize, degrade } from '../../../core/element.ts'
 import { hasVoiceText, needsVoiceResolve, resolveVoice, type VoiceResolver } from '../../../core/voice-element.ts'
 
 export interface OneBotCall {
@@ -104,9 +104,10 @@ export class OneBotBot implements BotLike {
       if (speak && hasVoiceText(content)) return toOneBot(await resolveVoice(content, speak, this.log))
       return content
     }
-    if (isElement(content)) return toOneBot(content)
+    const fits = (capability: Capability) => this.supports(capability)
+    if (isElement(content)) return toOneBot(degrade(content, fits))
     if (Array.isArray(content)) {
-      if (content.length && content.every((item) => isElement(item))) return toOneBot(normalize(content))
+      if (content.length && content.every((item) => isElement(item))) return toOneBot(degrade(normalize(content), fits))
       return content
     }
     return String(content ?? '')

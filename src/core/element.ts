@@ -9,17 +9,41 @@
 // 不认识的类型照样能构造，能不能发出去由适配器能力表决定。
 
 import type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../types/element.ts'
+import type { Capability } from '../types/bot.ts'
 
 export type { Element, ElementFactory, ElementSource, OneBotSegment, Selector } from '../types/element.ts'
 
 // voice 不在这里：`<voice>要念的话</voice>` 需要保留里面的文字，交给 TTS 换成音频。
 // 自闭合的 `<voice url="…"/>` 走 selfClose 分支，照样是空元素。
-const VOID_TYPES = new Set(['at', 'image', 'video', 'file', 'face', 'quote', 'forward', 'reply', 'br'])
+// file 同理：`<file>file:///路径</file>` 的正文就是它的 url，不能当 void 把正文丢在外面。
+const VOID_TYPES = new Set(['at', 'image', 'video', 'face', 'quote', 'forward', 'reply', 'br'])
+
+/**
+ * 认得的标签。不在这张表里的标签整块丢掉（连正文一起）。
+ *
+ * 模型、上下文压缩插件、别的框架会往回复里塞自己的 XML（`<acp>`、`<thinking>`…）。
+ * 这类块既不是给用户看的，也不是我们认识的语义，发出去就是脏数据——所以整块丢，
+ * 而不是只丢标签把里面的半截内容漏出去。
+ */
+const KNOWN_TYPES = new Set([
+  'text', 'at', 'image', 'voice', 'video', 'file', 'face', 'quote', 'reply', 'forward', 'message', 'author', 'br',
+  // Satori 的写法：fromSatori 解析完再按 FROM_SATORI 换回内部类型
+  'img', 'audio',
+])
 
 function create(type: string, attrs: Record<string, unknown> = {}, children?: Element[]): Element {
   const element: Element = { type, attrs: { ...attrs } }
   if (children && children.length) element.children = children
   return element
+}
+
+/** `<file>file:///路径</file>` 的正文就是 url；已经写了 url 属性就原样保留子节点。 */
+function fileOf(attrs: Record<string, unknown>, kids: Element[]): Element {
+  if (!attrs.url) {
+    const url = toText(kids).trim()
+    if (url) return create('file', { ...attrs, url })
+  }
+  return create('file', attrs, kids)
 }
 
 function text(content: string): Element {
@@ -44,6 +68,7 @@ export const h: ElementFactory = Object.assign(
     stringify,
     select,
     normalize,
+    degrade,
     isElement,
     fromOneBot,
     toOneBot,
@@ -69,13 +94,19 @@ function parseAttrs(source: string): Record<string, unknown> {
 
 /**
  * 把消息文本解析成元素树。
- * 容错规则：不认识的标签整体丢掉、没闭合的标签丢掉标签本身但保留里面的文字，
- * 标签之外的文字一律保留 —— 模型吐出半截 `<ACP>` 时不能把正常回复也吞了。
+ *
+ * 容错规则：
+ * - 不认识的标签**整块丢掉**（含里面的文字）—— 别把别的框架的 XML 当消息发出去
+ * - 孤立的闭标签直接丢；没闭合的已知标签丢掉标签本体、保留里面的文字
+ * - 标签之外的文字一律保留 —— 模型吐出半截 `<ACP>` 时不能把正常回复也吞了
  */
 export function parse(source: string): Element[] {
   const input = String(source ?? '')
   const root: Element[] = []
   const stack: Array<{ type: string; attrs: Record<string, unknown>; children: Element[] }> = []
+  // 正在丢弃的未知标签块。depth 记同名嵌套，闭合到 0 才出来；
+  // pieces 兜底：万一到结尾都没闭合，把正文退回去，别把用户的正常回复一起吞了。
+  const skipping: Array<{ type: string; depth: number; pieces: string[] }> = []
   let cursor = 0
 
   const push = (element: Element) => {
@@ -83,6 +114,8 @@ export function parse(source: string): Element[] {
     else root.push(element)
   }
   const flushText = (upTo: number) => {
+    // 未知块里的文字整块不要
+    if (skipping.length) return
     if (upTo <= cursor) return
     const chunk = input.slice(cursor, upTo)
     if (chunk) push(text(chunk))
@@ -93,8 +126,37 @@ export function parse(source: string): Element[] {
   while ((match = TAG_RE.exec(input))) {
     const [whole, closing, name, rawAttrs, selfClose] = match
     const type = name.toLowerCase()
-    flushText(match.index)
-    cursor = match.index + whole.length
+    const tagStart = match.index
+    const tagEnd = tagStart + whole.length
+
+    if (skipping.length) {
+      // 块内只跟同名标签的嵌套，别的一概不管
+      const skipped = input.slice(cursor, tagStart)
+      if (skipped) skipping[0].pieces.push(skipped)
+      const frame = skipping[skipping.length - 1]
+      if (frame.type === type) {
+        if (closing) {
+          frame.depth -= 1
+          // 闭合到 0：这块整块不要，连 pieces 一起丢
+          if (frame.depth <= 0) skipping.pop()
+        } else if (!selfClose) {
+          frame.depth += 1
+        }
+      }
+      cursor = tagEnd
+      continue
+    }
+
+    if (!closing && !KNOWN_TYPES.has(type)) {
+      // 不认识的标签：整块丢，连正文一起
+      flushText(tagStart)
+      cursor = tagEnd
+      if (!selfClose) skipping.push({ type, depth: 1, pieces: [] })
+      continue
+    }
+
+    flushText(tagStart)
+    cursor = tagEnd
 
     if (closing) {
       // 闭合标签：只在栈里找最近的同名节点；找不到就当没出现（丢弃）
@@ -112,7 +174,9 @@ export function parse(source: string): Element[] {
           // <text>正文</text> 的正文要并进 content，否则会被当成空文本丢掉
           const element = type === 'text'
             ? text(kids.filter((k) => k.type === 'text').map((k) => String(k.attrs.content ?? '')).join(''))
-            : create(node.type, node.attrs, kids)
+            : type === 'file'
+              ? fileOf(node.attrs, kids)
+              : create(node.type, node.attrs, kids)
           push(element)
           break
         }
@@ -133,6 +197,13 @@ export function parse(source: string): Element[] {
   }
 
   flushText(input.length)
+  // 未知标签到结尾都没闭合：退回「丢标签、留正文」。
+  // 未闭合时解析器拿不准边界，此时误吞用户的正常回复比漏出一点内部块更糟。
+  if (skipping.length) {
+    const rest = input.slice(cursor)
+    const recovered = [...skipping[0].pieces, rest].join('')
+    if (recovered) push(text(recovered))
+  }
   // 没闭合的标签：把里面的内容按原顺序吐出来
   while (stack.length) {
     const node = stack.pop()!
@@ -212,6 +283,56 @@ export function select(source: ElementSource, selector: Selector): Element[] {
 /** 纯文本（把所有 text 节点拼起来）。 */
 export function toText(source: ElementSource): string {
   return select(source, 'text').map((element) => String(element.attrs.content ?? '')).join('')
+}
+
+// ── 按平台能力降级 ──────────────────────────────────────────────────
+
+/** 需要平台支持的媒体类型 → 能力名。text / at / face 不用查表，永远能降级成文字。 */
+const MEDIA_CAPABILITY: Record<string, Capability> = {
+  image: 'image',
+  voice: 'voice',
+  video: 'video',
+  file: 'file',
+  forward: 'forward',
+  quote: 'quote',
+}
+
+const PLACEHOLDER: Record<string, (element: Element) => string> = {
+  image: () => '[图片]',
+  voice: () => '[语音]',
+  video: () => '[视频]',
+  file: (element) => '[文件] ' + String(element.attrs.name || element.attrs.url || ''),
+  forward: () => '[合并转发]',
+}
+
+/**
+ * 按平台能力把发不出去的元素换成文字占位符。
+ *
+ * 平台不支持某类消息是常态（纯文本聊天室没有图片、没有文件）。这时候不能整条不发，
+ * 也不能把 `<file url="..."/>` 原样当字符串发给用户——降级成一句人话，正文照常发。
+ * 引用（quote）例外：不支持就直接不引用，塞个占位符纯属噪音。
+ */
+export function degrade(source: ElementSource, supports: (capability: Capability) => boolean): Element[] {
+  const out: Element[] = []
+  for (const element of normalize(source)) {
+    const needed = MEDIA_CAPABILITY[element.type]
+    if (needed && !supports(needed)) {
+      if (element.type === 'quote') continue
+      const placeholder = PLACEHOLDER[element.type]
+      out.push(text(placeholder ? placeholder(element) : '[' + element.type + ']'))
+      continue
+    }
+    if (element.type === 'at') {
+      out.push(text('@' + String(element.attrs.name || element.attrs.id || '')))
+      continue
+    }
+    if (element.type === 'face') {
+      out.push(text('[表情]'))
+      continue
+    }
+    out.push(element)
+  }
+  return normalize(out)
 }
 
 // ── OneBot v11 消息段互转 ───────────────────────────────────────────

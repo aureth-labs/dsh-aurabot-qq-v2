@@ -48,6 +48,8 @@ export interface ElementFactory {
   stringify(source: ElementSource): string
   select(source: ElementSource, selector: Selector): Element[]
   normalize(source: ElementSource): Element[]
+  /** 按平台能力把发不出去的元素换成文字占位符。 */
+  degrade(source: ElementSource, supports: (capability: import('./bot.ts').Capability) => boolean): Element[]
   isElement(value: unknown): value is Element
   fromOneBot(segments: unknown): Element[]
   toOneBot(source: ElementSource): OneBotSegment[]
