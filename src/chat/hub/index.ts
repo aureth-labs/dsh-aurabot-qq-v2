@@ -161,6 +161,7 @@ type RunSubagentTurnOptions = Partial<Record<'timeoutMs' | 'moduleId' | 'source'
 
 export * from './context.ts'
 
+import { createChatLog } from './chatlog.ts'
 import { activeCapture, assistantReplyText, captureStore, chatImageRefs, emptyGroupPrompt, failStore, reallySent, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context.ts'
@@ -600,70 +601,8 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   }
 
   // ---------- 聊天流水（给空间日记、主动搭话、面板用） ----------
-  let chatLogRevision = 0
-  function logChat(chatId, who, text, uid = '', { via, at, interaction, originId, proactive, images, mid } : LogChatOptions = {}) {
-    // 模块「模拟测试」的 simulation 上下文：只回放给面板看，不能写真实聊天流水。
-    // 否则 private:10001 这类模拟会话会进短时记忆和人物记忆，删掉又出现。
-    if (simulationStore.getStore() || isBeforeMemoryReset(String(chatId), uid, at ?? Date.now())) return false
-    // 调试模式：不写聊天流水，只进插件日志。流水是长期记忆的原料，写了就等于把调试对话记进记忆。
-    if (getConfig().debug) {
-      log.info(`[调试] ${who}${uid ? '（' + uid + '）' : ''} → ${chatId}：${String(text || '').slice(0, 300)}`)
-      return
-    }
-    try {
-      // noteVia 直接写入其他平台的流水；QQ 回复已在投递路径清洗。
-      if (who === 'bot' && via) {
-        text = cleanOutboundText(text, cleaningFor(chatId))
-        if (!text.trim()) return false
-      }
-      const timestamp = Number(at) > 0 && Number.isFinite(Number(at)) && Number.isFinite(new Date(Number(at)).getTime()) ? Number(at) : Date.now()
-      const d = new Date(timestamp)
-      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const dir = chatDir()
-      mkdirSync(dir, { recursive: true })
-      const forgotten = String(chatId).startsWith('private:') && getConfig().memory?.enabled && getConfig().memory?.instantCommands !== false && parseMemoryCommand(text)?.action === 'forget'
-      const pics = chatImageRefs(images)
-      const row = { t: timestamp, chatId, who, ...(uid ? { uid: String(uid) } : {}), text: redact(String(text).slice(0, 500)), ...(mid ? { mid: String(mid) } : {}), ...(pics.length ? { images: pics } : {}), ...(via ? { via } : {}), ...(proactive ? { proactive } : {}), ...(interaction?.length ? { interaction: [...new Set(interaction.map(String))] } : {}), ...(forgotten ? { forgottenAt: Date.now() } : {}) }
-      messageLogOf(dir).append(day, row)
-      chatLogRevision++
-      try { hooks?.journal?.({ ...row, ...(originId ? { originId } : {}) }) } catch (error) { log.warn('流水通知失败：', error.message) }
-      return true
-    } catch (error) { return false }
-  }
-
-  /** 有聊天流水的日期（升序）。 */
-  /** 她在 QQ 之外说的话（桌宠气泡）：记进这个聊天，对方在 QQ 回她时她知道在接哪句（#133）。 */
-  function noteSaid(chatId, text) {
-    logChat(chatId, 'bot', text)
-    saidElsewhere.set(chatId, [...(saidElsewhere.get(chatId) || []), { at: Date.now(), text: String(text).slice(0, 300) }].slice(-5))
-  }
-
-  /**
-   * 主动发出的话（刷B站分享、群分享、私聊问询……）也要在目标聊天留痕：
-   * 写一条聊天流水 + 记进「别处说过」桥接，主人下次在这个聊天里接话时她才知道自己刚发过什么。
-   * 只在该条消息真发出去之后调用（sendSegments 的真实成功分支）；试运行、补发队列、失败都不记。
-   * 调用方通过 sendText/sendImage 的 opts.proactive=true 触发，proactiveCause 标明来路（bili / bili-groupshare）；
-   * 不叫 cause：outbound-policy 的 cause 是门闸的因果治理字段，两套别混。
-   */
-  function noteProactive(chatId, message, opts : NoteProactiveOptions = {}) {
-    const said = (Array.isArray(message) ? message : [])
-      .map((s) => {
-        const type = s && s.type
-        if (type === 'text') return String(s.data?.text || '')
-        if (type === 'image') return '[图片]'
-        if (type === 'file') return '[文件]'
-        if (type === 'record') return '[语音]'
-        return ''
-      })
-      .filter(Boolean)
-      .join(' ')
-      .trim()
-    if (!said) return
-    // 用独立字段 proactive 标记，不占 via —— via 在记忆模块里是「来自哪个平台」的语义（features/memory.js）
-    logChat(chatId, 'bot', said, '', { proactive: String(opts.proactiveCause || 'proactive') })
-    saidElsewhere.set(chatId, [...(saidElsewhere.get(chatId) || []), { at: Date.now(), text: said.slice(0, 300) }].slice(-5))
-  }
-
+  const chatLog = createChatLog({ getConfig, log, hooks, saidElsewhere, proactiveLogAt, isBeforeMemoryReset, chatDir, chatMemoryCutoff, cleaningFor })
+  const { logChat, noteSaid, noteProactive, chatLogDays, deleteChatLog, chatLogOf, proactiveFromChatLog } = chatLog
   /** QQ 通知：不让她马上回话，记进流水，下一轮带给她。只管白名单里的聊天。 */
   async function onNotice(ev) {
     const cfg = getConfig()
@@ -681,26 +620,6 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     if (!note) return
     logChat(note.chatId, '系统', `【系统】${note.text}`)
     noticesFor.set(note.chatId, [...(noticesFor.get(note.chatId) || []), note.text].slice(-8))
-  }
-
-  function chatLogDays(pid?: string) {
-    try { return messageLogOf(chatDir(pid)).days() } catch (error) { return [] }
-  }
-
-  function deleteChatLog(day, pid) {
-    try { messageLogOf(chatDir(pid)).remove(day); chatLogRevision++ } catch (error) {}
-  }
-
-  function chatLogOf(day, pid?: string) {
-    try {
-      return messageLogOf(chatDir(pid)).read(day).map((row) => {
-        const rowCutoff = chatMemoryCutoff(String(row.chatId || ''), row.uid)
-        if (rowCutoff && (Number(row.t) || 0) <= rowCutoff) return { ...row, text: '', forgottenAt: row.forgottenAt || rowCutoff }
-        return row
-      })
-    } catch (error) {
-      return []
-    }
   }
 
   // DSH 重启后，主动搭话的「最近一次主人私聊 / 她最后一句」只在内存里会归零，
@@ -730,28 +649,6 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   }
   restoreProactiveFromChatLog()
 
-  // saidElsewhere 是内存 Map，重启就空。这里从聊天流水里把「主动发出过」（带 proactive 标记）的 bot 行捞回来，
-  // 不然重启一次她又忘了自己刚发过什么。窗口是最近 24 小时；跨日所以要读今天和昨天两份文件，再按时间戳过滤。
-  // 按 chatId 记一个时间游标，同一批只补一次，不会每次聊天都重放。
-  // 每个聊天只读一次盘（proactiveQueried）：流水文件是整份 JSON.parse，每条群消息都读两天会白白卡住出站。
-  const proactiveQueried = new Set()
-  function proactiveFromChatLog(chatId) {
-    if (proactiveQueried.has(chatId)) return []
-    proactiveQueried.add(chatId)
-    const since = Math.max(Date.now() - 24 * 3600_000, proactiveLogAt.get(chatId) || 0)
-    const days = [0, 1].map((n) => {
-      const d = new Date(Date.now() - n * 86400_000)
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    })
-    const rows = [...new Set(days)].flatMap((day) => chatLogOf(day))
-      .filter((r) => r && r.chatId === chatId && r.who === 'bot' && r.proactive && !r.forgottenAt && Number(r.t) > since)
-      .sort((a, b) => Number(a.t) - Number(b.t))
-      .slice(-5)
-    if (!rows.length) return []
-    proactiveLogAt.set(chatId, Number(rows[rows.length - 1].t))
-    return rows.map((r) => ({ at: Number(r.t), text: String(r.text || '') }))
-  }
-
   function forgetChatLog(qq, query = '') {
     // The archive must honor the same forget request even while recording is off.
     // Store an exclusion rule, keeping raw journals intact like the upstream chat log.
@@ -771,7 +668,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
         })
       }
     } catch (error) { log.warn('标记聊天流水失败：', error.message) }
-    if (marked) chatLogRevision++
+    if (marked) chatLog.bumpRevision()
     return marked
   }
 
@@ -4000,7 +3897,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     saveMap(m)
     if (cutoff) {
       memoryCutoffs()[qq] = cutoff
-      chatLogRevision++
+      chatLog.bumpRevision()
     }
     const sessions = new Set([entry?.sessionId, ...(cutoff ? Object.values(entry?.sessions || {}) : [])].filter(Boolean))
     for (const sessionId of sessions) {
@@ -4352,7 +4249,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     prevTextOf: (sessionId) => turnState.get(sessionKey(sessionId))?.prevText || '',
     recentMessagesOf: (chatId, limit = 32) => getConfig().conversationContext?.enabled === true ? conversationArchive().recent(chatId, limit) : [],
     speakersOf: (sessionId) => turnState.get(sessionKey(sessionId))?.speakers || [],
-    logChat, chatLogRevision: () => chatLogRevision, refreshFriends, isFriend: (qq) => friendIds.has(String(qq)),
+    logChat, chatLogRevision: () => chatLog.revision(), refreshFriends, isFriend: (qq) => friendIds.has(String(qq)),
     localTranscribe,
     ensureWorkspace,
     chatLogOf,
