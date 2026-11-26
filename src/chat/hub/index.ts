@@ -170,6 +170,7 @@ import { GROUP_IMAGE_MAX, GROUP_IMAGE_WINDOW_MS } from './context/group-media.ts
 import { createGroupEvents } from './events/group.ts'
 import { createMemberLookup, createNoticeHandler } from './events/notices.ts'
 import { createSubagent } from './subagent/index.ts'
+import { createOutboundGuard } from './delivery/guard.ts'
 import { assistantReplyText, captureStore, emptyGroupPrompt, sessionKey, simulationStore, sleep, SOURCE_KIND, WORKSPACE_TITLE, workspaceDirOf } from './context/context.ts'
 import type { CapturedList, CapturedSend, ContentBlock, GroupPromptResult, MountedRec, OutMessage, OutSegment, OutputScope, ReplyWait } from './context/context.ts'
 import { MAX_IMAGE_BYTES, MAX_MESSAGE_IMAGES, MODEL_IMAGE_BYTES, QUOTE_FORWARD_MAX_CHARS } from './context/context.ts'
@@ -394,60 +395,8 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   const { pending, busy, busySessions, busyTurns, running, runningTimers, BUSY_MAX_MS, RANK, turnSignature,
     isCurrentSession, groupChatAllowed, checkTurn, isBusy, turnMaxMs, markRunning, clearRunning } = turnGuard
 
-  // 主动发言出站门闸（见 docs/OUTBOUND-POLICY-DESIGN.md / CONTRACT §4）。
-  // 宿主装配时经 setOutboundGuard 注入；未注入时（纯测试 / 旧环境）这里是 null，
-  // 所有发送路径与改造前逐字节等价，零额外开销。
-  // 约定：guard(ask) 返回 null 表示「拦下」（调用方据此按失败处理）；
-  // 返回对象表示放行，其中可带 settle(outcome) 供 hub 结算这次预占。
-  let outboundGuard = null
-  /**
-   * 注入门闸判定函数。传 null 可撤销（测试/热重载用）。
-   * @param {((ask: object) => object|null)|null} fn
-   */
-  function setOutboundGuard(fn) {
-    outboundGuard = typeof fn === 'function' ? fn : null
-    return outboundGuard !== null
-  }
-
-  /**
-   * 这条发送要不要过门闸。
-   * - 没注入门闸（旧环境 / 纯测试）→ 不过，逐字节等价于改造前；
-   * - `outboundDone` 为真 → 上游（modules.js 的模块包装层）已经判过并会自己结算，别再判一次；
-   * - 只有带 `sourceModule`（模块发起）或显式 `enginePolicy`（引擎路径）才归治理管，
-   *   hub 内部发送（回合回复、命令回执、语音补表情……）永远不带这两个标记，行为不变。
-   */
-  function wantsOutbound(opts) {
-    if (!outboundGuard || !opts) return false
-    if (opts.outboundDone) return false
-    return Boolean(opts.sourceModule || opts.enginePolicy)
-  }
-
-  /** 门闸判定：门闸自己抛错按放行处理（治理故障不得阻断正常回复）。 */
-  function passOutbound(ask) {
-    if (!outboundGuard) return { action: 'allow', reason: 'no-guard' }
-    try {
-      const r = outboundGuard(ask)
-      return r === null ? { action: 'deny', reason: 'guard-null' } : (r || { action: 'allow', reason: 'guard-ok' })
-    } catch (error) {
-      log.warn('出站门闸判定出错，本条按放行处理：', error && error.message)
-      return { action: 'allow', reason: 'guard-error' }
-    }
-  }
-
-  /**
-   * 结算一次门闸预占（sent / failed）。
-   * 预占是策略源扣掉的预算，不结算就会永远挂着（下一次判定变成 busy），所以放行后必须回调；
-   * 门闸没提供 settle（旧门闸 / 纯测试）时是空操作。
-   */
-  function settleOutbound(verdict, outcome) {
-    const settle = verdict && verdict.settle
-    if (typeof settle !== 'function') return
-    try {
-      settle(outcome)
-    } catch (error) {
-      log.warn(`出站结算失败（${outcome}）：`, error && error.message)
-    }
-  }
+  // 主动发言出站门闸（注入式；未注入时发送路径与改造前逐字节等价）。
+  const { setOutboundGuard, wantsOutbound, passOutbound, settleOutbound } = createOutboundGuard({ log })
 
   // 拆条间隔可在卸载时立即结束，后面的消息不再投递。
   function pause(ms) {
