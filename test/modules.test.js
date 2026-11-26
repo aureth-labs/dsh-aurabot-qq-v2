@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { rowsOf } from './helpers/chatlog.mjs'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -411,10 +412,7 @@ test('模拟测试：消息、命令、她的回复都走一遍模块，但不�
 
 test('模拟测试不写真实聊天流水：不会凭空产生 10001 人物记忆', async () => {
   const rows = () => {
-    const dir = join(dataDir, 'chatlog')
-    if (!existsSync(dir)) return []
-    return readdirSync(dir).filter((name) => name.endsWith('.jsonl')).flatMap((name) =>
-      readFileSync(join(dir, name), 'utf8').split('\n').filter((line) => line.includes('private:10001')))
+    return rowsOf(dataDir).filter((row) => JSON.stringify(row).includes('private:10001'))
   }
   assert.deepEqual(rows(), [], '测试开始前不应有 10001 流水')
   await fake.call('/modules/simulate', { as: 'other', kind: 'private', text: 'ping', reply: '在呢' })

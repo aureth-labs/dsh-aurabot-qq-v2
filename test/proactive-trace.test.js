@@ -7,6 +7,7 @@ import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../src/chat/hub/index.ts'
+import { rowsOf } from './helpers/chatlog.mjs'
 import { normalize } from '../src/core/config/index.ts'
 
 function setup(t, { dryRun = false, enabled = true, onebotCall = null, files = null } = {}) {
@@ -44,11 +45,7 @@ function setup(t, { dryRun = false, enabled = true, onebotCall = null, files = n
 }
 
 function chatlogRows(dir) {
-  const d = new Date()
-  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const file = join(dir, 'chatlog', `${day}.jsonl`)
-  if (!existsSync(file)) return []
-  return readFileSync(file, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l))
+  return rowsOf(dir)
 }
 
 test('主动发送成功：聊天流水有 bot 行（带 proactive），桥接记下原文', async (t) => {
@@ -129,6 +126,8 @@ test('重启后从聊天流水回捞：换一个 hub 实例也认得上一条主
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-proactive-restart-'))
   const old = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
+  let second
+  t.after(() => second?.dispose())
   t.after(() => {
     if (old === undefined) delete process.env.AURABOT_DATA_DIR
     else process.env.AURABOT_DATA_DIR = old
@@ -144,8 +143,7 @@ test('重启后从聊天流水回捞：换一个 hub 实例也认得上一条主
   const first = mk()
   await first.sendText('private:10001', '刚才分享的视频', undefined, undefined, undefined, { proactive: true, proactiveCause: 'bili' })
   first.dispose()
-  const second = mk()
-  t.after(() => second.dispose())
+  second = mk()
   assert.deepEqual(second.saidElsewhereOf('private:10001'), [], '新进程内存里本来是空的')
   assert.deepEqual(second.proactiveHistoryOf('private:10001'), ['刚才分享的视频'], '能从流水回捞')
   assert.deepEqual(second.proactiveHistoryOf('private:10001'), [], '同一批只补一次')

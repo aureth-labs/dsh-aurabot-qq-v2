@@ -105,7 +105,7 @@ interface ModuleError { message: string; at: number; source?: string; fallback?:
 /** 磁盘上扫到的用户模块。 */
 interface UserModule { id: string; dir: string; safe?: boolean; version?: string; [key: string]: unknown }
 
-const SRC = fileURLToPath(new URL('../', import.meta.url)) // 插件的 src/
+const SRC = fileURLToPath(new URL('../../', import.meta.url)) // 插件的 src/（发布态是 lib/src/）
 const BUILTIN_DIR = join(SRC, 'modules')
 /** 内置模块目录（社区安装时判断会不会替换内置用）。 */
 export const builtinDir = () => BUILTIN_DIR

@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../src/chat/hub/index.ts'
+import { rowsOf } from './helpers/chatlog.mjs'
 import { normalize } from '../src/core/config/index.ts'
 
 const SID = 'session-test-1'
@@ -62,14 +63,8 @@ async function waitFor(fn, ms = 1500) {
 }
 
 function chatlogTexts(dir) {
-  const dir2 = join(dir, 'chatlog')
   try {
-    return readdirSync(dir2)
-      .filter((f) => f.endsWith('.jsonl'))
-      .flatMap((f) => readFileSync(join(dir2, f), 'utf8').split('\n').filter(Boolean))
-      .map((line) => { try { return JSON.parse(line) } catch { return null } })
-      .filter((x) => x && x.who === 'bot')
-      .map((x) => String(x.text || ''))
+    return rowsOf(dir).filter((row) => row.who === 'bot').map((row) => String(row.text || ''))
   } catch { return [] }
 }
 

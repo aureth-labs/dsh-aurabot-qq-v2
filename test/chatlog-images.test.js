@@ -2,11 +2,12 @@
 // 顺带记下消息 id，之后要用图得凭 id 去 get_msg 现取。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHub } from '../src/chat/hub/index.ts'
 import { normalize } from '../src/core/config/index.ts'
+import { rowsOf } from './helpers/chatlog.mjs'
 
 function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-chatlog-images-'))
@@ -27,16 +28,6 @@ function setup(t) {
     rmSync(dir, { recursive: true, force: true })
   })
   return { hub, dir }
-}
-
-/** 把这次跑出来的流水行全读出来（persona 子目录不一定，直接递归找 jsonl）。 */
-function rowsOf(dir, seen = []) {
-  for (const e of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name)
-    if (e.isDirectory()) rowsOf(p, seen)
-    else if (e.name.endsWith('.jsonl')) seen.push(...readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)))
-  }
-  return seen
 }
 
 const imageSeg = (url, file = 'a.jpg') => ({ type: 'image', data: { url, file } })

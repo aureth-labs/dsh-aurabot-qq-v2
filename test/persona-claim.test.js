@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { storeOf } from './helpers/chatlog.mjs'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -35,7 +36,7 @@ before(async () => {
   writeFileSync(join(dataDir, 'personas', 'xiaoxing.md'), '---\nname: 小星\ntags: []\n---\n\n你是小星。\n')
   writeFileSync(join(dataDir, 'memories.json'), JSON.stringify({ items: [{ id: 'old1', text: '主人喜欢吃辣', about: '', aboutName: '', importance: 0.6, source: 'panel', at: Date.now() }] }))
   writeFileSync(join(dataDir, 'sessions.json'), JSON.stringify({ chats: {} }))
-  writeFileSync(join(dataDir, 'chatlog', '2026-01-01.jsonl'), JSON.stringify({ t: 1, chatId: `private:${OWNER}`, who: '主人', text: '老聊天' }) + '\n')
+  storeOf(dataDir).append('2026-01-01', { t: 1, chatId: `private:${OWNER}`, who: '主人', text: '老聊天' })
   mock = await startMockOneBot({ selfId: BOT })
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
     enabled: true,

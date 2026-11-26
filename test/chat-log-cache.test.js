@@ -1,5 +1,4 @@
-// 聊天流水解析缓存：同一份 JSONL 在记忆 tick / 空闲提炼 / 自驱 / 目的引擎里会被反复读，
-// 必须按文件指纹复用解析结果；写流水、删流水、忘记后要立刻失效，不能读到旧数据。
+// 聊天流水存储：写入后立即可读，忘记/删除立即生效，不同天互不串数据。
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -34,23 +33,22 @@ const localDay = (at = Date.now()) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-test('同一天的流水重复读取命中缓存，写流水后失效', (t) => {
+test('同一天的流水写入后立即可读', (t) => {
   const hub = setup(t)
   const day = localDay()
   assert.equal(hub.logChat('private:1', '用户', '第一条', '1'), true)
   const first = hub.chatLogOf(day)
   const second = hub.chatLogOf(day)
   assert.equal(first.length, 1)
-  assert.equal(second, first, '同一修订号下应复用同一份解析结果')
+  assert.deepEqual(second.map((r) => r.text), ['第一条'])
 
   assert.equal(hub.logChat('private:1', '用户', '第二条', '1'), true)
   const third = hub.chatLogOf(day)
   assert.equal(third.length, 2)
-  assert.notEqual(third, first, '写了新流水后必须重新解析')
   assert.deepEqual(third.map((r) => r.text), ['第一条', '第二条'])
 })
 
-test('忘记和删除流水都会让缓存失效', (t) => {
+test('忘记和删除流水立即生效', (t) => {
   const hub = setup(t)
   const day = localDay()
   hub.logChat('private:9', '用户', '这句话以后别记住', '9')
@@ -59,14 +57,14 @@ test('忘记和删除流水都会让缓存失效', (t) => {
 
   assert.ok(hub.forgetChatLog('9', '别记住') >= 1)
   const afterForget = hub.chatLogOf(day)
-  assert.notEqual(afterForget, before)
+  assert.equal(afterForget.length, 1)
   assert.ok(afterForget[0].forgottenAt > 0)
 
   hub.deleteChatLog(day)
   assert.deepEqual(hub.chatLogOf(day), [])
 })
 
-test('不同天的流水分别缓存，互不串数据', (t) => {
+test('不同天的流水互不串数据', (t) => {
   const hub = setup(t)
   const now = Date.now()
   const yesterday = localDay(now - 86400_000)
@@ -77,6 +75,5 @@ test('不同天的流水分别缓存，互不串数据', (t) => {
   const b = hub.chatLogOf(today)
   assert.deepEqual(a.map((r) => r.text), ['昨天的话'])
   assert.deepEqual(b.map((r) => r.text), ['今天的话'])
-  assert.equal(hub.chatLogOf(yesterday), a)
-  assert.equal(hub.chatLogOf(today), b)
+  assert.deepEqual(hub.chatLogOf(yesterday).map((r) => r.text), ['昨天的话'])
 })

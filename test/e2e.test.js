@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { storeOf } from './helpers/chatlog.mjs'
 
 const OWNER = '10000001'
 const BOT = '20000002'
@@ -1214,17 +1215,17 @@ test('换头像：主人发来的图也能用，不能被「她的画作」抢�
 })
 
 test('每日整理：往日的临时流水整理后清空，今天的保留；空间日记进了记忆库', async () => {
-  const { existsSync } = await import('node:fs')
-  const dir = join(dataDir, 'chatlog')
-  mkdirSync(dir, { recursive: true })
-  const old = join(dir, '2026-01-01.jsonl')
-  writeFileSync(old, ['你好', '我喜欢吃辣', '周末一起打游戏吧', '好呀'].map((t, i) => JSON.stringify({ t: i, chatId: 'private:' + OWNER, who: i % 2 ? 'bot' : 'xiaoming', text: t })).join('\n') + '\n')
+  const { storeOf } = await import('./helpers/chatlog.mjs')
+  const store = storeOf(dataDir)
+  for (const [i, text] of ['你好', '我喜欢吃辣', '周末一起打游戏吧', '好呀'].entries()) {
+    store.append('2026-01-01', { t: i, chatId: 'private:' + OWNER, who: i % 2 ? 'bot' : 'xiaoming', text })
+  }
   const r = (await fake.call('/memory/extract', {})).json()
   assert.equal(r.ok, true, r.message)
-  assert.equal(existsSync(old), false, '往日的流水被清空')
+  assert.equal(store.days().includes('2026-01-01'), false, '往日的流水被清空')
   const today = new Date()
   const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  assert.equal(existsSync(join(dir, key + '.jsonl')), true, '今天的流水保留')
+  assert.equal(store.days().includes(key), true, '今天的流水保留')
   const mem = (await fake.call('/memories?limit=200')).json()
   assert.ok(mem.items.some((m) => m.source === 'diary' && m.text.includes('白米饭')), '空间日记进了记忆库')
 })
@@ -1635,7 +1636,7 @@ test('语音发出去、补发表情失败：这一轮不算没发出去（补�
   const day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
   const bots = () => {
     try {
-      return readFileSync(join(dataDir, 'chatlog', day + '.jsonl'), 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((x) => x.who === 'bot')
+      return storeOf(dataDir).read(day).filter((x) => x.who === 'bot')
     } catch { return [] }
   }
   try {

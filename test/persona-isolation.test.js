@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startMockOneBot } from './helpers/mock-onebot.js'
 import { createFakeDsh } from './helpers/fake-dsh.js'
+import { rowsOf, rowsOfRoot } from './helpers/chatlog.mjs'
 
 const OWNER = '10000001'
 const FRIEND = '10000003'
@@ -67,11 +68,6 @@ const priv = (user_id, t) => ({ message_type: 'private', sub_type: 'friend', use
 const repliesTo = (qq) => mock.calls.filter((c) => c.action === 'send_private_msg' && String(c.params.user_id) === String(qq)).length
 const xiaoxingDir = (...parts) => join(dataDir, 'persona-data', 'xiaoxing', ...parts)
 const sessionsOf = (dir) => JSON.parse(readFileSync(join(dir, 'sessions.json'), 'utf8')).chats
-const rowsOf = (dir) => {
-  const logs = join(dir, 'chatlog')
-  if (!existsSync(logs)) return []
-  return readdirSync(logs).flatMap((n) => readFileSync(join(logs, n), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)))
-}
 const use = async (id) => {
   const r = await fake.call('/persona/use', { id })
   assert.equal(r.json().ok, true, r.raw())
@@ -109,7 +105,7 @@ test('切到小星：新开会话，会话表和流水在 persona-data/xiaoxing�
   assert.match(entry.title, /小星/)
   xiaoxingSession = entry.sessionId
   assert.ok(rowsOf(xiaoxingDir()).some((r) => r.text === '小星在吗'))
-  assert.ok(!rowsOf(dataDir).some((r) => r.text === '小星在吗'), '小星的聊天不能写进根目录流水')
+  assert.ok(!rowsOfRoot(dataDir).some((r) => r.text === '小星在吗'), '小星的聊天不能写进根目录流水')
   assert.ok(rowsOf(xiaoxingDir()).some((r) => r.who === 'bot'), '小星的回复记在小星的流水里')
 })
 
@@ -153,7 +149,7 @@ test('会话事件在调用方异步链之外到达时，回复记到会话所�
     fake.emit('session/event', session, { type: 'turn/end', data: { turn: 900, reason: { kind: 'completed' } } })
     resolve()
   }))
-  await until(() => rowsOf(dataDir).some((r) => r.who === 'bot' && r.text.includes('窗口回复测试')))
+  await until(() => rowsOfRoot(dataDir).some((r) => r.who === 'bot' && r.text.includes('窗口回复测试')))
   assert.ok(!rowsOf(xiaoxingDir()).some((r) => r.text.includes('窗口回复测试')))
   assert.equal(api.hub.personaOf(rootSession), 'dafeiyu')
   assert.equal(api.hub.personaOf(xiaoxingSession), 'xiaoxing')

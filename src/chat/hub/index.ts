@@ -14,6 +14,7 @@ import { homedir } from 'node:os'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { ownerAuthorizationRevision } from '../../core/config/index.ts'
 import { dataDir, readJson, writeJson } from '../../core/config/store.ts'
+import { closeAllMessageLogs, messageLogOf } from '../../core/storage/messages.ts'
 import { isDefiniteFailure } from '../../../packages/adapters/qq/onebot-v11/src/client.ts'
 import { parseMessageEvent, gifFrames, segmentsOf } from '../inbound/index.ts'
 import { parseReply, bubbleDelay, wantsVoice, itemsToLine, cleanOutboundText, cleanOutboundSegments, capOutboundSegments, clockLabel, tidyPunctuation, stripAcpLeak, hasSuspectTagShape } from '../reply/index.ts'
@@ -769,7 +770,7 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
       const forgotten = String(chatId).startsWith('private:') && getConfig().memory?.enabled && getConfig().memory?.instantCommands !== false && parseMemoryCommand(text)?.action === 'forget'
       const pics = chatImageRefs(images)
       const row = { t: timestamp, chatId, who, ...(uid ? { uid: String(uid) } : {}), text: redact(String(text).slice(0, 500)), ...(mid ? { mid: String(mid) } : {}), ...(pics.length ? { images: pics } : {}), ...(via ? { via } : {}), ...(proactive ? { proactive } : {}), ...(interaction?.length ? { interaction: [...new Set(interaction.map(String))] } : {}), ...(forgotten ? { forgottenAt: Date.now() } : {}) }
-      appendFileSync(join(dir, `${day}.jsonl`), JSON.stringify(row) + '\n', 'utf8')
+      messageLogOf(dir).append(day, row)
       chatLogRevision++
       try { hooks?.journal?.({ ...row, ...(originId ? { originId } : {}) }) } catch (error) { log.warn('流水通知失败：', error.message) }
       return true
@@ -829,72 +830,20 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
   }
 
   function chatLogDays(pid?: string) {
-    try {
-      return readdirSync(chatDir(pid)).filter((n) => /^\d{4}-\d{2}-\d{2}\.jsonl$/.test(n)).map((n) => n.slice(0, 10)).sort()
-    } catch (error) {
-      return []
-    }
+    try { return messageLogOf(chatDir(pid)).days() } catch (error) { return [] }
   }
 
   function deleteChatLog(day, pid) {
-    try { unlinkSync(join(chatDir(pid), `${day}.jsonl`)); chatLogRevision++ } catch (error) {}
+    try { messageLogOf(chatDir(pid)).remove(day); chatLogRevision++ } catch (error) {}
   }
 
-  // 聊天流水是整份 JSONL：一天几千到几万行，readFileSync + 逐行 JSON.parse 是大头。
-  // 记忆 tick / 空闲提炼 / 自驱 / 目的引擎会反复读同一天的文件（有的地方还按批重扫所有天），
-  // 因此按文件指纹缓存解析结果：文件大小 / mtime / 记忆截止时间没变就直接复用；
-  // logChat 只追加当天文件，其他天仍能命中，不会因为一条新消息就全部重解析。
-  // 总大小和行数都设上限，避免极端大文件把内存吃穿。
-  const CHATLOG_CACHE_MAX_BYTES = 32 * 1024 * 1024
-  const CHATLOG_CACHE_MAX_FILE_BYTES = 32 * 1024 * 1024
-  const CHATLOG_CACHE_MAX_ROWS = 120_000
-  const chatLogCache = new Map() // `${persona}|${day}` → { rows, bytes, count, size, mtimeMs, cutoff }
-  let chatLogCacheBytes = 0
-  let chatLogCacheRows = 0
   function chatLogOf(day, pid?: string) {
-    const who = pid || pnow()
-    const key = who + '|' + day
     try {
-      const f = join(chatDir(pid), `${day}.jsonl`)
-      if (!existsSync(f)) {
-        const stale = chatLogCache.get(key)
-        if (stale) {
-          chatLogCache.delete(key)
-          chatLogCacheBytes -= stale.bytes
-          chatLogCacheRows -= stale.count
-        }
-        return []
-      }
-      const stat = statSync(f)
-      // 清理记忆（memoryResetAt）会让旧行需要重新按 cutoff 过滤；cutoff 变了即使文件没动也要重解析。
-      const cutoff = JSON.stringify(memoryCutoffs(who))
-      const cached = chatLogCache.get(key)
-      if (cached && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs && cached.cutoff === cutoff) return cached.rows
-      const rows = readFileSync(f, 'utf8').split('\n').filter(Boolean).map((line) => {
-        const row = JSON.parse(line)
-        // 保留行位置，让每日整理仍能使用原有流水进度。
+      return messageLogOf(chatDir(pid)).read(day).map((row) => {
         const rowCutoff = chatMemoryCutoff(String(row.chatId || ''), row.uid)
         if (rowCutoff && (Number(row.t) || 0) <= rowCutoff) return { ...row, text: '', forgottenAt: row.forgottenAt || rowCutoff }
         return row
       })
-      // 单文件过大或总预算不够就不缓存，下一次重读；小文件按插入顺序淘汰最旧的。
-      if (stat.size <= CHATLOG_CACHE_MAX_FILE_BYTES && rows.length <= CHATLOG_CACHE_MAX_ROWS) {
-        if (cached) {
-          chatLogCacheBytes -= cached.bytes
-          chatLogCacheRows -= cached.count
-          chatLogCache.delete(key)
-        }
-        while (chatLogCache.size && (chatLogCacheBytes + stat.size > CHATLOG_CACHE_MAX_BYTES || chatLogCacheRows + rows.length > CHATLOG_CACHE_MAX_ROWS)) {
-          const [oldKey, old] = chatLogCache.entries().next().value
-          chatLogCache.delete(oldKey)
-          chatLogCacheBytes -= old.bytes
-          chatLogCacheRows -= old.count
-        }
-        chatLogCache.set(key, { rows, bytes: stat.size, count: rows.length, size: stat.size, mtimeMs: stat.mtimeMs, cutoff })
-        chatLogCacheBytes += stat.size
-        chatLogCacheRows += rows.length
-      }
-      return rows
     } catch (error) {
       return []
     }
@@ -958,29 +907,16 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
       forgottenRules = rules
     }
     let marked = 0
-    for (const day of chatLogDays()) {
-      const path = join(chatDir(), `${day}.jsonl`)
-      try {
-        const rows = readFileSync(path, 'utf8').split('\n')
-        let changed = false
-        const next = rows.map((raw) => {
-          if (!raw) return raw
-          let l
-          try { l = JSON.parse(raw) } catch (error) { return raw }
-          const own = l.chatId === `private:${qq}` || (String(l.chatId).startsWith('group:') && String(l.uid || '') === String(qq))
-          if (!own || l.forgottenAt || (query && !matchesMemoryKeyword(l.text, query))) return raw
-          l.forgottenAt = Date.now()
-          changed = true
-          marked++
-          return JSON.stringify(l)
+    try {
+      const store = messageLogOf(chatDir())
+      for (const day of store.days()) {
+        marked += store.mutate(day, (row) => {
+          const own = row.chatId === `private:${qq}` || (String(row.chatId).startsWith('group:') && String(row.uid || '') === String(qq))
+          if (!own || row.forgottenAt || (query && !matchesMemoryKeyword(row.text, query))) return
+          return { ...row, forgottenAt: Date.now() }
         })
-        if (changed) {
-          const tmp = `${path}.tmp-${process.pid}`
-          writeFileSync(tmp, next.join('\n'), 'utf8')
-          renameSync(tmp, path)
-        }
-      } catch (error) { log.warn('标记聊天流水失败：', error.message) }
-    }
+      }
+    } catch (error) { log.warn('标记聊天流水失败：', error.message) }
     if (marked) chatLogRevision++
     return marked
   }
@@ -4484,6 +4420,8 @@ export function createHub({ dsh, getConfig, log, onebot, outbox, stickers, tts, 
     busy.clear()
     running.clear()
     recentMedia.dispose()
+    // 关闭 SQLite 句柄：Windows 上不关会让临时目录删不掉，插件重载也会攒住连接。
+    closeAllMessageLogs()
   }
 
   return {

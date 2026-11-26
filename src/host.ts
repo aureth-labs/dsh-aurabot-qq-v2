@@ -39,6 +39,7 @@ import { createMediaAccess } from './core/message/media.ts'
 import { buildFaceIndex } from './chat/media/faces.ts'
 import { FACE_TABLE } from './chat/media/face-table.ts'
 import { dataDir, ensureDir } from './core/config/store.ts'
+import { closeMessageLogsUnder } from './core/storage/messages.ts'
 import { createUsageFx } from './core/llm/usage-fx.ts'
 import { initUsage, usageReport, closeUsage } from './core/llm/usage.ts'
 import { BotRegistry, createBotsAccessor } from './core/bot/bot-registry.ts'
@@ -2754,6 +2755,7 @@ export function apply(ctx) {
     const dir = personaDataDir(cfg, id)
     if (b.withData && id && dir !== dataDir()) {
       use('memory')?.closePersona?.(id)
+      closeMessageLogsUnder(dir)
       try { rmSync(dir, { recursive: true, force: true }) } catch (error) {
         return { ok: false, list: listPersonas(), message: '人格删掉了，但它的数据没删干净：' + error.message }
       }
