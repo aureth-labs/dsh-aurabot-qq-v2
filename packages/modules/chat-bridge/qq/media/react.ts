@@ -1,3 +1,4 @@
+import { roomId } from '../../../../../src/core/bot/room.ts'
 import type { BotLike } from '../../../../../src/types/adapter/bot.ts'
 
 const REACT_POOL = ['呲牙', '偷笑', '调皮', '赞', '爱心', '笑哭', '捂脸', '玫瑰']
@@ -25,7 +26,7 @@ export function createReact({ getConfig, log, botOf, faces, mood }: { getConfig:
       if (String(id).length > 3) { log.debug?.(`跳过「${name}」（${id}）：编号超过三位，贴出去会是空白`); return }
       const bot = botOf()
       if (!bot?.supports('reaction')) return
-      const channelId = msg.channelId ?? msg.groupId ?? msg.userId ?? String(msg.chatId).replace(/^(group|private):/, '')
+      const channelId = msg.channelId ?? msg.groupId ?? msg.userId ?? roomId(msg.chatId)
       await bot.createReaction(String(channelId), String(msg.messageId), String(id))
       recent.push(ts)
       reactStamps.set(msg.chatId, recent)

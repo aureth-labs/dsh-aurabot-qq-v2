@@ -1,3 +1,4 @@
+import { roomId } from '../../../../src/core/bot/room.ts'
 // 上下文注入：每轮回复前按这一轮对方说的话检索记忆，拼成一小段提示词交给她；也拼群背景与流水尾巴。
 
 import { clipText } from '../../../../src/core/support/util/text.ts'
@@ -126,13 +127,13 @@ export function createContextBuilder(deps: ContextDeps) {
     }
     // 群白名单：配了就只取这些群（不配 = 所有群）
     const allow = new Set((ob.groups || []).map(String))
-    if (allow.size) rows = rows.filter((l) => allow.has(String(l.chatId).slice(6)))
+    if (allow.size) rows = rows.filter((l) => allow.has(roomId(l.chatId)))
     if (!rows.length) return ''
     // 按群分组，每个群各取最后 limit 条（最多 30），整体再兜一个上限
     const limit = Math.max(1, Math.min(30, Number(ob.lines) || 12))
     const byGroup = new Map()
     for (const l of rows) {
-      const gid = String(l.chatId).slice(6)
+      const gid = roomId(l.chatId)
       if (!byGroup.has(gid)) byGroup.set(gid, [])
       byGroup.get(gid).push(l)
     }
@@ -234,7 +235,7 @@ export function createContextBuilder(deps: ContextDeps) {
     if (!byChat.size) return ''
     const quota = byChat.size <= 3 ? 3 : 2
     const picked = [...byChat.entries()].flatMap(([id, rows]) => rows.slice(-quota).map((l) => ({ ...l, id })))
-    const line = (l) => `[${stamp(l.t)}] ${l.who === 'bot' ? '你' : '主人'}${l.id.startsWith('group:') ? `在${l.id}` : `对${l.id.slice(8)}`}：${clipText(l.text, 60)}`
+    const line = (l) => `[${stamp(l.t)}] ${l.who === 'bot' ? '你' : '主人'}${l.id.startsWith('group:') ? `在${l.id}` : `对${roomId(l.id)}`}：${clipText(l.text, 60)}`
     const lines = (rows) => rows.sort((a, b) => Number(b.t) - Number(a.t)).map(line)
     const secret = lines(picked.filter((l) => l.id.startsWith('private:')))
     const open = lines(picked.filter((l) => l.id.startsWith('group:')))

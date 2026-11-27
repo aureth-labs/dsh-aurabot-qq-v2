@@ -1,3 +1,4 @@
+import { roomId, isGroupRoom } from '../../../../src/core/bot/room.ts'
 // 面板视图：人物墙、关系、群印象、梗概、时间线与推荐。只读或只改面板可见的字段。
 
 import type { GistsOptions, PersonaNotesOptions, PersonaPersonOptions, RecommendationsOptions, SaveChatOptions, SavePersonaPersonOptions, TimelineOptions } from './types.ts'
@@ -41,7 +42,7 @@ export function createPanelViews(deps: PanelViewDeps) {
         spoken.set(speaker, Math.max(spoken.get(speaker) || 0, Number(saidTime(m)) || 0))
         if (/^group:\d+$/.test(String(m.chatId || ''))) {
           if (!rememberedGroups.has(speaker)) rememberedGroups.set(speaker, new Set())
-          rememberedGroups.get(speaker).add(String(m.chatId).slice(6))
+          rememberedGroups.get(speaker).add(roomId(m.chatId))
         }
       }
       const p = ensure(m.about)
@@ -222,7 +223,7 @@ export function createPanelViews(deps: PanelViewDeps) {
     if (chat.kind !== 'group' && !ownerPrivate) return { ok: false, message: '这里看不了群印象' }
     const all = chats()
     const want = String(group || '').trim()
-    if (ownerPrivate && !want) return { ok: true, message: all.length ? '有印象的群：' + all.slice(0, 20).map((c) => `${c.name || '未命名'}(${c.chatId.slice(6)})`).join('、') : '还没有群印象' }
+    if (ownerPrivate && !want) return { ok: true, message: all.length ? '有印象的群：' + all.slice(0, 20).map((c) => `${c.name || '未命名'}(${roomId(c.chatId)})`).join('、') : '还没有群印象' }
     const c = ownerPrivate ? all.find((x) => x.chatId === `group:${want}` || x.name === want) || all.find((x) => x.name.includes(want)) : all.find((x) => x.chatId === chat.chatId)
     if (!c) return { ok: true, message: '对这个群还没什么印象' }
     const lines = [['气氛', c.vibe], ['常聊', c.topics], ['印象', c.impression], ['相处经验', c.insights.map((x) => x.text).join('；')], ['说话习惯', c.styles.join('；')]].filter(([, v]) => v).map(([k, v]) => `${k}：${v}`)
@@ -232,9 +233,9 @@ export function createPanelViews(deps: PanelViewDeps) {
   function chats() {
     const s = load()
     const ids = new Set([...Object.keys(s.chats || {}), ...Object.keys(s.insights || {}), ...Object.keys(s.styles || {})])
-    return [...ids].filter((id) => id.startsWith('group:')).map((chatId) => {
+    return [...ids].filter((id) => isGroupRoom(id)).map((chatId) => {
       const c = (s.chats || {})[chatId] || {}
-      return { ...c, chatId, name: hub?.groupNames?.get?.(chatId.slice(6)) || c.name || (s.insightNames || {})[chatId] || '', insights: insightsOf(chatId), styles: styleOf(chatId) }
+      return { ...c, chatId, name: hub?.groupNames?.get?.(roomId(chatId)) || c.name || (s.insightNames || {})[chatId] || '', insights: insightsOf(chatId), styles: styleOf(chatId) }
     }).sort((a, b) => (Number(b.updatedAt) || 0) - (Number(a.updatedAt) || 0))
   }
 
@@ -302,7 +303,7 @@ export function createPanelViews(deps: PanelViewDeps) {
     // 不传 chat 的调用仅供管理面板；模块传真实 chat 时，同一 search 判定锚点和候选。
     const ownerScope = !chat || chat.kind === 'private' && String(chat.userId) === owner
     const scopeChatId = chat?.chatId || anchor.chatId || ''
-    const options = { ownerScope, scopeChatId, requireAbout: !ownerScope, gistChatId: scopeChatId, groupChatId: scopeChatId.startsWith('group:') ? scopeChatId : '', includeGroup: ownerScope, excludeAbout: ownerScope ? '' : owner, related: false, period: null, minScore: 0.01, limit: 100 }
+    const options = { ownerScope, scopeChatId, requireAbout: !ownerScope, gistChatId: scopeChatId, groupChatId: isGroupRoom(scopeChatId) ? scopeChatId : '', includeGroup: ownerScope, excludeAbout: ownerScope ? '' : owner, related: false, period: null, minScore: 0.01, limit: 100 }
     const candidates = index().docs.map((d) => d.it)
     if (!memoryVisible(anchor, options)) return []
     const pool = candidates.filter((m) => memoryVisible(m, options) && isCurrent(m) && m.id !== anchor.id)

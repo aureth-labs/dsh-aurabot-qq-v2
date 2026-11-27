@@ -196,6 +196,14 @@ export function createChatEngines({ registry, primaryId, create, log }) {
       if (name === 'onMessage') return (session, deleted) => hubFor(session.bot).onMessage(session, deleted)
       if (name === 'onNotice') return (bot, notice) => hubFor(bot).onNotice(notice)
       if (name === 'busy') return () => all().some(hub => hub.busy())
+      if (name === 'flushOutbox') return async (...args) => {
+        const total = { sent: 0, dropped: 0, left: 0 }
+        for (const hub of all()) {
+          const r = await hub.flushOutbox(...args)
+          total.sent += r?.sent || 0; total.dropped += r?.dropped || 0; total.left += r?.left || 0
+        }
+        return total
+      }
       if (name === 'dispose') return () => { for (const hub of all()) hub.dispose(); hubs.clear() }
       return value.bind(target)
     },

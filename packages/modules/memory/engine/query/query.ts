@@ -1,3 +1,4 @@
+import { roomId, isPrivateRoom, isGroupRoom } from '../../../../../src/core/bot/room.ts'
 // 记忆的纯函数层：切词、相似度、BM25 检索、遗忘曲线、时间与关联打分。
 // 不碰存储、不碰模型；createMemoryStore 负责持久化，这里只做计算。
 
@@ -280,7 +281,7 @@ export function memoryVisible(item, o : MemoryVisibleOptions = {}) {
   const has = (values, id) => (Array.isArray(values) ? values : values ? [values] : []).map(String).includes(String(id))
   if (item.kind === 'gist' && (!o.gistChatId || item.chatId !== o.gistChatId)) return false
   const group = item.scope === 'group'
-  if (group && (!String(item.chatId || '').startsWith('group:') || item.about)) return false
+  if (group && (!isGroupRoom(String(item.chatId || '')) || item.about)) return false
   if (group && !o.includeGroup && (!o.groupChatId || item.chatId !== o.groupChatId)) return false
   if (!group && o.ownerScope === false && String(item.chatId || '') !== String(o.scopeChatId || '')) return false
   if (!group && item.about && has(o.excludeAbout, item.about)) return false
@@ -559,7 +560,7 @@ export function memoryLine(it, now = Date.now()) {
   const status = it.status === 'hearsay' ? '听说' : it.status === 'guess' ? '可能' : ''
   // 带上出处：哪个群或私聊的事，减少张冠李戴
   const from = String(it.chatId || '')
-  const where = from.startsWith('group:') ? ` 群${from.slice(6)}` : from.startsWith('private:') ? ` 私聊${from.slice(8)}` : ''
+  const where = isGroupRoom(from) ? ` 群${roomId(from)}` : isPrivateRoom(from) ? ` 私聊${roomId(from)}` : ''
   const platforms = (Array.isArray(it.via) ? it.via : it.via ? [it.via] : it.kind === 'seen' && it.meta?.platform ? [it.meta.platform] : []).filter((v) => v !== 'qq').map((v) => Object.hasOwn(VIA_NAMES, v) ? VIA_NAMES[v] : v)
   const origin = platforms.length ? ` ${platforms.join('/')}` : ''
   const speaker = it.speaker && String(it.speaker) !== String(it.about || '') && it.kind !== 'seen' ? `（原话来自${it.speaker}）` : ''
@@ -732,7 +733,7 @@ export function normalizeRelation(x, { chatId = '', names = new Map(), owner = '
   const qqOf = (v) => (/^\d+$/.test(String(v ?? '')) ? String(v) : '')
   let subjQq = qqOf(x.subj_qq)
   let objQq = qqOf(x.obj_qq)
-  const author = String(x.speaker || (chatId.startsWith('private:') ? chatId.slice(8) : ''))
+  const author = String(x.speaker || (isPrivateRoom(chatId) ? roomId(chatId) : ''))
   if (!names.has(author)) return null
   const who = names.get(author)
   // 说话人是关系的一方、却被写成宾语时，按真实主客方向翻回来（#101）。

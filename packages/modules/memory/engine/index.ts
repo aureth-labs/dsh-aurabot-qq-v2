@@ -1,3 +1,4 @@
+import { roomId, isPrivateRoom, isGroupRoom } from '../../../../src/core/bot/room.ts'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { dataDir, readJson, writeJson } from '../../../../src/core/store/index.ts'
@@ -73,7 +74,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     return !noMemory && !blocked?.(String(qq))
   }
   function rememberedItem(item, state = null) {
-    return remembers(item.about, state) && (!String(item.chatId || '').startsWith('private:') || remembers(String(item.chatId).slice(8), state))
+    return remembers(item.about, state) && (!isPrivateRoom(String(item.chatId || '')) || remembers(roomId(item.chatId), state))
   }
   function rememberedRow(row, state = null) {
     const interaction = Array.isArray(row.interaction) ? row.interaction : []
@@ -92,13 +93,13 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     }
     for (const day of hub?.chatLogDays?.() || []) for (const row of hub?.chatLogOf?.(day) || []) {
       if (!row || row.kind === 'seen' || row.forgottenAt || String(row.text || '').startsWith('【系统')) continue
-      const privateId = String(row.chatId || '').startsWith('private:') ? String(row.chatId).slice(8) : ''
+      const privateId = isPrivateRoom(String(row.chatId || '')) ? roomId(row.chatId) : ''
       const uid = String(row.uid || privateId || '')
       const at = Number(row.t) || 0
       if (row.who !== 'bot' && uid) {
         const p = ensure(uid)
         p.at = Math.max(p.at, at)
-        if (String(row.chatId || '').startsWith('group:')) p.groups.add(String(row.chatId).slice(6))
+        if (isGroupRoom(String(row.chatId || ''))) p.groups.add(roomId(row.chatId))
       }
       const ids = new Set([...(Array.isArray(row.interaction) ? row.interaction.map(String) : []), ...(privateId ? [privateId] : [])])
       for (const qq of ids) {
@@ -252,7 +253,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     if (acquaintedOnly && !canProfile(about)) return { ok: false, message: '还没有和这个人直接互动，暂不建立人物记忆' }
     const t = String(text || (kind === 'seen' ? meta?.title : '') || '').trim().slice(0, 200)
     if (!t) return { ok: false, message: '内容是空的' }
-    if (scope === 'group' && (!String(chatId).startsWith('group:') || about)) return { ok: false, message: '群公共记忆必须属于一个群' }
+    if (scope === 'group' && (!isGroupRoom(String(chatId)) || about)) return { ok: false, message: '群公共记忆必须属于一个群' }
     const s = load()
     const spokenAt = Number(saidAt) || Date.now()
     const start = parseValidityDate(validFrom, spokenAt)
@@ -289,7 +290,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     if (speaker && kind !== 'seen') item.speaker = String(speaker)
     if (status) item.status = status
     if (isFactTier(tier)) item.tier = tier
-    if (scope === 'group' && String(chatId).startsWith('group:')) item.scope = 'group'
+    if (scope === 'group' && isGroupRoom(String(chatId))) item.scope = 'group'
     setFollowUp(item, followUp, undefined, spokenAt)
     s.items.push(item)
     linkRelated(s, item)
@@ -685,7 +686,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     const memoryCfg = getConfig().memory
     const assocOn = memoryCfg.assoc?.enabled !== false && memoryCfg.vector?.enabled !== false && memoryCfg.enabled !== false
     // beta 侧新增：minRelevance 门槛、preferPersonal 偏好、显式 period（工具/面板定点查时不再猜时间）
-    const options = { minRelevance: getConfig().memory.recallMinRelevance ?? 0, allowAboutOnly: agreementQuery, preferPersonal: prefer, period: period ?? pastWindow(query, Date.now(), memoryCfg.recallTriggers), about, onlyAbout, requireAbout, gistChatId: /^(private|group):/.test(id) && (!id.startsWith('group:') || getConfig().memory.groupMemory !== false) ? id : '', ownerScope: !socialScope, scopeChatId: socialScope ? id : '', groupChatId: getConfig().memory.groupMemory !== false && id === groupChatId && id.startsWith('group:') ? id : '', includeGroup: getConfig().memory.groupMemory !== false && includeGroup && ownerPrivate, excludeAbout: excluded, rrf: getConfig().memory.searchRrf !== false, assoc: assocOn, assocLimit: memoryCfg.assoc?.recall ?? ASSOC_RECALL_LIMIT, assocHops: memoryCfg.assoc?.hops ?? ASSOC_HOPS, assocHopDecay: memoryCfg.assoc?.hopDecay ?? ASSOC_HOP_DECAY, assocMap: assocOn ? (load().assoc || null) : null }
+    const options = { minRelevance: getConfig().memory.recallMinRelevance ?? 0, allowAboutOnly: agreementQuery, preferPersonal: prefer, period: period ?? pastWindow(query, Date.now(), memoryCfg.recallTriggers), about, onlyAbout, requireAbout, gistChatId: /^(private|group):/.test(id) && (!isGroupRoom(id) || getConfig().memory.groupMemory !== false) ? id : '', ownerScope: !socialScope, scopeChatId: socialScope ? id : '', groupChatId: getConfig().memory.groupMemory !== false && id === groupChatId && isGroupRoom(id) ? id : '', includeGroup: getConfig().memory.groupMemory !== false && includeGroup && ownerPrivate, excludeAbout: excluded, rrf: getConfig().memory.searchRrf !== false, assoc: assocOn, assocLimit: memoryCfg.assoc?.recall ?? ASSOC_RECALL_LIMIT, assocHops: memoryCfg.assoc?.hops ?? ASSOC_HOPS, assocHopDecay: memoryCfg.assoc?.hopDecay ?? ASSOC_HOP_DECAY, assocMap: assocOn ? (load().assoc || null) : null }
     const idx = index()
     // 查询结束到真正回忆之间，记忆可能刚被改写、忘掉或关闭向量检索。
     const valid = Array.isArray(vectorHits) && vectorHits.length && vector && typeof vector.validIds === 'function' ? new Set(vector.validIds(idx.docs.map((d) => d.it))) : null
@@ -1084,13 +1085,13 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
       if (state.dirtyProfiles) delete state.dirtyProfiles[qq]
       changed = true
     }
-    const names = new Map(human.map((l) => [String(l.uid || (chatId.startsWith('private:') ? chatId.slice(8) : '')), l.who]))
+    const names = new Map(human.map((l) => [String(l.uid || (isPrivateRoom(chatId) ? roomId(chatId) : '')), l.who]))
     for (const x of (Array.isArray(result.relations) ? result.relations : []).slice(0, 6)) {
       const relation = normalizeRelation(x, { chatId, names, owner })
       if (!relation) continue
       if (putRelation(state, relation)) changed = true
     }
-    if (chatId.startsWith('group:') && cfg.memory.chatImpression !== false && result.chat && typeof result.chat === 'object') {
+    if (isGroupRoom(chatId) && cfg.memory.chatImpression !== false && result.chat && typeof result.chat === 'object') {
       const updates: Record<string, any> = {}
       for (const key of ['vibe', 'topics', 'impression']) {
         const value = typeof result.chat[key] === 'string' ? result.chat[key].trim() : ''
@@ -1112,14 +1113,14 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
   /** 从一段聊天里提炼长期记忆，并回顾相处经验。lines：[{who, text}] */
   async function extractLines(chatId, lines, checkpoint) {
     const snapshot = load()
-    const talk = lines.filter((l) => l.kind !== 'seen' && l.text && !l.forgottenAt && rememberedRow(l, snapshot) && !(chatId.startsWith('private:') && parseMemoryCommand(l.text)) && !String(l.text).startsWith('【系统'))
+    const talk = lines.filter((l) => l.kind !== 'seen' && l.text && !l.forgottenAt && rememberedRow(l, snapshot) && !(isPrivateRoom(chatId) && parseMemoryCommand(l.text)) && !String(l.text).startsWith('【系统'))
       .map((l) => ({ ...l, text: stripMemoryHints(l.text) })).filter((l) => l.text)
     const isQzone = chatId === 'qzone'
     if (!talk.length) { checkpoint(); return { ok: true, added: 0, insights: 0 } }
     const human = talk.filter((l) => l.who !== 'bot' && (!getConfig().botQQ || String(l.uid || '') !== String(getConfig().botQQ)))
-    const speakers = new Set(human.map((l) => String(l.uid || (chatId.startsWith('private:') ? chatId.slice(8) : ''))).filter(Boolean))
+    const speakers = new Set(human.map((l) => String(l.uid || (isPrivateRoom(chatId) ? roomId(chatId) : ''))).filter(Boolean))
     const owner = String(getConfig().ownerQQ || '')
-    const ownerNames = chatId.startsWith('group:') && owner ? human.filter((l) => String(l.uid || '') === owner).map((l) => String(l.who || '')).filter((name) => name && name !== owner) : []
+    const ownerNames = isGroupRoom(chatId) && owner ? human.filter((l) => String(l.uid || '') === owner).map((l) => String(l.who || '')).filter((name) => name && name !== owner) : []
     // 自己说的话只供理解对话，不能作为事实来源。
     const line = (l) => (l.t ? `[${stamp(l.t)}] ` : '') + (l.via ? `[${Object.hasOwn(VIA_NAMES, l.via) ? VIA_NAMES[l.via] : l.via}] ` : '') + (l.who === 'bot' ? '我（仅上下文，不是事实来源）' : l.uid ? `${l.who}(${l.uid})` : l.who) + '：' + l.text
     const times = talk.map((l) => Number(l.t) || 0).filter(Boolean)
@@ -1130,7 +1131,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
       if (isQzone || !human.length || version !== forgetVersion) return { ok: true, added: n, insights: 0 }
       const state = load()
       const reflected = state.reflectedAt?.[chatId]
-      const resetAt = chatId.startsWith('private:') ? (hub.memoryResetAt?.(chatId.slice(8)) || 0) : 0
+      const resetAt = isPrivateRoom(chatId) ? (hub.memoryResetAt?.(roomId(chatId)) || 0) : 0
       if (reflected > resetAt && dayKey(new Date(reflected)) === dayKey()) return { ok: true, added: n, insights: 0 }
       state.reflectedAt = { ...(state.reflectedAt || {}), [chatId]: Date.now() }
       save(state)
@@ -1153,21 +1154,21 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
   /** 这段聊天相关的旧记忆：关于在场的人的 + 和内容相关的，最多 15 条，给模型比对用。 */
   function relatedTo(chatId, transcript) {
     const ppl = new Set([...String(transcript).matchAll(/\((\d{5,})\)/g)].map((m) => m[1]))
-    if (chatId.startsWith('private:')) ppl.add(chatId.slice(8))
+    if (isPrivateRoom(chatId)) ppl.add(roomId(chatId))
     const ownerQQ = String(getConfig().ownerQQ || '')
     const ownerScope = chatId === `private:${ownerQQ}`
     // 群聊/非主人私聊不把主人相关的旧记忆塞进整理候选，避免被模型看到并可改写
-    const privateQQ = chatId.startsWith('private:') ? chatId.slice(8) : ''
-    const allowed = (m) => rememberedItem(m) && isCurrent(m) && m.kind !== 'seen' && m.source !== 'event' && m.source !== 'diary' && (m.scope !== 'group' || m.chatId === chatId || ownerScope) && (ownerScope || (String(m.about || '') !== ownerQQ && (!privateQQ || !m.about || String(m.about) === privateQQ) && (!chatId.startsWith('group:') || !m.about || ppl.has(String(m.about)))))
+    const privateQQ = isPrivateRoom(chatId) ? roomId(chatId) : ''
+    const allowed = (m) => rememberedItem(m) && isCurrent(m) && m.kind !== 'seen' && m.source !== 'event' && m.source !== 'diary' && (m.scope !== 'group' || m.chatId === chatId || ownerScope) && (ownerScope || (String(m.about || '') !== ownerQQ && (!privateQQ || !m.about || String(m.about) === privateQQ) && (!isGroupRoom(chatId) || !m.about || ppl.has(String(m.about)))))
     const items = load().items.filter((m) => allowed(m) && (getConfig().memory.groupMemory !== false || m.scope !== 'group'))
     const own = items.filter((m) => m.about && ppl.has(String(m.about)))
     const out = own.sort((a, b) => Number(Boolean(b.followUp)) - Number(Boolean(a.followUp)) || b.at - a.at).slice(0, 10)
     if (privateQQ) {
-      const groupFacts = own.filter((m) => String(m.about) === privateQQ && String(m.chatId || '').startsWith('group:') && m.scope !== 'group')
+      const groupFacts = own.filter((m) => String(m.about) === privateQQ && isGroupRoom(String(m.chatId || '')) && m.scope !== 'group')
       for (const h of search(buildIndex(groupFacts), String(transcript).slice(-1500), { limit: 5, minScore: 0.01 })) if (!out.some((m) => m.id === h.it.id)) out.push(h.it)
     }
     // 主人提及的第三人未必在场；少量关键词命中的旧事实也应进入候选，修订权限仍由 canRevise 校验。
-    for (const h of search(buildIndex(items), String(transcript).slice(-1500), { limit: 8, minScore: ownerScope ? 0.01 : 0.5, groupChatId: chatId.startsWith('group:') ? chatId : '', includeGroup: ownerScope })) {
+    for (const h of search(buildIndex(items), String(transcript).slice(-1500), { limit: 8, minScore: ownerScope ? 0.01 : 0.5, groupChatId: isGroupRoom(chatId) ? chatId : '', includeGroup: ownerScope })) {
       if (out.length >= 15) break
       if (!out.some((m) => m.id === h.it.id)) out.push(h.it)
     }
@@ -1179,14 +1180,14 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     const ownerQQ = String(cfg.ownerQQ || '')
     const ownerScope = chatId === `private:${ownerQQ}`
     const ppl = new Set([...String(transcript).matchAll(/\((\d{5,})\)/g)].map((m) => m[1]))
-    if (chatId.startsWith('private:')) ppl.add(chatId.slice(8))
+    if (isPrivateRoom(chatId)) ppl.add(roomId(chatId))
     // 整理结果只能改「当前聊天候选里的、关于当前在场人的」记忆；不能跨聊天/改主人
     const canRevise = (target) => {
       if (!target || !rememberedItem(target) || (!ownerScope && target.about && !canProfile(target.about)) || target.source === 'panel') return false
       if (target.source === 'abstract') return false // 长期印象由压缩生成，不被自动整理改写/作废
       const about = String(target.about || '')
       if (about === ownerQQ && !ownerScope) return false
-      const ownGroupFact = chatId.startsWith('private:') && about === chatId.slice(8) && String(target.chatId || '').startsWith('group:') && target.scope !== 'group'
+      const ownGroupFact = isPrivateRoom(chatId) && about === roomId(chatId) && isGroupRoom(String(target.chatId || '')) && target.scope !== 'group'
       if (target.chatId && String(target.chatId) !== String(chatId) && !ownGroupFact) return false
       if (!ownerScope && !about && !(target.scope === 'group' && target.chatId === chatId)) return false
       if (!ownerScope && about && !ppl.has(about)) return false
@@ -1243,13 +1244,13 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
         const rawSpeaker = String(x.speaker ?? '').replace(/\D/g, '')
         if (rawSpeaker && (rawSpeaker === String(cfg.botQQ || '') || !speakers.has(rawSpeaker))) continue
         if (!rawSpeaker && speakers.size > 1) continue
-        const speaker = rawSpeaker || (chatId.startsWith('private:') ? chatId.slice(8) : speakers.size === 1 ? [...speakers][0] : '')
-        const scope = x.scope === 'group' && chatId.startsWith('group:') && cfg.memory.groupMemory !== false ? 'group' : ''
+        const speaker = rawSpeaker || (isPrivateRoom(chatId) ? roomId(chatId) : speakers.size === 1 ? String([...speakers][0]) : '')
+        const scope = x.scope === 'group' && isGroupRoom(chatId) && cfg.memory.groupMemory !== false ? 'group' : ''
         if (x.scope === 'group' && (!scope || x.about_qq || x.about || /主人/.test(String(x.text)) || (ownerQQ && String(x.text).includes(ownerQQ)) || (cfg.ownerName && String(x.text).includes(cfg.ownerName)) || ownerNames.some((name) => String(x.text).includes(name)))) continue
         if (x.about_qq && !/^\d+$/.test(String(x.about_qq).trim())) continue
         const qq = String(x.about_qq ?? '').replace(/\D/g, '')
         if (qq && qq === String(cfg.botQQ || '')) continue
-        const about = scope ? '' : qq.length >= 5 ? qq : chatId.startsWith('private:') ? chatId.slice(8) : ''
+        const about = scope ? '' : qq.length >= 5 ? qq : isPrivateRoom(chatId) ? roomId(chatId) : ''
         let status = ['fact', 'hearsay', 'guess'].includes(x.status) ? x.status : 'fact'
         if (speaker && about && speaker !== about && speaker !== ownerQQ) status = 'hearsay'
         // 主人本人私聊确认的事实沿用原有保存能力；这不作为第三人的直接互动证据，画像仍由 canProfile 限制。
@@ -1265,7 +1266,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
         }))
         const target = known.get(String(x.id || '').replace(/^#/, ''))
         // 非主人/群聊整理不能新增挂到主人 QQ 或不在场人身上的记忆
-        if (!ownerScope && about && (about === ownerQQ || !ppl.has(about) || (chatId.startsWith('private:') && about !== chatId.slice(8)))) {
+        if (!ownerScope && about && (about === ownerQQ || !ppl.has(about) || (isPrivateRoom(chatId) && about !== roomId(chatId)))) {
           log.warn(`整理结果丢弃：${chatId} 试图写关于 ${about} 的记忆`)
           continue
         }
@@ -1340,7 +1341,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
   // 提炼调度排序：私聊优先，其次积压少的小群，再按最久没发言的。谁也不能把一次 tick 的
   // 12 批全吃光——否则一个活跃千人群的流水会永远挡在私聊前面（#31 / issue #376）。
   function extractRank(chatId, pendingLines, lastAt = 0) {
-    return [String(chatId).startsWith('private:') ? 0 : 1, Number(pendingLines) || 0, Number(lastAt) || 0, String(chatId)]
+    return [isPrivateRoom(String(chatId)) ? 0 : 1, Number(pendingLines) || 0, Number(lastAt) || 0, String(chatId)]
   }
   function compareExtractRank(a, b) {
     for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] - b[i]
@@ -1480,9 +1481,9 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
       const signature = chatSignature(rows)
       if (load().gistDone?.[day]?.[chatId] === signature) continue
       const owner = String(getConfig().ownerQQ || '')
-      const ownerNames = chatId.startsWith('group:') && owner ? rows.filter((l) => String(l.uid || '') === owner).map((l) => String(l.who || '')).filter((name) => name && name !== owner) : []
+      const ownerNames = isGroupRoom(chatId) && owner ? rows.filter((l) => String(l.uid || '') === owner).map((l) => String(l.who || '')).filter((name) => name && name !== owner) : []
       const talk = rows.filter((l) => l.kind !== 'seen' && !l.forgottenAt && rememberedRow(l) && l.text && !parseMemoryCommand(l.text) && !String(l.text).startsWith('【系统'))
-        .filter((l) => l.who === 'bot' || !chatId.startsWith('private:') || !l.uid || String(l.uid) === chatId.slice(8))
+        .filter((l) => l.who === 'bot' || !isPrivateRoom(chatId) || !l.uid || String(l.uid) === roomId(chatId))
         .map((l) => ({ ...l, text: stripMemoryHints(l.text) }))
         .filter((l) => safeGistText(l.text, chatId, ownerNames))
       const version = forgetVersion
@@ -1491,9 +1492,9 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
       const state = load()
       state.gists = (state.gists || []).filter((g) => !(g.origin === 'chatlog' && g.day === day && g.chatId === chatId))
       if (text) {
-        const group = chatId.startsWith('group:')
+        const group = isGroupRoom(chatId)
         const at = talk.reduce((latest, l) => Math.max(latest, Number(l.t) || 0), 0) || new Date(`${day}T12:00:00`).getTime()
-        state.gists.push(makeGist(chatId, group ? '' : chatId.slice(8), group ? 'group' : '', 1, text, at, { origin: 'chatlog', day, ...viaOf(talk) }))
+        state.gists.push(makeGist(chatId, group ? '' : roomId(chatId), group ? 'group' : '', 1, text, at, { origin: 'chatlog', day, ...viaOf(talk) }))
       }
       if (state.gistParts?.[day]) {
         delete state.gistParts[day][chatId]
@@ -1529,9 +1530,9 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     const id = String(item.chatId || '')
     const about = String(item.about || '')
     const group = item.scope === 'group'
-    if (!/^(private|group):\d+$/.test(id) || (group && (!id.startsWith('group:') || about))) return false
-    if (id.startsWith('private:') && id !== `private:${getConfig().ownerQQ}` && about !== id.slice(8)) return false
-    if (id.startsWith('group:') && ((!group && !about) || about === String(getConfig().ownerQQ || ''))) return false
+    if (!/^(private|group):\d+$/.test(id) || (group && (!isGroupRoom(id) || about))) return false
+    if (isPrivateRoom(id) && id !== `private:${getConfig().ownerQQ}` && about !== roomId(id)) return false
+    if (isGroupRoom(id) && ((!group && !about) || about === String(getConfig().ownerQQ || ''))) return false
     return safeGistText(item.text, id)
   }
 
@@ -2279,7 +2280,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     const now = Date.now()
     const groups = new Map()
     for (const row of shortRows(now)) {
-      const qq = row.chatId.slice(8)
+      const qq = roomId(row.chatId)
       if (!groups.has(qq)) groups.set(qq, [])
       groups.get(qq).push(row)
     }
