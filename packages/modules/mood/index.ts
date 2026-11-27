@@ -1,3 +1,4 @@
+import { isOwnerRoom } from '../../../src/core/config/owners.ts'
 // 内置模块：心情。聊天让她开心或低落，心情影响她发表情、发语音的频率和回复快慢，也会写进她的上下文。
 // 导出 createMood 的返回值：nudge(变化, 原因, chatId?)、label()、state()、effects()、contextLine(chat)、observe()、judge()。
 
@@ -44,7 +45,7 @@ export function apply(ctx, config) {
     // 模型判心情（开了才判）：系统提醒开头的是她自己主动找人
     if (a.kind === 'out' && a.reply && !String(a.chatId).startsWith('system:')) {
       const speakUp = String(a.userText).startsWith('【系统提醒')
-      mood.judge({ userText: a.userText, reply: a.reply, who: String(a.chatId).startsWith('group:') ? '群里的人' : String(a.chatId) === `private:${cfg.ownerQQ}` ? cfg.ownerName || '主人' : '对方', origin: speakUp ? 'speak-up' : 'user', chatId: a.chatId }).catch(() => {})
+      mood.judge({ userText: a.userText, reply: a.reply, who: String(a.chatId).startsWith('group:') ? '群里的人' : isOwnerRoom(cfg, a.chatId) ? cfg.ownerName || '主人' : '对方', origin: speakUp ? 'speak-up' : 'user', chatId: a.chatId }).catch(() => {})
     }
   })
   // 心情历史单独取：/state 只带摘要，避免面板轮询把最多 200 条历史一起传

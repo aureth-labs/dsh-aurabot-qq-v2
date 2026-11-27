@@ -1,3 +1,4 @@
+import { isOwnerRoom } from '../../../../../src/core/config/owners.ts'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { basename, isAbsolute, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -389,7 +390,7 @@ export function createOutbound(deps: OutboundDeps) {
 
   function localImageBlocked(chatId, src) {
     const cfg = getConfig()
-    if (chatId === `private:${cfg.ownerQQ}`) return false
+    if (isOwnerRoom(cfg, chatId)) return false
     const s = String(src ?? '').trim()
     if (!isAbsolute(s) && !/^file:/i.test(s)) return false
     try {

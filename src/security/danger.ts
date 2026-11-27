@@ -1,3 +1,5 @@
+import { isOwnerRoom, ownerRoom } from '../core/config/owners.ts'
+import { roomId } from '../core/bot/room.ts'
 // 危险终端命令确认（默认开）：
 // 打开后，她在主人私聊里要执行「删根目录 / 格式化 / 关机 / 下载后直接执行」这类命令时，
 // 插件先不发出去，而是给主人 QQ 发一条确认消息；主人回复「确认」才放行，
@@ -6,10 +8,9 @@
 // 为什么放在 tools/pre-execute 这一层：DSH 在工具真正执行前会走这个 waterfall，
 // 这里返回 deny 就不会执行，能拿到「命令原文」，比只靠提示词可靠。
 
-import { isOwner } from '../chat/policy/rules/access.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type CreateDangerGuardOptions = Partial<Record<'getConfig' | 'deliver' | 'chatOfSession' | 'isOwnedSession' | 'ownerQQ' | 'timeoutMs' | 'log', any>>
+type CreateDangerGuardOptions = Partial<Record<'getConfig' | 'deliver' | 'chatOfSession' | 'isOwnedSession' | 'timeoutMs' | 'log', any>>
 
 const CONFIRM_RE = /^(确认|确认执行|同意|同意执行|允许|允许执行|可以|执行吧|放行|yes|y|ok)$/i
 const CANCEL_RE = /^(取消|取消执行|拒绝|不要|不|不行|别|停|停手|拦下|no|n)$/i
@@ -438,11 +439,10 @@ const clip = (text, n = 300) => (text.length > n ? text.slice(0, n) + '…' : te
  * @param {(chatId:string, text:string) => Promise<any>} o.deliver 发 QQ 消息（主人私聊）
  * @param {(sessionId:string) => string} o.chatOfSession DSH session → QQ chatId
  * @param {(sessionId:string) => boolean} [o.isOwnedSession] 这个会话是不是 aurabot 自己开的（QQ 聊天映射来的）
- * @param {() => string} o.ownerQQ 主人 QQ 号
  * @param {number} [o.timeoutMs] 等确认的超时（默认 60 秒）
  * @param {object} [o.log]
  */
-export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedSession, ownerQQ, timeoutMs = 60_000, log } : CreateDangerGuardOptions = {}) {
+export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedSession, timeoutMs = 60_000, log } : CreateDangerGuardOptions = {}) {
   const pending = new Map() // chatId → { resolve, timer }
   let disposed = false
 
@@ -464,7 +464,7 @@ export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedS
     // DSH 的智能体团队是全局工具，打开后群聊会话也拿得到；成员有电脑权限，只有主人私聊能用
     if (String(exec?.name || '') === 'spawn_teammate') {
       const chatId = chatOfSession ? String(chatOfSession(exec.agent?.session?.id) || '') : ''
-      if (chatId && chatId !== `private:${ownerQQ ? ownerQQ() : ''}`) {
+      if (chatId && !isOwnerRoom(getConfig?.() ?? {}, chatId)) {
         log?.warn?.(`已拦下 spawn_teammate（${chatId}）`)
         return { kind: 'deny', reason: '只有主人私聊才能创建成员。' }
       }
@@ -488,10 +488,9 @@ export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedS
       if (owned === false) return next()
     }
     const chatId = chatOfSession ? String(chatOfSession(sessionId) || '') : ''
-    const owner = String(ownerQQ ? ownerQQ() : '')
-    const ownerChat = owner ? `private:${owner}` : ''
+    const owner = ownerRoom(getConfig?.() ?? {})
     // 是我的会话但认不出聊天（比如 QQ 会话刚建立、映射还没落盘）：不敢放也不敢问，仍然拦下
-    if (!chatId || chatId !== ownerChat) {
+    if (!chatId || !isOwnerRoom(getConfig?.() ?? {}, chatId)) {
       log?.warn?.(`危险命令已拦下（非主人私聊 ${chatId || '未知'}）：${clip(command, 120)}`)
       return { kind: 'deny', reason: `这条命令被安全策略拦下了（${danger.label}）：只有主人私聊里、并且经过主人确认才能执行。` }
     }
@@ -512,7 +511,7 @@ export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedS
         const timer = setTimeout(() => { cleanup(chatId, false); log?.warn?.(`危险命令确认超时，已拦下：${clip(command, 120)}`) }, timeoutMs)
         pending.set(chatId, { resolve, timer })
       })
-      ;(async () => { try { await deliver(ownerChat, question) } catch (error) { log?.warn?.('危险命令确认消息没发出去：', error.message); cleanup(chatId, false) } })()
+      ;(async () => { try { await deliver(chatId, question) } catch (error) { log?.warn?.('危险命令确认消息没发出去：', error.message); cleanup(chatId, false) } })()
       ok = await asked
     } catch (error) {
       log?.warn?.('危险命令确认出错：', error.message)
@@ -521,7 +520,7 @@ export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedS
     if (ok && !disposed) {
       // 等待期间可能已经关闭确认开关或换了主人：旧确认不能继续放行
       const nowCfg = getConfig() || {}
-      const ownerNow = String(ownerQQ ? ownerQQ() : '')
+      const ownerNow = ownerRoom(nowCfg)
       if (nowCfg.security?.dangerConfirm !== true || ownerNow !== owner) {
         log?.warn?.(`危险命令确认已失效（开关或主人已变），拦下：${clip(command, 120)}`)
         return { kind: 'deny', reason: `危险命令确认已失效（${danger.label}）：确认开关或主人身份在执行前发生了变化，请重新发起。` }
@@ -545,8 +544,7 @@ export function createDangerGuard ({ getConfig, deliver, chatOfSession, isOwnedS
       cleanup(String(chatId), false)
       return false
     }
-    const owner = String(ownerQQ ? ownerQQ() : '')
-    if (!isOwner({ ownerQQ: owner }, userId)) return false
+    if (!isOwnerRoom(cfg, chatId) || roomId(chatId) !== String(userId)) return false
     const t = String(text || '').trim()
     if (CONFIRM_RE.test(t)) return cleanup(String(chatId), true)
     if (CANCEL_RE.test(t)) return cleanup(String(chatId), false)

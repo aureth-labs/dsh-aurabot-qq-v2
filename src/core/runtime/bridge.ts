@@ -1,3 +1,4 @@
+import { ownerRoom } from '../config/owners.ts'
 // 联动：让 DSH 里别的插件、别的会话，还有电脑上别的程序也能用她。
 //
 // 1. 别的 DSH 插件：ctx.get('aurabot') 拿到服务对象（同一个进程里直接调，不用密钥）
@@ -109,7 +110,7 @@ export function createBridge ({ ctx, getConfig, setConfig, hub, mods, log, versi
     const ok = kind === 'group' ? cfg.allow.groups : [cfg.ownerQQ, ...cfg.allow.private]
     return ok.includes(id) ? '' : '不在白名单里，不能发'
   }
-  const ownerTarget = (): string => `private:${getConfig().ownerQQ}`
+  const ownerTarget = (): string => ownerRoom(getConfig())
 
   // ---------- 大家共用的几个操作 ----------
   const ops = {

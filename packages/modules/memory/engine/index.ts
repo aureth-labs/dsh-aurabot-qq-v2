@@ -1,3 +1,4 @@
+import { isOwnerRoom } from '../../../../src/core/config/owners.ts'
 import { roomId, isPrivateRoom, isGroupRoom } from '../../../../src/core/bot/room.ts'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
@@ -676,7 +677,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     }
     const id = String(where).split('（')[0]
     const owner = String(getConfig().ownerQQ || '')
-    const ownerPrivate = Boolean(owner && id === `private:${owner}`)
+    const ownerPrivate = isOwnerRoom(getConfig(), id)
     const excluded = [...(Array.isArray(excludeAbout) ? excludeAbout : excludeAbout ? [excludeAbout] : []), ...(!ownerPrivate && /^(private|group):/.test(id) && owner ? [owner] : [])]
     // F1：社交场景（群聊 / 非主人私聊）统一加来源可见性，只保留当前聊天产生的普通记忆；
     // 主人私聊（ownerPrivate）保持可以看全部。where 不是真实聊天 id 的内部调用按主人视角处理（向后兼容）。
@@ -1157,7 +1158,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     const ppl = new Set([...String(transcript).matchAll(/\((\d{5,})\)/g)].map((m) => m[1]))
     if (isPrivateRoom(chatId)) ppl.add(roomId(chatId))
     const ownerQQ = String(getConfig().ownerQQ || '')
-    const ownerScope = chatId === `private:${ownerQQ}`
+    const ownerScope = isOwnerRoom(getConfig(), chatId)
     // 群聊/非主人私聊不把主人相关的旧记忆塞进整理候选，避免被模型看到并可改写
     const privateQQ = isPrivateRoom(chatId) ? roomId(chatId) : ''
     const allowed = (m) => rememberedItem(m) && isCurrent(m) && m.kind !== 'seen' && m.source !== 'event' && m.source !== 'diary' && (m.scope !== 'group' || m.chatId === chatId || ownerScope) && (ownerScope || (String(m.about || '') !== ownerQQ && (!privateQQ || !m.about || String(m.about) === privateQQ) && (!isGroupRoom(chatId) || !m.about || ppl.has(String(m.about)))))
@@ -1179,7 +1180,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
   async function extractFacts(chatId, transcript, checkpoint, firstAt = 0, lastAt = 0, speakers = new Set(), hasHuman = true, version = forgetVersion, ownerNames = [], human = []) {
     const cfg = getConfig()
     const ownerQQ = String(cfg.ownerQQ || '')
-    const ownerScope = chatId === `private:${ownerQQ}`
+    const ownerScope = isOwnerRoom(getConfig(), chatId)
     const ppl = new Set([...String(transcript).matchAll(/\((\d{5,})\)/g)].map((m) => m[1]))
     if (isPrivateRoom(chatId)) ppl.add(roomId(chatId))
     // 整理结果只能改「当前聊天候选里的、关于当前在场人的」记忆；不能跨聊天/改主人
@@ -1532,7 +1533,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     const about = String(item.about || '')
     const group = item.scope === 'group'
     if (!/^(private|group):\d+$/.test(id) || (group && (!isGroupRoom(id) || about))) return false
-    if (isPrivateRoom(id) && id !== `private:${getConfig().ownerQQ}` && about !== roomId(id)) return false
+    if (isPrivateRoom(id) && !isOwnerRoom(getConfig(), id) && about !== roomId(id)) return false
     if (isGroupRoom(id) && ((!group && !about) || about === String(getConfig().ownerQQ || ''))) return false
     return safeGistText(item.text, id)
   }

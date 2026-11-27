@@ -1,3 +1,4 @@
+import { isOwnerRoom, ownerRoom } from '../../../../../src/core/config/owners.ts'
 // 子智能体委派（DSH subagent 服务，spawn 后端 + delivery:'caller'）。
 // 每个委派 spawn 一个全新子 agent（空对话、继承工作目录与模型）跑一轮自足任务，
 // 结果经 Promise 直接返回给调用方，不占用工作区会话窗的常规聊天流。
@@ -36,9 +37,9 @@ export function createSubagent({ dsh, getConfig, agentFor, assertActive, capabil
 
   /** 现在这次调用算不算「主人开口」：最近 5 分钟有主人私聊消息算 owner，否则后台（#177：source 由宿主判断）。 */
   function ownerSourceNow() {
-    const qq = String(getConfig().ownerQQ || '')
+    const chatId = ownerRoom(getConfig())
     const last = getLastOwnerChatAt()
-    if (qq && last && Date.now() - last <= OWNER_ACTIVE_MS) return { kind: 'owner', chatId: `private:${qq}` }
+    if (chatId && last && Date.now() - last <= OWNER_ACTIVE_MS) return { kind: 'owner', chatId }
     return { kind: 'system', reason: 'background' }
   }
 
@@ -64,9 +65,8 @@ export function createSubagent({ dsh, getConfig, agentFor, assertActive, capabil
       throw Object.assign(new Error(`模块「${moduleId || '未声明'}」没有 plugin-internals 能力，不能用子智能体委派（在 package.json 的 aurabot.capabilities 里声明）`), { code: 'CAPABILITY_REQUIRED' })
     }
     const c = getConfig()
-    const ownerQQ = String(c.ownerQQ || '')
     const ownerChat = source && source.kind === 'owner' ? String(source.chatId || '') : ''
-    const fromOwner = Boolean(ownerQQ) && ownerChat === `private:${ownerQQ}`
+    const fromOwner = isOwnerRoom(c, ownerChat)
     const fromBackground = Boolean(source && source.kind === 'system') && c.subagentBackground === true
     if (!fromOwner && !fromBackground) {
       throw Object.assign(new Error('子智能体委派要主人开口：source 必须是主人私聊，或打开「后台子智能体」开关（没人应答时一律拒绝）'), { code: 'OWNER_REQUIRED' })

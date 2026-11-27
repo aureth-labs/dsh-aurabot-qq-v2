@@ -1,3 +1,4 @@
+import { ownerRoom } from '../../../../../src/core/config/owners.ts'
 import type { OwnerChannel } from '../../owners.ts'
 import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 import { randomUUID } from 'node:crypto'
@@ -106,7 +107,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   const memoryOf = () => { try { return memory?.() || null } catch { return null } }
   // 下面的 friend 是主动搭话白名单里的 QQ 号，不传就是主人。朋友各有各的状态，素材只看和这个人的私聊、关于这个人的记忆。
   const ownerId = cfg => channel?.target.id || cfg.ownerQQ
-  const chatIdOf = (cfg, friend?) => channel?.namespace || `private:${friend || cfg.ownerQQ}`
+  const chatIdOf = (cfg, friend?) => channel?.namespace || (friend ? `private:${friend}` : ownerRoom(cfg))
   const lastPrivateAt = (cfg, friend) => channel ? (channel.recent().at(-1)?.at || 0) : friend ? (hub?.lastPrivateAt?.(friend) || 0) : Math.max(hub?.lastOwnerChatAt || 0, hub?.lastBotToOwner?.at || 0)
   // 内驱力、目标、惦记的事是她自己的，跟着人格走（根目录人格还是老位置，见 personas.js）。
   // 人格卡片段做的目标依据也就只留在原人格的状态里，不会被换上的人格读到。出站额度在 outbound-policy，仍共用。

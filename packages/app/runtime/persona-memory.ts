@@ -1,3 +1,4 @@
+import { isOwnerRoom } from '../../../src/core/config/owners.ts'
 import { randomUUID } from 'node:crypto'
 import { dataOwner, safeId } from '../../../src/persona/personas.ts'
 import { confirmedChatDelivery } from '../../modules/chat-bridge/qq/turn/receipts.ts'
@@ -19,10 +20,9 @@ export function createPersonaMemoryRuntime({ getConfig, selfId }) {
 
   function scope(chatId) {
     const cfg = getConfig()
-    const owner = String(cfg.ownerQQ || '')
     const personaId = safeId(cfg.persona?.current)
     const botQQ = String(selfId() || '')
-    if (cfg.safeMode || cfg.debug || !dataOwner(cfg) || !personaId || !/^\d+$/.test(owner) || chatId !== `private:${owner}`) return null
+    if (cfg.safeMode || cfg.debug || !dataOwner(cfg) || !personaId || !isOwnerRoom(cfg, chatId)) return null
     return { chatId, personaId, botQQ }
   }
 

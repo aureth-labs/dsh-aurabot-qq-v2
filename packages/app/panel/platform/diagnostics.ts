@@ -1,3 +1,4 @@
+import { ownerRoom } from '../../../../src/core/config/owners.ts'
 import { tcpOpen } from '../../support.ts'
 import { defaultOneBotId } from '../../onebot.ts'
 
@@ -101,7 +102,7 @@ export function registerDiagnostics({ http, getConfig, endpoint, onebot, primary
   })
   route('/test-send', async () => {
     if (!getConfig().enabled) return { ok: false, message: '先打开总开关' }
-    const r = await hub.sendText(`private:${getConfig().ownerQQ}`, '【Aurabot 自测】大肥鱼到此一游～')
+    const r = await hub.sendText(ownerRoom(getConfig()), '【Aurabot 自测】大肥鱼到此一游～')
     return r ? { ok: true, message: '发给主人了，去 QQ 看看' } : { ok: false, message: '没发出去（看日志）' }
   })
 

@@ -1,3 +1,4 @@
+import { isOwnerRoom } from '../../../../../src/core/config/owners.ts'
 import { isGroupRoom, isPrivateRoom, userOf } from '../../../../../src/core/bot/room.ts'
 import { join } from 'node:path'
 import { dataDir, writeJson } from '../../../../../src/core/store/index.ts'
@@ -93,7 +94,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
     let botText = ''
     for (const day of chatLogDays().slice(-3)) {
       for (const row of chatLogOf(day)) {
-        if (String(row?.chatId || '') !== `private:${owner}`) continue
+        if (!isOwnerRoom(getConfig(), row?.chatId)) continue
         const at = Number(row.t) || 0
         if (!at) continue
         if (row.who === 'bot') {
@@ -140,7 +141,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
   function noteTurnActivity(chatId, sentItems) {
     activity.lastChatAt = Date.now()
     if (isPrivateRoom(chatId)) activity.lastPrivateAt.set(userOf(chatId), Date.now())
-    if (chatId === `private:${getConfig().ownerQQ}`) {
+    if (isOwnerRoom(getConfig(), chatId)) {
       activity.lastBotToOwner = {
         at: Date.now(),
         text: sentItems

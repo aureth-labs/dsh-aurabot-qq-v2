@@ -338,7 +338,6 @@ export function apply(ctx) {
     // 判断不出来（hub.isOwnedSession 缺失 / 抛错）时 safeOwnedSession 返回 true，走原 deny 逻辑；
     // 只有明确 false（宿主自己的 GUI/CLI 会话）才放行给 DSH 自己的权限系统，别在异常时 fail-open。
     isOwnedSession: safeOwnedSession(typeof hub?.isOwnedSession === 'function' ? (sessionId) => hub.isOwnedSession(sessionId) : null),
-    ownerQQ: () => cfg.ownerQQ,
   })
   core.dangerGuard = dangerGuard
   approvalRelay = createApprovalRelay({

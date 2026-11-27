@@ -1,3 +1,5 @@
+import { ownerRoom } from '../core/config/owners.ts'
+import { roomId } from '../core/bot/room.ts'
 
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -20,13 +22,13 @@ export function createApprovalRelay({ getConfig, deliver, chatOfSession, timeout
   let disposed = false
   let lastAsked = 0
 
-  const ownerChat = () => `private:${getConfig().ownerQQ}`
+  const ownerChat = () => ownerRoom(getConfig())
   const send = (text) => Promise.resolve().then(() => deliver(ownerChat(), text)).catch((error) => log?.warn?.('审批消息没发出去：', error.message))
 
   /** 这个会话的授权请求归 QQ 问：通知那边就不用再发一条。 */
   function handles(sessionId) {
     const cfg = getConfig()
-    return !disposed && cfg.enabled && cfg.approvalViaQQ === true && Boolean(cfg.ownerQQ) && chatOfSession(sessionId) === ownerChat()
+    return !disposed && cfg.enabled && cfg.approvalViaQQ === true && Boolean(ownerChat()) && chatOfSession(sessionId) === ownerChat()
   }
 
   function ask(item) {
@@ -85,7 +87,7 @@ export function createApprovalRelay({ getConfig, deliver, chatOfSession, timeout
 
   /** 主人的私聊回复。是对审批的回答就返回 true，不再交给她。 */
   function handleReply(chatId, userId, text) {
-    if (!queue.length || chatId !== ownerChat() || String(userId) !== String(getConfig().ownerQQ)) return false
+    if (!queue.length || chatId !== ownerChat() || roomId(chatId) !== String(userId)) return false
     const word = String(text || '').trim()
     const outcome = APPROVE_RE.test(word) ? 'allowed-once' : REJECT_RE.test(word) ? 'rejected' : ''
     if (!outcome) return false

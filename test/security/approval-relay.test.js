@@ -1,10 +1,13 @@
-﻿import { test } from 'node:test'
+import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createApprovalRelay } from '../../src/security/approval.ts'
+import { useLegacyRooms } from '../../src/core/bot/room.ts'
+
+useLegacyRooms('qq', 'adapter-qq-onebot-v11')
 
 function setup({ over = {}, timeoutMs = 60_000 } = {}) {
   const sent = []
-  const cfg = { enabled: true, dryRun: false, approvalViaQQ: true, ownerQQ: '1', ...over }
+  const cfg = { enabled: true, dryRun: false, approvalViaQQ: true, owners: [{ platform: 'qq', userId: '1' }], ...over }
   const relay = createApprovalRelay({
     getConfig: () => cfg,
     deliver: async (chatId, text) => { sent.push({ chatId, text }) },
@@ -60,8 +63,8 @@ test('群聊、别人的私聊、DSH 自己的会话都交回 DSH', async () => 
   assert.equal(sent.length, 0)
 })
 
-test('关掉开关、试运行、总开关关着时交回 DSH', async () => {
-  for (const over of [{ approvalViaQQ: false }, { dryRun: true }, { enabled: false }]) {
+test('关掉开关或总开关关着时交回 DSH', async () => {
+  for (const over of [{ approvalViaQQ: false }, { enabled: false }]) {
     const { relay, sent, req } = setup({ over })
     assert.equal(await relay.onRequest(req(), async () => 'rejected'), 'rejected')
     assert.equal(sent.length, 0)
@@ -124,7 +127,7 @@ test('问过才算 askedRecently：没走到插件时通知照常发', async () 
 
 test('QQ 不问的 QQ 会话：网页一直没人点，到时间按没批准处理', async () => {
   const relay = createApprovalRelay({
-    getConfig: () => ({ enabled: true, ownerQQ: '1', approvalViaQQ: false }),
+    getConfig: () => ({ enabled: true, owners: [{ platform: 'qq', userId: '1' }], approvalViaQQ: false }),
     deliver: async () => {}, chatOfSession: (id) => (id === 'dsh' ? '' : 'group:9'), timeoutMs: 20,
   })
   const never = () => new Promise(() => {})

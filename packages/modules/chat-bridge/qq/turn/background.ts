@@ -1,3 +1,4 @@
+import { ownerRoom, primaryOwner } from '../../../../../src/core/config/owners.ts'
 import { type ReplyWait, sessionKey, SOURCE_KIND } from '../context/context.ts'
 import { randomUUID } from 'node:crypto'
 import { type RunSystemTurnOptions } from './options.ts'
@@ -93,8 +94,8 @@ export function createBackgroundTurns({
     if (!cfg.ownerQQ) return { ok: false, message: '还没填主人 QQ' }
     const chat = {
       kind: 'private',
-      chatId: `private:${cfg.ownerQQ}`,
-      userId: String(cfg.ownerQQ),
+      chatId: ownerRoom(cfg),
+      userId: String(primaryOwner(cfg)?.userId ?? ''),
       groupId: '',
       nickname: cfg.ownerName || '主人',
     }
@@ -123,8 +124,8 @@ export function createBackgroundTurns({
     if (!say) return { ok: false, message: '说点什么吧' }
     const chat = {
       kind: 'private',
-      chatId: `private:${cfg.ownerQQ}`,
-      userId: String(cfg.ownerQQ),
+      chatId: ownerRoom(cfg),
+      userId: String(primaryOwner(cfg)?.userId ?? ''),
       groupId: '',
       nickname: cfg.ownerName || '主人',
     }

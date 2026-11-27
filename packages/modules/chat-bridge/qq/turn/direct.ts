@@ -1,3 +1,4 @@
+import { isOwnerRoom } from '../../../../../src/core/config/owners.ts'
 import { type RunTurnInChatOptions, type ReceiveOwnerMessageOptions } from './options.ts'
 import { checkAllowed } from '../../../../../src/chat/policy/rules/access.ts'
 import { mimeOf } from '../../../../../src/core/message/media/inspect.ts'
@@ -192,7 +193,7 @@ export function createDirectTurns({
       })
     }
     chat = validate()
-    if (chatId === `private:${owner}` && onMemoryCommand) {
+    if (isOwnerRoom(getConfig(), chatId) && onMemoryCommand) {
       try {
         onMemoryCommand(chat, text)
       } catch (error) {
@@ -201,7 +202,7 @@ export function createDirectTurns({
     }
     logChat(chatId, chat.nickname, text || '[图片]', owner, { via: source, originId })
     activity.lastChatAt = Date.now()
-    if (chatId === `private:${owner}`) {
+    if (isOwnerRoom(getConfig(), chatId)) {
       activity.lastOwnerChatAt = activity.lastChatAt
       activity.lastPrivateAt.set(owner, activity.lastChatAt)
     }

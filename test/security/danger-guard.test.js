@@ -10,12 +10,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function makeGuard ({ enabled = true, timeoutMs = 5000 } = {}) {
   const delivered = []
-  const cfg = { security: { dangerConfirm: enabled } }
+  const cfg = { security: { dangerConfirm: enabled }, owners: [{ platform: 'qq', userId: owner }] }
   const guard = createDangerGuard({
     getConfig: () => cfg,
     deliver: async (chatId, text) => { delivered.push({ chatId, text }) },
     chatOfSession: (sid) => (sid === 'sid-owner' ? ownerChat : sid === 'sid-other' ? 'private:999' : ''),
-    ownerQQ: () => owner,
     timeoutMs,
   })
   return { guard, delivered, cfg }
@@ -146,13 +145,12 @@ test('H04：等待确认期间关闭 dangerConfirm，旧确认不能执行', asy
 // 只给一个会话传 isOwnedSession（模拟 aurabot 自己开的 QQ 会话），其余会话不归它管。
 function makeScopedGuard ({ enabled = true, timeoutMs = 5000, owned = () => true } = {}) {
   const delivered = []
-  const cfg = { security: { dangerConfirm: enabled } }
+  const cfg = { security: { dangerConfirm: enabled }, owners: [{ platform: 'qq', userId: owner }] }
   const guard = createDangerGuard({
     getConfig: () => cfg,
     deliver: async (chatId, text) => { delivered.push({ chatId, text }) },
     chatOfSession: (sid) => (sid === 'sid-owner' ? ownerChat : sid === 'sid-other' ? 'private:999' : ''),
     isOwnedSession: (sid) => owned(sid),
-    ownerQQ: () => owner,
     timeoutMs,
   })
   return { guard, delivered, cfg }

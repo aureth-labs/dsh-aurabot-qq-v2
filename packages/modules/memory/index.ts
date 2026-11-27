@@ -1,3 +1,4 @@
+import { ownerRoom, primaryOwner } from '../../../src/core/config/owners.ts'
 // 内置模块：记忆。她自己记下值得记的事、聊天时想起相关的、每天把聊天流水整理进长期记忆，还有每个人的小档案、相处经验、说话方式。
 // 导出 createMemoryStore 的返回值：add / addEvent / recall / list / contextFor / topicScore / consolidate ……
 // 别的模块（空间日记、B 站、翻唱）会往这里记她的经历；记忆模块关着时它们自己跳过。
@@ -198,8 +199,8 @@ export function apply(ctx, config) {
   ctx.server.get('/memory/assoc/preview', async (req) => {
     const q = String(http.query(req).q || '').trim()
     if (!q) return { ok: false, message: '给个查询词' }
-    const owner = String(ctx.root.config.ownerQQ || '')
-    const chatId = owner ? `private:${owner}` : ''
+    const chatId = ownerRoom(ctx.root.config)
+    const owner = primaryOwner(ctx.root.config)?.userId ?? ''
     let vec = []
     try { vec = await memory.vectorHits(q) } catch (error) {}
     // shown: false —— 预览不能算「真想起过」，否则你点几下预览就把记忆加深了、还乱涨 critical 计数

@@ -1,3 +1,4 @@
+import { ownerRoom, primaryOwner } from '../../../../src/core/config/owners.ts'
 import { createNoticeRelay } from '../../../../src/features/notices/index.ts'
 
 export function registerNoticeHandling({ ctx, getConfig, log, hub, approvalRelay }) {
@@ -48,7 +49,7 @@ export function registerNoticeHandling({ ctx, getConfig, log, hub, approvalRelay
       // 把真正推给会话的内容也记下来：排查「模型为什么说没带编号」时，先看它到底收到了什么
       log.info(`推送提示：${prompt.replace(/\n/g, ' | ').slice(0, 600)}`)
       await hub.pushToSession(
-        { chatId: `private:${now.ownerQQ}`, kind: 'private', userId: now.ownerQQ, nickname: owner },
+        { chatId: ownerRoom(now), kind: 'private', userId: primaryOwner(now)?.userId ?? '', nickname: owner },
         [{ type: 'text', text: prompt }],
         '',
       )
