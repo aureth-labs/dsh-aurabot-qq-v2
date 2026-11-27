@@ -14,14 +14,11 @@ import * as asr from './modules/asr/index.ts'
 import * as voice from './modules/voice/index.ts'
 import * as mood from './modules/mood/index.ts'
 import * as memory from './modules/memory/index.ts'
-import * as qqTools from './modules/qq-tools/index.ts'
-import * as qqApi from './modules/qq-api/index.ts'
+import * as chatTools from './modules/chat-tools/index.ts'
 import * as imagegen from './modules/imagegen/index.ts'
 import * as purpose from './modules/purpose/index.ts'
 import * as autotelic from './modules/autotelic/index.ts'
 import * as song from './modules/song/index.ts'
-import * as profile from './modules/profile/index.ts'
-import * as contacts from './modules/contacts/index.ts'
 import * as video from './modules/video/index.ts'
 import * as imageRecovery from './modules/image-recovery/index.ts'
 import * as commands from './modules/commands/index.ts'
@@ -39,14 +36,11 @@ const entries: Array<[string, Record<string, any>]> = [
   ['asr', asr],
   ['mood', mood],
   ['memory', memory],
-  ['qq-tools', qqTools],
-  ['qq-api', qqApi],
+  ['chat-tools', chatTools],
   ['imagegen', imagegen],
   ['purpose', purpose],
   ['autotelic', autotelic],
   ['song', song],
-  ['profile', profile],
-  ['contacts', contacts],
   ['video', video],
   ['image-recovery', imageRecovery],
   ['commands', commands],

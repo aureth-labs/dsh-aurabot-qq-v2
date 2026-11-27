@@ -422,6 +422,10 @@ export interface Ctx {
   command(signature: string, handler: (session: Session, args: string) => unknown): () => void
   /** 注册给 AI 调用的工具：用户不能直接触发，要模型自己决定调用并传参。 */
   tool(builder: ToolSpec | ((where: ToolContext) => ToolSpec | ToolSpec[] | null)): () => void
+  /** 每轮回复前追加一段上下文。 */
+  prompt(fn: (where: ToolContext) => string | null | undefined): () => void
+  /** 追加到系统提示的规则行；kind 是 private / group / social。 */
+  rule(fn: (kind: string, config: Record<string, any>) => string | string[] | null | undefined): () => void
   defineTool(spec: ToolSpec): any
 
   server: ServerFacade

@@ -27,7 +27,7 @@ test('中文英文入口保留给内置命令，不能授权给非主人', async
   assert.match(await runCommand(parseCommand('/群设置'), owner, x.deps), /不经过模型/)
 })
 test('仅主人私聊；总开关只控制新指令，不控制自然语言权限或原有群命令', async () => {
-  const x = setup({ profilePerms: { whitelist: 'off' } })
+  const x = setup({ whitelistLevel: 'off' })
   assert.match(await x.run(`修改 ${G} 主动 关`, { ...owner, kind: 'group' }), /主人私聊/)
   assert.match(await x.run(`修改 ${G} 主动 关`, { ...owner, userId: OTHER }), /主人私聊/)
   assert.equal(x.saves(), 0)

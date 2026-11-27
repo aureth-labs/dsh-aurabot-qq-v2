@@ -138,7 +138,7 @@ let rebuildTimer = null
 function rebuild() {
   if (building) { again = true; return }
   building = true
-  const proc = spawn(process.execPath, [join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: ROOT, stdio: 'inherit' })
+  const proc = spawn(process.execPath, [join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json'], { cwd: ROOT, stdio: 'inherit', windowsHide: true })
   proc.on('exit', (code) => {
     building = false
     if (code) console.error(`[dev] 后端编译失败（退出码 ${code}），看上面的类型错误`)

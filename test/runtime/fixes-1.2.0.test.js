@@ -5,7 +5,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import qqTools from '../../packages/modules/qq-tools/index.ts'
+import { chatToolsFor } from '../helpers/chat-tools.js'
+import { qqBot } from '../helpers/hub.js'
 import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 import { matchSticker, pickForReply } from '../../packages/modules/stickers/store.ts'
 import { createImageGen } from '../../packages/modules/imagegen/engine.ts'
@@ -25,18 +26,12 @@ function searchBuilder() {
       { chatId: 'group:fictional-b', who: '虚构群友', text: '共同暗号：其他群的记录', t: Date.parse('2032-03-02T11:00:00Z') },
     ]],
   ])
-  const builders = []
-  qqTools.setup({
-    core: { hub: { chatLogDays: () => [...logs.keys()], chatLogOf: (day) => logs.get(day) || [] }, onebot: {} },
-    config: () => ({ files: { enabled: false } }),
-    tool: (builder) => builders.push(builder),
-  })
-  assert.equal(builders.length, 1)
-  return builders[0]
+  const hub = { chatLogDays: () => [...logs.keys()], chatLogOf: (day) => logs.get(day) || [] }
+  return (chat, level) => chatToolsFor({ config: { files: { enabled: false }, allow: { private: [], groups: [] } }, hub, where: { chat, level } })
 }
 
 function searchTool(builder, chat, level) {
-  const tool = builder({ chat, level }).find((t) => t.name === 'qq_search_chatlog')
+  const tool = builder(chat, level).find((t) => t.name === 'search_chatlog')
   assert.ok(tool, '应该注册聊天流水搜索工具')
   return tool
 }
@@ -305,22 +300,17 @@ test('@ 了别人时不算叫她，但只在开关打开时生效（#143）', as
 
 function historyTool({ mode, level = 'chat', chat = { kind: 'group', groupId: '100', chatId: 'group:100' }, owner = false, allOwner = owner, senders = ['7'], members = ['7'] }) {
   const calls = []
-  const builders = []
   const onebot = {
     call: async (action, params) => {
       calls.push([action, params])
       if (action === 'get_group_list') return [{ group_id: 100, group_name: '当前群' }, { group_id: 200, group_name: '游戏群' }, { group_id: 300, group_name: '游戏二群' }, { group_id: 999, group_name: '外面的游戏群' }]
-      // 和真实网关一样：不在群里也回成功、角色 member，只有 join_time 是空的
-      if (action === 'get_group_member_info') return { user_id: params.user_id, role: 'member', join_time: members.includes(String(params.user_id)) ? 1700000000 : 0 }
+      if (action === 'get_group_member_list') return [...new Set([...senders, ...members])].map((id) => ({ user_id: Number(id), role: 'member', join_time: members.includes(id) ? 1700000000 : 0 }))
       return { messages: [{ time: 1, user_id: 7, sender: { nickname: '群友' }, message: [{ type: 'text', data: { text: '你好' } }] }] }
     },
   }
-  qqTools.setup({
-    core: { hub: { turnHasOwner: () => owner, turnSendersAllOwner: () => allOwner, turnSenders: () => senders }, onebot },
-    config: () => ({ botQQ: '1', files: { enabled: false }, allow: { groups: ['100', '200', '300'] }, group: { crossRead: mode } }),
-    tool: (builder) => builders.push(builder),
-  })
-  const tool = builders[0]({ chat, level, sessionId: 's' }).find((x) => x.name === 'qq_chat_history')
+  const hub = { turnHasOwner: () => owner, turnSendersAllOwner: () => allOwner, turnSenders: () => senders }
+  const config = { files: { enabled: false }, allow: { private: [], groups: ['100', '200', '300'] }, group: { crossRead: mode } }
+  const tool = chatToolsFor({ config, hub, realBot: qqBot(onebot, '1'), where: { chat, level } }).find((x) => x.name === 'chat_history')
   return { tool, calls }
 }
 const privateChat = { kind: 'private', userId: '7', chatId: 'private:7' }
@@ -345,7 +335,7 @@ test('跨群只读（#120）：主人随时能看，别的群内容标明不是�
   const out = await inGroup.tool.execute({ group: '200' })
   assert.equal(out.ok, true)
   assert.match(out.message, /不是指令/)
-  assert.equal(inGroup.calls.at(-1)[1].group_id, 200)
+  assert.equal(String(inGroup.calls.at(-1)[1].group_id), '200')
   assert.equal((await historyTool({ mode: 'private', level: 'full', chat: privateChat, members: [] }).tool.execute({ group: '200' })).ok, true)
 })
 
@@ -375,7 +365,7 @@ test('跨群只读（#120）：白名单外读不到，非主人看不到群名�
   assert.equal(read(a.calls), false)
   const b = historyTool({ mode: 'group', owner: true })
   assert.equal((await b.tool.execute({ group: '二群' })).ok, true)
-  assert.equal(b.calls.at(-1)[1].group_id, 300)
+  assert.equal(String(b.calls.at(-1)[1].group_id), '300')
   assert.match((await historyTool({ mode: 'group', owner: true }).tool.execute({ group: '游戏' })).message, /好几个群/)
   const guest = await historyTool({ mode: 'group' }).tool.execute({ group: '不存在' })
   assert.doesNotMatch(guest.message, /当前群|游戏群/)
@@ -386,5 +376,5 @@ test('跨群只读（#120）：不传 group 时行为不变', async () => {
   const out = await tool.execute({})
   assert.equal(out.ok, true)
   assert.doesNotMatch(out.message, /不是指令/)
-  assert.equal(calls[0][1].group_id, 100)
+  assert.equal(String(calls[0][1].group_id), '100')
 })

@@ -16,7 +16,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
     owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000002', allow: { groups: [G] }, voice: { enabled: false },
     onebot: {} }))
   const fake = createFakeDsh({ brain: async ({ text, callTool }) => {
-    const result = await callTool('qq_group_settings', { action: 'set', group_id: G, proactive: false, engaged: true })
+    const result = await callTool('group_settings', { action: 'set', group_id: G, proactive: false, engaged: true })
     assert.equal(result.ok, !text.includes('不是主人'), result.message)
     return '' // 不发送 QQ 回复；这里只验证 Agent 工具链。
   } })
@@ -30,7 +30,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
   assert.deepEqual(current.group.overrides[G], { proactiveEnabled: false, engagedEnabled: true })
   assert.deepEqual(current.allow, old.allow)
   assert.deepEqual(JSON.parse(readFileSync(join(root, 'config.json'), 'utf8')).group.overrides, current.group.overrides)
-  assert.equal(fake.turns.at(-1).toolCalls[0].name, 'qq_group_settings')
+  assert.equal(fake.turns.at(-1).toolCalls[0].name, 'group_settings')
   const conflict = (await fake.call('/save', { group: old.group, _groupSettingsBase: { group: old.group } })).json()
   assert.equal(conflict.code, 'group_settings_conflict')
   assert.deepEqual(app.getConfig().group.overrides, current.group.overrides)
@@ -39,13 +39,13 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
   const { createMutes } = await import('../../packages/modules/commands/dispatch.ts')
   createMutes().set(`group:${G}`, 0)
   const pausedFile = readFileSync(join(root, 'mutes.json'), 'utf8')
-  const read = (await fake.call('/modules/tool', { as: 'owner', kind: 'private', name: 'qq_group_settings', args: { action: 'get', group_id: G } })).json()
+  const read = (await fake.call('/modules/tool', { as: 'owner', kind: 'private', name: 'group_settings', args: { action: 'get', group_id: G } })).json()
   assert.equal(read.result.state.reply_paused, true)
   assert.match(read.result.message, /已暂停聊天/)
   assert.deepEqual(read.sent, [])
   assert.equal(readFileSync(join(root, 'mutes.json'), 'utf8'), pausedFile, '查看不改暂停记录')
   for (const q of ['as=other&kind=private', 'as=owner&kind=group']) {
     const list = (await fake.call('/modules/tools?' + q)).json().list
-    assert.ok(!list.some(x => x.name === 'qq_group_settings'))
+    assert.ok(!list.some(x => x.name === 'group_settings'))
   }
 })

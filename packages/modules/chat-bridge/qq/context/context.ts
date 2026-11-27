@@ -131,7 +131,7 @@ export { reallySent } from '../../../../../src/core/message/receipt.ts'
 /**
  * 聊天流水里的图片：只留能长期重建下载地址的稳定字段。
  * 图片段自带的 url 里含 rkey，一小时左右就过期，光存 url 等于没存；
- * 换成文件 id 之后随时能用网关当前的 rkey 拼回来（qq_api_call 的 get_msg 会现取现用）。
+ * 换成文件 id 之后随时能用网关当前的 rkey 拼回来（取消息时会现取现用）。
  */
 export function chatImageRefs(segs, cap = 4) {
   const out = []

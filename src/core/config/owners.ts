@@ -70,3 +70,7 @@ export function isOwnerRoom(cfg: { owners?: Owner[] }, key: unknown): boolean {
   if (!room.platform) return isOwnerOf(cfg, room.id, 'qq', 'adapter-qq-onebot-v11')
   return isOwnerOf(cfg, room.id, room.platform, room.botId)
 }
+
+export function ownersOn(cfg: { owners?: Owner[] }, platform: string, botId: string): string[] {
+  return (cfg.owners ?? []).filter(row => row.platform === platform && (!row.botId || row.botId === botId)).map(row => row.userId)
+}

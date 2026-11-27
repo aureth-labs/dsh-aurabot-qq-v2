@@ -4,13 +4,14 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import qqTools from '../../packages/modules/qq-tools/index.ts'
+import { chatToolsFor } from '../helpers/chat-tools.js'
 import { createHub } from '../helpers/hub.js'
 import { hasInvalidVoiceMarkup } from '../../src/chat/reply/index.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { scopeCoreForModule } from '../../src/core/module/index.ts'
 import { OneBotError } from '../../packages/adapters/qq/onebot-v11/src/client.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
+import { h } from '../../src/core/message/element/element.ts'
 
 function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, hooks, level = 'full', kind = 'private' } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-cross-voice-'))
@@ -32,9 +33,7 @@ function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, h
     moodEffects: () => ({ voice: 1, sticker: 1, delay: 0 }),
     tts: { async speak(text) { spoken.push(text); if (synthFails) throw new Error('secret/local/path'); return { file, engine: 'test' } } },
   })
-  let build
-  qqTools.setup({ core: scopeCoreForModule({ hub, onebot }, 'qq-tools'), config: () => cfg, tool: fn => { build = fn } })
-  const tool = build({ chat: { kind, chatId: kind === 'private' ? 'private:1' : 'group:8' }, level, sessionId: 's' }).find(x => x.name === 'qq_send_message')
+  const tool = chatToolsFor({ config: cfg, hub: scopeCoreForModule({ hub }, 'chat-tools').hub, where: { kind, level, id: kind === 'private' ? '1' : '8' } }).find(x => x.name === 'send_message')
   t.after(() => { hub.dispose(); if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
   return { tool, hub, calls, spoken }
 }
@@ -46,15 +45,15 @@ test('voice=true 长正文直接发到目标群，不依赖标签和300字兜底
   const body = Array.from({ length: 30 }, (_, i) => `第${i + 1}点，给群里的朋友解释一下。`).join('')
   assert.ok(body.length > 300)
   const r = await send(s, { text: body, voice: true })
-  assert.equal(r.ok, true); assert.deepEqual(r.sentTypes, ['record']); assert.match(r.message, /已发送：语音/)
-  assert.equal(s.calls[0].params.group_id, 9); assert.equal(s.spoken[0], body)
+  assert.equal(r.ok, true); assert.deepEqual(r.sentTypes, ['voice']); assert.match(r.message, /已发送：语音/)
+  assert.equal(String(s.calls[0].params.group_id), '9'); assert.equal(s.spoken[0], body)
   await s.hub.deliver('private:1', '群里的事情处理好了')
   assert.deepEqual(types(s), ['record', 'text'])
 })
 
 test('旧的正确语音标签仍可发送，普通文字不变', async t => {
   const s = setup(t)
-  assert.deepEqual((await send(s, { text: '<voice>晚上好</voice>' })).sentTypes, ['record'])
+  assert.deepEqual((await send(s, { text: '<voice>晚上好</voice>' })).sentTypes, ['voice'])
   assert.deepEqual((await send(s, { text: '晚上好', voice: false })).sentTypes, ['text'])
 })
 
@@ -101,18 +100,18 @@ test('入补发队列不是已经送达，不诱导重复发送', async t => {
   const queued = []
   const s = setup(t, { sendFails: new OneBotError('send_group_msg', { status: 'failed', message: 'offline' }), outbox: { add(x) { queued.push(x); return { ok: true, id: 'q1' } } } })
   const r = await send(s, { text: '晚上好', voice: true })
-  assert.equal(r.ok, true); assert.deepEqual(r.sentTypes, []); assert.deepEqual(r.queuedTypes, ['record'])
+  assert.equal(r.ok, true); assert.deepEqual(r.sentTypes, []); assert.deepEqual(r.queuedTypes, ['voice'])
   assert.match(r.message, /尚未确认送达/); assert.equal(queued.length, 1)
 })
 
-for (const patch of [{ dryRun: true }, { enabled: false }]) test(`没真实发送时不能报成功 ${JSON.stringify(patch)}`, async t => {
+for (const patch of [{ enabled: false }]) test(`没真实发送时不能报成功 ${JSON.stringify(patch)}`, async t => {
   const s = setup(t, { patch })
   const r = await send(s, { text: '晚上好' })
   assert.equal(r.ok, false); assert.equal(s.calls.length, 0)
 })
 
 test('回执以最终出站段为准：发送钩子将语音换成文字', async t => {
-  const s = setup(t, { hooks: { send: () => [{ type: 'text', data: { text: '替换后的文字' } }] } })
+  const s = setup(t, { hooks: { send: () => [h.text('替换后的文字')] } })
   const r = await send(s, { text: '晚上好', voice: true })
   assert.deepEqual(r.sentTypes, ['text']); assert.match(r.message, /没有发出语音/)
 })
@@ -143,7 +142,7 @@ test('原有私聊戳一戳仍报告实际成功，不误判成没发', async t 
 test('同一条旧格式消息语音和文字混排，回执保留两种实际类型', async t => {
   const s = setup(t)
   const r = await send(s, { text: '<voice>晚上好</voice>|||这条是文字说明' })
-  assert.equal(r.ok, true); assert.deepEqual(new Set(r.sentTypes), new Set(['record', 'text']))
+  assert.equal(r.ok, true); assert.deepEqual(new Set(r.sentTypes), new Set(['voice', 'text']))
 })
 
 test('模块包装层保留第三个发送参数，普通旧调用仍能使用', async () => {
@@ -173,14 +172,14 @@ test('两个目标并发投递的回执不串台', async t => {
     send(s, { text: '晚上好', voice: true }),
     s.tool.execute({ target: 'private:2', text: '文字说明' }),
   ])
-  assert.deepEqual(voice.sentTypes, ['record']); assert.deepEqual(text.sentTypes, ['text'])
+  assert.deepEqual(voice.sentTypes, ['voice']); assert.deepEqual(text.sentTypes, ['text'])
 })
 
 
 test('跨聊天发送抛异常也不透传路径或代码，不自动重发',async()=>{
-  let build, calls=0
-  qqTools.setup({core:{hub:{deliver:async()=>{calls++;throw Error('ENOENT /home/private/voice.js at send()')}},onebot:{}},config:()=>normalize({owners: [{ platform: 'qq', userId: '1' }],allow:{groups:['9']}}),tool:f=>build=f,log:{warn(){}}})
-  const tool=build({chat:{kind:'private',chatId:'private:1'},level:'full',sessionId:'s'}).find(t=>t.name==='qq_send_message')
+  let calls = 0
+  const hub = { deliver: async () => { calls++; throw Error('ENOENT /home/private/voice.js at send()') } }
+  const tool = chatToolsFor({ config: normalize({ owners: [{ platform: 'qq', userId: '1' }], allow: { groups: ['9'] } }), hub, logger: { warn() {} } }).find(t => t.name === 'send_message')
   const r=await tool.execute({target:'group:9',text:'你好',voice:true})
   assert.equal(r.ok,false);assert.match(r.message,/发送结果未确认/);assert.doesNotMatch(r.message,/private|ENOENT|voice\.js|send\(\)/);assert.equal(calls,1)
 })
@@ -188,7 +187,7 @@ test('跨聊天发送抛异常也不透传路径或代码，不自动重发',asy
 test('跨群两条语音：多写一个分隔竖线不会夹带 | 消息，回执只报告语音', async t => {
   const s = setup(t)
   const r = await send(s, { text: '<voice>第一条语音</voice>||||<voice>第二条语音</voice>' })
-  assert.equal(r.ok, true); assert.deepEqual(r.sentTypes, ['record'])
+  assert.equal(r.ok, true); assert.deepEqual(r.sentTypes, ['voice'])
   assert.deepEqual(types(s), ['record', 'record'])
   assert.deepEqual(s.spoken, ['第一条语音', '第二条语音'])
 })

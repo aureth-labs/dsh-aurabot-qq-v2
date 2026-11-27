@@ -6,7 +6,7 @@ import { normalizeMemberFilter } from '../../../chat/inbound/filter/member-filte
 import { normalizeChatEfforts } from '../chat-effort.ts'
 import { normalizeChatModels } from '../chat-model.ts'
 import { DEFAULT_GROUP_POLICY } from '../../../chat/policy/rules/group.ts'
-import { LEVELS, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, profilePermDefault } from '../../../chat/policy/rules/access.ts'
+import { LEVELS, PERM_LEVELS } from '../../../chat/policy/rules/access.ts'
 import { DELEGATED_COMMANDS, isDelegatedCommandKey } from '../../../chat/policy/rules/delegation.ts'
 import { DEFAULT_TIER_DAYS } from '../../../persona/memory-tiers.ts'
 import { normalizeEmotions } from '../../../persona/emotions.ts'
@@ -97,7 +97,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   // 等主人回复授权的时长：坏数据一律回 5 分钟；范围夹在 30 秒 ~ 30 分钟（太短来不及看，太长把回合堵死）
   const approvalSec = Number(c.approvalTimeoutSec)
   c.approvalTimeoutSec = Number.isFinite(approvalSec) ? Math.min(1800, Math.max(30, Math.round(approvalSec))) : 300
-  c.qqApi.enabled = bool(c.qqApi.enabled, true)
   // 只认绝对路径（Windows 的 D:\\… 或 Linux 的 /…），别的当没填
   c.workspaceDir = String(c.workspaceDir || '').trim()
   if (c.workspaceDir && !/^([a-zA-Z]:[\\/]|\/)/.test(c.workspaceDir)) c.workspaceDir = ''
@@ -108,7 +107,9 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.subagentBackground = bool(c.subagentBackground, false)
   c.chatModels = normalizeChatModels(c.chatModels)
   c.chatEfforts = normalizeChatEfforts(c.chatEfforts)
-  c.profilePerms = Object.fromEntries(PROFILE_PERM_KEYS.map((k) => [k, PROFILE_PERM_LEVELS.includes(c.profilePerms?.[k]) ? c.profilePerms[k] : profilePermDefault(k)])) as AurabotConfig['profilePerms']
+  const level = raw?.whitelistLevel ?? (isObj(raw?.profilePerms) ? raw.profilePerms.whitelist : undefined)
+  c.whitelistLevel = PERM_LEVELS.find((item) => item === level) ?? 'owner'
+  delete (c as RawConfig).profilePerms
   c.capabilityAllow = Object.fromEntries(['image', 'song', 'video'].map((key) => {
     const ids = Array.isArray(c.capabilityAllow?.[key]) ? c.capabilityAllow[key] : []
     return [key, [...new Set(ids.map(String).map((id) => id.trim()).filter((id) => /^\d{5,}$/.test(id)))]]

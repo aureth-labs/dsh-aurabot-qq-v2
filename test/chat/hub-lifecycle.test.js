@@ -194,7 +194,7 @@ test('同一会话连续重载两轮：工具、上下文、限制全部清理�
     else {
       await callTool('qq_set_nickname', { name: '大肥鱼' })
       await callTool('qq_set_signature', { text: '新签名' })
-      await callTool('qq_whitelist', { action: 'add', kind: 'private', id: '30000003' })
+      await callTool('chat_whitelist', { action: 'add', kind: 'private', id: '30000003' })
     }
     return ''
   } })

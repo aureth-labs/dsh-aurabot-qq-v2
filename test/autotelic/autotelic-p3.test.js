@@ -165,7 +165,7 @@ test('工具面只在她的会话出现；主人的会话一个都拿不到', as
   const hers = mkApi(t, {})
   assert.equal(hers.tools.length >= 6, true, `她的会话拿到 ${hers.tools.length} 个工具`)
   for (const tl of hers.tools) assert.equal(tl.name.startsWith('autotelic_'), true, `工具名都带 autotelic_ 前缀（${tl.name}）`)
-  for (const bad of ['bash', 'pwsh', 'spawn_teammate', 'qq_send_message', 'fs_write_framework']) {
+  for (const bad of ['bash', 'pwsh', 'spawn_teammate', 'send_message', 'fs_write_framework']) {
     assert.equal(hers.tools.some((x) => x.name === bad), false, `工具清单里永远没有 ${bad}（场景 13）`)
   }
   const owners = mkApi(t, { chatId: 'private:123' })

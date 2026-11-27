@@ -40,7 +40,6 @@ test('升级 1.1.6 后，三种生图通道与本地增强配置在保存重载�
     assert.equal(after.douyin.enabled, false)
     assert.equal(after.modules.douyin.enabled, false)
     assert.equal(after.modules['shangxueink/bilibili'].useBuiltin, false)
-    assert.equal(after.profilePerms.douyinDm, 'owner')
   })
 })
 

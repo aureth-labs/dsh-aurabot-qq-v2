@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 
 // The wrapper contract can be tested with stdlib-only stubs; no Torch/model downloads.
 const python = [process.env.PYTHON, 'python3', 'python'].filter(Boolean)
-  .find(cmd => spawnSync(cmd, ['--version'], { encoding: 'utf8' }).status === 0)
+  .find(cmd => spawnSync(cmd, ['--version'], { encoding: 'utf8', windowsHide: true }).status === 0)
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-cpu-profile-'))
   const setup = join(root, 'setup'), project = join(root, 'Applio')
@@ -37,7 +37,7 @@ for (const value of [undefined, '4']) test(`可选 CPU 入口：线程 ${value |
   delete env.AURABOT_RVC_CPU_THREADS
   if (value !== undefined) env.AURABOT_RVC_CPU_THREADS = value
   const args = ['infer', '--input-path', '带空格 input.wav', '--output-path', 'output.wav', '--pitch', '0']
-  const r = spawnSync(python, [f.entry, ...args], { env, encoding: 'utf8' })
+  const r = spawnSync(python, [f.entry, ...args], { env, encoding: 'utf8', windowsHide: true })
   assert.equal(r.status, 0, r.stderr)
   const trace = JSON.parse(readFileSync(f.trace, 'utf8'))
   assert.deepEqual(trace.argv, [join(f.project, 'core.py'), ...args])
@@ -52,7 +52,7 @@ for (const value of [undefined, '4']) test(`可选 CPU 入口：线程 ${value |
 })
 for (const value of ['0', 'not-a-number']) test(`非法线程数 ${value} 在加载模型前拒绝`, { skip: !python }, t => {
   const f = fixture(t)
-  const r = spawnSync(python, [f.entry, 'infer'], { env: { ...process.env, AURABOT_RVC_CPU_THREADS: value, TRACE: f.trace }, encoding: 'utf8' })
+  const r = spawnSync(python, [f.entry, 'infer'], { env: { ...process.env, AURABOT_RVC_CPU_THREADS: value, TRACE: f.trace }, encoding: 'utf8', windowsHide: true })
   assert.notEqual(r.status, 0)
   assert.match(r.stderr, /must be a positive integer/)
 })

@@ -4,8 +4,7 @@ import { parseReply, stripMarkdown, bubbleDelay } from '../../src/chat/reply/ind
 import { decideGroupReply, engagedHint, policyFor, inQuietHours, DEFAULT_GROUP_POLICY } from '../../src/chat/policy/rules/group.ts'
 import { parseMessageEvent, isStickerSegment } from '../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
 import { stickerSizeOk, imageSize } from '../../src/core/message/media/inspect.ts'
-import { checkAllowed, levelFor, presetFor, isOwner, profileToolVisible, profilePermits } from '../../src/chat/policy/rules/access.ts'
-import { avatarSource } from '../../packages/modules/profile/index.ts'
+import { checkAllowed, levelFor, presetFor, isOwner, whitelistVisible, whitelistPermits } from '../../src/chat/policy/rules/access.ts'
 import { redact, registerSecret } from '../../src/core/support/log/redact.ts'
 
 test('parseReply 拆 ||| 成多条', () => {
@@ -311,35 +310,29 @@ test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', asy
   assert.equal(parseReply('<poke><poke>').items.filter((i) => i.kind === 'poke').length, 1, '一轮最多戳一次')
 })
 
-test('#6 改资料权限：默认仅主人私聊；所有人含群；关了都不行；执行时再查', async () => {
+test('#6 改白名单档位：默认仅主人私聊；所有人含群；关了都不行；执行时再查', async () => {
   const { normalize } = await import('../../src/core/config/index.ts')
   const d = normalize({ owners: [{ platform: 'qq', userId: '1' }] })
-  assert.deepEqual(d.profilePerms, { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner' })
-  assert.equal(normalize({ profilePerms: { qqAvatar: 'boss' } }).profilePerms.qqAvatar, 'owner', '乱填的回到默认')
+  assert.equal(d.whitelistLevel, 'owner')
+  assert.equal(normalize({ whitelistLevel: 'boss' }).whitelistLevel, 'owner', '乱填的回到默认')
+  assert.equal('profilePerms' in d, false)
+  assert.equal(normalize({ profilePerms: { whitelist: 'all' } }).whitelistLevel, 'all')
+  assert.equal('profilePerms' in normalize({ profilePerms: { whitelist: 'all' } }), false)
   const ownerPm = { kind: 'private', userId: '1' }
   const otherPm = { kind: 'private', userId: '2' }
   const group = { kind: 'group', userId: '1', groupId: '9' }
-  assert.equal(profileToolVisible(d, 'qqNickname', ownerPm), true)
-  assert.equal(profileToolVisible(d, 'qqNickname', otherPm), false)
-  assert.equal(profileToolVisible(d, 'qqNickname', group), false)
-  assert.equal(profilePermits(d, 'qqNickname', ownerPm, true).ok, true)
-  assert.equal(profilePermits(d, 'qqNickname', ownerPm, false).ok, false, '主人私聊里混进了别人的话也不行')
-  const all = normalize({ owners: [{ platform: 'qq', userId: '1' }], profilePerms: { qqNickname: 'all' } })
-  assert.equal(profileToolVisible(all, 'qqNickname', group), true)
-  assert.equal(profilePermits(all, 'qqNickname', otherPm, false).ok, true)
-  assert.equal(profileToolVisible(all, 'qqNickname', { kind: 'system' }), false)
-  const off = normalize({ owners: [{ platform: 'qq', userId: '1' }], profilePerms: { qqNickname: 'off' } })
-  assert.equal(profileToolVisible(off, 'qqNickname', ownerPm), false)
-  assert.equal(profilePermits(off, 'qqNickname', ownerPm, true).ok, false)
-})
-
-test('#6 头像来源：显式网址直接给网关；「刚才那张」和「画作」由工具取字节；本地路径不收', () => {
-  assert.deepEqual(avatarSource('https://a.com/x.png'), { ok: true, file: 'https://a.com/x.png' })
-  // last / 画作编号 现在在工具里换成本地图片字节，不再走 avatarSource
-  assert.equal(avatarSource('last').ok, false)
-  assert.equal(avatarSource('C:/Windows/x.png').ok, false)
-  assert.equal(avatarSource('file:///etc/passwd').ok, false)
-  assert.equal(avatarSource('base64://AAAA').ok, false)
+  assert.equal(whitelistVisible(d, ownerPm), true)
+  assert.equal(whitelistVisible(d, otherPm), false)
+  assert.equal(whitelistVisible(d, group), false)
+  assert.equal(whitelistPermits(d, ownerPm, true).ok, true)
+  assert.equal(whitelistPermits(d, ownerPm, false).ok, false, '主人私聊里混进了别人的话也不行')
+  const all = normalize({ owners: [{ platform: 'qq', userId: '1' }], whitelistLevel: 'all' })
+  assert.equal(whitelistVisible(all, group), true)
+  assert.equal(whitelistPermits(all, otherPm, false).ok, true)
+  assert.equal(whitelistVisible(all, { kind: 'system' }), false)
+  const off = normalize({ owners: [{ platform: 'qq', userId: '1' }], whitelistLevel: 'off' })
+  assert.equal(whitelistVisible(off, ownerPm), false)
+  assert.equal(whitelistPermits(off, ownerPm, true).ok, false)
 })
 
 test('#28 核心配置不再携带 QQ 连接段，旧段由启动迁移搬进适配器设置', async () => {

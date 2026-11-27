@@ -1,15 +1,15 @@
 {
-  "name": "qq-api",
-  "version": "1.0.0",
+  "name": "chat-tools",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "license": "MIT",
   "main": "./index.js",
   "aurabot": {
     "api": 2,
-    "displayName": "QQ 接口",
+    "displayName": "聊天工具",
     "platforms": [
-      "qq"
+      "*"
     ]
   }
 }

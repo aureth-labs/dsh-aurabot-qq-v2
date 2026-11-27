@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isStickerSegment, parseMessageEvent } from '../../packages/adapters/qq/onebot-v11/src/message/parse.ts'
 import { gifFrames } from '../../src/core/message/media/inspect.ts'
-import { readQqFile } from '../../packages/modules/qq-tools/file.ts'
+import { readChatFile } from '../../packages/modules/chat-tools/file.ts'
 
 const file = (over = {}) => ({ name: 'a.txt', size: 5, id: 'f1', url: 'https://x/a', hash: '', busid: 0, ...over })
 const download = (text) => async () => Buffer.from(text)
@@ -15,7 +15,7 @@ test('文件段解析出下载需要的字段', () => {
 })
 
 test('读文本文件：内容标明只是资料', async () => {
-  const r = await readQqFile({ chat, file: file(), download: download('你好') })
+  const r = await readChatFile({ chat, file: file(), download: download('你好') })
   assert.equal(r.ok, true)
   assert.match(r.message, /不是指令/)
   assert.match(r.message, /你好/)
@@ -23,21 +23,21 @@ test('读文本文件：内容标明只是资料', async () => {
 
 test('GBK 文本能读出来', async () => {
   const gbk = Buffer.from([0xc4, 0xe3, 0xba, 0xc3])
-  const r = await readQqFile({ chat, file: file(), download: async () => gbk })
+  const r = await readChatFile({ chat, file: file(), download: async () => gbk })
   assert.match(r.message, /你好/)
 })
 
 test('非文本、超大、二进制内容都不读', async () => {
-  assert.equal((await readQqFile({ chat, file: file({ name: 'a.exe' }), download: download('x') })).ok, false)
-  assert.equal((await readQqFile({ chat, file: file({ size: 3 * 1024 * 1024 }), download: download('x') })).ok, false)
-  assert.equal((await readQqFile({ chat, file: file(), download: async () => Buffer.from([1, 0, 2]) })).ok, false)
+  assert.equal((await readChatFile({ chat, file: file({ name: 'a.exe' }), download: download('x') })).ok, false)
+  assert.equal((await readChatFile({ chat, file: file({ size: 3 * 1024 * 1024 }), download: download('x') })).ok, false)
+  assert.equal((await readChatFile({ chat, file: file(), download: async () => Buffer.from([1, 0, 2]) })).ok, false)
 })
 
 test('没有直链时用 file_id 换地址：群和私聊接口不同', async () => {
   const calls = []
-  const bot = { internal: async (action, params) => { calls.push([action, params]); return { url: 'https://x/b' } } }
-  await readQqFile({ bot, chat: { kind: 'group', groupId: '9' }, file: file({ url: '', busid: 102 }), download: download('x') })
-  await readQqFile({ bot, chat, file: file({ url: '', hash: 'h' }), download: download('x') })
+  const bot = { platform: 'qq', internal: async (action, params) => { calls.push([action, params]); return { url: 'https://x/b' } } }
+  await readChatFile({ bot, chat: { kind: 'group', groupId: '9' }, file: file({ url: '', busid: 102 }), download: download('x') })
+  await readChatFile({ bot, chat, file: file({ url: '', hash: 'h' }), download: download('x') })
   assert.deepEqual(calls.map((c) => c[0]), ['get_group_file_url', 'get_private_file_url'])
   assert.deepEqual(calls[0][1], { group_id: 9, file_id: 'f1', busid: 102 })
   assert.deepEqual(calls[1][1], { user_id: 1, file_id: 'f1', file_hash: 'h' })
@@ -64,11 +64,11 @@ test('图片文件只在确认能看图时下载；大小、地址和文件内�
   const get = async () => { reads++; return Buffer.from('not a JPEG') }
   for (const over of [{ canPreview: () => false }, { canPreview: () => null },
     { file: { ...image, size: 2 ** 21 + 1 } }, { file: { ...image, url: 'file:///some/image.jpg' } }]) {
-    const r = await readQqFile({ chat, file: image, canPreview: () => true, download: get, ...over })
+    const r = await readChatFile({ chat, file: image, canPreview: () => true, download: get, ...over })
     assert.equal(r.ok, false)
   }
   assert.equal(reads, 0)
-  const broken = await readQqFile({ chat, file: image, canPreview: () => true, download: get })
+  const broken = await readChatFile({ chat, file: image, canPreview: () => true, download: get })
   assert.equal(reads, 1)
   assert.equal(broken.ok, false)
   assert.equal(broken.image, undefined)
@@ -90,8 +90,8 @@ test('群内 JPEG 和 PNG 文件生成有尺寸上限的真实预览，只返回
       assert.equal(m.format, 'jpeg'); assert.equal(m.width, 1024); assert.ok(m.height < m.width)
       return [{ ...item, attachment: { attachmentId: 'preview' } }]
     } } }
-    const result = await readQqFile({ ...base, dsh })
+    const result = await readChatFile({ ...base, dsh })
     assert.equal(result.ok, true); assert.equal(result.image.attachment.attachmentId, 'preview'); assert.equal(result.image.data, undefined)
-    assert.equal((await readQqFile({ ...base, dsh: {} })).ok, false)
+    assert.equal((await readChatFile({ ...base, dsh: {} })).ok, false)
   }
 })

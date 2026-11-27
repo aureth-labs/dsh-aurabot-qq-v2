@@ -196,7 +196,6 @@ function GroupPermissions({ st, toast, reload, go }) {
           h(Btn, { disabled: busy || !/^\d{5,}$/.test(id) || groups.includes(id), onClick: async () => { if (await apply(id, 'group', { chat: true })) setInput('') } }, '添加群聊')),
         groups.map((qq) => h(Row, { key: qq, label: qq, hint: (st.config.group.moduleOnlyGroups || []).includes(qq) ? '仅模块' : '允许 AI 聊天' }, h(Btn, { small: true, disabled: busy, onClick: () => apply(qq, 'group', { chat: false }) }, '移除')))),
     ),
-    modOn(st, 'group-admin') ? h(GroupRoles, null) : null,
   )
 }
 
@@ -229,9 +228,8 @@ function GlobalAccess({ st, draft, setDraft, toast }) {
         }),
         h('span', { className: 'ab-muted' }, ' 秒')),
       h(NoticeWorkspaces, { toast }),
-      h(Row, { label: 'QQ 接口', hint: '让她用 QQ 的其他能力：别人只能查当前群的公告、精华这些；撤回、设精华、改群名片等只听你的。取 Cookie、发原始包、删好友、退群这些不开放。' }, f.sw('qqApi.enabled')),
       h(Row, { label: '在聊天里批准', hint: '回复「确认」批准这一次、回复「取消」拒绝；超时按不批。只认你的私聊回复，DSH 也能同时点。' }, f.sw('approvalViaChat')),
-      h(Row, { label: '等多久算超时（秒）', hint: '在 QQ 里等你回复的时长，默认 300（5 分钟）。' }, f.num('approvalTimeoutSec', { min: 30, max: 1800 }), h('span', { className: 'ab-muted' }, ' 秒')),
+      h(Row, { label: '等多久算超时（秒）', hint: '在聊天里等你回复的时长，默认 300（5 分钟）。' }, f.num('approvalTimeoutSec', { min: 30, max: 1800 }), h('span', { className: 'ab-muted' }, ' 秒')),
       h(Row, { label: '长任务模式', hint: '只在「完整」权限下生效。打开后ta能把命令放到后台跑、跑完自动回来告诉你，也能设定时任务；工具多一点，回话会稍慢。切换后同样换新会话。' },
         h(Choices, { value: draft.longTasks ? 'on' : 'off', onChange: (v) => setDraft(setPath(draft, 'longTasks', v === 'on')), options: [
           { value: 'off', label: '关', desc: '工具少一点，回话快一点' },
@@ -243,29 +241,19 @@ function GlobalAccess({ st, draft, setDraft, toast }) {
           { value: 'on', label: '开', desc: '后台任务也可以派子智能体' },
         ] })),
     ),
-    h(ProfilePerms, { st, draft, setDraft }),
+    h(WhitelistLevel, { draft, setDraft }),
     h(CommandList, null),
   )
 }
 
-/** 改资料类操作的权限：关 / 仅主人私聊 / 所有人。 */
-
-function ProfilePerms({ st, draft, setDraft }) {
-  const perms = draft.profilePerms || {}
-  const opts = [
-    { value: 'off', label: '关', desc: '谁说都不改' },
-    { value: 'owner', label: '仅主人私聊', desc: '只有你私聊让ta改才改（默认）' },
-    { value: 'all', label: '所有人', desc: '白名单里的人、群里的人都能让ta改' },
-  ]
-  const row = (key, label, hint?) => h(Row, { label, hint },
-    h(Choices, { value: perms[key] || 'owner', onChange: (v) => setDraft(setPath(draft, 'profilePerms.' + key, v)), options: opts }))
-  return h(Card, { title: '改资料与名单', desc: 'ta能不能听人的话改自己的 QQ 昵称、签名、头像，处理好友申请和改白名单。改 QQ 资料要 OneBot 实现支持对应接口。各项默认仅主人。' },
-    row('qqNickname', 'QQ 昵称'),
-    row('qqSignature', 'QQ 个性签名'),
-    row('qqAvatar', 'QQ 头像', '只用网址图片，或「刚才发的那张图」。'),
-    row('qqFriendRequest', '处理好友申请', '让ta通过 / 拒绝别人加ta为好友的申请。ta自己主动加别人暂不支持（OneBot v11 没有这个接口）。'),
-    row('whitelist', '改白名单', '允许改聊天白名单，主人不能被移出。关闭后，也不能在私聊里管理群接话和旁听；这两项始终只听主人私聊。「所有人」会允许其他人改聊天白名单。'),
-  )
+function WhitelistLevel({ draft, setDraft }) {
+  return h(Card, { title: '名单管理', desc: '能不能在聊天里让ta改白名单。主人不能被移出；群接话和旁听设置始终只听主人私聊。QQ 资料与好友申请的权限在「QQ 工具箱」插件设置里。' },
+    h(Row, { label: '改白名单' },
+      h(Choices, { value: draft.whitelistLevel || 'owner', onChange: (v) => setDraft(setPath(draft, 'whitelistLevel', v)), options: [
+        { value: 'off', label: '关', desc: '谁说都不改' },
+        { value: 'owner', label: '仅主人私聊', desc: '只有你私聊让ta改才改（默认）' },
+        { value: 'all', label: '所有人', desc: '白名单里的人、群里的人都能让ta改' },
+      ] })))
 }
 
 /** QQ 里的主人命令一览。 */
@@ -277,24 +265,6 @@ function CommandList() {
     h('table', { className: 'ab-table' }, h('tbody', null, list.map((c) => h('tr', { key: c.name },
       h('td', { style: { whiteSpace: 'nowrap' } }, h('code', null, '/' + c.name), c.aliases.length ? h('div', { className: 'ab-muted ab-small' }, c.aliases.map((a) => '/' + a).join(' ')) : null),
       h('td', null, c.desc))))))
-}
-
-/** 她在每个白名单群里的身份：群主 / 管理员才能禁言踢人。 */
-
-function GroupRoles() {
-  const [list, setList] = useState(null)
-  const load = () => { setList(null); get('/groups/roles').then((r) => setList(r.list || [])) }
-  useEffect(load, [])
-  return h(Card, { title: '群管权限', desc: 'ta在群里是群主或管理员时，主人才能让ta禁言、踢人、发公告；改专属头衔要群主。按已保存的群白名单查。',
-    right: h(Btn, { small: true, kind: 'ghost', onClick: load }, '刷新') },
-    !list ? h('div', { className: 'ab-muted ab-small' }, h('i', { className: 'ab-spin' }), ' 查询中…')
-      : list.length === 0 ? h('div', { className: 'ab-muted ab-small' }, '群白名单是空的。')
-      : h('table', { className: 'ab-table' },
-        h('thead', null, h('tr', null, ['群', 'ta的身份', '群管'].map((x) => h('th', { key: x }, x)))),
-        h('tbody', null, list.map((g) => h('tr', { key: g.groupId },
-          h('td', null, (g.name && g.name !== g.groupId ? g.name + ' ' : '') + '(' + g.groupId + ')'),
-          h('td', null, g.label),
-          h('td', null, g.canManage ? h('span', { className: 'ab-badge' }, '可以') : h('span', { className: 'ab-muted ab-small' }, '不行')))))))
 }
 
 /** 主人私聊里问起群里的事：把最近群聊流水补进当轮上下文（默认关）。 */
@@ -583,4 +553,4 @@ function OwnerBriefGroups({ draft, setDraft }) {
     : h('span', { className: 'ab-muted ab-small' }, '先到「聊天 → 单个群」添加群，选择「仅模块」或「允许 AI 聊天」。'))
 }
 
-export { Access, usePermissionSave, PrivatePermissions, GroupPermissions, GlobalAccess, ProfilePerms, CommandList, GroupRoles, OwnerBrief, MemberFilter, GroupOverrides, Group, OwnerBriefGroups }
+export { Access, usePermissionSave, PrivatePermissions, GroupPermissions, GlobalAccess, WhitelistLevel, CommandList, OwnerBrief, MemberFilter, GroupOverrides, Group, OwnerBriefGroups }

@@ -1,5 +1,3 @@
-// 读别人发来的 QQ 文件：私聊文件段自带下载地址，群文件要用 file_id 去换。只按请求读取文本或预览图片。
-
 import { extname } from 'node:path'
 import { mimeOf } from '../../../src/core/message/media/inspect.ts'
 import { findSharp, imageToolBlock } from '../../../src/core/message/media/img.ts'
@@ -10,7 +8,6 @@ const MAX_BYTES = 2 * 1024 * 1024
 const MAX_CHARS = 20000
 const TEXT_EXT = new Set(['.txt', '.md', '.markdown', '.log', '.csv', '.tsv', '.json', '.jsonl', '.yaml', '.yml', '.toml', '.ini', '.xml', '.html', '.htm', '.css', '.js', '.mjs', '.ts', '.py', '.java', '.c', '.h', '.cpp', '.go', '.rs', '.sh', '.bat', '.ps1', '.sql', '.srt', '.lrc'])
 
-/** Windows 记事本存的中文常是 GBK：UTF-8 解不开就按 GB18030 再解。 */
 function decodeText(buf) {
   if (buf.includes(0)) return null
   try { return new TextDecoder('utf-8', { fatal: true }).decode(buf) } catch (error) {}
@@ -19,14 +16,13 @@ function decodeText(buf) {
 
 async function fileUrl(bot, chat, file) {
   if (file.url) return file.url
-  if (!file.id) return ''
+  if (!file.id || bot?.platform !== 'qq') return ''
   const r = chat.kind === 'group'
     ? await bot.internal('get_group_file_url', { group_id: Number(chat.groupId), file_id: file.id, ...(file.busid ? { busid: file.busid } : {}) }, { timeoutMs: 15000 })
     : await bot.internal('get_private_file_url', { user_id: Number(chat.userId), file_id: file.id, file_hash: file.hash || '' }, { timeoutMs: 15000 })
   return String(r?.url || '')
 }
 
-// 不把群文件原样送进模型：限制解码像素，缩成一张无附件元数据的 JPEG，再用宿主登记。
 async function previewFile(dsh, buf, ext) {
   const format = ext === '.png' ? 'png' : 'jpeg'
   if (mimeOf(buf) !== `image/${format}`) return null
@@ -40,7 +36,7 @@ async function previewFile(dsh, buf, ext) {
   return imageToolBlock(dsh, jpeg)
 }
 
-export async function readQqFile({ bot, chat, file, download = fetchImage, canPreview, dsh }) {
+export async function readChatFile({ bot, chat, file, download = fetchImage, canPreview, dsh }) {
   const ext = extname(file.name).toLowerCase()
   const image = ['.jpg', '.jpeg', '.png'].includes(ext)
   if (!image && !TEXT_EXT.has(ext)) return { ok: false, message: `《${file.name}》不是支持的文本或 JPG、PNG 文件` }

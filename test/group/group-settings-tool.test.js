@@ -1,40 +1,48 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { groupSettingsTool, planGroupSettings } from '../../packages/modules/contacts/group-settings.ts'
+import { groupSettingsTool, planGroupSettings } from '../../packages/modules/chat-tools/group-settings.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import { decideGroupReply, policyFor } from '../../src/chat/policy/rules/group.ts'
 import { runCommand, parseCommand } from '../../packages/modules/commands/dispatch.ts'
 
 const OWNER = '10000001', OTHER = '10000002', G = '30000003', H = '40000004'
 const chat = { kind: 'private', userId: OWNER, chatId: `private:${OWNER}` }
+const target = { platform: 'qq', botId: 'adapter-qq-onebot-v11', type: 'private', id: OWNER }
 function setup(patch = {}, { allOwner = true, beforeSave, failSave = false } = {}) {
-  let cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000002', enabled: true, dryRun: false,
+  let cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], enabled: true,
     allow: { groups: [G] }, ...patch })
   let saves = 0
   const warnings = []
-  const api = { config: () => cfg, core: { hub: { turnSendersAllOwner: () => allOwner } }, log: { warn: (...args) => warnings.push(args) },
-    setConfig(fn) {
-      if (failSave) throw new Error('EACCES /home/private/secret-config.json\n at internal.js:12')
-      if (beforeSave) cfg = normalize(beforeSave(cfg))
-      cfg = normalize(fn(cfg)); saves++
-    } }
-  return { api, tool: groupSettingsTool(api, { chat, sessionId: 's' }), cfg: () => cfg, saves: () => saves,
+  const bot = { getGuildList: async () => [] }
+  const api = {
+    root: {
+      read: () => cfg,
+      update(fn) {
+        if (failSave) throw new Error('EACCES /home/private/secret-config.json\n at internal.js:12')
+        if (beforeSave) cfg = normalize(beforeSave(cfg))
+        cfg = normalize(fn(cfg)); saves++
+      },
+    },
+    host: {}, turnFromOwner: () => allOwner, logger: { warn: (...args) => warnings.push(args) },
+  }
+  const build = c => groupSettingsTool(api, { chat: c, sessionId: 's', bot, target })
+  return { api, bot, build, tool: build(chat), cfg: () => cfg, saves: () => saves,
     set: patch => { cfg = normalize({ ...cfg, ...patch }) }, warnings }
 }
 const call = (s, args = {}) => s.tool.execute({ action: 'set', group_id: G, ...args })
 const read = s => call(s, { action: 'get' })
 
 test('只挂主人私聊；名单权限 all 也不开放给别人或群，off 不挂', () => {
-  const s = setup({ profilePerms: { whitelist: 'all' } })
+  const s = setup({ whitelistLevel: 'all' })
   assert.ok(s.tool)
   for (const c of [{ kind: 'private', userId: OTHER }, { kind: 'group', userId: OWNER }, { kind: 'system', userId: OWNER }]) {
-    assert.equal(groupSettingsTool(s.api, { chat: c, sessionId: 's' }), null)
+    assert.equal(s.build(c), null)
   }
-  assert.equal(setup({ profilePerms: { whitelist: 'off' } }).tool, null)
+  assert.equal(setup({ whitelistLevel: 'off' }).tool, null)
   assert.equal(setup({ owners: [{ platform: 'qq', userId: '' }] }).tool, null)
 })
 test('执行时复查主人、名单权限与本轮来源，不依赖已经挂好的工具', async () => {
-  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { profilePerms: { whitelist: 'off' } }]) {
+  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { whitelistLevel: 'off' }]) {
     const s = setup(); s.set(patch)
     assert.equal((await call(s, { engaged: true })).ok, false)
     assert.equal((await read(s)).ok, false)
@@ -111,8 +119,8 @@ test('旁听只操作名单，不擅自开记忆、不加聊天白名单；移�
   assert.deepEqual(s.cfg().allow.groups, [G]); assert.deepEqual(s.cfg().memory.passiveGroups, [H])
   r = await call(s, { group_id: H, passive_memory: false }); assert.match(r.message, /已有记忆不删除/)
 })
-test('dryRun 和 debug 只预览，不保存；查看仍返回当前真实状态', async () => {
-  for (const patch of [{ dryRun: true }, { debug: true }]) {
+test('debug 只预览，不保存；查看仍返回当前真实状态', async () => {
+  for (const patch of [{ debug: true }]) {
     const s = setup(patch), before = structuredClone(s.cfg())
     const r = await call(s, { proactive: false, passive_memory: true })
     assert.equal(r.preview, true); assert.equal(r.changed, false); assert.match(r.message, /未保存/)
@@ -129,7 +137,7 @@ test('保存时在最新配置上规划，保留同时改的其它项', async ()
   assert.deepEqual(s.cfg().memory.passiveGroups, [H, G])
 })
 test('写入边界再次复核权限与调试，发生变化就拒绝', async () => {
-  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { debug: true }, { profilePerms: { whitelist: 'off' } }]) {
+  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { debug: true }, { whitelistLevel: 'off' }]) {
     const s = setup({}, { beforeSave: cur => ({ ...cur, ...patch }) })
     assert.equal((await call(s, { engaged: true })).ok, false)
     assert.equal(s.saves(), 0); assert.equal(s.cfg().group.overrides[G], undefined)
@@ -149,7 +157,7 @@ test('规划器不修改输入对象', () => {
 
 test('查询把保存的设置和暂停、试运行、零上限区分开，恢复默认不解除暂停', async () => {
   const s = setup({ group: { overrides: { [G]: { engagedEnabled: true } }, maxPerHour: 0, engagedMax: 0 } })
-  s.api.core.mutes = { until: () => 0 }
+  s.api.host.mutes = { until: () => 0 }
   let r = await read(s)
   assert.equal(r.state.reply_paused, true)
   assert.equal(r.state.follows_defaults, false)
@@ -160,11 +168,9 @@ test('查询把保存的设置和暂停、试运行、零上限区分开，恢�
   assert.equal(r.state.follows_defaults, true)
   assert.equal(r.state.reply_paused, true)
   assert.match(r.message, /已恢复跟随全局，旁听名单没改/)
-  s.api.core.mutes = { until: () => Date.now() - 1000 }
+  s.api.host.mutes = { until: () => Date.now() - 1000 }
   assert.equal((await read(s)).state.reply_paused, false, '过期暂停不误报，也不调用会写文件的 muted')
-  s.set({ dryRun: true })
-  assert.match((await read(s)).message, /试运行：不发消息/)
-  s.set({ dryRun: false, enabled: false })
+  s.set({ enabled: false })
   assert.match((await read(s)).message, /总开关已关闭：不会回复/)
   s.set({ enabled: true, debug: true })
   assert.match((await read(s)).message, /调试模式：不发消息/)
@@ -202,7 +208,7 @@ test('全群总览含非白名单群，不改配置，分页明确且不遗漏',
   const joined = Array.from({ length: 23 }, (_, n) => ({ group_id: 30000000 + n, group_name: '测试群 ' + n }))
   joined.push({ group_id: Number(H), group_name: '旁听群' })
   const actions = []
-  s.api.core.onebot = { call: async (action, args) => { actions.push(action); assert.deepEqual(args, {}); return [...joined].reverse() } }
+  s.bot.getGuildList = async () => { actions.push('list'); return [...joined].reverse().map(g => ({ id: String(g.group_id), name: g.group_name })) }
   const before = structuredClone(s.cfg())
   const first = await s.tool.execute({ action: 'list' })
   assert.equal(first.ok, true); assert.equal(first.total, 24); assert.equal(first.groups.length, 20)
@@ -214,12 +220,12 @@ test('全群总览含非白名单群，不改配置，分页明确且不遗漏',
   assert.equal(last.groups.length, 4); assert.equal(last.complete, true); assert.equal(last.next_offset, null)
   assert.equal(last.groups.find(g => g.group_id === H).memory_scope, 'passive')
   assert.equal(new Set([...first.groups, ...last.groups].map(g => g.group_id)).size, 24)
-  assert.deepEqual(actions, ['get_group_list', 'get_group_list'])
+  assert.deepEqual(actions, ['list', 'list'])
   assert.deepEqual(s.cfg(), before); assert.equal(s.saves(), 0)
 })
 test('全群只读，不接受批量修改、群号 all 或不正确的分页参数', async () => {
   const s = setup(); let calls = 0
-  s.api.core.onebot = { call: async () => { calls++; return [] } }
+  s.bot.getGuildList = async () => { calls++; return [] }
   for (const args of [{ action: 'list', proactive: false }, { action: 'list', group_id: 'all' },
     { action: 'list', offset: -1 }, { action: 'list', offset: '20' }, { action: 'list', offset: 0.5 },
     { action: 'set', group_id: 'all', engaged: false }, { action: 'get' }, { action: 'get', group_id: G, offset: 0 }]) {
@@ -231,13 +237,13 @@ test('全群只读，不接受批量修改、群号 all 或不正确的分页参
 })
 test('取群列表失败不冒充全群结果、不泄露路径；等待期间撤销权限也不返回列表', async () => {
   const s = setup()
-  s.api.core.onebot = { call: async () => { throw new Error('/home/private/config secret') } }
+  s.bot.getGuildList = async () => { throw new Error('/home/private/config secret') }
   let r = await s.tool.execute({ action: 'list' })
   assert.equal(r.ok, false); assert.match(r.message, /未完成全群查询/); assert.doesNotMatch(r.message, /home|secret/)
   assert.equal(r.groups, undefined)
-  s.api.core.onebot.call = async () => [{ group_id: 'invalid' }]
+  s.bot.getGuildList = async () => [{ id: 'invalid' }]
   assert.equal((await s.tool.execute({ action: 'list' })).ok, false)
-  s.api.core.onebot.call = async () => { s.set({ profilePerms: { whitelist: 'off' } }); return [{ group_id: G }] }
+  s.bot.getGuildList = async () => { s.set({ whitelistLevel: 'off' }); return [{ id: G }] }
   r = await s.tool.execute({ action: 'list' }); assert.equal(r.ok, false); assert.equal(r.groups, undefined)
   assert.equal(s.saves(), 0)
 })
@@ -246,7 +252,7 @@ test('模式工具操作、单群和全群查询一致，恢复默认不重新�
   const s = setup()
   let r = await call(s, { mode: 'modules' })
   assert.equal(r.ok, true); assert.equal(r.state.response_mode, 'modules'); assert.equal(r.state.can_reply_by_settings, false)
-  s.api.core.onebot = { call: async () => [{ group_id: G, group_name: '测试' }] }
+  s.bot.getGuildList = async () => [{ id: G, name: '测试' }]
   r = await s.tool.execute({ action: 'list' })
   assert.equal(r.groups[0].response_mode, 'modules'); assert.match(r.message, /仅模块/)
   await call(s, { action: 'reset' }); assert.deepEqual(s.cfg().group.moduleOnlyGroups, [G])

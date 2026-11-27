@@ -1,5 +1,5 @@
 import { ownerId } from '../../../src/core/config/owners.ts'
-import { isOwner, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, permOf } from '../../../src/chat/policy/rules/access.ts'
+import { isOwner, PERM_LEVELS, whitelistLevel } from '../../../src/chat/policy/rules/access.ts'
 import { changePermissions, privatePermissionCatalog } from '../../../src/chat/policy/rules/permission.ts'
 
 const HELP = [
@@ -10,7 +10,7 @@ const HELP = [
   '/权限 命令  查看可授权命令',
   '/权限 列表 私聊|群|生图|点歌|视频  查看名单',
   '/权限 添加|移除 群 群号  管理群白名单',
-  '/权限 档位  查看资料和社交操作的全局档位',
+  '/权限 档位 [off|owner|all]  查看或设置谁能在聊天里改白名单',
   '关闭私聊会暂停其余授权，重新开启即可恢复。',
 ].join('\n')
 
@@ -35,11 +35,10 @@ export function runPermissionsCommand(arg, msg, { getConfig, setConfig, extraCom
     return '可授权的命令\n' + catalog.filter((item: any) => item.group?.includes('命令')).map(({ key, label }) => key.startsWith('ext:') ? `${label}（${key}）` : label).join('、')
   }
   if (/^(档位|level)$/.test(action)) {
-    if (parts.length === 1) return '全局权限档位（off 关闭、owner 仅主人、all 所有会话）\n' + PROFILE_PERM_KEYS.map((key) => `${key} ${permOf(cfg, key)}`).join('\n')
-    if (parts.length !== 3 || !PROFILE_PERM_KEYS.includes(type) || !PROFILE_PERM_LEVELS.includes(third)) return '用法 /权限 档位 项目 off|owner|all。先发 /权限 档位 查看项目。'
-    setConfig({ ...cfg, profilePerms: { ...cfg.profilePerms, [type]: third } })
-    if (permOf(getConfig(), type) !== third) return `${type} 的档位未变更。`
-    return `已将 ${type} 的全局档位设为 ${third}。`
+    if (parts.length === 1) return `改白名单的档位：${whitelistLevel(cfg)}（off 关闭、owner 仅主人、all 所有会话）`
+    if (parts.length !== 2 || !PERM_LEVELS.some((level) => level === type)) return '用法 /权限 档位 off|owner|all'
+    setConfig({ ...cfg, whitelistLevel: type })
+    return whitelistLevel(getConfig()) === type ? `已将改白名单的档位设为 ${type}。` : '档位未变更。'
   }
   const subject = parts.length === 1 ? action : /^(用户|user)$/.test(action) && parts.length === 2 ? type : ''
   if (/^\d{5,}$/.test(subject)) {

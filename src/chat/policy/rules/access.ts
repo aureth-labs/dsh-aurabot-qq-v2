@@ -94,25 +94,19 @@ export function privateCapabilityAllowed(cfg, chat, capability) {
   return (cfg.capabilityAllow?.[capability] || []).map(String).includes(userId)
 }
 
-export const PROFILE_PERM_LEVELS = ['off', 'owner', 'all']
-export const PROFILE_PERM_KEYS = ['qqNickname', 'qqSignature', 'qqAvatar', 'qqFriendRequest', 'whitelist']
-export const profilePermDefault = (key) => 'owner'
-export const permOf = (cfg, key) => {
-  const p = cfg?.profilePerms?.[key]
-  return PROFILE_PERM_LEVELS.includes(p) ? p : profilePermDefault(key)
+export const PERM_LEVELS = ['off', 'owner', 'all'] as const
+export const whitelistLevel = (cfg) => PERM_LEVELS.includes(cfg?.whitelistLevel) ? cfg.whitelistLevel : 'owner'
+
+export function whitelistVisible(cfg, chat, where?) {
+  const level = whitelistLevel(cfg)
+  if (level === 'all') return chat.kind === 'private' || chat.kind === 'group'
+  return level === 'owner' && chat.kind === 'private' && isOwner(cfg, chat.userId, where)
 }
 
-export function profileToolVisible(cfg, key, chat) {
-  const p = permOf(cfg, key)
-  if (p === 'all') return chat.kind === 'private' || chat.kind === 'group'
-  if (p === 'owner') return chat.kind === 'private' && String(chat.userId) === String(ownerId(cfg) || '')
-  return false
-}
-
-export function profilePermits(cfg, key, chat, allOwner) {
-  const p = permOf(cfg, key)
-  if (p === 'off') return { ok: false, message: '这个操作在面板里关掉了' }
-  if (!profileToolVisible(cfg, key, chat)) return { ok: false, message: '这里不能做这个操作' }
-  if (p === 'owner' && !allOwner) return { ok: false, message: '只有主人私聊让我改才行' }
+export function whitelistPermits(cfg, chat, allOwner, where?) {
+  const level = whitelistLevel(cfg)
+  if (level === 'off') return { ok: false, message: '这个操作在面板里关掉了' }
+  if (!whitelistVisible(cfg, chat, where)) return { ok: false, message: '这里不能做这个操作' }
+  if (level === 'owner' && !allOwner) return { ok: false, message: '只有主人私聊让我改才行' }
   return { ok: true }
 }

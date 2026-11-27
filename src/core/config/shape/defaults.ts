@@ -42,10 +42,9 @@ export const DEFAULTS = {
   // 什么情况往主人 QQ 上报：enabled 是总开关，approval = 工具要授权，question = 她要向人提问选选项。
   // workspaces 按工作区单独覆盖：{ "<工作区路径>": { approval?: bool, question?: bool } }，没写的项跟随总开关。
   notice: { enabled: true, approval: true, question: true, windowSec: 8, workspaces: {} as Record<string, NoticeWorkspace> },
-  qqApi: { enabled: true }, // 她能用 qq_api_call 调 QQ 接口：别人只能查当前群，写操作只听主人
   approvalViaChat: true,
   approvalTimeoutSec: 300, // 等主人回复「确认」多久（秒）：默认 300，范围 30 ~ 1800
-  profilePerms: { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner' }, // 改资料类操作的权限：off 关 / owner 仅主人私聊 / all 所有人
+  whitelistLevel: 'owner' as 'off' | 'owner' | 'all',
   capabilityAllow: { image: [] as string[], song: [] as string[], video: [] as string[] },
   commandAllow: Object.fromEntries(DELEGATED_COMMANDS.map((name) => [name, [] as string[]])) as Record<string, string[]>,
   longTasks: true, // 长任务模式：主人私聊（完整权限）额外挂 dsh-tool-jobs + dsh-tool-schedule，会多一点工具定义、稍慢

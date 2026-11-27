@@ -89,7 +89,7 @@ export const TYPES = 'aurabot.d.ts'
 export const DOC_SRC = 'sdk/API.md'
 export const TYPES_SRC = 'sdk/aurabot.d.ts'
 // 从内置搬到社区库的模块：接口路径不变，面板页照常能用
-export const STABLE_ROUTES = new Set(['pet', 'group-admin'])
+export const STABLE_ROUTES = new Set(['pet'])
 
 export const userDir = () => dataDir('modules')
 /** id → 安装目录：平铺的在 modules/<id>，带 scope 的在 modules/<owner>/<name>。 */

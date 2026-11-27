@@ -151,7 +151,7 @@ test('ACP 兜底：正文 + 未知标记时不能因为标记把正文一起判�
 
 test('ACP 兜底：插件自己的合法标记不能被当成残渣（戳一戳 / 语音 / 表情）', () => {
   // 回归护栏：残渣判定曾把任意标签都挖空，导致「只发一个 <poke>」被判残渣而发不出去。
-  // 对应用例在 test/qq-tools-voice.test.js「原有私聊戳一戳仍报告实际成功，不误判成没发」。
+  // 对应用例在 test/platform/chat-tools-voice.test.js「原有私聊戳一戳仍报告实际成功，不误判成没发」。
   for (const t of ['<poke>', '<voice>晚上好</voice>', '<sticker:开心>', '<face:14>', '<reply:7><poke>']) {
     const g = guardOutgoing(t, {})
     assert.equal(g.ok, true, `合法标记被误判成残渣：${JSON.stringify(t)}（reason=${g.reason}）`)

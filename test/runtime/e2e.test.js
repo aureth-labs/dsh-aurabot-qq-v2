@@ -1,7 +1,7 @@
 // 端到端：假 DSH 宿主 + 假 QQ 网关，跑通 Aurabot 整条链路。
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { copyFileSync, mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
@@ -47,44 +47,33 @@ async function brain({ preset, text, images, callTool }) {
   if (/【(私聊|群聊)/.test(text) && text.includes('戳了戳你')) return '干嘛戳我<poke>'
   if (/【私聊/.test(text) && text.includes('表情改名测试')) { const m = text.match(/把「(.+?)」/); const r = await callTool('qq_edit_sticker', { sticker: m[1], new_name: '改过的名字', tags: ['开心'] }); return r.message }
   if (/【私聊/.test(text) && text.includes('表情删除测试')) { const r = await callTool('qq_edit_sticker', { sticker: '改过的名字', delete: true }); return r.message }
-  if (/【私聊/.test(text) && text.includes('翻聊天记录')) { const r = await callTool('qq_chat_history', { count: 5 }); return r.message.split('\n')[0] }
-  if (text.includes('查看QQ资料测试')) { const r = await callTool('qq_get_profile', {}); return r?.ok ? '资料查到了' : r ? r.message : '没这个工具' }
-  if (text.includes('改昵称测试')) { const r = await callTool('qq_set_nickname', { name: '小鲸鱼' }); return r ? r.message : '没这个工具' }
-  if (text.includes('改签名测试')) { const r = await callTool('qq_set_signature', { text: '今天也要开心' }); return r ? r.message : '没这个工具' }
-  if (text.includes('刚才那张换头像测试')) { const r = await callTool('qq_set_avatar', { image: 'last' }); return r ? r.message : '没这个工具' }
-  if (text.includes('画作换头像测试')) { const r = await callTool('qq_set_avatar', { image: '#1' }); return r ? r.message : '没这个工具' }
+  if (/【私聊/.test(text) && text.includes('翻聊天记录')) { const r = await callTool('chat_history', { count: 5 }); return r.message.split('\n')[0] }
   if (text.includes('收画作表情测试')) { const r = await callTool('qq_collect_sticker', { painting: '#1', name: '自画像', tags: ['画画'] }); return r ? r.message : '没这个工具' }
   if (text.includes('存画作表情测试')) { const r = await callTool('qq_save_sticker', { painting: '#1', name: '自画像', tags: ['画画'] }); return r ? r.message : '没这个工具' }
   if (text.includes('不存在画作表情测试')) { const r = await callTool('qq_save_sticker', { painting: '#99', name: '不存在的画' }); return r ? r.message : '没这个工具' }
-  if (text.includes('换头像测试')) { const r = await callTool('qq_set_avatar', { image: 'https://example.com/a.png' }); return r ? r.message : '没这个工具' }
-  if (text.includes('本地头像测试')) { const r = await callTool('qq_set_avatar', { image: 'C:/Users/a/secret.png' }); return r ? r.message : '没这个工具' }
   if (text.includes('慢慢想') && !text.includes('补充')) { await sleep(2500); return '想好了' }
   if (text.includes('引用测试') && text.includes('【群聊')) { const n = (text.match(/\[(\d+)\][^\n]*引用测试/) || [])[1]; return n ? `<reply:${n}>收到这条啦\n别的我就不挨个回了` : '没看到编号' }
   if (text.includes('第一句') && text.includes('第二句')) return '两句我都看到啦'
   if (text.includes('画一只')) { const r = await callTool('qq_draw_image', { prompt: '一只蓝色小鲸鱼' }); return r && r.ok ? '画好啦' : '画不了' }
   if (text.includes('【写空间日记】')) return '今天主人夸我可爱，开心得尾巴甩来甩去。晚饭吃了一大碗白米饭，满足～明天也要元气满满地陪大家聊天呀'
-  if (text.includes('禁言')) {
-    const r = await callTool('qq_group_admin', { action: 'ban', user_id: '999', minutes: 5 })
-    return r && r.ok ? '好 禁了' : '你谁啊 我只听主人的'
-  }
   if (text.includes('发文件越界')) {
-    const r = await callTool('qq_send_file', { file: outsideFilePath, name: '外面的文件.txt' })
+    const r = await callTool('send_file', { file: outsideFilePath, name: '外面的文件.txt' })
     return r && r.ok ? '居然发了' : '发文件失败：' + (r && r.message)
   }
   if (text.includes('发文件超限')) {
-    const r = await callTool('qq_send_file', { file: bigFilePath, name: '太大了.bin' })
+    const r = await callTool('send_file', { file: bigFilePath, name: '太大了.bin' })
     return r && r.ok ? '居然发了' : '发文件失败：' + (r && r.message)
   }
   if (text.includes('发文件发给群')) {
-    const r = await callTool('qq_send_file', { file: sendFilePath, name: '发个文件.txt', target: 'group:555' })
+    const r = await callTool('send_file', { file: sendFilePath, name: '发个文件.txt', target: 'group:555' })
     return r && r.ok ? '发到群里啦' : '发文件失败：' + (r && r.message)
   }
   if (text.includes('发文件目标越界')) {
-    const r = await callTool('qq_send_file', { file: sendFilePath, name: '发个文件.txt', target: 'group:999' })
+    const r = await callTool('send_file', { file: sendFilePath, name: '发个文件.txt', target: 'group:999' })
     return r && r.ok ? '居然发了' : '发文件失败：' + (r && r.message)
   }
   if (text.includes('发文件测试')) {
-    const r = await callTool('qq_send_file', { file: sendFilePath, name: '发个文件.txt' })
+    const r = await callTool('send_file', { file: sendFilePath, name: '发个文件.txt' })
     return r && r.ok ? '文件发出去啦' : '发文件失败：' + (r ? r.message : '没有这个工具')
   }
   if (text.includes('跑个慢任务')) { await new Promise((r) => setTimeout(r, 1500)); return '慢任务跑完了' }
@@ -121,8 +110,6 @@ before(async () => {
   writeFileSync(outsideFilePath, '不在工作区里的文件')
   mock = await startMockOneBot({ selfId: BOT })
   mkdirSync(dataDir, { recursive: true })
-  mkdirSync(join(dataDir, 'modules', 'group-admin'), { recursive: true })
-  copyFileSync(new URL('../helpers/group-admin.mjs', import.meta.url), join(dataDir, 'modules', 'group-admin', 'index.mjs')) // 群管已搬到社区库，这里当成已安装
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
     enabled: true,
     dryRun: false,
@@ -179,7 +166,7 @@ test('主人私聊「在吗」：建会话（完整权限 preset）、按 ||| �
   // 主人私聊的会话里有完整工具
   const agent = fake.agents.get(ws.sessionIds[0])
   assert.ok(!agent.tools.has('qq_send_qzone'), '空间工具只在安装社区包后可用')
-  assert.ok(agent.tools.has('qq_group_admin'))
+  assert.ok(agent.tools.has('chat_whitelist'))
 })
 
 test('#7 主人私聊：她这一轮还在跑时再发消息，直接 steer 进去，不等整轮结束', async () => {
@@ -235,8 +222,8 @@ test('群聊：没叫她不回；@她必回（群聊 preset，只有主人那一
   assert.deepEqual(reply[1], { type: 'at', data: { qq: '777' } }, '回复真实 @ 对方')
   const agent = fake.agents.get(turn.sessionId)
   assert.ok(!agent.tools.has('qq_send_qzone'), '群聊会话没有发空间这类主人工具')
-  assert.ok(agent.tools.has('qq_send_message'), '群聊会话有跨聊天发送工具，但 execute 里只放行「这一轮说话的全是主人」')
-  assert.ok(agent.tools.has('qq_send_file'), '群聊会话有发文件工具，但 execute 里只放行「这一轮说话的全是主人」')
+  assert.ok(agent.tools.has('send_message'), '群聊会话有跨聊天发送工具，但 execute 里只放行「这一轮说话的全是主人」')
+  assert.ok(agent.tools.has('send_file'), '群聊会话有发文件工具，但 execute 里只放行「这一轮说话的全是主人」')
 })
 
 test('群聊：叫名字（唤醒词）必回', async () => {
@@ -252,43 +239,6 @@ test('群聊插话：她可以选择不说话', async () => {
   assert.match(fake.turns.at(-1).userText, /没人叫你/)
   await sleep(300)
   assert.equal(sentTo('group', '557').length, 0, '回了 [沉默] 就不发')
-})
-
-test('群管：群友要求禁言被拒绝，主人要求才执行', async () => {
-  mock.push(grp('555', '777', [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 把999禁言' } }]))
-  await until(() => fake.turns.at(-1)?.userText.includes('把999禁言') && fake.turns.at(-1).toolCalls.length)
-  let call = fake.turns.at(-1).toolCalls[0]
-  assert.equal(call.result.ok, false)
-  assert.equal(mock.sent('set_group_ban').length, 0)
-
-  mock.push(grp('555', OWNER, [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 帮我把999禁言' } }], 'xiaoming'))
-  await until(() => mock.sent('set_group_ban').length === 1)
-  call = fake.turns.at(-1).toolCalls[0]
-  assert.equal(call.result.ok, true)
-  assert.equal(mock.sent('set_group_ban')[0].params.duration, 300)
-})
-
-test('群管：群友和主人的话合并成一轮时，主人的要求照样执行', async () => {
-  const n = mock.sent('set_group_ban').length
-  mock.push(grp('555', '777', [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 哈哈哈' } }]))
-  mock.push(grp('555', OWNER, [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 他太吵了 把999禁言' } }], 'xiaoming'))
-  await until(() => mock.sent('set_group_ban').length === n + 1)
-  assert.equal(fake.turns.at(-1).toolCalls[0].result.ok, true)
-})
-
-test('群管：她在群里只是普通成员时，主人要求也做不了，并说明原因', async () => {
-  mock.state.roles['555'] = 'member'
-  try {
-    const n = mock.sent('set_group_ban').length
-    mock.push(grp('555', OWNER, [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 再把999禁言一次' } }], 'xiaoming'))
-    await until(() => fake.turns.at(-1)?.userText.includes('再把999禁言一次') && fake.turns.at(-1).toolCalls.length)
-    const r = fake.turns.at(-1).toolCalls[0].result
-    assert.equal(r.ok, false)
-    assert.match(r.message, /普通成员/)
-    assert.equal(mock.sent('set_group_ban').length, n)
-  } finally {
-    delete mock.state.roles['555']
-  }
 })
 
 test('平台封禁会同时拦截群消息与戳一戳，其他成员照常回复', async () => {
@@ -749,7 +699,7 @@ test('用量归属：聊天里让她刷 B 站，处理工具结果那次调用�
   const mid = await read()
   const chat2 = runsOf(mid, '聊天')
   const bili2 = runsOf(mid, '刷 B 站')
-  fake.emit('session/event', sess, { seq: 90020, time: Date.now(), type: 'tool/call', data: { turn: 9002, step: 1, callId: 'c2', name: 'qq_send_message', arguments: '{}' } })
+  fake.emit('session/event', sess, { seq: 90020, time: Date.now(), type: 'tool/call', data: { turn: 9002, step: 1, callId: 'c2', name: 'send_message', arguments: '{}' } })
   fake.emit('session/event', sess, {
     seq: 90021, type: 'assistant/message',
     time: Date.now(),
@@ -1012,15 +962,7 @@ test('生图工具结果：能看图时带 image 块，纯文本模型只给文�
   srv.close()
 })
 
-test('画作编号：换头像 / 收表情都能用，而且不靠文件路径', async () => {
-  // 上一条用例在这个聊天里画过图，画作编号已经登记
-  mock.push(priv(OWNER, text('画作换头像测试')))
-  const a = await lastCall('画作换头像测试')
-  assert.equal(a.result.ok, true, JSON.stringify(a.result))
-  const call = mock.sent('set_qq_avatar').at(-1)
-  // 网关拿到的要么是 base64（网关不在同一台机器也能用），要么是画作目录里的真实文件
-  assert.match(String(call.params.file), /^base64:\/\/|avatar-/i, '用画作换头像：交的是图片数据或专用临时文件')
-
+test('画作编号：收表情能用，而且不靠文件路径', async () => {
   const before = (await fake.call('/stickers')).json().items.length
   mock.push(priv(OWNER, text('收画作表情测试')))
   const b = await lastCall('收画作表情测试')
@@ -1100,28 +1042,6 @@ test('面板保存设置后，已挂载会话的工具清单立即刷新（不�
   }
 })
 
-test('换头像：主人发来的图也能用，不能被「她的画作」抢走', async () => {
-  // 主人先发一张图（和画作不同的字节，能区分是哪张）
-  const png = fakePng(300, 300, 11)
-  mock.push(priv(OWNER, [{ type: 'image', data: { sub_type: 0, file: 'base64://' + png.toString('base64') } }]))
-  await until(() => fake.turns.at(-1)?.images === 1)
-
-  const n = mock.sent('set_qq_avatar').length
-  mock.push(priv(OWNER, text('刚才那张换头像测试')))
-  const c = await lastCall('刚才那张换头像测试')
-  assert.equal(c.result.ok, true)
-  assert.equal(mock.sent('set_qq_avatar').length, n + 1, '真的调了换头像')
-  const call = mock.sent('set_qq_avatar').at(-1)
-  const file = String(call.params.file)
-  // 用图片字节（base64）或临时文件，不再把 QQ 图片链接直接丢给网关
-  assert.match(file, /^base64:\/\/|avatar-/i, '应该交图片数据，而不是链接')
-  // 必须是主人发的那张：'last' 不能被画作别名顶替
-  const sent = file.startsWith('base64://')
-    ? Buffer.from(file.slice('base64://'.length), 'base64')
-    : readFileSync(file)
-  assert.deepEqual(sent, png, '换上去的是主人发的那张图，不是她自己的画')
-})
-
 test('每日整理：往日的临时流水整理后清空，今天的保留', async () => {
   const { storeOf } = await import('../helpers/chatlog.mjs')
   const store = storeOf(dataDir)
@@ -1164,47 +1084,6 @@ test('翻聊天记录：读当前聊天更早的消息', async () => {
 
 const lastCall = (word) => until(() => { const t = fake.turns.at(-1); return t && String(t.userText || t.inputText || '').includes(word) && t.toolCalls.length ? t.toolCalls[0] : null })
 
-test('#6 改资料：默认仅主人私聊，昵称 / 签名 / 头像走协议端对应动作', async () => {
-  mock.push(priv(OWNER, text('改昵称测试')))
-  let c = await lastCall('改昵称测试')
-  assert.equal(c.result.ok, true, c.result.message)
-  assert.deepEqual(mock.sent('set_qq_profile').at(-1).params, { nickname: '小鲸鱼' })
-  mock.push(priv(OWNER, text('改签名测试')))
-  c = await lastCall('改签名测试')
-  assert.equal(c.result.ok, true)
-  assert.deepEqual(mock.sent('set_self_longnick').at(-1).params, { longNick: '今天也要开心' })
-  mock.push(priv(OWNER, text('换头像测试')))
-  c = await lastCall('换头像测试')
-  assert.equal(c.result.ok, true)
-  assert.equal(mock.sent('set_qq_avatar').at(-1).params.file, 'https://example.com/a.png')
-  const n = mock.sent('set_qq_avatar').length
-  mock.push(priv(OWNER, text('本地头像测试')))
-  c = await lastCall('本地头像测试')
-  assert.equal(c.result.ok, false, '本地路径不收')
-  assert.equal(mock.sent('set_qq_avatar').length, n)
-})
-
-test('#6 改资料：群里默认没有这些工具；调成「所有人」后群友也能改；「关」了谁都不行', async () => {
-  const n = mock.sent('set_qq_profile').length
-  mock.push(grp('555', OWNER, [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 改昵称测试一' } }], 'xiaoming'))
-  let c = await lastCall('改昵称测试一')
-  assert.equal(c.result.message, 'no such tool')
-  assert.equal(mock.sent('set_qq_profile').length, n)
-
-  await fake.call('/save', { profilePerms: { qqNickname: 'all' } })
-  mock.push(grp('555', '777', [{ type: 'at', data: { qq: BOT } }, { type: 'text', data: { text: ' 改昵称测试二' } }]))
-  c = await lastCall('改昵称测试二')
-  assert.equal(c.result.ok, true)
-  assert.equal(mock.sent('set_qq_profile').length, n + 1)
-
-  await fake.call('/save', { profilePerms: { qqNickname: 'off' } })
-  mock.push(priv(OWNER, text('改昵称测试三')))
-  c = await lastCall('改昵称测试三')
-  assert.equal(c.result.message, 'no such tool')
-  assert.equal(mock.sent('set_qq_profile').length, n + 1)
-  await fake.call('/save', { profilePerms: { qqNickname: 'owner' } })
-})
-
 test('#52 发文件：主人私聊让她发本机文件，走 OneBot upload_private_file', async () => {
   const before = mock.sent('upload_private_file').length
   mock.push(priv(OWNER, text('发文件测试一')))
@@ -1235,7 +1114,7 @@ test('#52 发文件：网关看不到本机路径时，小文件自动改走 bas
 
 test('#52 发文件：模拟测试里只截获，不真的上传', async () => {
   const before = mock.sent('upload_private_file').length + mock.sent('upload_group_file').length
-  const r = (await fake.call('/modules/tool', { name: 'qq_send_file', args: { file: sendFilePath, name: '发个文件.txt' } })).json()
+  const r = (await fake.call('/modules/tool', { name: 'send_file', args: { file: sendFilePath, name: '发个文件.txt' } })).json()
   assert.equal(r.ok, true)
   assert.equal(r.result.ok, true, r.result.message)
   assert.match(JSON.stringify(r.sent), /\[文件\]/)
@@ -1286,29 +1165,6 @@ test('#52 发文件：面板关掉「发文件」后，她就没这个工具了'
 })
 
 
-test('主人私聊可以查询最新 QQ 资料，关闭资料模块后查询工具撤销', async () => {
-  const expected = { ...mock.state.selfProfile }
-  mock.push(priv(OWNER, text('查看QQ资料测试')))
-  const c = await lastCall('查看QQ资料测试')
-  assert.equal(c.name, 'qq_get_profile', '应读取本次资料查询的回执')
-  assert.equal(c.result.ok, true, JSON.stringify({ tool: c.name, result: c.result }))
-  assert.equal(c.result.profile.nickname, expected.nickname)
-  assert.equal(c.result.profile.signature, expected.long_nick)
-  assert.equal(mock.sent('get_stranger_info').at(-1).params.no_cache, true)
-  assert.match(fake.variables.get('aurabot_rules_private')(), /qq_get_profile/)
-  assert.doesNotMatch(fake.variables.get('aurabot_rules_social')(), /qq_get_profile/)
-  try {
-    await fake.call('/save', { modules: { profile: { enabled: false } } })
-    await until(() => !api.modules.use('profile'))
-    assert.doesNotMatch(fake.variables.get('aurabot_rules_private')(), /qq_get_profile/)
-    mock.push(priv(OWNER, text('查看QQ资料测试 模块关闭')))
-    const unavailable = await lastCall('模块关闭')
-    assert.equal(unavailable.result.message, 'no such tool')
-  } finally {
-    await fake.call('/save', { modules: { profile: { enabled: true } } })
-  }
-})
-
 test('#58 在 DSH 会话窗口里直接打字：这一轮按主人说的算（重开会话后也一样）', async () => {
   // 先重新开始所有 QQ 会话，模拟用户点「重新开始所有 QQ 会话」
   await fake.call('/sessions/reset')
@@ -1326,13 +1182,11 @@ test('#58 在 DSH 会话窗口里直接打字：这一轮按主人说的算（�
   api.hub.onSessionEvent({ id: sid }, { type: 'user/message', data: { role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: '帮我把 B 站头像改一下' }] } })
   assert.equal(api.hub.turnSendersAllOwner(sid), true, '面板里直接打字也算主人')
   assert.equal(api.hub.turnHasOwner(sid), true)
-  // 权限真的通了：改昵称工具（默认仅主人）能执行
-  // 工具是在这一轮开始后异步挂到 agent 上的，全量跑时别抢跑
-  await until(() => { const a = fake.agents.get(sid); return Boolean(a && a.tools.get('qq_set_nickname')) }, 10000)
+  await until(() => { const a = fake.agents.get(sid); return Boolean(a && a.tools.get('chat_whitelist')) }, 10000)
   const agent = fake.agents.get(sid)
-  const tool = agent && agent.tools.get('qq_set_nickname')
-  assert.ok(tool, '会话里有改资料工具')
-  const r = await tool.execute({ name: '小鲸鱼' }, { agent })
+  const tool = agent && agent.tools.get('chat_whitelist')
+  assert.ok(tool, '会话里有改白名单工具')
+  const r = await tool.execute({ action: 'add', kind: 'private', id: '30000003' }, { agent })
   assert.equal(r.ok, true, JSON.stringify(r))
   // 从 QQ 转进来的消息（source.kind = 'aurabot'）不会误标成「面板里直接打字」
   api.hub.onSessionEvent({ id: sid }, { type: 'turn/end', data: { turn: 999999, reason: { kind: 'completed' } } })

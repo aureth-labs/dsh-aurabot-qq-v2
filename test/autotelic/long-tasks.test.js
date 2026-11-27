@@ -35,5 +35,5 @@ test('spawn_teammate 只有主人私聊能用', async () => {
   assert.equal((await run('own')).kind, 'allow')
   for (const id of ['group', 'other', 'sys']) assert.equal((await run(id)).kind, 'deny', id)
   assert.equal((await run('dsh-normal')).kind, 'allow', 'DSH 自己的会话不管')
-  assert.equal((await run('group', 'qq_send_message')).kind, 'allow')
+  assert.equal((await run('group', 'send_message')).kind, 'allow')
 })

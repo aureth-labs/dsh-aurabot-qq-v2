@@ -28,6 +28,7 @@ import { registerAvatarRoutes } from './panel/platform/avatar.ts'
 import { migrateBilibili } from './migrations/bilibili.ts'
 import { migrateQzone } from './migrations/qzone.ts'
 import { migrateConfig } from './migrations/config.ts'
+import { migrateQqToolkit } from './migrations/qq-toolkit.ts'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROOT as packageRoot } from '../../src/core/support/util/root.ts'
@@ -55,7 +56,6 @@ import { initUsage, usageReport, closeUsage } from '../../src/core/llm/usage/usa
 import { createBotsAccessor } from '../../src/core/bot/instance/registry.ts'
 import { registerDebugRoutes } from './debug.ts'
 import { createMutes } from '../modules/commands/dispatch.ts'
-import { createGroupRoles } from '../../src/chat/policy/rules/group.ts'
 import { listPersonas, readPersona, currentPersonaText, resolvePersonaId, rulesText, seedPersonas, safeId, dataOwner, claimPending, hasRootData, personaNow } from '../../src/persona/personas.ts'
 import { readLook, lookReferences, appearanceBlock } from '../../src/persona/persona-look.ts'
 import { createModules, API_VERSION } from '../../src/core/module/index.ts'
@@ -110,6 +110,7 @@ export function apply(ctx) {
   migrateBilibili()
   migrateQzone()
   migrateConfig()
+  migrateQqToolkit()
   let cfg = loadConfig()
   debugSwitch.on = Boolean(cfg.debug)
   if (ownerId(cfg) && !ownerAuthorizationRevision(cfg)) {
@@ -216,7 +217,6 @@ export function apply(ctx) {
   ctx.effect(() => botRegistry.on('offline', (bot, reason) => mods?.emit('bot/offline', bot, reason)))
   ctx.effect(() => () => adapterRegistry.stopAll(), 'aurabot: 适配器下线')
 
-  const groupRoles = createGroupRoles({ bot: primaryBot, getConfig, log: logger.child('chat') })
   const local = createLocal({ getConfig, log: logger })
   const mutes = createMutes()
 
@@ -270,7 +270,7 @@ export function apply(ctx) {
 
   // ---------- 模块 ----------
   const core = {
-    hub, primaryBot, local, groupRoles, mutes, logger, bridge: null as unknown,
+    hub, primaryBot, local, mutes, logger, bridge: null as unknown,
     // S0：v2 发送面。ctx.bots[0] / ctx.bots('号') / ctx.bots.list()
     bots: createBotsAccessor(botRegistry),
     canReadMedia: (bot, message) => bot !== primaryBot() || checkAllowed(getConfig(), {
@@ -603,7 +603,7 @@ export function apply(ctx) {
     const opener = process.platform === 'win32' ? 'explorer.exe' : process.platform === 'darwin' ? 'open' : 'xdg-open'
     // 子进程起不来是以 error 事件抛的，没人听就是未捕获异常，会把 DSH 整个带走（#135）
     return new Promise((resolve) => {
-      const child = spawn(opener, [dir], { detached: true, stdio: 'ignore' })
+      const child = spawn(opener, [dir], { detached: true, stdio: 'ignore', windowsHide: true })
       child.once('error', (error) => resolve({ ok: false, message: `打不开文件夹：${dir}（${error.message}）` }))
       child.once('spawn', () => { child.unref(); resolve({ ok: true, message: '打开了' }) })
     })

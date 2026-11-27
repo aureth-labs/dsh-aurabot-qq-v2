@@ -69,6 +69,7 @@ export function fromOneBot(segments: unknown): Element[] {
 export function toOneBot(source: ElementSource): OneBotSegment[] {
   return normalize(source).flatMap<OneBotSegment>((element) => {
     if (element.type === 'br') return [{ type: 'text', data: { text: '\n' } }]
+    if (element.type === 'qq:card') return { type: String(element.attrs.type), data: { ...element.attrs.data } }
     const type = TYPE_TO_ONEBOT[element.type]
     if (!type) return element.children ? toOneBot(element.children) : []
     if (type === 'forward' && !element.attrs.id && element.children) return toOneBot(element.children).map(segment =>

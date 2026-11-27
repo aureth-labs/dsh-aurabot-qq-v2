@@ -47,7 +47,7 @@ test('#523：异步提炼拒绝时记录原因、模板晋升，宿主进程继�
     assert.match(store.get('probe').body, /模板保留原文/)
     await setImmediate()
     console.log('host survived')
-  `, root], { encoding: 'utf8', timeout: 5000 })
+  `, root], { encoding: 'utf8', timeout: 5000, windowsHide: true })
   assert.equal(child.status, 0, child.error?.message || child.stderr)
   assert.match(child.stdout, /提炼调用失败.*distill rejected/)
   assert.match(child.stdout, /host survived/)

@@ -1,5 +1,5 @@
 // H01 残余回归：主人和群友落在同一轮时，群友不能借「主人在场」读别的白名单群的聊天记录。
-// 背景：qq-tools 的 canReadGroup 曾用 turnHasOwner（本轮有人是主人）当权限门，
+// 背景：chat-tools 的 canReadGroup 曾用 turnHasOwner（本轮有人是主人）当权限门，
 // 主人问候 + 群友要求看另一个群落在同一轮时，那个群的记录会被交进本轮上下文（H01 同类借权）。
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
@@ -38,7 +38,7 @@ before(async () => {
   }))
   fake = createFakeDsh({ brain: async ({ text, callTool }) => {
     if (String(text).includes('看看B群') || String(text).includes('556')) {
-      const r = await callTool('qq_chat_history', { count: 5, group: '556' })
+      const r = await callTool('chat_history', { count: 5, group: '556' })
       return '翻记录结果：' + JSON.stringify(r)
     }
     return '嗯'
@@ -62,7 +62,7 @@ test('H01 残余：主人问候 + 群友同轮要求读别的群，执行层必�
   assert.ok(turn, '应该有一轮')
   assert.match(turn.userText, /在吗/, '主人的话在同一轮')
   assert.match(turn.userText, /看看B群/, '群友的话在同一轮')
-  const call = turn.toolCalls.find((c) => c.name === 'qq_chat_history')
+  const call = turn.toolCalls.find((c) => c.name === 'chat_history')
   assert.ok(call, '模型尝试读别的群')
   assert.equal(call.result.ok, false, '混合说话人轮次里，群友不能读另一个群')
   assert.match(String(call.result.message), /看不了/, '拒绝理由')

@@ -53,7 +53,7 @@ test('审计只记她自己的会话：主人私聊 / 群聊 / GUI 会话都不�
     owned: (sid) => sid !== 'gui', // GUI 会话连 aurabot 的会话都不算
   })
   const next = async () => ({ kind: 'allow' })
-  for (const [sid, tool] of [['her', 'fs'], ['owner', 'qq_send_message'], ['group', 'fs'], ['gui', 'pwsh']]) {
+  for (const [sid, tool] of [['her', 'fs'], ['owner', 'send_message'], ['group', 'fs'], ['gui', 'pwsh']]) {
     const r = await auditor.preExecute({ name: tool, arguments: { command: 'echo hi' }, agent: { session: { id: sid } } }, next)
     assert.deepEqual(r, { kind: 'allow' }, '审计钩子永远放行，不改变执行结果')
   }
@@ -63,7 +63,7 @@ test('审计只记她自己的会话：主人私聊 / 群聊 / GUI 会话都不�
   const text = readFileSync(join(dir, chainFile(dir)), 'utf8')
   assert.match(text, /"tool":"fs"/)
   assert.match(text, /system:autotelic/)
-  assert.doesNotMatch(text, /qq_send_message|private:|group:/)
+  assert.doesNotMatch(text, /send_message|private:|group:/)
 })
 
 test('第二道门（P2.3）：她的会话碰 shell / 进程级工具直接拒并记账；别人的会话不拦', async (t) => {
