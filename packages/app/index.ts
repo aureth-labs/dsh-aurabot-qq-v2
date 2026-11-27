@@ -190,7 +190,7 @@ export function apply(ctx) {
   const primaryBot = () => botRegistry.get(defaultOneBotId, 'qq')
   let hub = null
   let dangerGuard = null // 危险命令确认（security.dangerConfirm 开着才生效）
-  let approvalRelay = null // DSH 要授权时在 QQ 私聊问主人（approvalViaQQ 开着才生效）
+  let approvalRelay = null
   const directory = createIdentityDirectory(() => { ensureDir(dataDir()); return dataDir('identity.sqlite') }, getConfig)
   const gateway = createChatGateway({
     directory, ctx, logger, getConfig, personaMemoryRuntime, primaryBot,

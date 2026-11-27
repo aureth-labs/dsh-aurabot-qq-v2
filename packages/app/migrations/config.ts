@@ -4,7 +4,7 @@ import { dataDir, writeJson } from '../../../src/core/store/index.ts'
 import { backup, object, read, type Values } from './files.ts'
 
 const adapter = 'adapter-qq-onebot-v11'
-const LEGACY = ['botQQ', 'onebot', 'snowluma', 'gateway', 'ownerQQ', 'ownerIds']
+const LEGACY = ['botQQ', 'onebot', 'snowluma', 'gateway', 'ownerQQ', 'ownerIds', 'approvalViaQQ']
 const ENDPOINT = ['wsUrl', 'httpUrl', 'wsToken', 'httpToken']
 const digits = (value: unknown) => String(value ?? '').replace(/\D/g, '')
 
@@ -33,6 +33,7 @@ export function migrateConfig(root = dataDir()) {
     ...object(ext[adapter]),
   }
   const next: Values = { ...raw, owners: owners(raw) }
+  if (Object.hasOwn(raw, 'approvalViaQQ') && !Object.hasOwn(raw, 'approvalViaChat')) next.approvalViaChat = raw.approvalViaQQ !== false
   for (const key of LEGACY) delete next[key]
   if (Object.keys(settings).length) next.ext = { ...ext, [adapter]: settings }
   writeJson(path, next)

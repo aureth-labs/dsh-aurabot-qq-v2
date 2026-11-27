@@ -93,7 +93,7 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.approvalNotify = bool(c.approvalNotify, true)
   // 老配置只有 approvalNotify：没写过 notice 时用它当审批上报的默认值，免得更一次版本被重新打开
   c.notice = normalizeNotice(isObj(raw?.notice) ? raw.notice : null, raw?.approvalNotify)
-  c.approvalViaQQ = bool(c.approvalViaQQ, true)
+  c.approvalViaChat = bool(c.approvalViaChat, true)
   // 等主人回复授权的时长：坏数据一律回 5 分钟；范围夹在 30 秒 ~ 30 分钟（太短来不及看，太长把回合堵死）
   const approvalSec = Number(c.approvalTimeoutSec)
   c.approvalTimeoutSec = Number.isFinite(approvalSec) ? Math.min(1800, Math.max(30, Math.round(approvalSec))) : 300

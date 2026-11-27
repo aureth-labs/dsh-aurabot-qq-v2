@@ -230,7 +230,7 @@ function GlobalAccess({ st, draft, setDraft, toast }) {
         h('span', { className: 'ab-muted' }, ' 秒')),
       h(NoticeWorkspaces, { toast }),
       h(Row, { label: 'QQ 接口', hint: '让她用 QQ 的其他能力：别人只能查当前群的公告、精华这些；撤回、设精华、改群名片等只听你的。取 Cookie、发原始包、删好友、退群这些不开放。' }, f.sw('qqApi.enabled')),
-      h(Row, { label: '在 QQ 里批准', hint: '回复「确认」批准这一次、回复「取消」拒绝；超时按不批。只认你的私聊回复，DSH 也能同时点。' }, f.sw('approvalViaQQ')),
+      h(Row, { label: '在聊天里批准', hint: '回复「确认」批准这一次、回复「取消」拒绝；超时按不批。只认你的私聊回复，DSH 也能同时点。' }, f.sw('approvalViaChat')),
       h(Row, { label: '等多久算超时（秒）', hint: '在 QQ 里等你回复的时长，默认 300（5 分钟）。' }, f.num('approvalTimeoutSec', { min: 30, max: 1800 }), h('span', { className: 'ab-muted' }, ' 秒')),
       h(Row, { label: '长任务模式', hint: '只在「完整」权限下生效。打开后ta能把命令放到后台跑、跑完自动回来告诉你，也能设定时任务；工具多一点，回话会稍慢。切换后同样换新会话。' },
         h(Choices, { value: draft.longTasks ? 'on' : 'off', onChange: (v) => setDraft(setPath(draft, 'longTasks', v === 'on')), options: [
