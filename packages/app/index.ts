@@ -1,5 +1,6 @@
 import { createIdentityDirectory } from '../../src/core/store/identity.ts'
-import { createPrimaryChat } from './runtime/primary-chat.ts'
+import { createChatEngines, createChatHub } from './runtime/chat-engine.ts'
+import { useLegacyRooms } from '../../src/core/bot/room.ts'
 import { createPluginJournal } from './runtime/journal.ts'
 import { createOutboundRuntime } from './runtime/outbound.ts'
 import { createTransport } from './runtime/transport.ts'
@@ -252,10 +253,16 @@ export function apply(ctx) {
   }
 
   const generate = (options: AskModelOptions): Promise<string> => mods.services.require('llm').generate(options)
-  hub = createPrimaryChat({
-    local, ctx, getConfig, setConfig, logger, onebot, outbox, stickers, tts, use, mutes, listModels, personaMemoryRuntime, generate,
-    modules: () => mods, models: () => modelCache, deniedTools: () => bridge?.deniedTools() || [],
+  ctx.effect(() => useLegacyRooms('qq', defaultOneBotId))
+  const engines = createChatEngines({
+    registry: botRegistry, primaryId: defaultOneBotId, log: logger.child('chat'),
+    create: (bot, primary) => createChatHub({
+      bot, primary, outbox: primary ? outbox : undefined,
+      local, ctx, getConfig, setConfig, logger, onebot, stickers, tts, use, mutes, listModels, personaMemoryRuntime, generate,
+      modules: () => mods, models: () => modelCache, deniedTools: () => bridge?.deniedTools() || [],
+    }),
   })
+  hub = engines.router
   const http = createHttp({ ctx, getConfig, log, prefix: PREFIX, getMods: () => mods })
   const { send, readBody, readRaw, query, answer, route, panelBlocked, adminHostBlocked, csrfBlocked, isLoopbackAddr, panelNeedsLocal } = http
   const { outbound, wirePolicySources, deliverModule } = createOutboundRuntime({ getConfig, logger, hub, use })
@@ -308,7 +315,7 @@ export function apply(ctx) {
     generate: (prompt, turn) => generate({ ...prompt, module: 'chat-bridge', turn }),
   })
   mods = createModules({ ctx, core, deliverModule, chatLog: createPluginJournal(hub), getConfig, setConfig, logger, version: VERSION,
-    builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue, 'log-stream': logger, 'local-scripts': local } })
+    builtins: [defaultOneBot(getConfig), ...BUILTINS], personaMemoryRuntime, initialServices: { dialogue, 'room-timeline': engines.timeline, 'log-stream': logger, 'local-scripts': local } })
   bridge = createBridge({ ctx, getConfig, setConfig, hub, mods, log: logger.child('bridge'), version: String(VERSION), apiVersion: API_VERSION, overview: () => overview() })
   core.bridge = bridge
   core.modules = mods

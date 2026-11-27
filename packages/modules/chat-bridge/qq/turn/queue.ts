@@ -147,7 +147,7 @@ export function createTurnQueue({
         groupInterjects.set(gid, arr)
       }
 
-      if (p.mode === 'must' && ![...p.senders].some((id) => isOwner(getConfig(), id))) {
+      if (p.mode === 'must' && ![...p.senders].some((id) => isOwner(getConfig(), id, p.chat))) {
         const arr = (groupMusts.get(gid) || []).filter((t) => Date.now() - t < 3600_000)
         arr.push(Date.now())
         groupMusts.set(gid, arr)

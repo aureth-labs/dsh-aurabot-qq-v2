@@ -4,7 +4,6 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { apply } from '../../../packages/modules/purpose/index.ts'
-import { apply as chatBridge } from '../../../packages/modules/chat-bridge/index.ts'
 import { openOwnerChannel } from '../../../packages/modules/purpose/owners.ts'
 import { normalize } from '../../../src/core/config/index.ts'
 import { isOwnerOf } from '../../../src/core/config/owners.ts'
@@ -40,7 +39,13 @@ test('主人私聊按平台、机器人登录身份及人格投递，失效的�
     sendTo: async (target, el) => { sent.push({ target, text: el.attrs.content }); return { id: 'sent' } },
   }
   services.set('persona', { current: () => card })
-  chatBridge(ctx)
+  const rows = new Map()
+  const roomOf = (target, self, persona) => JSON.stringify([target.platform, target.botId, target.type, target.id, self, persona])
+  services.set('room-timeline', {
+    enabled: () => true,
+    read: (target, self, persona) => { const room = roomOf(target, self, persona); return { room, busy: false, revision: (rows.get(room) || []).length, messages: rows.get(room) || [] } },
+    record: (target, self, persona, line) => { const room = roomOf(target, self, persona); rows.set(room, [...(rows.get(room) || []), line]) },
+  })
   const timeline = services.get('room-timeline')
   const say = (target, text) => timeline.record(target, ctx.bots.get(target.botId, target.platform).selfId, card.id,
     { role: 'user', speaker: '主人', text, at: Date.now() })

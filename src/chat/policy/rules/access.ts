@@ -1,6 +1,15 @@
-// 谁能跟她说话、她在每个会话里有多大权限。纯函数。
+import { isLegacyScope, scopeOfRoom } from '../../../core/bot/room.ts'
+import { isOwnerOf } from '../../../core/config/owners.ts'
 
-/** 权限档位：full = DSH 完整工具；social = 只有 QQ 社交工具；chat = 纯聊天，没有工具。 */
+const scopeOf = (where) => {
+  if (where?.platform && where?.botId) return { platform: String(where.platform), botId: String(where.botId) }
+  return where?.chatId ? scopeOfRoom(where.chatId) : null
+}
+const legacy = (where) => {
+  const scope = scopeOf(where)
+  return !scope || isLegacyScope(scope.platform, scope.botId)
+}
+
 export const LEVELS = ['full', 'social', 'chat']
 
 /**
@@ -9,6 +18,7 @@ export const LEVELS = ['full', 'social', 'chat']
  * @returns {{allowed: boolean, reason: string}}
  */
 export function checkAllowed(cfg, msg) {
+  if (!legacy(msg)) return { allowed: true, reason: '身份目录已放行' }
   const owner = String(cfg.ownerQQ || '')
   if (msg.kind === 'private') {
     if (msg.userId === owner) return { allowed: true, reason: '主人' }
@@ -23,15 +33,14 @@ export function checkAllowed(cfg, msg) {
     : { allowed: false, reason: '不在群白名单' }
 }
 
-/** 群消息入口：白名单仍控制模块；仅模块名单只关闭群消息触发的 AI 接话。 */
-export function groupResponseMode(cfg, groupId) {
+export function groupResponseMode(cfg, groupId, where?) {
+  if (where && !legacy(where)) return 'chat'
   const id = String(groupId)
   if (!(cfg.allow?.groups || []).map(String).includes(id)) return 'off'
   return (cfg.group?.moduleOnlyGroups || []).map(String).includes(id) ? 'modules' : 'chat'
 }
 export const GROUP_RESPONSE_LABELS = { off: '不响应群消息', modules: '仅模块', chat: '允许 AI 聊天' }
 
-/** 只旁听指定的非白名单群：不开放回复、命令、工具或媒体下载。 */
 export function shouldObserveGroup(cfg, msg) {
   return cfg.enabled === true && !cfg.debug && cfg.memory?.enabled === true &&
     msg.kind === 'group' && !checkAllowed(cfg, msg).allowed &&
@@ -55,10 +64,8 @@ export function groupOwnerTools(cfg, chat) {
   return mode
 }
 
-/** 这个会话用哪一档权限。群聊默认不超过 social，除非主人给这个群开了本机工具。 */
 export function levelFor(cfg, chat) {
-  const owner = String(cfg.ownerQQ || '')
-  if (chat.kind === 'private' && chat.userId === owner) {
+  if (chat.kind === 'private' && isOwner(cfg, chat.userId, chat)) {
     return LEVELS.includes(cfg.ownerLevel) ? cfg.ownerLevel : 'full'
   }
   // group-full 不叫 full：插件自己的工具还要按 social 语义挂（模块里到处是 level === 'full' 判主人私聊），
@@ -67,19 +74,19 @@ export function levelFor(cfg, chat) {
   return 'social'
 }
 
-/** 档位 → agent preset id。 */
 export function presetFor(level, cfg, _chat?) {
   if (level === 'group-full') return 'aurabot-group-owner'
   if (level !== 'full') return 'aurabot-social'
   return cfg && cfg.longTasks ? 'aurabot-private-long' : 'aurabot-private'
 }
 
-/** 只有主人能做的事（群管、点歌、写文件……）。 */
-export function isOwner(cfg, userId) {
-  return String(userId || '') !== '' && String(userId) === String(cfg.ownerQQ || '')
+export function isOwner(cfg, userId, where?) {
+  if (String(userId || '') === '') return false
+  if (legacy(where)) return String(userId) === String(cfg.ownerQQ || '')
+  const scope = scopeOf(where)
+  return isOwnerOf(cfg, String(userId), scope.platform, scope.botId)
 }
 
-/** 授权名单只作用于已获准聊天的私聊对象。 */
 export function privateCapabilityAllowed(cfg, chat, capability) {
   if (chat?.kind !== 'private') return false
   const userId = String(chat.userId || '')
@@ -87,20 +94,16 @@ export function privateCapabilityAllowed(cfg, chat, capability) {
   return (cfg.capabilityAllow?.[capability] || []).map(String).includes(userId)
 }
 
-/** 改资料类操作（改昵称 / 签名 / 头像、改 B 站签名），以及处理好友申请、改白名单的三档权限。 */
 export const PROFILE_PERM_LEVELS = ['off', 'owner', 'all']
 export const DOUYIN_PERM_KEYS = ['douyinBrowse', 'douyinLike', 'douyinComment', 'douyinShareOwner', 'douyinDm']
-/** 小黑盒：浏览（含热榜/搜索）、点赞、评论、发帖（含删自己的帖）。 */
 export const HEYBOX_PERM_KEYS = ['heyboxBrowse', 'heyboxLike', 'heyboxComment', 'heyboxPost']
 export const PROFILE_PERM_KEYS = ['qqNickname', 'qqSignature', 'qqAvatar', 'qqFriendRequest', 'whitelist', ...DOUYIN_PERM_KEYS, ...HEYBOX_PERM_KEYS]
-/** 没设过的档位：一律默认仅主人（含抖音浏览/互动/改资料项；用户要放开自己在面板开）。 */
 export const profilePermDefault = (key) => 'owner'
 export const permOf = (cfg, key) => {
   const p = cfg?.profilePerms?.[key]
   return PROFILE_PERM_LEVELS.includes(p) ? p : profilePermDefault(key)
 }
 
-/** 这一档在这个会话里要不要挂工具。owner = 只在主人私聊里挂；all = 哪都挂；off = 不挂。 */
 export function profileToolVisible(cfg, key, chat) {
   const p = permOf(cfg, key)
   if (p === 'all') return chat.kind === 'private' || chat.kind === 'group'
@@ -108,7 +111,6 @@ export function profileToolVisible(cfg, key, chat) {
   return false
 }
 
-/** 执行时再查一遍（面板可能刚改过）。allOwner = 这一轮说话的人全是主人。 */
 export function profilePermits(cfg, key, chat, allOwner) {
   const p = permOf(cfg, key)
   if (p === 'off') return { ok: false, message: '这个操作在面板里关掉了' }

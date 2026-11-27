@@ -13,6 +13,7 @@ import { ignoredGroupMember } from '../../../../src/chat/inbound/filter/member-f
 
 import { createDeliverySources } from './delivery/sources.ts'
 import { dataDir } from '../../../../src/core/store/index.ts'
+import { isLegacyScope } from '../../../../src/core/bot/room.ts'
 import { parseReply, bubbleDelay, itemsToLine, cleanOutboundText, cleanOutboundSegments,
   tidyPunctuation, hasSuspectTagShape } from '../../../../src/chat/reply/index.ts'
 import { groupResponseMode, isOwner } from '../../../../src/chat/policy/rules/access.ts'
@@ -43,6 +44,7 @@ import { createCapture } from './turn/capture.ts'
 import { captureStore, sessionKey, simulationStore } from './context/context.ts'
 
 export function createHub({
+  scope = null,
   dsh,
   getConfig,
   log,
@@ -99,7 +101,11 @@ export function createHub({
   const ENGAGE_MS = 3 * 60_000
   const { refreshFriends, isFriend, membersOf, userName } = createDirectory(botOf, log)
 
-  const localMedia = hooks?.media ? undefined : createMediaScope(() => String(getConfig().botQQ || ''), log)
+  const legacyScope = !scope || isLegacyScope(scope.platform, scope.botId)
+  const scopeDir = legacyScope ? [] : ['bots', `${scope.platform}-${scope.botId}`.replace(/[^\w.-]/g, '_')]
+  const localMedia = hooks?.media ? undefined : createMediaScope(
+    () => legacyScope ? String(getConfig().botQQ || '') : botOf()?.status === 'online' ? String(botOf().selfId || '') || null : null,
+    log, [...scopeDir, 'primary-media'])
   let previousMedia: AccountMedia | undefined
   function clearGroupMedia() {
     for (const cache of Object.values(groups)) cache.clear()
@@ -171,7 +177,7 @@ export function createHub({
   }
 
   const sentIds = new Set()
-  const stats = createStats({ file: dataDir('stats.json'), log })
+  const stats = createStats({ file: dataDir(...scopeDir, 'stats.json'), log })
   const { conversationArchive, activity, chatLog, forgetChatLog, noteTurnActivity, closeLogs } = createTimeline({
     getConfig,
     log,

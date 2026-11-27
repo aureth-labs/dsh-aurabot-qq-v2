@@ -22,7 +22,7 @@ export function createTurnState(deps: TurnStateDeps) {
   function turnSignature(chatId) {
     const cfg = getConfig()
     const { kind, id } = roomOf(chatId) ?? { kind: '', id: '' }
-    const level = levelFor(cfg, { kind, userId: kind === 'private' ? id : '', groupId: kind === 'group' ? id : '' })
+    const level = levelFor(cfg, { kind, chatId, userId: kind === 'private' ? id : '', groupId: kind === 'group' ? id : '' })
     return `${cfg.debug ? 'debug' : 'live'}:${level}:${presetFor(level, cfg)}`
   }
   function isCurrentSession(chatId, key) {
@@ -31,14 +31,14 @@ export function createTurnState(deps: TurnStateDeps) {
     if (!cur || sessionKey(cur.sessionId) !== key || (cur.mode || 'live') !== (cfg.debug ? 'debug' : 'live')) return false
     const { kind, id } = roomOf(chatId) ?? { kind: '', id: '' }
     if (kind === 'private' || kind === 'group') {
-      const chat = { kind, userId: kind === 'private' ? id : '', groupId: kind === 'group' ? id : '' }
+      const chat = { kind, chatId, userId: kind === 'private' ? id : '', groupId: kind === 'group' ? id : '' }
       const level = levelFor(cfg, chat)
       if (cur.level !== level || cur.preset !== presetFor(level, cfg)) return false
     }
     return true
   }
   function groupChatAllowed(chatId) {
-    return !isGroupRoom(chatId) || groupResponseMode(getConfig(), groupOf(chatId)) === 'chat'
+    return !isGroupRoom(chatId) || groupResponseMode(getConfig(), groupOf(chatId), { chatId }) === 'chat'
   }
   function checkTurn(chatId, token) {
     assertActive()

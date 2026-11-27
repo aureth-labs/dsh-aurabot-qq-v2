@@ -16,8 +16,8 @@ export interface CachedQuote {
   stickers?: Element[]
 }
 
-function openMedia(selfId: string, log: Log) {
-  const path = (name: string) => /^[\w.-]+$/.test(selfId) ? dataDir('primary-media', selfId, name) : undefined
+function openMedia(selfId: string, log: Log, base: string[]) {
+  const path = (name: string) => /^[\w.-]+$/.test(selfId) ? dataDir(...base, selfId, name) : undefined
   const lifetime = new AbortController()
   const images = createRecentMedia({ file: path('recent-media.json'), log })
   const stickers = createStickerStash(path('sticker-stash.json'))
@@ -43,7 +43,7 @@ function openMedia(selfId: string, log: Log) {
 
 export type AccountMedia = ReturnType<typeof openMedia>
 
-export function createMediaScope(account: () => string | null, log: Log) {
+export function createMediaScope(account: () => string | null, log: Log, base = ['primary-media']) {
   let media: AccountMedia | undefined
   let active = true
   function reset() {
@@ -55,7 +55,7 @@ export function createMediaScope(account: () => string | null, log: Log) {
       const id = active ? account() : null
       if (media && media.selfId !== id) reset()
       if (id === null) return undefined
-      return media ??= openMedia(id, log)
+      return media ??= openMedia(id, log, base)
     },
     reset,
     dispose() { active = false; reset() },

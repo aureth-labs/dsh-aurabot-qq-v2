@@ -1,10 +1,8 @@
-// 会话归属 / 这一轮谁在说话 的只读查询。
-// 群管、生图、危险命令守卫这些「敏感工具」都靠它判断能不能放行，
-// 所以这里只读、不产生副作用（唯一的写是 findSession 顺手记住会话归属人格）。
+import { isPrivateRoom, userOf } from '../../../../../src/core/bot/room.ts'
 
 export interface SessionQueryDeps {
   getConfig: () => any
-  isOwner: (cfg: any, userId: string) => boolean
+  isOwner: (cfg: any, userId: string, where?: any) => boolean
   sessionKey: (id: string) => string
   turnState: any
   sessionToChat: any
@@ -44,13 +42,16 @@ export function createSessionQuery(deps: SessionQueryDeps) {
   }
 
   function ownerPrivateChat(sessionId: string): boolean {
-    try { return chatOfSession(sessionId) === `private:${getConfig().ownerQQ}` } catch { return false }
+    try {
+      const chatId = chatOfSession(sessionId)
+      return isPrivateRoom(chatId) && isOwner(getConfig(), userOf(chatId), { chatId })
+    } catch { return false }
   }
 
   function turnHasOwner(sessionId: string): boolean {
     const st = turnState.get(sessionKey(sessionId))
     if (st && st.directOwner) return true // 主人在 DSH 面板里直接打字
-    if (st && [...st.senders].some((u: string) => isOwner(getConfig(), u))) return true
+    if (st && [...st.senders].some((u: string) => isOwner(getConfig(), u, { chatId: chatOfSession(sessionId) }))) return true
     return ownerPrivateChat(sessionId)
   }
 
@@ -62,14 +63,14 @@ export function createSessionQuery(deps: SessionQueryDeps) {
     const st = state || turnState.get(sessionKey(sessionId))
     if (st && st.directOwner) return true
     if (!st || !st.senders.size) return ownerPrivateChat(sessionId)
-    return [...st.senders].every((u: string) => isOwner(getConfig(), u))
+    return [...st.senders].every((u: string) => isOwner(getConfig(), u, { chatId: chatOfSession(sessionId) }))
   }
 
   /** 生图的群聊例外：主人是本轮唯一明确 @ / 引用回复的请求者。 */
   function turnDirectFromOwner(sessionId: string): boolean {
     const st = turnState.get(sessionKey(sessionId))
     const uid = String(st?.directRequester?.uid || '')
-    return Boolean(uid && st?.senders.has(uid) && isOwner(getConfig(), uid))
+    return Boolean(uid && st?.senders.has(uid) && isOwner(getConfig(), uid, { chatId: chatOfSession(sessionId) }))
   }
 
   /** 这个 DSH 会话属于哪个人格（不是 aurabot 的会话时为空）。 */

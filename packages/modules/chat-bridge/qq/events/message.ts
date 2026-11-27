@@ -71,7 +71,7 @@ export function createIncomingMessages({
     if (ignoredGroupMember(cfg, msg)) return
     const now = Date.now()
     const wasCleared = () => currentMedia() !== account || isBeforeMemoryReset(msg.chatId, msg.userId, now)
-    const fromOwner = onCommand && isOwner(cfg, msg.userId)
+    const fromOwner = onCommand && isOwner(cfg, msg.userId, msg)
     const ownerRevision = fromOwner ? ownerAuthorizationRevision(cfg) : ''
 
     if (isDisposed() || wasCleared()) return
@@ -120,7 +120,7 @@ export function createIncomingMessages({
         } else {
           stickerPick = account.stickers.remember(msg.chatId, msg.stickers)
 
-          if (collectMode === 'owner' && !isOwner(cfg, msg.userId)) stickerPick = 0
+          if (collectMode === 'owner' && !isOwner(cfg, msg.userId, msg)) stickerPick = 0
         }
       }
     }
@@ -178,7 +178,7 @@ export function createIncomingMessages({
       const ownerStillCurrent = () => {
         const current = getConfig()
         return (
-          fromOwner && isOwner(current, msg.userId) && ownerAuthorizationRevision(current) === ownerRevision
+          fromOwner && isOwner(current, msg.userId, msg) && ownerAuthorizationRevision(current) === ownerRevision
         )
       }
       try {
@@ -241,7 +241,7 @@ export function createIncomingMessages({
     const dislikeChance = Math.max(0, Math.min(1, Number(cfg.memory?.dislikeSilence ?? 0.85) || 0))
     if (
       dislikeChance > 0 &&
-      !isOwner(cfg, msg.userId) &&
+      !isOwner(cfg, msg.userId, msg) &&
       dislikes?.(msg.userId) &&
       random() < dislikeChance
     ) {
@@ -259,7 +259,7 @@ export function createIncomingMessages({
 
     if (
       msg.kind === 'group' &&
-      groupResponseMode(getConfig(), msg.groupId) === 'chat' &&
+      groupResponseMode(getConfig(), msg.groupId, msg) === 'chat' &&
       groupEntry &&
       cfg.voice.asr &&
       msg.records.length
@@ -291,7 +291,7 @@ export function createIncomingMessages({
     }
     if (isDisposed() || wasCleared()) return
 
-    if (msg.kind === 'group' && groupResponseMode(getConfig(), msg.groupId) !== 'chat') {
+    if (msg.kind === 'group' && groupResponseMode(getConfig(), msg.groupId, msg) !== 'chat') {
       logIncoming() // 响应模式不改变白名单群原有的文字记忆记录。
       return
     }
@@ -332,7 +332,7 @@ export function createIncomingMessages({
         atOthersAny: msg.atOthers,
         repliedToBot: quotedBot,
         lastIsBot: Boolean(lastBotAt && (!priorMsg || lastBotAt > priorMsg.t)),
-        fromOwner: isOwner(cfg, msg.userId),
+        fromOwner: isOwner(cfg, msg.userId, msg),
         text: msg.wakeText,
         now,
         hour: new Date().getHours(),
@@ -431,7 +431,7 @@ export function createIncomingMessages({
     if (isDisposed() || wasCleared()) return
     logIncoming(text)
     activity.lastChatAt = now
-    if (msg.kind === 'private' && msg.userId === cfg.ownerQQ) activity.lastOwnerChatAt = now
+    if (msg.kind === 'private' && isOwner(cfg, msg.userId, msg)) activity.lastOwnerChatAt = now
     if (msg.kind === 'private') activity.lastPrivateAt.set(msg.userId, now)
     onActivity?.({
       kind: 'in',
@@ -440,7 +440,7 @@ export function createIncomingMessages({
       nickname: msg.nickname,
       text,
       direct: msg.kind === 'private' || msg.mentioned || mode === 'must',
-      owner: isOwner(cfg, msg.userId),
+      owner: isOwner(cfg, msg.userId, msg),
     })
 
     enqueue(

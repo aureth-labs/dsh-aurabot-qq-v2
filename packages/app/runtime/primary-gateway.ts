@@ -1,5 +1,5 @@
 import { createOutbox } from '../../modules/chat-bridge/qq/delivery/outbox.ts'
-import { groupOf, isGroupRoom, isPrivateRoom } from '../../../src/core/bot/room.ts'
+import { groupOf, isGroupRoom, isPrivateRoom, roomKey } from '../../../src/core/bot/room.ts'
 import { Session } from '../../../src/core/pipeline/session.ts'
 import { groupResponseMode } from '../../../src/chat/policy/rules/access.ts'
 import { toText } from '../../../src/core/message/element/element.ts'
@@ -153,15 +153,11 @@ export function createPrimaryGateway({
   )
 
   function respond(session, registry) {
-    const primarySession =
-      session instanceof Session &&
-      session.bot.platform === 'qq' &&
-      session.bot.id === defaultOneBotId &&
-      registry.get(defaultOneBotId, 'qq') === session.bot
+    const live = session instanceof Session && registry.get(session.bot.id, session.bot.platform) === session.bot
     const hub = getHub()
-    if (primarySession && hub) {
+    if (live && hub) {
       if (session.sentLog?.length) {
-        const chatId = session.type === 'private' ? `private:${session.userId}` : `group:${session.channelId}`
+        const chatId = roomKey(session.target)
         for (const item of session.sentLog.splice(0)) {
           try {
             hub.noteSaid?.(chatId, item.text)
