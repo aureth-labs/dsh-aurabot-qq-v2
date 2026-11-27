@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Fragment } from '../../core/ui/react.ts'
 import { post } from '../../core/api/api.ts'
 import { setPath } from '../../core/ui/format.ts'
 import { Btn, Card, Row, Seg, Select, h, useField } from '../../core/ui/ui.ts'
-import { CodexSub, PaintGallery } from './content.ts'
+import { CodexSub, PaintGallery } from './gallery.ts'
 import { ExtPanel } from '../system/modules.ts'
 
 // 官方推荐（赞助商）地址：固定第一项，面板里不可删；官网从这里跳

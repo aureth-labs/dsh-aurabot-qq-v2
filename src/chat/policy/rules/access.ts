@@ -95,9 +95,7 @@ export function privateCapabilityAllowed(cfg, chat, capability) {
 }
 
 export const PROFILE_PERM_LEVELS = ['off', 'owner', 'all']
-export const DOUYIN_PERM_KEYS = ['douyinBrowse', 'douyinLike', 'douyinComment', 'douyinShareOwner', 'douyinDm']
-export const HEYBOX_PERM_KEYS = ['heyboxBrowse', 'heyboxLike', 'heyboxComment', 'heyboxPost']
-export const PROFILE_PERM_KEYS = ['qqNickname', 'qqSignature', 'qqAvatar', 'qqFriendRequest', 'whitelist', ...DOUYIN_PERM_KEYS, ...HEYBOX_PERM_KEYS]
+export const PROFILE_PERM_KEYS = ['qqNickname', 'qqSignature', 'qqAvatar', 'qqFriendRequest', 'whitelist']
 export const profilePermDefault = (key) => 'owner'
 export const permOf = (cfg, key) => {
   const p = cfg?.profilePerms?.[key]

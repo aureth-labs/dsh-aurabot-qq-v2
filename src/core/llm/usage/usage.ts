@@ -56,7 +56,7 @@ interface SessionEvent { seq: number; time?: number; type: string; data?: Sessio
 
 const MODULE_LABELS = {
   memory: '记忆', mood: '心情', diary: '空间日记', purpose: '目的引擎', 'purpose-nudge': '目的引擎（追问）',
-  stickers: '表情包', imagegen: '生图', bili: '刷 B 站', heybox: '刷小黑盒', douyin: '刷抖音', video: '生视频',
+  stickers: '表情包', imagegen: '生图', bili: '刷 B 站', video: '生视频',
   voice: '语音', song: '翻唱', pet: '桌宠', profile: '改资料', contacts: '好友申请',
   'qq-tools': 'QQ 工具', 'qq-api': 'QQ 接口', 'group-admin': '群管', 'qzone-social': '空间互动',
   speakup: '主动搭话', bridge: '联动接口', 'bili-vision': 'B 站看画面', persona: '人格生成', 'model-ping': '模型测试', background: '其他后台任务',

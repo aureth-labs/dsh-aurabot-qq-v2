@@ -74,7 +74,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   for (const key of ['snowluma', 'gateway', 'onebot', 'botQQ']) delete (c as RawConfig)[key]
   // 几个老字段是从原始配置里直接读的（不经过 deepMerge），先摘出来，免得每处都判一遍
   const rawMemory = isObj(raw?.memory) ? raw.memory : {} as RawConfig
-  const rawDouyin = isObj(raw?.douyin) ? raw.douyin : {} as RawConfig
   c.enabled = bool(c.enabled, false)
   c.debug = bool(c.debug, false)
   // 指令前缀：只认字符串和 null（null = 无前缀），去重、去空串；坏数据落回默认
@@ -119,8 +118,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
     const ids = Array.isArray(c.commandAllow?.[key]) ? c.commandAllow[key] : []
     return [key, [...new Set(ids.map(String).map((id) => id.trim()).filter((id) => /^\d{5,}$/.test(id)))]]
   }))
-  // 旧版 douyinDm 是「回别人私信」的权限，含义已不同（现在是主动发私信），老配置一律回到默认「仅主人」
-  if (isObj(raw?.profilePerms) && 'douyinDm' in raw.profilePerms) c.profilePerms.douyinDm = profilePermDefault('douyinDm')
   c.allow = { private: qqList(c.allow.private), groups: qqList(c.allow.groups) }
   // 发文件：开关、大小上限、额外允许的目录（只认绝对路径；空行忽略）
   if (!isObj(c.files)) c.files = structuredClone(DEFAULTS.files)
@@ -297,63 +294,7 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.local.videoTimeoutMin = num(c.local.videoTimeoutMin, 20, 1, BIG)
   c.local.ffmpegPath = String(c.local.ffmpegPath || '').trim()
   delete (c as RawConfig).bili
-  const hb = c.heybox
-  hb.shareToOwner = bool(hb.shareToOwner, true)
-  hb.shareBias = ['stingy', 'normal', 'proactive'].includes(hb.shareBias) ? hb.shareBias : 'normal'
-  hb.shareDaily = Math.round(num(hb.shareDaily, 3, 0, BIG))
-  hb.cookie = String(hb.cookie || '').trim()
-  hb.topicMode = hb.topicMode === 'auto' ? 'auto' : 'manual'
-  hb.postWordsMin = Math.round(num(hb.postWordsMin, 0, 0, 2000))
-  hb.postWordsMax = Math.round(num(hb.postWordsMax, 0, 0, 3000))
-  if (hb.postWordsMax && hb.postWordsMin && hb.postWordsMax < hb.postWordsMin) [hb.postWordsMin, hb.postWordsMax] = [hb.postWordsMax, hb.postWordsMin]
-  // 每天每篇的排期：最多 5 篇；hashtags 和 hashtagsText 都保留（面板靠 Text 回显，模块靠数组发帖）
-  hb.dailyPosts = Array.isArray(hb.dailyPosts) ? hb.dailyPosts.slice(0, 5).map((p) => {
-    const o = (p && typeof p === 'object' ? p : {}) as RawConfig
-    const splitH = (v: unknown): string[] => String(v ?? '').split(/[\s,，、]+/).map((x) => String(x).trim()).filter(Boolean)
-    const hash = (Array.isArray(o.hashtags) ? o.hashtags : splitH(o.hashtagsText)).map((x) => String(x).trim()).filter(Boolean).slice(0, 4)
-    return {
-      style: ['diary', 'news', 'mix', 'deal'].includes(String(o.style ?? '')) ? String(o.style) : '',
-      topic: /^\d{3,7}$/.test(String(o.topic ?? '')) ? String(o.topic) : '',
-      hashtags: hash,
-      hashtagsText: hash.join(','),
-      wordsMin: Math.round(num(o.wordsMin, 0, 0, 2000)),
-      wordsMax: Math.round(num(o.wordsMax, 0, 0, 3000)),
-      hint: String(o.hint || '').trim().slice(0, 120),
-    }
-  }) : []   // ⚠ 不能在这里过滤全空项：排期是按下标取的（module 侧 currentPostPlan 用 postsToday() 索引），
-             //    过滤掉「第 1 篇留空跟全局、第 2 篇单独配」里的空项，会让第 2 篇的配置被当成第 1 篇用。
-             //    空项就代表「这一篇走全局设置」，原样保留位置。
-  hb.offPeakOnly = bool(hb.offPeakOnly, false)
-  hb.peakStartAM = num(hb.peakStartAM, 9, 0, 23)
-  hb.peakEndAM = num(hb.peakEndAM, 12, 0, 24)
-  hb.peakStartPM = num(hb.peakStartPM, 14, 0, 23)
-  hb.peakEndPM = num(hb.peakEndPM, 18, 0, 24)
-  hb.peakWeekend = bool(hb.peakWeekend, false)
-  const d = c.douyin
-  d.enabled = bool(d.enabled, false)
-  d.autoBrowse = bool(d.autoBrowse, true)
-  d.intervalHours = num(d.intervalHours, 4, 0.1, BIG)
-  d.maxRunsPerDay = num(d.maxRunsPerDay, 3, 0, BIG)
-  d.perRun = num(d.perRun, 5, 1, BIG)
-  d.maxWatchPerDay = num(d.maxWatchPerDay, 30, 0, BIG)
-  d.dwellMin = num(d.dwellMin, 8, 1, BIG)
-  d.dwellMax = Math.max(d.dwellMin, num(d.dwellMax, 40, 1, BIG))
-  d.browserPath = String(d.browserPath || '').trim()
-  d.shareTo = ['douyin', 'qq', 'both'].includes(d.shareTo) ? d.shareTo : 'douyin'
-  d.ownerDm = bool(d.ownerDm, true)
-  d.dmPollMinutes = num(d.dmPollMinutes, 3, 1, BIG)
-  d.shareBias = ['stingy', 'normal', 'proactive'].includes(d.shareBias) ? d.shareBias : d.shareBias === 'off' ? 'stingy' : 'proactive'
-  if (!isObj(d.caps)) d.caps = structuredClone(DEFAULTS.douyin.caps)
-  const rawDouyinCaps = isObj(rawDouyin.caps) ? rawDouyin.caps : {} as RawConfig
-  if (rawDouyinCaps.share == null && rawDouyinCaps.shareOwner != null) d.caps.share = num(rawDouyinCaps.shareOwner, 5, 0, BIG) // 1.0.x 叫 shareOwner
-  d.caps = { like: num(d.caps.like, 30, 0, BIG), comment: num(d.caps.comment, 3, 0, BIG), share: num(d.caps.share, 5, 0, BIG), atOwner: num(d.caps.atOwner, 3, 0, 30) }
-  if (!isObj(d.owner)) d.owner = structuredClone(DEFAULTS.douyin.owner)
-  d.owner = Object.fromEntries(['input', 'secUid', 'uid', 'nickname', 'confirmedInput'].map((k) => [k, String(d.owner[k] ?? '').trim().slice(0, 400)])) as AurabotConfig['douyin']['owner']
-  if (!isObj(d.gate)) d.gate = structuredClone(DEFAULTS.douyin.gate)
-  d.gate = { maxWritesPerDay: num(d.gate.maxWritesPerDay, 40, 1, BIG), minWriteGapSec: num(d.gate.minWriteGapSec, 20, 0, BIG), newAccountDays: num(d.gate.newAccountDays, 3, 0, 30) }
-  // 1.0.x 的 douyin-im / 私信相关设置都不用了
-  for (const k of ['atOwnerOnLikeChance', 'minimize', 'socialInterruptBrowse', 'replyPollMinutes']) delete d[k]
-
+  for (const key of ['douyin', 'heybox']) delete (c as RawConfig)[key]
   delete c.mood.maxInjectPerDay // 旧版的「每天最多提醒几次」，现在心情明显时每轮都会带上
   // 老配置只有一个 consolidateAt：换成两个时间点（它 + 12 小时后）
   if (!Array.isArray(rawMemory.consolidateTimes) && rawMemory.consolidateAt) {

@@ -252,8 +252,6 @@ function GlobalAccess({ st, draft, setDraft, toast }) {
 
 function ProfilePerms({ st, draft, setDraft }) {
   const perms = draft.profilePerms || {}
-  const douyinOn = modOn(st, 'douyin')
-  const heyboxOn = modOn(st, 'heybox')
   const opts = [
     { value: 'off', label: '关', desc: '谁说都不改' },
     { value: 'owner', label: '仅主人私聊', desc: '只有你私聊让ta改才改（默认）' },
@@ -261,21 +259,12 @@ function ProfilePerms({ st, draft, setDraft }) {
   ]
   const row = (key, label, hint?) => h(Row, { label, hint },
     h(Choices, { value: perms[key] || 'owner', onChange: (v) => setDraft(setPath(draft, 'profilePerms.' + key, v)), options: opts }))
-  return h(Card, { title: '改资料与名单', desc: 'ta能不能听人的话改自己的 QQ 昵称、签名、头像和 B 站签名，处理好友申请和改白名单；装了抖音、小黑盒模块后，它们的操作权限也在这里。改 QQ 资料要 OneBot 实现支持对应接口。各项默认仅主人。' },
+  return h(Card, { title: '改资料与名单', desc: 'ta能不能听人的话改自己的 QQ 昵称、签名、头像，处理好友申请和改白名单。改 QQ 资料要 OneBot 实现支持对应接口。各项默认仅主人。' },
     row('qqNickname', 'QQ 昵称'),
     row('qqSignature', 'QQ 个性签名'),
     row('qqAvatar', 'QQ 头像', '只用网址图片，或「刚才发的那张图」。'),
     row('qqFriendRequest', '处理好友申请', '让ta通过 / 拒绝别人加ta为好友的申请。ta自己主动加别人暂不支持（OneBot v11 没有这个接口）。'),
     row('whitelist', '改白名单', '允许改聊天白名单，主人不能被移出。关闭后，也不能在私聊里管理群接话和旁听；这两项始终只听主人私聊。「所有人」会允许其他人改聊天白名单。'),
-    douyinOn && row('douyinBrowse', '刷抖音 / 看视频', '让ta去刷推荐（douyin_browse）、点开别人发来的抖音链接（douyin_watch）。定时自己刷不受这项限制。'),
-    douyinOn && row('douyinLike', '抖音点赞', '有人让ta给某个视频点赞；关掉后ta自己刷的时候也不点赞。'),
-    douyinOn && row('douyinComment', '抖音评论', '有人让ta去某个视频下评论；关掉后ta自己刷的时候也不评论。'),
-    douyinOn && row('douyinShareOwner', '分享抖音给主人', '刷到好玩的视频在 QQ 私聊里发给你（ta的话 + 链接）。'),
-    douyinOn && row('douyinDm', '主动发抖音私信', '主人明确让ta给某个人发私信时（主页链接或抖音号）；列表里没有会话会从对方主页发起。默认仅主人私聊。'),
-    heyboxOn && row('heyboxBrowse', '逛小黑盒 / 看帖子', '让ta翻信息流（heybox_feed）、读帖子正文和热评（heybox_watch）、看热榜和搜帖子（heybox_hot / heybox_search / heybox_topics）。定时自己逛不受这项限制。'),
-    heyboxOn && row('heyboxLike', '小黑盒点赞', '有人让ta给某个帖子点赞；关掉后ta自己逛的时候也不点赞。'),
-    heyboxOn && row('heyboxComment', '小黑盒评论', '有人让ta去某个帖子下评论；关掉后ta自己逛的时候也不评论。'),
-    heyboxOn && row('heyboxPost', '小黑盒发帖 / 删帖', '让ta发帖（heybox_post，文章模式可带图）和删自己发的帖（heybox_delete）。发帖会用你的账号公开发布，默认仅主人私聊。'),
   )
 }
 

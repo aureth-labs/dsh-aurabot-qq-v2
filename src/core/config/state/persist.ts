@@ -6,15 +6,8 @@ import type { AurabotConfig } from '../shape/defaults.ts'
 
 const FILE = () => dataDir('config.json')
 
-/** 在某次更新里新增、会替她公开发东西的功能。以后再加这类功能，把配置键名加到这里。 */
-export const OPT_IN_ON_UPDATE = ['douyin']
-
 export function loadConfig() {
-  const file = FILE()
-  const raw = readJson(file, {})
-  // 更新插件后新增的、会公开发东西的功能：老用户先关着，等他们自己在面板里打开（新安装照常默认开）
-  if (raw?.owners?.length) for (const k of OPT_IN_ON_UPDATE) if (raw[k] === undefined) raw[k] = { enabled: false }
-  return normalize(raw)
+  return normalize(readJson(FILE(), {}))
 }
 
 export function ownerAuthorizationRevision(cfg) {

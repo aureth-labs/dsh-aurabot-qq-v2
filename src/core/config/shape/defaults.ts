@@ -16,8 +16,6 @@ export interface BaseUrlOption { name: string; url: string }
 export interface ImageFallback { id: string; provider: string; baseUrl: string; apiKey: string; apiKeySet?: boolean; model: string }
 /** 生图自定义接法的参数项：值里能用 {prompt} {model} {size} 等占位符。 */
 export interface ImageCustomParam { key: string; value: string }
-/** 小黑盒「每天每篇」的排期项：空字段 = 这一篇走全局设置。 */
-export interface HeyboxDailyPost { style: string; topic: string; hashtags: string[]; hashtagsText: string; wordsMin: number; wordsMax: number; hint: string }
 /** 面板记住的小偏好（键由面板自己决定）。 */
 export type TabPrefs = Record<string, unknown>
 /** 单个模块的开关项。 */
@@ -47,7 +45,7 @@ export const DEFAULTS = {
   qqApi: { enabled: true }, // 她能用 qq_api_call 调 QQ 接口：别人只能查当前群，写操作只听主人
   approvalViaQQ: true, // 主人私聊会话要授权时，在 QQ 回复「确认」直接批准这一次
   approvalTimeoutSec: 300, // 等主人回复「确认」多久（秒）：默认 300，范围 30 ~ 1800
-  profilePerms: { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner', douyinBrowse: 'owner', douyinLike: 'owner', douyinComment: 'owner', douyinShareOwner: 'owner', douyinDm: 'owner' }, // 改资料类操作（含抖音浏览 / 点赞 / 评论 / 分享）的权限：off 关 / owner 仅主人私聊 / all 所有人。抖音项默认仅主人，总开关默认关
+  profilePerms: { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner' }, // 改资料类操作的权限：off 关 / owner 仅主人私聊 / all 所有人
   capabilityAllow: { image: [] as string[], song: [] as string[], video: [] as string[] },
   commandAllow: Object.fromEntries(DELEGATED_COMMANDS.map((name) => [name, [] as string[]])) as Record<string, string[]>,
   longTasks: true, // 长任务模式：主人私聊（完整权限）额外挂 dsh-tool-jobs + dsh-tool-schedule，会多一点工具定义、稍慢
@@ -197,64 +195,10 @@ export const DEFAULTS = {
   },
   // 本地接口：数据目录 local/ 里的脚本接管这几项（文件要在、开关要开）
   local: { ffmpegPath: '', tts: false, image: false, song: false, asr: false, video: false, videoTimeoutMin: 20 },
-  // 刷抖音：专用浏览器（独立登录资料，不碰你平时的浏览器），经 CDP 控制。浏览 / 点赞 / 评论 / 分享各项权限在 profilePerms.douyin*。
-  douyin: {
-    enabled: false, // 总开关：默认关，先在面板里扫码登录再打开
-    autoBrowse: true, // 定时自己去刷
-    intervalHours: 4,
-    maxRunsPerDay: 3,
-    perRun: 5, // 一轮看几个视频
-    maxWatchPerDay: 30, // 每天最多看几个（手动让她刷也算；主人亲口让她找视频时不受这个限制）
-    dwellMin: 8, // 每个视频停留的秒数（随机取一个）
-    dwellMax: 40,
-    browserPath: '', // 留空 = 自动找 Edge（找不到再找 Chrome / Chromium）；也可填完整路径
-    shareBias: 'proactive', // stingy | normal | proactive：刷到好看的视频，分享给主人的积极程度
-    ownerDm: true, // 主人在抖音上私信她时回（只认核对过的主人抖音号）
-    dmPollMinutes: 3, // 隔几分钟看一次主人的抖音私信
-    shareTo: 'douyin', // douyin = 在抖音里私信分享给主人（要先核对主人抖音号，没核对 / 发不出去就改发 QQ）| qq = QQ 私聊发链接 | both = 两边都发
-    owner: { input: '', secUid: '', uid: '', nickname: '', confirmedInput: '' }, // 主人的抖音号：面板填抖音号 / 主页链接，「核对」后才写入 secUid（真·@主人只认它）
-    caps: { like: 30, comment: 3, share: 5, atOwner: 3 }, // 每天上限（登录后前 newAccountDays 天减半）；atOwner = 评论里真·@主人
-    gate: {
-      maxWritesPerDay: 40, // 点赞 + 评论合计上限
-      minWriteGapSec: 20, // 两次点赞 / 评论之间至少隔这么多秒
-      newAccountDays: 3, // 首次登录起这么多天内，上限都减半
-    },
-  },
-  // 刷小黑盒：用主人的账号逛游戏社区（读多写少）。点赞 / 评论 / 发帖各项权限在 profilePerms.heybox*。
-  heybox: {
-    enabled: false, // 总开关：默认关，先在面板里填 Cookie 再打开
-    cookie: '', // 整串 Cookie（pkey 必须有；要写操作还得有 x_xhh_tokenid）
-    autoBrowse: true, // 定时自己去逛（只读）
-    intervalHours: 4, // 多久逛一圈
-    maxRunsPerDay: 6, // 每天最多逛几轮
-    perRun: 3, // 一圈看几条
-    likeDaily: 10, // 每天最多点赞
-    commentDaily: 3, // 每天最多评论
-    maxPostsPerDay: 3, // 每天最多发帖（硬上限，多了容易被限）
-    defaultTopic: 7214, // 发帖默认分区：7214 盒友杂谈 / 18745 数码硬件 / 806933 AI
-    postStyle: 'mix', // 发帖风格：diary 大肥鱼日记 / news 热搜文 / mix 肥鱼热搜
-    shareToOwner: true, // 逛到有意思的帖子，私聊分享给主人（和 B 站同一个思路）
-    shareBias: 'normal', // stingy | normal | proactive：分享给主人的积极程度
-    shareDaily: 3, // 每天最多分享几条（避免刷屏）
-    // 谷时逛：只在非峰时跑自动逛，避开工作日 9-12 / 14-18 的高峰，省 token
-    // 分区：manual = 总是用默认分区；auto = 按正文内容自动挑（挑不到回落默认）
-    topicMode: 'manual',
-    // 发帖字数范围：0 = 用风格自带的；填了就覆盖（对所有风格生效）
-    postWordsMin: 0,
-    postWordsMax: 0,
-    // 每天每篇的排期：空数组 = 用全局设置；填几项就按几篇发，每篇用自己的配置
-    dailyPosts: [] as HeyboxDailyPost[],
-    offPeakOnly: false, // 开关：默认关（行为不变）
-    peakStartAM: 9, // 上午峰时开始（含）
-    peakEndAM: 12, // 上午峰时结束（不含）
-    peakStartPM: 14, // 下午峰时开始（含）
-    peakEndPM: 18, // 下午峰时结束（不含）
-    peakWeekend: false, // 周末是否也算峰时（默认不算，周末全天可逛）
-  },
   speakUp: {
     // ⚠ 语义归属（Q3/Q4 拍板，P5 注记）：主动搭话已并入目的引擎（ext.purpose，P1 起默认开），
     // speakup 模块已退场，但本段的醒着窗口/白名单/小闹钟等键**冻结在 speakUp.* 命名空间**，
-    // 由目的引擎维护——qzone-social/bili/douyin/heybox/xhs/phone/pet 等多处直读，改键会连坐。
+    // 由目的引擎维护，社区插件也会直读，改键会连坐。
     enabled: true, // 只在和主人的私聊里主动找你，群里不会
     idleMinutes: 40,
     minIntervalMinutes: 60,

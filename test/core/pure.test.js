@@ -295,23 +295,10 @@ test('更新：版本比较、仓库名、更新命令、更新说明', async ()
   assert.equal(r.latest, '0.3.0')
 })
 
-test('更新后：会公开发东西的新功能，老用户先关着，新安装照常默认开', async () => {
-  const { mkdtempSync, writeFileSync } = await import('node:fs')
-  const { tmpdir } = await import('node:os')
-  const { join } = await import('node:path')
-  const dir = mkdtempSync(join(tmpdir(), 'aurabot-upd-'))
-  const prev = process.env.AURABOT_DATA_DIR
-  process.env.AURABOT_DATA_DIR = dir
-  try {
-    const { loadConfig } = await import('../../src/core/config/index.ts')
-    assert.equal(Object.hasOwn(loadConfig(),'bili'), false, '平台插件通过市场安装')
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ setupDone: true, botQQ: '1', owners: [{ platform: 'qq', userId: '2' }] }))
-    assert.equal(loadConfig().douyin.enabled, false, '老用户更新：先关着')
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ setupDone: true, douyin: { enabled: true } }))
-    assert.equal(loadConfig().douyin.enabled, true, '自己打开过的保持打开')
-  } finally {
-    process.env.AURABOT_DATA_DIR = prev
-  }
+test('平台插件的配置不留在核心配置里', async () => {
+  const { normalize } = await import('../../src/core/config/index.ts')
+  const cfg = normalize({ bili: { enabled: true }, douyin: { enabled: true }, heybox: { cookie: 'x' } })
+  for (const key of ['bili', 'douyin', 'heybox']) assert.equal(Object.hasOwn(cfg, key), false)
 })
 
 test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', async () => {
@@ -327,7 +314,7 @@ test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', asy
 test('#6 改资料权限：默认仅主人私聊；所有人含群；关了都不行；执行时再查', async () => {
   const { normalize } = await import('../../src/core/config/index.ts')
   const d = normalize({ owners: [{ platform: 'qq', userId: '1' }] })
-  assert.deepEqual(d.profilePerms, { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner', douyinBrowse: 'owner', douyinLike: 'owner', douyinComment: 'owner', douyinShareOwner: 'owner', douyinDm: 'owner', heyboxBrowse: 'owner', heyboxLike: 'owner', heyboxComment: 'owner', heyboxPost: 'owner' })
+  assert.deepEqual(d.profilePerms, { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner' })
   assert.equal(normalize({ profilePerms: { qqAvatar: 'boss' } }).profilePerms.qqAvatar, 'owner', '乱填的回到默认')
   const ownerPm = { kind: 'private', userId: '1' }
   const otherPm = { kind: 'private', userId: '2' }

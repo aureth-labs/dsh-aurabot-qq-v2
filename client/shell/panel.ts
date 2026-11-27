@@ -7,7 +7,6 @@ import { Access, Group } from '../tabs/chat/access.ts'
 import { Autotelic } from '../tabs/agent/autotelic.ts'
 import { Connect, avatarSrc, pickAvatar } from '../tabs/chat/connect.ts'
 import { Bots } from '../tabs/overview/bots.ts'
-import { ContentTab } from '../tabs/content/content.ts'
 import { SpeakUp } from '../tabs/agent/speak-up.ts'
 import { ImageGen, Video } from '../tabs/content/media.ts'
 import { MemoryTab } from '../tabs/memory/memory.ts'
@@ -68,21 +67,6 @@ function AurabotPage() {
         localStorage.setItem('aurabot.navlast', JSON.stringify(last))
         localStorage.setItem('aurabot.memory-tab-v1', '1')
       }
-      // B站 / 抖音 / 小黑盒已并入「内容平台」：旧页签迁到 content + 对应子视图。
-      if (!localStorage.getItem('aurabot.content-tab-v1')) {
-        let last = {}
-        try { last = JSON.parse(localStorage.getItem('aurabot.navlast') || '{}') || {} } catch (e) {}
-        const cur = localStorage.getItem('aurabot.tab')
-        if (cur === 'bili' || cur === 'douyin' || cur === 'heybox') {
-          localStorage.setItem('aurabot.tab', 'content')
-          localStorage.setItem('aurabot.content-view', cur)
-        }
-        for (const key of Object.keys(last)) {
-          if (last[key] === 'bili' || last[key] === 'douyin' || last[key] === 'heybox') last[key] = 'content'
-        }
-        localStorage.setItem('aurabot.navlast', JSON.stringify(last))
-        localStorage.setItem('aurabot.content-tab-v1', '1')
-      }
       return localStorage.getItem('aurabot.tab') || 'overview'
     } catch (e) { return 'overview' }
   })
@@ -100,9 +84,6 @@ function AurabotPage() {
     } catch (e) { return 'starmap' }
   })
   const pickMemoryView = (v) => { setMemoryView(v); try { localStorage.setItem('aurabot.memory-view', v) } catch (e) {} }
-  // 内容平台子视图：bili / douyin / heybox（旧三个独立页签迁入这里）
-  const [contentView, setContentView] = useState(() => { try { return localStorage.getItem('aurabot.content-view') || '' } catch (e) { return '' } })
-  const pickContentView = (v) => { setContentView(v); try { localStorage.setItem('aurabot.content-view', v) } catch (e) {} }
   const [boot, setBoot] = useState(null)         // /panel/bootstrap 成功摘要
   const [bootErr, setBootErr] = useState(null)   // { code, message }：TIMEOUT / BOOTSTRAPPING / CONNECT / AUTH / STATE / CONFIG
   const [ready, setReady] = useState(false)      // bootstrap + /state 水合 + /panel/config 草稿全部就绪
@@ -439,7 +420,7 @@ function AurabotPage() {
   const conn = st.onebot.state === 'connected'
   const status = !cfg.enabled ? { cls: '', text: '休息中（总开关关着）' } : !conn ? { cls: 'err', text: 'QQ 没连上' } : cfg.debug ? { cls: 'warn', text: '在线 · 调试' } : { cls: 'ok', text: '在线' }
   const persona = st.personas.find((p) => p.id === cfg.persona.current)
-  const props = { st, boot, draft, setDraft: setD, toast, reload, go, voiceView, setVoiceView: pickVoiceView, memoryView, setMemoryView: pickMemoryView, contentView, setContentView: pickContentView }
+  const props = { st, boot, draft, setDraft: setD, toast, reload, go, voiceView, setVoiceView: pickVoiceView, memoryView, setMemoryView: pickMemoryView }
   // 标签页：内置的按模块在不在跑决定显示；自己写的模块有设置或面板的各占一页
   const mods = st.modules || []
   const running = (id) => { const m = mods.find((x) => x.id === id); return Boolean(m && m.running) }
@@ -476,11 +457,11 @@ function AurabotPage() {
   const voiceExtensions = curTab.id === 'voice' ? mods.filter(m => hasUi(m) && tabOf(m) === 'voice') : []
   const body = curTab.page ? PluginPageFrame : curTab.ext ? ExtPage : {
     overview: Overview, manage: Manage, bots: Bots, connect: Connect, character: Persona, access: Access, group: Group, model: Model, voice: VoiceTab,
-    stickers: Stickers, imagegen: ImageGen, video: Video, speakup: SpeakUp, autotelic: Autotelic, pet: PetPanel, mood: Mood, memory: MemoryTab, song: Song, content: ContentTab, local: LocalApi, browser: Browser, security: Security, market: Market, modules: Modules, logs: Logs, about: About, backup: Backup,
+    stickers: Stickers, imagegen: ImageGen, video: Video, speakup: SpeakUp, autotelic: Autotelic, pet: PetPanel, mood: Mood, memory: MemoryTab, song: Song, local: LocalApi, browser: Browser, security: Security, market: Market, modules: Modules, logs: Logs, about: About, backup: Backup,
   }[curTab.id] || Overview
   // 哪些标签有没保存的改动
   // group 键补上 files/forward：整理合并转发/发文件是聊天页的独立配置域，不补则改动不显示未保存标记
-  const TAB_KEYS = { character: ['personaLook'], connect: ['ext', 'workspaceDir'], access: ['owners', 'wakeWords', 'ownerName', 'ownerLevel', 'approvalNotify', 'approvalViaQQ', 'qqApi', 'longTasks', 'profilePerms', 'subagentBackground'], group: ['group', 'merge', 'memberFilter', 'chat', 'files', 'forward'], model: ['model', 'chatModels'], voice: ['voice'], stickers: ['stickers'], imagegen: ['imageGen'], video: ['video', 'local'], speakup: ['speakUp', 'ext'], autotelic: [], pet: [], mood: ['mood', 'memory'], song: ['song'], content: ['douyin', 'heybox'], local: ['local'], browser: ['browser'], security: ['security', 'update'] }
+  const TAB_KEYS = { character: ['personaLook'], connect: ['ext', 'workspaceDir'], access: ['owners', 'wakeWords', 'ownerName', 'ownerLevel', 'approvalNotify', 'approvalViaQQ', 'qqApi', 'longTasks', 'profilePerms', 'subagentBackground'], group: ['group', 'merge', 'memberFilter', 'chat', 'files', 'forward'], model: ['model', 'chatModels'], voice: ['voice'], stickers: ['stickers'], imagegen: ['imageGen'], video: ['video', 'local'], speakup: ['speakUp', 'ext'], autotelic: [], pet: [], mood: ['mood', 'memory'], song: ['song'], local: ['local'], browser: ['browser'], security: ['security', 'update'] }
   const tabDirty = (id) => {
     if (!dirty) return false
     // 对基线（/panel/config 快照）比对，不对比 st.config——pulse 只更新展示，不代表草稿基线

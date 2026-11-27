@@ -30,7 +30,6 @@ test('备份、暂存、启动时换上：内容一致，旧文件留底，排�
   put('modules/pet/module.json', '{}')
   put('logs/a.log', 'x')
   put('sessions.json', '{}')
-  put('douyin/edge-profile/Cookies', 'x')
   put('douyin/im/db', 'keep')
   put('modules-data/pet/app/node_modules/electron/a', 'x')
 

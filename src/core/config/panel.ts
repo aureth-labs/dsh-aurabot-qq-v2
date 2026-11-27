@@ -74,7 +74,6 @@ export function mergeFromPanel (current: AurabotConfig, incoming: RawConfig | nu
     }))
   }
   // 主人的抖音 secUid / uid / 昵称只能由「核对」写入，面板存配置时保留原值
-  next.douyin.owner = { ...next.douyin.owner, ...Object.fromEntries(['secUid', 'uid', 'nickname', 'confirmedInput'].map((k) => [k, current.douyin?.owner?.[k] ?? ''])) }
   // 联动密钥只由插件生成，面板不能改
   next.bridge.token = current.bridge?.token || ''
   const incomingGroup = isObj(incoming?.group) ? incoming.group : {} as RawConfig
