@@ -13,10 +13,10 @@ import { ignoredGroupMember } from '../../../../src/chat/inbound/filter/member-f
 
 import { createDeliverySources } from './delivery/sources.ts'
 import { dataDir } from '../../../../src/core/store/index.ts'
-import { isLegacyScope } from '../../../../src/core/bot/room.ts'
+import { groupOf, isGroupRoom, isLegacyScope } from '../../../../src/core/bot/room.ts'
 import { parseReply, bubbleDelay, itemsToLine, cleanOutboundText, cleanOutboundSegments,
   tidyPunctuation, hasSuspectTagShape } from '../../../../src/chat/reply/index.ts'
-import { groupResponseMode, isOwner } from '../../../../src/chat/policy/rules/access.ts'
+import { checkAllowed, groupResponseMode, isOwner } from '../../../../src/chat/policy/rules/access.ts'
 import { createFaces } from '../../../adapters/qq/onebot-v11/src/face/index.ts'
 import { guardOutgoing } from '../../../../src/chat/inbound/hooks/guard.ts'
 import { currentPromptSources } from '../../../../src/security/leak-guard.ts'
@@ -189,8 +189,14 @@ export function createHub({
   })
   const { logChat, noteSaid, noteProactive, chatLogDays, deleteChatLog, chatLogOf, proactiveFromChatLog } =
     chatLog
-  const { onNotice } = createNoticeHandler({
+  const notices = createNoticeHandler({
     getConfig,
+    bot: botOf,
+    allowed: (ev) => {
+      const account = botOf()
+      const owner = isOwner(getConfig(), ev.userId, { platform: account?.platform, botId: account?.id })
+      return owner || checkAllowed(getConfig(), { kind: ev.type, userId: String(ev.userId), groupId: ev.type === 'group' ? String(ev.channelId) : '', platform: account?.platform, botId: account?.id }).allowed
+    },
     userName,
     log,
     isDisposed,
@@ -607,8 +613,6 @@ export function createHub({
     capture,
     simulateTurn,
     onMessage,
-    onPoke,
-    onGroupFile,
     onSessionEvent,
 
     maybeReact,
@@ -645,17 +649,17 @@ export function createHub({
     markSlowNotice: (sessionId) => {
       if (sessionId) slowNoticeSent.add(sessionKey(sessionId))
     },
-    onNotice,
+    onNotice: (ev) => ev.action === 'poke' ? onPoke(ev) : ev.action === 'file' ? onGroupFile(ev) : notices.onNotice(ev),
     turnHasOwner,
     turnSenders,
     resetChat,
     resetPersonChat,
     memoryResetAt,
     filterHistory,
-    recallQuote(type: string, channelId: string, messageId: string) {
-      media.quotes.recall(type + ':' + channelId, messageId)
-      if (type === 'group') {
-        for (const row of groupBuf.get(channelId) || []) if (row.replyId === messageId) row.quote = null
+    recallQuote(chatId: string, messageId: string) {
+      media.quotes.recall(chatId, messageId)
+      if (isGroupRoom(chatId)) {
+        for (const row of groupBuf.get(groupOf(chatId)) || []) if (row.replyId === messageId) row.quote = null
       }
     },
     joinTopic: (gid) => groupEngaged.set(String(gid), Date.now() + ENGAGE_MS),

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Pipeline } from '../../src/core/pipeline/index.ts'
 import { Session, inboundSession } from '../../src/core/pipeline/session.ts'
-import { inboundOf, eventForHub } from '../../packages/adapters/qq/onebot-v11/src/inbound.ts'
+import { inboundOf } from '../../packages/adapters/qq/onebot-v11/src/inbound.ts'
 
 const s = (content) => ({ content })
 
@@ -197,9 +197,7 @@ test('纯图片可被中间件消费，同一管线并发 execute 使用各自�
     await next()
   })
   assert.equal((await pipeline.dispatch(session)).value, '图片')
-  pipeline.onLlm(s => eventForHub(s))
+  pipeline.onLlm(s => ({ content: s.content, parent: s.parent === session }))
   const results = await Promise.all(['甲', '乙'].map(text => session.execute(text)))
-  assert.deepEqual(results.map(r => r.value.message), ['甲', '乙'].map(text => [{ type: 'text', data: { text } }]))
-  assert.ok(results.every(r => r.value.sub_type === 'friend' && r.value.message_id === undefined))
-  assert.equal(eventForHub(session), source)
+  assert.deepEqual(results.map(r => r.value), ['甲', '乙'].map(content => ({ content, parent: true })))
 })

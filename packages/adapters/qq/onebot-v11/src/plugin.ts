@@ -4,7 +4,7 @@ import { createOneBotConnection } from './connection.ts'
 import { stickerService } from '../../../../../src/core/message/media/sticker.ts'
 import { stickerSource } from './stickers.ts'
 import { voiceSource } from './voice.ts'
-import { oneBotNotice } from './notices.ts'
+import { chatNotice, oneBotNotice } from './notices.ts'
 import { inboundOf, isMessageEvent } from './inbound.ts'
 import type { OneBotBot } from './bot.ts'
 
@@ -63,6 +63,8 @@ export function apply(ctx: PluginContext, config: Config) {
           else {
             const notice = oneBotNotice(event, ++sn)
             if (notice) runtime.emitEvent?.(notice.type, notice)
+            const chat = chatNotice(event)
+            if (chat) runtime.emitEvent?.('chat-notice', chat)
             runtime.emitEvent?.('onebot', event)
           }
         },

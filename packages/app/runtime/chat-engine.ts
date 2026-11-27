@@ -147,6 +147,7 @@ const BY_ROOM = new Set([
   'cleanOutbound', 'recentMedia', 'recentImages', 'stickerElement', 'recentFiles', 'stickerOf', 'deliver', 'sendText',
   'sendVoice', 'sendVoiceFile', 'sendFile', 'sendSticker', 'sendImage', 'sendSegments', 'noteProactive', 'runTurnInChat',
   'chatCooldown', 'turnRunning', 'resetChat', 'recentMessagesOf', 'logChat', 'noteSaid', 'saidElsewhereOf', 'proactiveHistoryOf',
+  'recallQuote',
 ])
 const BY_SESSION = new Set([
   'turnSendersAllOwner', 'turnDirectFromOwner', 'markSlowNotice', 'turnHasOwner', 'turnSenders', 'chatOfSession', 'personaOf',
@@ -193,6 +194,7 @@ export function createChatEngines({ registry, primaryId, create, log }) {
       if (BROADCAST.has(name)) return (...args) => { let out; for (const hub of all()) out = hub[name](...args); return out }
       if (name === 'onSessionEvent') return (session, event) => { for (const hub of all()) hub.onSessionEvent(session, event) }
       if (name === 'onMessage') return (session, deleted) => hubFor(session.bot).onMessage(session, deleted)
+      if (name === 'onNotice') return (bot, notice) => hubFor(bot).onNotice(notice)
       if (name === 'busy') return () => all().some(hub => hub.busy())
       if (name === 'dispose') return () => { for (const hub of all()) hub.dispose(); hubs.clear() }
       return value.bind(target)

@@ -1,9 +1,5 @@
 import type { InboundMessage } from '../../../../../src/types/adapter/adapter.ts'
-import type { Element } from '../../../../../src/types/core/element.ts'
-import type { Session } from '../../../../../src/core/pipeline/session.ts'
-import { h, toText } from '../../../../../src/core/message/element/element.ts'
-import { oneBotSegments, type OneBotSegment } from './cq.ts'
-import { fromOneBot, toOneBot } from './element.ts'
+import { fromOneBot } from './element.ts'
 
 interface MessageEvent {
   message_type: 'group' | 'private'
@@ -36,41 +32,6 @@ export function inboundOf(event: MessageEvent): InboundMessage {
     timestamp: event.time ? event.time * 1000 : undefined,
     elements: fromOneBot(event.message),
     raw: event,
-  }
-}
-
-export function hubSegments(elements: Element[], source?: unknown): OneBotSegment[] {
-  const originals = new Map<string, OneBotSegment[]>()
-  for (const raw of oneBotSegments(source)) {
-    if (raw.type === 'text') continue
-    const key = JSON.stringify(fromOneBot([raw])[0])
-    const matches = originals.get(key)
-    if (matches) matches.push(raw)
-    else originals.set(key, [raw])
-  }
-  for (const matches of originals.values()) matches.reverse()
-  return elements.flatMap(el => {
-    if (el.type === 'forward' && el.children?.length) return toOneBot(el.children.flatMap(child => child.type === 'message' ? child.children ?? [] : [child]))
-    const heard = el.type === 'voice' && el.children?.find(child => child.type === 'translateVoice')
-    if (heard) return toOneBot(h.text('[语音] ' + toText(heard)))
-    const raw = el.type !== 'text' && originals.get(JSON.stringify(el))?.pop()
-    return raw ? [raw] : toOneBot(el)
-  })
-}
-
-export function eventForHub(session: Session): unknown {
-  if (!session.parent) {
-    if (!session.reparsed || !session.raw || typeof session.raw !== 'object') return session.raw
-    return { ...session.raw, raw_message: session.content, message: hubSegments(session.elements, 'message' in session.raw ? session.raw.message : undefined) }
-  }
-  const source = session.parent.raw
-  if (!source || typeof source !== 'object') return
-  return {
-    ...source,
-    message_id: undefined,
-    time: Math.floor(session.timestamp / 1000),
-    raw_message: session.content,
-    message: toOneBot(session.elements),
   }
 }
 

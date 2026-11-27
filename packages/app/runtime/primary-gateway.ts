@@ -29,26 +29,6 @@ export function createPrimaryGateway({
     return claimReply(chat, message.userId, text)
   }
 
-  function handleNotice(ev) {
-    emit('onebot', ev)
-    if (ev.post_type === 'notice' && ev.notice_type === 'bot_offline') {
-      log.warn(
-        `QQ 账号离线${ev.tag ? '（' + String(ev.tag).slice(0, 100) + '）' : ''}${ev.message ? '：' + String(ev.message).slice(0, 300) : ''}`,
-      )
-    } else if (ev.post_type === 'notice' && ev.notice_type === 'notify' && ev.sub_type === 'poke') {
-      getHub()
-        .onPoke(ev)
-        .catch((error) => log.error('处理戳一戳出错：', error.message))
-    } else if (ev.post_type === 'notice' && ev.notice_type === 'group_upload') {
-      getHub()
-        .onGroupFile(ev)
-        .catch((error) => log.error('处理群文件出错：', error.message))
-    } else if (ev.post_type === 'notice') {
-      getHub()
-        .onNotice(ev)
-        .catch((error) => log.debug('处理通知出错：', error.message))
-    }
-  }
   const outbox = createOutbox({ log: logger.child('outbox') })
   // 网关预热：从第一次 connecting 到 connected 之间的时间，用于面板显示「已等 N 秒」而不是干等
   let gatewayWarmSince = 0
@@ -179,20 +159,20 @@ export function createPrimaryGateway({
     beforeMessage: (bot: BotLike, message: InboundMessage) =>
       primary(bot) && claimPrimaryMessage(message.raw, message),
     beforeEvent: (event: string, payload: unknown, bot: BotLike) => {
-      if (!primary(bot)) return
-      if (event === 'onebot') {
-        const notice = payload as { group_id?: number; sender_id?: number; user_id?: number; notice_type?: string }
-        if (notice?.notice_type === 'group_upload' || notice?.notice_type === 'notify') {
-          const userId = String(notice.group_id ? notice.user_id ?? '' : notice.sender_id ?? notice.user_id ?? '')
-          const type = notice.group_id ? 'group' : 'private'
-          if (userId && !directory.authority({ platform: bot.platform, botId: bot.id },
-            { userId, type, channelId: String(notice.group_id || userId) })) return false
-        }
-        handleNotice(payload)
+      if (event === 'onebot' && primary(bot)) {
+        const ev = payload as { post_type?: string; notice_type?: string; tag?: string; message?: string }
+        if (ev?.post_type === 'notice' && ev.notice_type === 'bot_offline')
+          log.warn(`QQ 账号离线${ev.tag ? '（' + String(ev.tag).slice(0, 100) + '）' : ''}${ev.message ? '：' + String(ev.message).slice(0, 300) : ''}`)
+      }
+      if (event === 'chat-notice') {
+        const notice = payload as { type: 'private' | 'group'; channelId: string; userId: string; action: string }
+        if ((notice.action === 'poke' || notice.action === 'file') && !directory.authority({ platform: bot.platform, botId: bot.id },
+          { userId: String(notice.userId), type: notice.type, channelId: String(notice.channelId) })) return false
+        getHub()?.onNotice(bot, notice)?.catch?.((error) => log.debug('处理通知出错：', error.message))
       }
       if (event === 'message-deleted') {
-        const row = payload as { type: string; channelId: string; messageId: string }
-        getHub()?.recallQuote(row.type, row.channelId, row.messageId)
+        const row = payload as { type: 'private' | 'group'; channelId: string; messageId: string }
+        getHub()?.recallQuote(roomKey({ platform: bot.platform, botId: bot.id, type: row.type, id: row.channelId }), row.messageId)
       }
     },
   }

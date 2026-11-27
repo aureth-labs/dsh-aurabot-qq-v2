@@ -1,3 +1,5 @@
+import { roomKey } from '../../../../../src/core/bot/room.ts'
+
 export interface GroupEventDeps {
   isDisposed: () => boolean
   getConfig: () => any
@@ -7,7 +9,7 @@ export interface GroupEventDeps {
   hooks: any
   lastPoker: Map<string, string>
   ignoredGroupMember: (cfg: any, chat: any) => boolean
-  groupResponseMode: (cfg: any, groupId: string) => string
+  groupResponseMode: (cfg: any, groupId: string, where?: any) => string
   onMessage: (ev: any) => Promise<any>
   log: any
 }
@@ -18,47 +20,51 @@ export function createGroupEvents (deps: GroupEventDeps) {
     const bot = deps.bot()
     return { platform: bot?.platform || 'qq', id: bot?.id || '', selfId: String(bot?.selfId || deps.getSelfId() || '') }
   }
+  const chatOf = (ev) => {
+    const self = account()
+    return { kind: ev.type, chatId: roomKey({ platform: self.platform, botId: self.id, type: ev.type, id: ev.channelId }),
+      groupId: ev.type === 'group' ? String(ev.channelId) : '', userId: String(ev.userId), platform: self.platform, botId: self.id }
+  }
 
   async function onGroupFile(ev) {
-    if (deps.isDisposed() || !ev.file?.name) return
-    if (deps.ignoredGroupMember(deps.getConfig(), { kind: 'group', groupId: ev.group_id, userId: ev.user_id })) return
-    let nickname = String(ev.user_id)
+    if (deps.isDisposed() || !ev.file?.name || ev.type !== 'group') return
+    const chat = chatOf(ev)
+    if (deps.ignoredGroupMember(deps.getConfig(), chat)) return
+    let nickname = chat.userId
     try {
-      nickname = await deps.userName(String(ev.user_id), String(ev.group_id)) || nickname
+      nickname = await deps.userName(chat.userId, chat.groupId) || nickname
     } catch (error) {}
     await deps.onMessage({
-      bot: account(), type: 'group', channelId: String(ev.group_id), userId: String(ev.user_id), userName: nickname, messageId: '0',
-      elements: [{ type: 'file', attrs: { name: ev.file.name, size: ev.file.size, id: ev.file.id, busid: ev.file.busid } }],
+      bot: account(), type: 'group', channelId: chat.groupId, userId: chat.userId, userName: nickname, messageId: '0',
+      elements: [{ type: 'file', attrs: { ...ev.file } }],
     })
   }
 
   async function onPoke(ev) {
     if (deps.isDisposed()) return
-    const self = String(ev.self_id || account().selfId)
-    if (String(ev.target_id) !== self) return
-    if (deps.ignoredGroupMember(deps.getConfig(), { kind: ev.group_id ? 'group' : 'private', groupId: ev.group_id, userId: ev.user_id })) return
+    const self = account().selfId
+    if (String(ev.targetId) !== self) return
+    const chat = chatOf(ev)
+    if (deps.ignoredGroupMember(deps.getConfig(), chat)) return
     if (deps.hooks?.poke) {
-      try { if (await deps.hooks.poke(ev)) return } catch (error) {}
+      try { if (await deps.hooks.poke({ ...ev, chatId: chat.chatId })) return } catch (error) {}
     }
     if (deps.isDisposed()) return
-    const group = ev.group_id ? String(ev.group_id) : ''
-    if (group && deps.groupResponseMode(deps.getConfig(), group) !== 'chat') return
-    const poker = String(group ? ev.user_id : ev.sender_id ?? ev.user_id)
+    if (chat.groupId && deps.groupResponseMode(deps.getConfig(), chat.groupId, chat) !== 'chat') return
+    const poker = chat.userId
     if (!poker || poker === self) return
-    if (deps.isDisposed()) return
-    const chatId = group ? `group:${group}` : `private:${poker}`
-    deps.lastPoker.set(chatId, poker)
-    if (Date.now() - (pokeAt.get(chatId) || 0) < 20_000) return
-    pokeAt.set(chatId, Date.now())
+    deps.lastPoker.set(chat.chatId, poker)
+    if (Date.now() - (pokeAt.get(chat.chatId) || 0) < 20_000) return
+    pokeAt.set(chat.chatId, Date.now())
     let nickname = poker
     try {
-      nickname = await deps.userName(poker, group) || poker
+      nickname = await deps.userName(poker, chat.groupId) || poker
     } catch (error) {}
     if (deps.isDisposed()) return
-    deps.log.info(`${chatId}：${nickname} 戳了戳她`)
+    deps.log.info(`${chat.chatId}：${nickname} 戳了戳她`)
     await deps.onMessage({
-      bot: { ...account(), selfId: self }, type: group ? 'group' : 'private', channelId: group || poker, userId: poker, userName: nickname, messageId: '0',
-      elements: [{ type: 'at', attrs: { id: self } }, { type: 'text', attrs: { content: ev.action ? ' [' + ev.action + (ev.suffix || '') + '（这是戳一戳的动作）]' : ' [戳了戳你]' } }],
+      bot: account(), type: ev.type, channelId: ev.channelId, userId: poker, userName: nickname, messageId: '0',
+      elements: [{ type: 'at', attrs: { id: self } }, { type: 'text', attrs: { content: ev.value ? ' [' + ev.value + '（这是戳一戳的动作）]' : ' [戳了戳你]' } }],
     })
   }
 

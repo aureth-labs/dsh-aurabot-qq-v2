@@ -11,7 +11,7 @@ import type { VoiceResolver } from '../../../../../src/core/message/element/voic
 import { OneBotBot, type OneBotBotInit, type OneBotCall } from './bot.ts'
 
 export { OneBotBot }
-export { inboundOf, eventForHub } from './inbound.ts'
+export { inboundOf } from './inbound.ts'
 export type { OneBotBotInit, OneBotCall }
 
 export interface OneBotV11SpecOptions extends OneBotBotInit {

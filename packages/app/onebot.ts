@@ -6,7 +6,6 @@ import * as adapter from '../adapters/qq/onebot-v11/src/plugin.ts'
 import type { createOneBotConnection } from '../adapters/qq/onebot-v11/src/connection.ts'
 import type { BotLike } from '../../src/types/adapter/bot.ts'
 import type { createSendEvents } from '../../src/core/bot/send-events.ts'
-import { hubSegments } from '../adapters/qq/onebot-v11/src/inbound.ts'
 import { fromOneBot } from '../adapters/qq/onebot-v11/src/element.ts'
 import type { PluginContext } from '../../src/types/plugin/ctx.ts'
 import type { AurabotConfig } from '../../src/core/config/shape/defaults.ts'
@@ -43,13 +42,6 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
 export function primaryOneBot(service: () => Connection | null, botOf?: () => BotLike, events?: ReturnType<typeof createSendEvents>) {
   return {
     get bot() { return botOf?.() },
-    async projectQuote(raw, id) {
-      const current = service()
-      const elements = fromOneBot(raw)
-      if (!current?.bot || !elements.some(el => el.type === 'forward')) return raw
-      const expanded = await current.bot.expandForwards(elements, id)
-      return current === service() && expanded !== elements ? hubSegments(expanded, raw) : raw
-    },
     get state() { return service()?.client.state ?? 'stopped' },
     get verified() { return service()?.verified ?? false },
     get login() { return service()?.login ?? { uin: '', nickname: '', at: 0 } },
