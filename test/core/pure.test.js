@@ -218,7 +218,7 @@ test('imageSize 读 PNG 宽高', () => {
   assert.deepEqual(imageSize(png), { width: 200, height: 180 })
 })
 
-const cfg = { ownerQQ: '10000001', ownerLevel: 'full', allow: { private: ['10000001'], groups: ['555'] } }
+const cfg = { owners: [{ platform: 'qq', userId: '10000001' }], ownerLevel: 'full', allow: { private: ['10000001'], groups: ['555'] } }
 
 test('白名单', () => {
   assert.equal(checkAllowed(cfg, { kind: 'private', userId: '10000001' }).allowed, true)
@@ -305,7 +305,7 @@ test('更新后：会公开发东西的新功能，老用户先关着，新安�
   try {
     const { loadConfig } = await import('../../src/core/config/index.ts')
     assert.equal(Object.hasOwn(loadConfig(),'bili'), false, '平台插件通过市场安装')
-    writeFileSync(join(dir, 'config.json'), JSON.stringify({ setupDone: true, botQQ: '1', ownerQQ: '2' }))
+    writeFileSync(join(dir, 'config.json'), JSON.stringify({ setupDone: true, botQQ: '1', owners: [{ platform: 'qq', userId: '2' }] }))
     assert.equal(loadConfig().douyin.enabled, false, '老用户更新：先关着')
     writeFileSync(join(dir, 'config.json'), JSON.stringify({ setupDone: true, douyin: { enabled: true } }))
     assert.equal(loadConfig().douyin.enabled, true, '自己打开过的保持打开')
@@ -326,7 +326,7 @@ test('解析：合并转发记下 id，回复里的 <poke> 变成戳一戳', asy
 
 test('#6 改资料权限：默认仅主人私聊；所有人含群；关了都不行；执行时再查', async () => {
   const { normalize } = await import('../../src/core/config/index.ts')
-  const d = normalize({ ownerQQ: '1' })
+  const d = normalize({ owners: [{ platform: 'qq', userId: '1' }] })
   assert.deepEqual(d.profilePerms, { qqNickname: 'owner', qqSignature: 'owner', qqAvatar: 'owner', qqFriendRequest: 'owner', whitelist: 'owner', douyinBrowse: 'owner', douyinLike: 'owner', douyinComment: 'owner', douyinShareOwner: 'owner', douyinDm: 'owner', heyboxBrowse: 'owner', heyboxLike: 'owner', heyboxComment: 'owner', heyboxPost: 'owner' })
   assert.equal(normalize({ profilePerms: { qqAvatar: 'boss' } }).profilePerms.qqAvatar, 'owner', '乱填的回到默认')
   const ownerPm = { kind: 'private', userId: '1' }
@@ -337,11 +337,11 @@ test('#6 改资料权限：默认仅主人私聊；所有人含群；关了都�
   assert.equal(profileToolVisible(d, 'qqNickname', group), false)
   assert.equal(profilePermits(d, 'qqNickname', ownerPm, true).ok, true)
   assert.equal(profilePermits(d, 'qqNickname', ownerPm, false).ok, false, '主人私聊里混进了别人的话也不行')
-  const all = normalize({ ownerQQ: '1', profilePerms: { qqNickname: 'all' } })
+  const all = normalize({ owners: [{ platform: 'qq', userId: '1' }], profilePerms: { qqNickname: 'all' } })
   assert.equal(profileToolVisible(all, 'qqNickname', group), true)
   assert.equal(profilePermits(all, 'qqNickname', otherPm, false).ok, true)
   assert.equal(profileToolVisible(all, 'qqNickname', { kind: 'system' }), false)
-  const off = normalize({ ownerQQ: '1', profilePerms: { qqNickname: 'off' } })
+  const off = normalize({ owners: [{ platform: 'qq', userId: '1' }], profilePerms: { qqNickname: 'off' } })
   assert.equal(profileToolVisible(off, 'qqNickname', ownerPm), false)
   assert.equal(profilePermits(off, 'qqNickname', ownerPm, true).ok, false)
 })

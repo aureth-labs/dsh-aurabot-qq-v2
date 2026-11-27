@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../src/core/config/owners.ts'
 import { roomId } from '../../../../src/core/bot/room.ts'
 // 上下文注入：每轮回复前按这一轮对方说的话检索记忆，拼成一小段提示词交给她；也拼群背景与流水尾巴。
 
@@ -49,7 +50,7 @@ export function createContextBuilder(deps: ContextDeps) {
     // 私聊里相处经验和说话方式已经是对这个人的，画像里的同名字段就不再说一遍；群里经验是对全群的，个人画像照带
     const samePerson = chat.kind !== 'group'
     // 对这个人（群里是正在说话的几个人）的印象，不用等关键词碰上
-    const ownerQQ = String(getConfig().ownerQQ || '')
+    const ownerQQ = String(ownerId(getConfig()) || '')
     const speakers = hub?.speakersOf?.(sessionId) || []
     const people = chat.kind === 'group' ? [...new Set([...speakers].reverse().map(String))].filter((qq) => qq !== ownerQQ && remembers(qq, state)).slice(0, cfg.profilePeople ?? 2) : chat.userId ? [chat.userId] : []
     const profs = people.filter((qq) => remembers(qq, state)).map((qq) => { const p = profileOf(qq, state); return p || personTags(qq, state).length ? { ...(p || {}), qq } : null }).filter(Boolean)
@@ -79,7 +80,7 @@ export function createContextBuilder(deps: ContextDeps) {
       parts.push('（说话方式：' + [sty.length ? '和' + (chat.kind === 'group' ? '这个群' : '对方') + '聊久了，' + sty.join('；') : '', self.length ? '你平时不知不觉会用的说法：' + self.join('、') : ''].filter(Boolean).join('。') + '。自然带一点就好，别刻意模仿，也别变成另一个人。）')
     }
     // 最近做过的事：只给主人私聊；群聊/非主人私聊不带，避免日记/经历里的主人细节外溢
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     const ownerPrivate = chat.kind === 'private' && String(chat.userId) === owner
     if (ownerPrivate) {
       const recent = recentEvents(24, 4, state).filter((m) => !['hearsay', 'guess'].includes(m.status))
@@ -107,7 +108,7 @@ export function createContextBuilder(deps: ContextDeps) {
     const all = getConfig()
     const ob = all.group && all.group.ownerBrief
     if (!ob || ob.enabled !== true) return ''
-    if (!all.ownerQQ || String(chat.userId) !== String(all.ownerQQ)) return ''
+    if (!ownerId(all) || String(chat.userId) !== String(ownerId(all))) return ''
     if (!GROUP_TALK.test(String(queryText || ''))) return ''
     const now = Date.now()
     const cutoff = now - 86400_000
@@ -187,7 +188,7 @@ export function createContextBuilder(deps: ContextDeps) {
 
   function tailHint(chat, q, state = load()) {
     if (!chat?.chatId || !['private', 'group'].includes(chat.kind)) return ''
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     const rows = chatTail(chat.chatId, state).filter((l) => chat.kind !== 'group' || !owner || String(l.uid || '') !== owner)
     if (!rows.length) return ''
     // chatId 一起带上：让 tailHint 也统一走检索层的来源可见性判定（本来就是同一个聊天，防回归）
@@ -219,7 +220,7 @@ export function createContextBuilder(deps: ContextDeps) {
   }
 
   function crossHint(chat) {
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     if (getConfig().memory.crossContext !== true || !owner || chat?.kind !== 'private' || String(chat.userId) !== owner) return ''
     const byChat = new Map()
     for (const l of crossRows()) {
@@ -260,10 +261,10 @@ export function createContextBuilder(deps: ContextDeps) {
     if (!shouldAutoRecall(q)) return shortHint
     const backdrop = groupBackdrop(chat, q)
     const recent = recentEvents(24, 4, state).filter((m) => !['hearsay', 'guess'].includes(m.status))
-    const shown = new Set((chat?.kind === 'private' && String(chat.userId) === String(getConfig().ownerQQ || '') ? recent : []).map((m) => m.id))
+    const shown = new Set((chat?.kind === 'private' && String(chat.userId) === String(ownerId(getConfig()) || '') ? recent : []).map((m) => m.id))
     const about = chat && chat.kind === 'private' ? chat.userId : (speakers || hub?.speakersOf?.(sessionId) || [])
     // 群聊 / 非主人私聊只许想起和这一段说话的人有关的记忆；主人的私事不能带出来
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     const ownerPrivate = chat && chat.kind === 'private' && String(chat.userId) === owner
     const onlyAbout = ownerPrivate ? undefined : about
     const requireAbout = !ownerPrivate
@@ -343,9 +344,9 @@ export function createContextBuilder(deps: ContextDeps) {
     if (!shouldAutoRecall(q)) return shortHint
     const backdrop = groupBackdrop(chat, q)
     const recent = recentEvents(24, 4, state).filter((m) => !['hearsay', 'guess'].includes(m.status))
-    const shown = new Set((chat?.kind === 'private' && String(chat.userId) === String(getConfig().ownerQQ || '') ? recent : []).map((m) => m.id))
+    const shown = new Set((chat?.kind === 'private' && String(chat.userId) === String(ownerId(getConfig()) || '') ? recent : []).map((m) => m.id))
     const about = chat && chat.kind === 'private' ? chat.userId : (speakers || hub?.speakersOf?.(sessionId) || [])
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     const ownerPrivate = chat && chat.kind === 'private' && String(chat.userId) === owner
     const onlyAbout = ownerPrivate ? undefined : about
     const requireAbout = !ownerPrivate

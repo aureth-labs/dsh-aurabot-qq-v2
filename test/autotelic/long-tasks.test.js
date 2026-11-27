@@ -28,7 +28,7 @@ test('预设里不挂团队工具：DSH 的开关已经全局挂了，重复注�
 
 test('spawn_teammate 只有主人私聊能用', async () => {
   const guard = createDangerGuard({
-    getConfig: () => ({}), ownerQQ: () => '1',
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '1' }] }),
     chatOfSession: (id) => ({ own: 'private:1', group: 'group:9', other: 'private:2', sys: 'system:diary' })[id] || '',
   })
   const run = (id, name = 'spawn_teammate') => guard.preExecute({ name, agent: { session: { id } } }, async () => ({ kind: 'allow' }))

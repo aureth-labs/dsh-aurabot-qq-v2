@@ -25,7 +25,7 @@ function setup(t, options = {}) {
   process.env.AURABOT_DATA_DIR = dir
   let now = Date.now()
   t.mock.method(Date, 'now', () => now)
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: OWNER, ownerName: '主人',
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人',
     model: { provider: 'p', model: 'm' }, voice: { enabled: false }, stickers: { enabled: false },
     memory: { compress: false, gistEnabled: false, keepChatlogDays: -1, ...options.memory },
     speakUp: { allow: [FRIEND], awakeFrom: 0, awakeTo: 24, nudge: false, idleMinutes: 1, minIntervalMinutes: 1, maxIntervalMinutes: 1, maxPerDay: 2 },

@@ -119,7 +119,7 @@ before(async () => {
   process.env.AURABOT_WORKSPACE = join(dataDir, 'ws')
   mock = await startMockOneBot({ selfId: BOT })
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
-    enabled: true, dryRun: false, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
+    enabled: true, dryRun: false, setupDone: true, botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER, FRIEND], groups: ['777', '888'] },
     group: { interjectChance: 0 },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },

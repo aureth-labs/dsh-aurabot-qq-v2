@@ -16,7 +16,7 @@ const OWNER = '10000001'
 const BOT = '20000002'
 const MAP = join(dataDir, 'sessions.json')
 writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
-  enabled: true, dryRun: true, debug: false, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
+  enabled: true, dryRun: true, debug: false, setupDone: true, botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }],
   allow: { private: [], groups: [] },
   onebot: {},
   voice: { enabled: false }, merge: { enabled: false },

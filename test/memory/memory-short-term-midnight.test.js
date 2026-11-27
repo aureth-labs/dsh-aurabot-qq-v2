@@ -15,7 +15,7 @@ test('短期状态读取跨午夜的流水并去掉记忆提示', async (t) => {
   const now = new Date(2025, 2, 2, 0, 30).getTime()
   Date.now = () => now
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ ownerQQ: '123456', model: { provider: 'p', model: 'm' }, memory: { dailyConsolidate: false, keepChatlogDays: -1, gistEnabled: false } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: '123456' }], model: { provider: 'p', model: 'm' }, memory: { dailyConsolidate: false, keepChatlogDays: -1, gistEnabled: false } })
   const log = { info() {}, warn() {}, debug() {} }
   const calls = []
   const dsh = { get: () => null, llm: { async *stream({ messages }) {

@@ -24,7 +24,7 @@ function setup () {
   process.env.AURABOT_DATA_DIR = dir
   const today = dayKey()
   const cfg = normalize({
-    ownerQQ: '10000001',
+    owners: [{ platform: 'qq', userId: '10000001' }],
     memory: { dailyConsolidate: true, extractDailyBatches: 0, consolidateTimes: [hhmm()], keepChatlogDays: 0, keepChatlogSet: true },
   })
   const logs = []

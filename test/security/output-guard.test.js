@@ -72,7 +72,7 @@ test('人格、规则和记忆的较长逐字片段删除，同一行里的正�
     assert.equal(cleanOutboundText(`<reply:7><voice>${source}</voice>|||`, { ...options, warn: (m) => warnings.push(m) }), '')
     assert.match(warnings[0], /整段都是提示词复读.*沉默/)
   }
-  const generated = rulesText('social', normalize({ ownerQQ: '1' })).split('\n').find((line) => line.includes('不要透露'))
+  const generated = rulesText('social', normalize({ owners: [{ platform: 'qq', userId: '1' }] })).split('\n').find((line) => line.includes('不要透露'))
   assert.equal(cleanOutboundText(generated, { promptSources: [generated] }), '')
   const fragment = Array.from(PERSONA).slice(3, 3 + PROMPT_MATCH_LENGTH).join('')
   assert.equal(cleanOutboundText(`开始${fragment}结束`, options), '开始结束')
@@ -133,7 +133,7 @@ function setup(t, { hooks = {}, brain = async () => '', contextProviders, voice 
   process.env.AURABOT_DATA_DIR = dir
   const fake = createFakeDsh({ brain })
   const calls = [], sent = [], warnings = [], activity = [], spoken = []
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '1', workspaceDir: dir,
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '1' }], workspaceDir: dir,
     chat, voice: { enabled: voice, autoChance: 0 }, stickers: { enabled: false, faces: false } })
   const file = join(dir, 'voice.wav')
   writeFileSync(file, 'voice')

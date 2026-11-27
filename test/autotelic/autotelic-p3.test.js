@@ -146,7 +146,7 @@ function mkApi(t, { settings = {}, chatId = 'system:autotelic', submit = null, h
     tool: (builder) => { toolBuilder = builder },
     defineTool: (def) => def,
     every: () => {},
-    config: () => ({ ownerQQ: '123' }),
+    config: () => ({ owners: [{ platform: 'qq', userId: '123' }] }),
     log: { info: () => {}, warn: () => {}, debug: () => {} },
     core: {
       hub: { runSystemTurn: async () => '[]', chatLogDays: () => [], chatLogOf: () => [] },

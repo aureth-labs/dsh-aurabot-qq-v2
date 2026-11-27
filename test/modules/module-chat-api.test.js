@@ -19,14 +19,14 @@ function setup(t, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-module-chat-'))
   const before = { data: process.env.AURABOT_DATA_DIR, workspace: process.env.AURABOT_WORKSPACE }
   process.env.AURABOT_DATA_DIR = dir; process.env.AURABOT_WORKSPACE = join(dir, 'workspace')
-  const cfg = normalize({ enabled: true, setupDone: true, ownerQQ: OWNER, botQQ: '20002',
+  const cfg = normalize({ enabled: true, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20002',
     allow: { private: ['10002'], groups: ['555'] }, voice: { enabled: false },
     stickers: { enabled: false }, conversationContext: { enabled: true }, model: { vision: 'on' }, merge: { enabled: false } })
   const fake = createFakeDsh({ brain: async () => '' }), rows = [], calls = [], memory = [], activity = [], deliveries = []
   let muted = false
   const recognizer = createRecognizer({ harness: fake.ctx, root: { config: cfg }, host: {}, config: {}, logger: { debug() {} } },
     join(dir, 'media'), new AbortController().signal)
-  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, asr: () => recognizer,
+  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, selfId: '20002', asr: () => recognizer,
     log: { info() {}, warn() {}, debug() {}, error() {} },
     onebot: { connected: true, async call(action, params) {
       calls.push({ action, params })
@@ -178,7 +178,7 @@ test('异步 prompt 准备期间撤销身份，投递前再次鉴权；旧主人
   await s.hub.pushToSession(ownerChat, [{ type: 'text', text: '准备' }], OWNER)
   block = true
   const pending = s.hub.receiveOwnerMessage(CHAT, { text: '异步输入' })
-  await entered.promise; s.cfg.ownerQQ = '10009'; gate.resolve()
+  await entered.promise; s.cfg.owners = [{ platform: 'qq', userId: '10009' }]; gate.resolve()
   await assert.rejects(pending, { status: 503 })
   assert.ok(!s.fake.turns.some((r) => r.userText.includes('异步输入')))
 })

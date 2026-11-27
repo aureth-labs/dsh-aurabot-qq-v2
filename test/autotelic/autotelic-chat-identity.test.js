@@ -27,9 +27,9 @@ test('identity 有效时，主人私聊流水进观察层', (t) => {
   const ownerQQ = '1240819805'
   const rows = [
     { t: now - 5000, chatId: 'private:999999', who: '陌生人', uid: '999999', text: '别人的私聊不该进观察' },
-    { t: now - 4000, chatId: `private:${ownerQQ}`, who: 'bot', text: '这是我自己的回复，不该进观察' },
-    { t: now - 3000, chatId: `private:${ownerQQ}`, who: '主人', uid: ownerQQ, text: '今天去吃了火锅，很好吃，下次带你去' },
-    { t: now - 2000, chatId: `private:${ownerQQ}`, who: '主人', uid: ownerQQ, text: '帮我查一下明天的天气，为什么下雨' },
+    { t: now - 4000, chatId: `private:${owners: [{ platform: 'qq', userId: String(ownerQQ) }]}`, who: 'bot', text: '这是我自己的回复，不该进观察' },
+    { t: now - 3000, chatId: `private:${owners: [{ platform: 'qq', userId: String(ownerQQ) }]}`, who: '主人', uid: ownerQQ, text: '今天去吃了火锅，很好吃，下次带你去' },
+    { t: now - 2000, chatId: `private:${owners: [{ platform: 'qq', userId: String(ownerQQ) }]}`, who: '主人', uid: ownerQQ, text: '帮我查一下明天的天气，为什么下雨' },
   ]
   const hub = { chatLogDays: () => ['2026-11-23'], chatLogOf: () => rows }
   const observe = createObserve({

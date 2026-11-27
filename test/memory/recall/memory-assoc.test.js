@@ -32,7 +32,7 @@ function setup(t, options = {}) {
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
   const cfg = normalize({
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     ownerName: '主人',
     model: { provider: 'p', model: 'm' },
     memory: { dailyConsolidate: false, keepChatlogDays: -1, vector: { enabled: true, mode: 'local' }, ...options.memory },

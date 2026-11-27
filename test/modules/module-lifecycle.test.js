@@ -158,7 +158,7 @@ test('异步 setup 停止后，迟到的写操作不能发送消息或修改配�
           () => api.broadcast([target], 'a'), () => api.sendTo(target, 'b'),
           () => api.platform('test').sendTo(target, api.h.image('fixture')),
           () => api.chatLog.read(target, '2026-11-27'), () => api.chatLog.append(target, 'bot', 'late'),
-          () => api.root.update({ ownerQQ: 'changed' }),
+          () => api.root.update({ owners: [{ platform: 'qq', userId: 'changed' }] }),
           () => api.updateConfig({ secret: 'changed' }),
           () => api.ask('question'), () => api.think('prompt'), () => api.emit('probe'),
         ]
@@ -190,7 +190,7 @@ test('运行和同步收尾的 core.setConfig 合并配置，迟到的回调不�
   const core = { hub: { subagentFor: () => {} }, setConfig: (next) => f.setConfig(next) }
   const f = fixture(t, { core })
   const initial = {
-    ...f.config(), botQQ: '10000001', ownerQQ: '10000002', enabled: true,
+    ...f.config(), botQQ: '10000001', owners: [{ platform: 'qq', userId: '10000002' }], enabled: true,
     dryRun: false, setupDone: true, voice: { enabled: true, speed: 1.2 },
   }
   f.setConfig(initial)

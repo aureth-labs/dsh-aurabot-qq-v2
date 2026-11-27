@@ -10,7 +10,7 @@ const {createHub}=await import('../helpers/hub.js')
 const {runCommand,parseCommand}=await import('../../packages/modules/commands/dispatch.ts')
 const {createSongStudio,songFailureReason}=await import('../../packages/modules/song/studio/index.ts')
 const errors=['ENOENT C:\\Users\\Private\\config.json','failed at /home/private/run.js:20:3','Traceback \\wsl.localhost\\Ubuntu\\root\\secret','const password = "hidden"; internal detail']
-const owner='10000001',cfg=normalize({enabled:true,dryRun:false,ownerQQ:owner,botQQ:'20000002',merge:{enabled:false},voice:{enabled:false}})
+const owner='10000001',cfg=normalize({enabled:true,dryRun:false,owners: [{ platform: 'qq', userId: String(owner) }],botQQ:'20000002',merge:{enabled:false},voice:{enabled:false}})
 test('斜杠命令异常只回安全提示，详细错误留日志，下一条命令仍可执行',async t=>{
  const fake=createFakeDsh({brain:async()=>''}),sent=[],logs=[];let failing=true
  const hub=createHub({dsh:fake.ctx,getConfig:()=>cfg,log:{info(){},debug(){},warn:(...a)=>logs.push(a.join(' '))},onebot:{connected:true,call:async(action,p)=>{if(action==='send_private_msg')sent.push(p.message);return {message_id:sent.length}}},onCommand:async msg=>{if(failing)throw Error(msg.text.slice(6));return '状态正常'}})

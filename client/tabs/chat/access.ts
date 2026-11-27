@@ -8,6 +8,20 @@ import { NoticeWorkspaces } from '../persona/persona.ts'
 
 import { IdentityDirectoryPage } from './identity-directory.ts'
 
+const qqOwner = (cfg) => String((cfg.owners || []).find((row) => row.platform === 'qq' && !row.botId)?.userId || '')
+
+function OwnersField({ draft, setDraft }) {
+  const rows = draft.owners || []
+  const update = (next) => setDraft(setPath(draft, 'owners', next))
+  const edit = (index, patch) => update(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  return h('div', { style: { width: '100%', display: 'grid', gap: 6 } },
+    rows.map((row, index) => h('div', { key: index, className: 'ab-flex' },
+      h('input', { className: 'ab-input sm', 'aria-label': '平台', placeholder: 'qq', value: row.platform || '', onChange: (e) => edit(index, { platform: e.target.value.trim() }) }),
+      h('input', { className: 'ab-input', 'aria-label': '用户 ID', placeholder: '平台上的用户 ID', value: row.userId || '', onChange: (e) => edit(index, { userId: e.target.value.trim() }) }),
+      h(Btn, { small: true, onClick: () => update(rows.filter((_, i) => i !== index)) }, '移除'))),
+    h('div', null, h(Btn, { small: true, onClick: () => update([...rows, { platform: 'qq', userId: '' }]) }, '添加主人')))
+}
+
 function Access(props) {
   const [tab, setTab] = useState('global')
   return h('div', { className: 'ab-grid' },
@@ -68,7 +82,7 @@ function PrivatePermissions({ st, toast, reload }) {
     return false
   }
   const cfg = st.config
-  const owner = String(cfg.ownerQQ)
+  const owner = qqOwner(cfg)
   const privateAllow = (cfg.allow.private || []).map(String)
   const isOpen = (qq) => privateAllow.includes(String(qq))
   const saved = [cfg.allow.private, ...Object.values(cfg.capabilityAllow || {}), ...Object.values(cfg.commandAllow || {})]
@@ -189,8 +203,8 @@ function GroupPermissions({ st, toast, reload, go }) {
 function GlobalAccess({ st, draft, setDraft, toast }) {
   const f = useField(draft, setDraft)
   return h('div', { className: 'ab-grid' },
-    h(Card, { title: '主人', desc: '主人的 QQ 号。群管、点歌、电脑上的操作只听主人的。' },
-      h(Row, { label: '主人 QQ 号' }, f.text('ownerQQ')),
+    h(Card, { title: '主人', desc: '每个平台上的主人账号。群管、点歌、电脑上的操作只听主人的；第一个是默认主人。' },
+      h(Row, { label: '主人' }, h(OwnersField, { draft, setDraft })),
       h(Row, { label: '群聊唤醒词', hint: '每行一个称呼，所有平台共用。留空可关闭按称呼唤醒。' }, f.list('wakeWords', { placeholder: '大肥鱼\n肥鱼' })),
       h(Row, { label: 'ta怎么称呼你' }, f.text('ownerName', { placeholder: '主人' })),
       h(Row, { label: '主人私聊的权限', hint: '群聊永远没有电脑操作权限，这里管不到群。' },
@@ -328,7 +342,7 @@ function MemberFilter({ draft, setDraft }) {
   const current = rules.find(r => r.userId === selected) || rules[0]
   const saveRules = next => setDraft(setPath(draft, 'memberFilter', { ...value, rules: next }))
   const change = patch => saveRules(rules.map(r => r.userId === current.userId ? { ...r, ...patch } : r))
-  const valid = /^[1-9]\d{4,11}$/.test(qq) && qq !== String(draft.ownerQQ)
+  const valid = /^[1-9]\d{4,11}$/.test(qq) && qq !== qqOwner(draft)
   return h(Card, { title: '不回应的人', right: h(Switch, { title: '启用不回应名单', on: value.enabled, onChange: enabled => setDraft(setPath(draft, 'memberFilter', { ...value, enabled })) }),
     desc: '在所选群里不回应这些人，包括 @、引用、戳一戳和模块指令。私聊和主人不受影响。' },
     !value.enabled ? h('p', { className: 'ab-note warn' }, '名单已暂停，下面的规则暂不生效。') : null,
@@ -338,14 +352,14 @@ function MemberFilter({ draft, setDraft }) {
         if (!rules.some(r => r.userId === qq)) saveRules([...rules, { userId: qq, scope: 'groups', groups: [] }])
         setSelected(qq); setInput('')
       } }, rules.some(r => r.userId === qq) ? '查看' : '添加')),
-    qq && !valid ? h('p', { className: 'ab-note warn' }, qq === String(draft.ownerQQ) ? '主人不会被屏蔽，无需添加。' : '请填一个 5～12 位数字 QQ 号。') : null,
+    qq && !valid ? h('p', { className: 'ab-note warn' }, qq === qqOwner(draft) ? '主人不会被屏蔽，无需添加。' : '请填一个 5～12 位数字 QQ 号。') : null,
     h('div', { className: 'ab-flex', style: { flexWrap: 'wrap', maxHeight: 160, overflowY: 'auto' } }, rules.map(r =>
       h('button', { type: 'button', key: r.userId, className: cx('ab-chip', current?.userId === r.userId && 'on'), 'aria-pressed': current?.userId === r.userId, onClick: () => setSelected(r.userId) },
         r.userId, h('span', { className: 'n' }, r.scope === 'all' ? '所有群' : r.groups.length ? r.groups.length + ' 个群' : '待选群')))),
     !current ? h('p', { className: 'ab-muted' }, '名单为空，没有按 QQ 号屏蔽任何人。') : h('div', { key: current.userId, style: { marginTop: 16 } },
       h('div', { className: 'ab-flex' }, h('b', null, 'QQ ' + current.userId), h('div', { className: 'ab-spacer' }),
         h(Btn, { small: true, kind: 'ghost', onClick: () => saveRules(rules.filter(r => r.userId !== current.userId)) }, '移出不回应名单')),
-      current.userId === String(draft.ownerQQ) ? h('p', { className: 'ab-note' }, '这是当前主人，规则不会拦截此人。') : null,
+      current.userId === qqOwner(draft) ? h('p', { className: 'ab-note' }, '这是当前主人，规则不会拦截此人。') : null,
       h(Row, { label: '在哪些群不回应' }, h(Select, { ariaLabel: 'QQ ' + current.userId + ' 不回应范围', value: current.scope,
         options: [{ value: 'groups', label: '仅指定群' }, { value: 'all', label: '所有群（含以后加入的群）' }], onChange: scope => change({ scope }) })),
       current.scope === 'groups' ? h(Row, { label: '指定群号', hint: '一行一个，也可用逗号分隔。留空不生效，不会自动变成所有群。' },
@@ -430,7 +444,7 @@ function GroupOverrides({ draft, setDraft, setSection }) {
             })()),
             h(Btn, { small: true, kind: 'ghost', title: '清除本群单独设置的接话规则；不改响应模式和旁听。', disabled: !Object.keys(o).length, onClick: () => { const n = { ...overrides }; delete n[gid]; setDraft(setPath(draft, 'group.overrides', n)) } }, '本群接话改用通用设置'))),
             h('div', { style: { marginTop: 12 } }, h(Btn, { small: true, kind: 'ghost', onClick: () => setSection('manage') },
-              '管理不回应名单（本群 ' + (draft.memberFilter?.enabled ? (draft.memberFilter.rules || []).filter(r => r.userId !== String(draft.ownerQQ) && (r.scope === 'all' || r.groups.includes(gid))).length : 0) + ' 人）')))
+              '管理不回应名单（本群 ' + (draft.memberFilter?.enabled ? (draft.memberFilter.rules || []).filter(r => r.userId !== qqOwner(draft) && (r.scope === 'all' || r.groups.includes(gid))).length : 0) + ' 人）')))
         }),
     ),
   )

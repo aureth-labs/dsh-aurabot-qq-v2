@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../src/core/config/owners.ts'
 import { roomId, isGroupRoom } from '../../../../src/core/bot/room.ts'
 // 面板视图：人物墙、关系、群印象、梗概、时间线与推荐。只读或只改面板可见的字段。
 
@@ -62,7 +63,7 @@ export function createPanelViews(deps: PanelViewDeps) {
       p.lastActive = Math.max(p.lastActive, activity.at)
       for (const id of activity.groups) { if (!rememberedGroups.has(qq)) rememberedGroups.set(qq, new Set()); rememberedGroups.get(qq).add(id) }
     }
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     return [...people.values()].map((p) => ({ ...p, tags: personTags(p.qq), groups: [...(rememberedGroups.get(p.qq) || [])].map((id) => ({ id, name: hub?.groupNames?.get?.(id) || id })), hasRelations: (s.relations || []).some((r) => relationHas(r, p.qq, [p.name, p.alias].filter(Boolean))), hasInsights: Boolean((s.insights || {})[`qq:${p.qq}`]?.length), isOwner: Boolean(owner && p.qq === owner) }))
       .sort((a, b) => Number(b.isOwner) - Number(a.isOwner) || (b.closeness || 0) - (a.closeness || 0) || a.qq.localeCompare(b.qq))
   }
@@ -131,7 +132,7 @@ export function createPanelViews(deps: PanelViewDeps) {
       if (!Array.isArray(patch.tags) || patch.tags.length > 8 || patch.tags.some((tag) => typeof tag !== 'string' || !tag.trim() || [...tag.trim()].length > 8)) return { ok: false, message: '标签最多 8 个，每个最多 8 个字' }
       const tags = patch.tags.map((tag) => tag.trim())
       if (new Set(tags).size !== tags.length || (tags.includes('喜欢') && tags.includes('讨厌'))) return { ok: false, message: '标签不能重复，喜欢和讨厌不能同时选' }
-      if (id === String(getConfig().ownerQQ || '') && tags.includes('讨厌')) return { ok: false, message: '不能讨厌主人' }
+      if (id === String(ownerId(getConfig()) || '') && tags.includes('讨厌')) return { ok: false, message: '不能讨厌主人' }
     }
     const s = load()
     if (!s.profiles?.[id] && fields.some((key) => String(patch[key] || '').trim()) && !canProfile(id)) return { ok: false, message: '还没有和这个人直接互动，暂不建立人物画像' }
@@ -153,7 +154,7 @@ export function createPanelViews(deps: PanelViewDeps) {
     return [p.name, p.alias].filter(Boolean)
   }
   function visibleRelations(chat, state = load()) {
-    const ownerPrivate = chat?.kind === 'private' && String(chat.userId) === String(getConfig().ownerQQ || '')
+    const ownerPrivate = chat?.kind === 'private' && String(chat.userId) === String(ownerId(getConfig()) || '')
     return (state.relations || []).filter((r) => rememberedRelation(r, state) && (ownerPrivate || r.chatId === chat?.chatId))
   }
   /** 同一对人只留最新的关系：分手了、换了说法都直接盖掉。 */
@@ -187,7 +188,7 @@ export function createPanelViews(deps: PanelViewDeps) {
   function lookupPerson(chat, who, speakers = []) {
     const want = String(who || '').trim()
     if (!want) return { ok: false, message: '要说查谁' }
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     const ownerPrivate = chat.kind === 'private' && String(chat.userId) === owner
     const mine = new Set([...speakers.map(String), ...(chat.userId ? [String(chat.userId)] : [])])
     const seen = (qq) => list('').some((m) => String(m.about || '') === qq && m.chatId === chat.chatId)
@@ -219,7 +220,7 @@ export function createPanelViews(deps: PanelViewDeps) {
 
   /** 查群印象：在群里只看当前群；主人私聊里可以查任意群，不写就列出有印象的群。 */
   function lookupChat(chat, group = '') {
-    const ownerPrivate = chat.kind === 'private' && String(chat.userId) === String(getConfig().ownerQQ || '')
+    const ownerPrivate = chat.kind === 'private' && String(chat.userId) === String(ownerId(getConfig()) || '')
     if (chat.kind !== 'group' && !ownerPrivate) return { ok: false, message: '这里看不了群印象' }
     const all = chats()
     const want = String(group || '').trim()
@@ -299,7 +300,7 @@ export function createPanelViews(deps: PanelViewDeps) {
     const state = load()
     const anchor = [...state.items, ...(state.gists || [])].find((m) => m.id === id && (!kind || m.kind === kind))
     if (!anchor || !rememberedItem(anchor, state)) return []
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     // 不传 chat 的调用仅供管理面板；模块传真实 chat 时，同一 search 判定锚点和候选。
     const ownerScope = !chat || chat.kind === 'private' && String(chat.userId) === owner
     const scopeChatId = chat?.chatId || anchor.chatId || ''

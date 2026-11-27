@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../../src/core/config/owners.ts'
 // 她的小闹钟：对话里设定的一次性提醒。到点只把她叫醒（进主人私聊的真实会话），不替她发消息。
 
 import type { OwnerChannel } from '../../owners.ts'
@@ -60,7 +61,7 @@ export function createReminders({ getConfig, log, hub, purposeDir, channel, clea
       return Array.isArray(legacy) ? legacy : []
     })()
     const reminders = raw.map(normalizeReminder).filter(Boolean)
-    const owner = channel?.target.id || String(getConfig().ownerQQ || '')
+    const owner = channel?.target.id || String(ownerId(getConfig()) || '')
     if (owner && reminders.some(row => !row.owner)) {
       for (const row of reminders) row.owner ||= owner
       saveReminders(reminders)
@@ -94,7 +95,7 @@ export function createReminders({ getConfig, log, hub, purposeDir, channel, clea
     if (live.length >= (cfg.speakUp.reminderLimit ?? 5)) return { ok: false, message: '你设定的提醒太多了' }
     const reminder = {
       id: randomUUID(),
-      owner: channel?.target.id || String(cfg.ownerQQ || ''),
+      owner: channel?.target.id || String(ownerId(cfg) || ''),
       at,
       atText: reminderText(at),
       note,
@@ -120,12 +121,12 @@ export function createReminders({ getConfig, log, hub, purposeDir, channel, clea
   }
   async function attemptReminder(reminder, now = Date.now()) {
     const cfg = getConfig()
-    const owner = channel?.target.id || String(cfg.ownerQQ || '')
+    const owner = channel?.target.id || String(ownerId(cfg) || '')
     if (!owner || !remindersOn(cfg)) return
     if (reminder.owner && reminder.owner !== owner) { closeReminder(reminder.id); return }
     const primary = primaryIdentity?.()
     const stillPending = () => remindersOn() && loadReminders().some(row => row.id === reminder.id) &&
-      (channel ? channel.available() : (primaryIdentity?.() === primary && String(getConfig().ownerQQ || '') === owner))
+      (channel ? channel.available() : (primaryIdentity?.() === primary && String(ownerId(getConfig()) || '') === owner))
     async function dispatch() {
       const prompt = reminderPrompt(reminder, cfg.ownerName || '主人')
       const room = 'private:' + owner

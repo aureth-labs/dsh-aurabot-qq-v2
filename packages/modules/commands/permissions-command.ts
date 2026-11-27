@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 import { isOwner, PROFILE_PERM_KEYS, PROFILE_PERM_LEVELS, permOf } from '../../../src/chat/policy/rules/access.ts'
 import { changePermissions, privatePermissionCatalog } from '../../../src/chat/policy/rules/permission.ts'
 
@@ -42,7 +43,7 @@ export function runPermissionsCommand(arg, msg, { getConfig, setConfig, extraCom
   }
   const subject = parts.length === 1 ? action : /^(用户|user)$/.test(action) && parts.length === 2 ? type : ''
   if (/^\d{5,}$/.test(subject)) {
-    if (String(cfg.ownerQQ) === subject) return `${subject} 是主人账号。`
+    if (String(ownerId(cfg)) === subject) return `${subject} 是主人账号。`
     const allowed = hasId(cfg.allow?.private, subject)
     const grants = [...Object.entries(cfg.capabilityAllow || {}), ...Object.entries(cfg.commandAllow || {})]
       .filter(([, list]) => hasId(list, subject)).map(([key]) => labels.has(key) ? labelOf(key) : `${labelOf(key)}（当前不可用）`)

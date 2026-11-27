@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../src/core/config/owners.ts'
 import { API_VERSION, PKG } from '../../../../src/core/module/index.ts'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -128,7 +129,7 @@ export function registerModuleRoutes({
   // （模块直接调 api.onebot(...) 的操作不在此列，是真的会执行的）
   const simChat = (b) => {
     const owner = b.as !== 'other'
-    const userId = owner ? getConfig().ownerQQ : '10001'
+    const userId = owner ? ownerId(getConfig()) : '10001'
     const group = b.kind === 'group'
     const groupId = String(b.groupId || getConfig().allow.groups[0] || '10002')
     return {

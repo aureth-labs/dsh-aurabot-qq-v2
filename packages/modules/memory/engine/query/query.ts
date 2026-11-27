@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../../src/core/config/owners.ts'
 import { roomId, isPrivateRoom, isGroupRoom } from '../../../../../src/core/bot/room.ts'
 // 记忆的纯函数层：切词、相似度、BM25 检索、遗忘曲线、时间与关联打分。
 // 不碰存储、不碰模型；createMemoryStore 负责持久化，这里只做计算。
@@ -58,7 +59,7 @@ export const validUntilOf = (m) => m.validUntil ?? m.invalidAt
 export const isCurrent = (m, now = Date.now()) => !m.invalidAt && (!validUntilOf(m) || validUntilOf(m) > now) && (!validFromOf(m) || validFromOf(m) <= now)
 
 export const FOLLOW_UP_DELAYS = [3, 7] // 问过一次、两次后分别再等几天；第三次放下
-export const followUpChatAllowed = (chatId, cfg) => [cfg.ownerQQ, ...(cfg.speakUp?.allow || [])]
+export const followUpChatAllowed = (chatId, cfg) => [ownerId(cfg), ...(cfg.speakUp?.allow || [])]
   .some((qq) => qq && chatId === `private:${qq}`)
 export const followUpPerson = (m, cfg) => Boolean(m.about && String(m.speaker) === String(m.about)
   && m.chatId === `private:${m.about}` && m.scope !== 'group' && !m.kind

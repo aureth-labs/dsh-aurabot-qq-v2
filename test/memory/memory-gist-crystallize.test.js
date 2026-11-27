@@ -19,7 +19,7 @@ function setup(t, answer = () => '[]') {
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
   const calls = []
-  const cfg = normalize({ ownerQQ: OWNER, botQQ: '20000001', model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 0, keepChatlogSet: true } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000001', model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 0, keepChatlogSet: true } })
   const hub = { chatLogDays: () => [], chatLogOf: () => [], deleteChatLog: () => {}, speakersOf: () => [] }
   const dsh = { get: () => null, llm: { async *stream({ system, messages }) {
     const text = messages[0].content[0].text

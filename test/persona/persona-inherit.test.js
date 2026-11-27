@@ -39,7 +39,7 @@ before(async () => {
   process.env.AURABOT_WORKSPACE = join(dataDir, 'ws')
   mkdirSync(join(dataDir, 'ws'), { recursive: true })
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
-    enabled: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
+    enabled: true, setupDone: true, botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: [] },
     onebot: { httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9' },
   }))

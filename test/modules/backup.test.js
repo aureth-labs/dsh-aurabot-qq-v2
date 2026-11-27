@@ -23,7 +23,7 @@ before(async () => {
 })
 
 test('备份、暂存、启动时换上：内容一致，旧文件留底，排除项不进备份', async () => {
-  put('config.json', JSON.stringify({ ownerQQ: '1', song: { root: join(root, 'songs') } }))
+  put('config.json', JSON.stringify({ owners: [{ platform: 'qq', userId: '1' }], song: { root: join(root, 'songs') } }))
   put('memories.json', '记忆🤔')
   put('personas/鱼.md', '人设')
   put('stickers/a.png', Buffer.alloc(5000, 7))
@@ -54,7 +54,7 @@ test('备份、暂存、启动时换上：内容一致，旧文件留底，排�
   const oldRoot = join(tmpdir(), 'old', 'aurabot')
   const stageConfig = join(root, '.restore', 'config.json')
   writeFileSync(stageConfig, JSON.stringify({
-    ownerQQ: '1', dir: join(oldRoot, 'songs'), ownerAuthorization: { owner: '1', revision: 'previous' },
+    owners: [{ platform: 'qq', userId: '1' }], dir: join(oldRoot, 'songs'), ownerAuthorization: { owner: '1', revision: 'previous' },
   }))
   writeFileSync(pending, JSON.stringify({ ...JSON.parse(readFileSync(pending, 'utf8')), dataDir: oldRoot }))
 
@@ -80,7 +80,7 @@ test('坏文件和别的 zip 都拒绝，且不留待恢复', async () => {
 
 test('恢复整机备份后，同一主人的旧模块授权代次失效', async (t) => {
   isolatedBackup(t)
-  const cfg = saveConfig({ ownerQQ: '10000001' })
+  const cfg = saveConfig({ owners: [{ platform: 'qq', userId: '10000001' }] })
   const revision = ownerAuthorizationRevision(cfg)
   assert.ok(revision)
   saveConfig({ ...cfg, ext: { 'life-advance': { weatherOwnerRevision: revision, newsOwnerRevision: revision } } }, cfg)
@@ -393,7 +393,7 @@ test('LA-20 截断归档保留上次暂存，完整的存储条目可分块恢�
 test('LA-21 提交标记移动失败时回退配置、模块登记和数据，再次恢复可提交', async (t) => {
   const { dir, sandbox, write } = isolatedBackup(t)
   const oldDir = join(sandbox, 'previous-data-location')
-  const config = JSON.stringify({ ownerQQ: '1', media: join(oldDir, 'media') })
+  const config = JSON.stringify({ owners: [{ platform: 'qq', userId: '1' }], media: join(oldDir, 'media') })
   const currentConfig = '{"ownerQQ":"2"}'
   write('config.json', config)
   write('state.json', '归档状态')

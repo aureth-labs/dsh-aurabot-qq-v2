@@ -1,3 +1,7 @@
+import { useLegacyRooms } from '../../../src/core/bot/room.ts'
+
+useLegacyRooms('qq', 'adapter-qq-onebot-v11')
+
 // 来源：本仓库自研（2026-11-03 主动发言出站策略接线回归）
 // 许可：随插件本体（MIT 口径见 THIRD-PARTY-NOTICES.md）
 // 作用：验证 docs/OUTBOUND-POLICY-DESIGN.md 的接线层——
@@ -26,7 +30,7 @@ function makeHub(t, overrides = {}) {
   const cfg = {
     enabled: true,
     dryRun: false,
-    ownerQQ: '10001',
+    owners: [{ platform: 'qq', userId: '10001' }],
     stickers: { faces: false, enabled: false },
     voice: { enabled: false, emojiSeparate: true, autoMaxChars: 0, autoChance: 0 },
     files: {},
@@ -125,7 +129,7 @@ test('setOutboundGuard(null) 可撤销门闸', async (t) => {
 test('端到端：gate 档 + 策略源拒绝预算 → 模块发不出去', async (t) => {
   const { hub } = makeHub(t)
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', outboundPolicy: { tier: 'gate' } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], outboundPolicy: { tier: 'gate' } }),
     dataDir: null, // 纯内存
     hooks: { fsSync: false },
   })
@@ -147,7 +151,7 @@ test('端到端：gate 档 + 策略源拒绝预算 → 模块发不出去', asyn
 test('端到端：gate 档 + 策略源放行 → 正常发出', async (t) => {
   const { hub, sent } = makeHub(t)
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', outboundPolicy: { tier: 'gate' } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], outboundPolicy: { tier: 'gate' } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -169,7 +173,7 @@ test('端到端：gate 档 + 策略源放行 → 正常发出', async (t) => {
 
 test('端到端：pass 档（默认）时模块发送照旧、不被治理', async (t) => {
   const { hub, sent } = makeHub(t)
-  const svc = createOutboundPolicy({ getConfig: () => ({ ownerQQ: '10001' }), dataDir: null, hooks: { fsSync: false } })
+  const svc = createOutboundPolicy({ getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }] }), dataDir: null, hooks: { fsSync: false } })
   hub.setOutboundGuard((ask) => svc.admit({ to: ask.chatId, moduleId: ask.sourceModule, origin: 'module' }))
   const r = await hub.sendText('private:10001', '主动私聊', undefined, undefined, undefined, { sourceModule: 'tophub' })
   assert.equal(r.message_id, 'm1')
@@ -186,7 +190,7 @@ test('tier 非法或缺失值：一律按 pass 处理（安全兜底，不拦任
     if (tier === 'gate ') continue // 带空格的会被 trim 成合法档位，单独在下面断言
     const { hub, sent } = makeHub(t)
     const svc = createOutboundPolicy({
-      getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier } } }),
+      getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier } } }),
       dataDir: null,
       hooks: { fsSync: false },
     })
@@ -234,7 +238,7 @@ test('scopedHub：模块经 sendText 发送时身份是宿主绑定的 moduleId'
 test('scopedHub：注入服务后 gate 档被策略拒绝 → 返回 null 且不发', async (t) => {
   const { hub, sent } = makeHub(t)
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -266,7 +270,7 @@ test('scopedHub：注入服务后 gate 档被策略拒绝 → 返回 null 且不
 test('scopedHub：模块在参数里伪造 moduleId/sourceModule 无效（身份不可伪造）', async (t) => {
   const { hub } = makeHub(t)
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -287,7 +291,7 @@ test('scopedHub：模块在参数里伪造 moduleId/sourceModule 无效（身份
 
 test('scopedHub：pass 档（默认未配置）时模块发送照旧', async (t) => {
   const { hub, sent } = makeHub(t)
-  const svc = createOutboundPolicy({ getConfig: () => ({ ownerQQ: '10001' }), dataDir: null, hooks: { fsSync: false } })
+  const svc = createOutboundPolicy({ getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }] }), dataDir: null, hooks: { fsSync: false } })
   hub.setOutboundGuard((ask) => {
     const v = svc.admit({ to: ask.chatId, moduleId: ask.sourceModule, origin: 'module' })
     return v.action === 'deny' ? v : { ...v, settle: () => {} }
@@ -360,7 +364,7 @@ test('api.proactive：宿主未注入服务时 available=false，submit 返回 u
 
 test('api.proactive：注入服务后 submit 带上宿主绑定的 moduleId，非 broker 档即 unsupported', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -377,7 +381,7 @@ test('api.proactive：注入服务后 submit 带上宿主绑定的 moduleId，�
 
   // broker 档才真的落账
   const broker = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -394,7 +398,7 @@ test('api.proactive：注入服务后 submit 带上宿主绑定的 moduleId，�
 test('api.sendText：gate 档策略拒绝时返回 null，放行时发出并按结果结算', async (t) => {
   // 拒绝
   const denied = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -413,7 +417,7 @@ test('api.sendText：gate 档策略拒绝时返回 null，放行时发出并按�
 
   // 放行：发出 + commit(sent)
   const allowed = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -433,7 +437,7 @@ test('api.sendText：gate 档策略拒绝时返回 null，放行时发出并按�
 })
 
 test('api.sendText：默认未配置（pass 档）时行为完全不变', async (t) => {
-  const svc = createOutboundPolicy({ getConfig: () => ({ ownerQQ: '10001' }), dataDir: null, hooks: { fsSync: false } })
+  const svc = createOutboundPolicy({ getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }] }), dataDir: null, hooks: { fsSync: false } })
   const { api, sends } = await startProbeModule(t, { outbound: svc }, 'probe-pass')
   assert.deepEqual(api.sendText('private:10001', '旧行为'), { message_id: 1 })
   assert.equal(sends.length, 1)
@@ -443,7 +447,7 @@ test('api.sendText：默认未配置（pass 档）时行为完全不变', async 
 
 test('broker 档：模块发主人纯文本改走宿主代发（scopedHub 路径，引擎决断入口）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -467,7 +471,7 @@ test('broker 档：模块发主人纯文本改走宿主代发（scopedHub 路径
 
 const makeBroker = (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null,
     hooks: { fsSync: false },
   })
@@ -526,7 +530,7 @@ test('broker 档：白名单模块不声明 turnNotice 时，回合内也照旧�
 
 test('broker 档：决断不发 + 日志口各种坏形态都不炸链路（2026-11-06 生产 TypeError 回归）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   svc.registerPolicySource({
@@ -548,7 +552,7 @@ test('broker 档：决断不发 + 日志口各种坏形态都不炸链路（2026
 
 test('broker 档：代发本身抛异常也收敛成 null（异常路径不让链路炸）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   svc.registerPolicySource({
@@ -567,7 +571,7 @@ test('broker 档：代发本身抛异常也收敛成 null（异常路径不让�
 
 test('broker 档：群聊 / 朋友私聊不走代发（保持原路径）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   svc.registerPolicySource({
@@ -585,7 +589,7 @@ test('broker 档：群聊 / 朋友私聊不走代发（保持原路径）', asyn
 
 test('gate 档：模块快捷发送保持原样（只判定放行，不改走代发）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   svc.registerPolicySource({
@@ -607,7 +611,7 @@ test('gate 档：模块快捷发送保持原样（只判定放行，不改走代
 
 test('broker 档：图片（无可审文本）被策略源拒绝也照发（识别不了就直发）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   let reserves = 0
@@ -624,7 +628,7 @@ test('broker 档：图片（无可审文本）被策略源拒绝也照发（识�
 
 test('broker 档：放行的图片发送不占策略源额度（与代发同口径，不 reserve 不结算）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   const reserves = []
@@ -646,7 +650,7 @@ test('broker 档：放行的图片发送不占策略源额度（与代发同口�
 
 test('broker 档：纯文本被策略源拒绝仍拦下（文本走门闸 + 代发决断，口径不变）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   svc.registerPolicySource({
@@ -661,7 +665,7 @@ test('broker 档：纯文本被策略源拒绝仍拦下（文本走门闸 + 代�
 
 test('gate 档：图片被策略源拒绝仍拦下（直发口径只对 broker 生效）', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'gate' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'gate' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   svc.registerPolicySource({
@@ -675,7 +679,7 @@ test('gate 档：图片被策略源拒绝仍拦下（直发口径只对 broker �
 
 test('broker 档：图片发朋友（治理范围外）不触直发口径，照旧过门闸放行', async (t) => {
   const svc = createOutboundPolicy({
-    getConfig: () => ({ ownerQQ: '10001', ext: { outboundPolicy: { tier: 'broker' } } }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], ext: { outboundPolicy: { tier: 'broker' } } }),
     dataDir: null, hooks: { fsSync: false },
   })
   let reserves = 0
@@ -745,7 +749,7 @@ test('面板路由：/panel/outbound-policy 能读能写，且只认合法档位
   process.env.AURABOT_DATA_DIR = dir
   process.env.AURABOT_WORKSPACE = pjoin(dir, 'ws')
   writeF(pjoin(dir, 'config.json'), JSON.stringify({
-    enabled: true, dryRun: true, setupDone: true, ownerQQ: '10001',
+    enabled: true, dryRun: true, setupDone: true, owners: [{ platform: 'qq', userId: '10001' }],
     allow: { private: ['10001'], groups: [] },
     onebot: {},
     voice: { enabled: false }, stickers: { enabled: false, autoChance: 0 },

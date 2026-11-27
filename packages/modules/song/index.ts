@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 import { createHash } from 'node:crypto'
 import { songSlot } from './local.ts'
 import { createSongStudio } from './studio/studio.ts'
@@ -80,7 +81,7 @@ export function apply(ctx) {
       execute({ song, pitch, acapella, start_sec, duration_sec }) {
         const allowedTurn = !primaryChat || ctx.turnFromOwner(sessionId)
         const senders = actors?.() || []
-        const users = senders.length ? senders : [chat?.userId || (primaryChat && allowedTurn && ctx.root.config.ownerQQ)]
+        const users = senders.length ? senders : [chat?.userId || (primaryChat && allowedTurn && ownerId(ctx.root.config))]
         const permitted = () => !settings().ownerOnly || Boolean(delegated?.('song')) ||
           (allowedTurn && users.every(user => ctx.isOwner(user, target.platform, target.botId)))
         return request({ song, pitch, acapella, startSec: start_sec, durationSec: duration_sec }, target, permitted, chat?.userId, primaryChat ? chat?.chatId : '')

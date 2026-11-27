@@ -25,7 +25,7 @@ function setup(t, { brain, dryRun = false, review } = {}) {
   process.env.AURABOT_DATA_DIR = dir
   process.env.AURABOT_WORKSPACE = join(dir, 'workspace')
   const sent = []
-  const cfg = normalize({ enabled: true, dryRun, ownerQQ: OWNER, ownerName: '主人', workspaceDir: dir, voice: { enabled: false }, stickers: { enabled: false } })
+  const cfg = normalize({ enabled: true, dryRun, owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', workspaceDir: dir, voice: { enabled: false }, stickers: { enabled: false } })
   const fake = createFakeDsh({ brain })
   const hub = createHub({
     dsh: fake.ctx,

@@ -22,7 +22,7 @@ const { normalize } = await import('../../src/core/config/index.ts')
 
 const log = { info() {}, warn() {}, debug() {} }
 const OWNER = '10000001'
-const cfg = normalize({ ownerQQ: OWNER, ownerName: '老大', memory: { dailyConsolidate: false, vector: { enabled: false } } })
+const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '老大', memory: { dailyConsolidate: false, vector: { enabled: false } } })
 const mem = createMemoryStore({
   dsh: {}, getConfig: () => cfg, log,
   hub: { chatLogDays: () => [], chatLogOf: () => [], speakersOf: () => [] },

@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../../src/core/config/owners.ts'
 import { isGroupRoom } from '../../../../../src/core/bot/room.ts'
 import { sessionKey, assistantReplyText, SOURCE_KIND } from '../context/context.ts'
 import { recordSessionUsage } from '../../../../../src/core/llm/usage/usage.ts'
@@ -73,8 +74,8 @@ export function createTurnEvents({
       if (direct) {
         if (st.lastText) st.prevText = st.lastText
         st.lastText = direct.slice(-600)
-        st.speakers = [String(getConfig().ownerQQ)]
-        st.senders = new Set([String(getConfig().ownerQQ)])
+        st.speakers = [String(ownerId(getConfig()))]
+        st.senders = new Set([String(ownerId(getConfig()))])
       }
       return
     }

@@ -1,3 +1,7 @@
+import { useLegacyRooms } from '../../src/core/bot/room.ts'
+
+useLegacyRooms('qq', 'adapter-qq-onebot-v11')
+
 // 出站策略源（proactive-policy）单测：
 //   purpose 策略源的 reserve→commit/release 口径、共享预算竞争、重启恢复。
 //   P5（speakup → purpose 迁移）：speakup 策略源已删除，相关用例随之移除。
@@ -29,7 +33,7 @@ function freshDir() {
 
 const baseCfg = () => ({
   enabled: true,
-  ownerQQ: OWNER,
+  owners: [{ platform: 'qq', userId: OWNER }],
   speakUp: {
     enabled: true,
     awakeFrom: 0,
@@ -198,8 +202,8 @@ test('共享预算: 同 owner 同 dataDir 的两个实例抢最后一个额度�
 })
 
 test('共享预算: 没给 dataDir 时退化为内存，不碰磁盘、且同 owner 仍唯一', () => {
-  const b1 = createSharedBudget({ ownerQQ: OWNER })
-  const b2 = createSharedBudget({ ownerQQ: OWNER })
+  const b1 = createSharedBudget({ owners: [{ platform: 'qq', userId: String(OWNER) }] })
+  const b2 = createSharedBudget({ owners: [{ platform: 'qq', userId: String(OWNER) }] })
   assert.equal(b1, b2)
   assert.equal(b1.snapshot().file, '')
   assert.equal(b1.tryAcquire({ reserveId: 'x', source: 'purpose', at: NOON }).ok, true)

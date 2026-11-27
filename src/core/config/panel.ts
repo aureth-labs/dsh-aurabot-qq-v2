@@ -1,5 +1,4 @@
 import { publicPluginSettings, restorePluginSettings, type PluginFields } from './plugin-settings.ts'
-import { reconcileOwnerEdit } from './owners.ts'
 import { maskPools, restorePoolKeys } from './state/key-pool.ts'
 import type { RawPools } from './state/key-pool.ts'
 import { normalize } from './state/normalize.ts'
@@ -85,5 +84,6 @@ export function mergeFromPanel (current: AurabotConfig, incoming: RawConfig | nu
   if (incomingChatModels.privates) next.chatModels.privates = incomingChatModels.privates as AurabotConfig['chatModels']['privates']
   if (incomingChatModels.groups) next.chatModels.groups = incomingChatModels.groups as AurabotConfig['chatModels']['groups']
   if (isObj(incoming?.allow)) next.allow = { ...current.allow, ...incoming.allow }
-  return normalize(reconcileOwnerEdit(next, current, Object.hasOwn(incoming || {}, 'owners')))
+  if (Array.isArray(incoming?.owners)) next.owners = incoming.owners as AurabotConfig['owners']
+  return normalize(next)
 }

@@ -1,3 +1,4 @@
+import { ownerId } from '../../../core/config/owners.ts'
 import { delegatedCommandCatalog, isDelegatedCommandKey } from './delegation.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -31,7 +32,7 @@ export function changePermissions(cfg, { id, kind = 'private', changes } : Chang
   if (!['private', 'group'].includes(kind) || typeof id !== 'string' || !/^\d{5,}$/.test(id)) {
     return { ok: false, message: '请输入完整的 QQ 号或群号' }
   }
-  if (kind === 'private' && String(cfg.ownerQQ) === id) return { ok: false, message: '主人权限请在主人设置中管理' }
+  if (kind === 'private' && String(ownerId(cfg)) === id) return { ok: false, message: '主人权限请在主人设置中管理' }
   if (!changes || typeof changes !== 'object' || Array.isArray(changes) || !Object.keys(changes).length) {
     return { ok: false, message: '请选择要修改的权限' }
   }
@@ -58,7 +59,7 @@ export function changePrivateWhitelist(cfg, { ids } : ChangePrivateWhitelistOpti
   if (values.some((id) => !/^\d{5,12}$/.test(id))) return { ok: false, message: 'QQ 号格式不对：每个都要是 5～12 位数字' }
 
   const unique = [...new Set(values)]
-  const owner = String(cfg.ownerQQ || '')
+  const owner = String(ownerId(cfg) || '')
   const requested = unique.filter((id) => id !== owner)
   const current = (cfg.allow?.private || []).map(String)
   const nextList = [...new Set([...current, ...requested])]

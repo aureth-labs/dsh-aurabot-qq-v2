@@ -44,7 +44,7 @@ async function setup(t, { connect = false, safeMode = false } = {}) {
   })
   for (const id of ['persona-memory', 'observer-one', 'observer-two']) moduleFixture(root, id)
   writeFileSync(join(root, 'config.json'), JSON.stringify({
-    enabled: connect, dryRun: !connect, setupDone: true, safeMode, ownerQQ: OWNER, botQQ: BOT,
+    enabled: connect, dryRun: !connect, setupDone: true, safeMode, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     persona: { current: PERSONA, dataOwner: PERSONA },
     onebot: { httpUrl: mock?.httpUrl, wsUrl: mock?.wsUrl, httpToken: mock?.token, wsToken: mock?.token },
     modules: { bili: { enabled: false } }, memory: { enabled: true, auto: false },

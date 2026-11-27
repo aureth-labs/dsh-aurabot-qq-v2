@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 // 内置模块：群管。主人开口时禁言、解禁、踢人、改头衔、发公告；她知道自己在每个群是什么身份。
 
 import { defineTool, str, int } from '../../../src/tools/index.ts'
@@ -42,7 +43,7 @@ export function apply(ctx, config) {
         const uid = Number(user_id || 0)
         const whole = action === 'whole_ban' || action === 'whole_unban'
         if (!whole && action !== 'notice' && !uid) return { ok: false, message: '要说清楚对谁（QQ 号）' }
-        if (uid && String(uid) === String(cfg.ownerQQ) && action !== 'unban' && action !== 'title') return { ok: false, message: '不能对主人做这个' }
+        if (uid && String(uid) === String(ownerId(cfg)) && action !== 'unban' && action !== 'title') return { ok: false, message: '不能对主人做这个' }
         const role = await groupRoles.get(gid, { fresh: true })
         if (role && !groupRoles.canManage(role)) return { ok: false, message: '我在这个群只是普通成员，没有管理权限' }
         if (role === 'admin' && action === 'title') return { ok: false, message: '改专属头衔要群主才行，我只是管理员' }

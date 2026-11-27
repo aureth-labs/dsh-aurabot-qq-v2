@@ -13,7 +13,7 @@ import { hubSource } from '../helpers/hub-source.js'
 const read = (rel) => readFileSync(new URL(`../../${rel}`, import.meta.url), 'utf8')
 const GROUP = { kind: 'group', chatId: 'group:100200300', groupId: '100200300', userId: '100200300' }
 const OTHER_GROUP = { kind: 'group', chatId: 'group:200300400', groupId: '200300400' }
-const cfgWith = (group) => normalize({ ownerQQ: '10001', allow: { groups: ['100200300', '200300400'] }, group })
+const cfgWith = (group) => normalize({ owners: [{ platform: 'qq', userId: '10001' }], allow: { groups: ['100200300', '200300400'] }, group })
 
 test('groupOwnerTools：默认关，群聊才有效，私聊一律 off', () => {
   assert.equal(groupOwnerTools(normalize({}), GROUP), 'off')
@@ -34,9 +34,9 @@ test('groupOwnerTools：ownerToolsGroups 非空时只对列出的群生效', () 
 test('levelFor：开了本机工具的群给 group-full，其余群仍旧 social', () => {
   assert.equal(levelFor(cfgWith({ ownerTools: 'owner' }), GROUP), 'group-full')
   assert.equal(levelFor(cfgWith({ ownerTools: 'all' }), GROUP), 'social', 'all 不再抬档')
-  assert.equal(levelFor(normalize({ ownerQQ: '10001' }), GROUP), 'social')
-  assert.equal(levelFor(normalize({ ownerQQ: '10001', ownerLevel: 'full' }), { kind: 'private', userId: '10001' }), 'full')
-  assert.equal(levelFor(normalize({ ownerQQ: '10001', ownerLevel: 'full' }), { kind: 'private', userId: '20002' }), 'social')
+  assert.equal(levelFor(normalize({ owners: [{ platform: 'qq', userId: '10001' }] }), GROUP), 'social')
+  assert.equal(levelFor(normalize({ owners: [{ platform: 'qq', userId: '10001' }], ownerLevel: 'full' }), { kind: 'private', userId: '10001' }), 'full')
+  assert.equal(levelFor(normalize({ owners: [{ platform: 'qq', userId: '10001' }], ownerLevel: 'full' }), { kind: 'private', userId: '20002' }), 'social')
 })
 
 test('presetFor：group-full 走专用 preset，不能落到 private', () => {
@@ -58,7 +58,7 @@ test('配置归一化：默认 off，非法值回落 off，群号列表收成数
 })
 
 test('人格：group-owner 承认手里有工具，social 仍然明说没有', () => {
-  const base = normalize({ ownerQQ: '10001', ownerName: '主人' })
+  const base = normalize({ owners: [{ platform: 'qq', userId: '10001' }], ownerName: '主人' })
   const groupOwner = rulesText('group-owner', base)
   assert.ok(groupOwner.includes('确实有命令和文件工具'), 'group-owner 应当承认有工具')
   assert.ok(groupOwner.includes('工具会被收走'), 'group-owner 要说明没让动手时工具会消失')
@@ -120,7 +120,7 @@ test('闸门：群里非主人说话时本机工具被收走', async () => {
   const OWNER = '10001'
   const OTHER = '20002'
   const G = '100200300'
-  const cfg = normalize({ ownerQQ: OWNER, allow: { groups: [G] }, longTasks: false, group: { ownerTools: 'owner' } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], allow: { groups: [G] }, longTasks: false, group: { ownerTools: 'owner' } })
   const fake = createFakeDsh({ brain: () => '好' })
   const log = { info () {}, warn () {}, debug () {}, error () {} }
   const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log, onebot: { call: async () => ({}) }, buildTools: () => [] })
@@ -153,7 +153,7 @@ test('工具闸：新会话第一条消息就按说话人判定（首轮不再�
   const OWNER = '10001'
   const OTHER = '30003'
   const G = '100200300'
-  const cfg = normalize({ ownerQQ: OWNER, allow: { groups: [G] }, longTasks: false, group: { ownerTools: 'owner' } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], allow: { groups: [G] }, longTasks: false, group: { ownerTools: 'owner' } })
   const chat = { kind: 'group', chatId: `group:${G}`, groupId: G, userId: OWNER, nickname: '主人' }
   const build = () => {
     const fake = createFakeDsh({ brain: () => '好' })

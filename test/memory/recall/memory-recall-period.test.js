@@ -20,7 +20,7 @@ function setup(t) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-recall-period-'))
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ ownerQQ: OWNER, botQQ: '20000001', model: { provider: 'p', model: 'm' } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000001', model: { provider: 'p', model: 'm' } })
   const builders = []
   const mem = memoryModule.setup({
     core: { hub: {}, http: { query: () => ({}), body: async () => ({}) } },

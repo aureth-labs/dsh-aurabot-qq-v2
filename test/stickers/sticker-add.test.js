@@ -25,7 +25,7 @@ function fakePng (salt = 0) {
 function makeStore () {
   freshDir()
   const calls = []
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '10000001', stickers: { enabled: true, caption: false } })
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '10000001' }], stickers: { enabled: true, caption: false } })
   const onebot = { call: async (a, p) => { calls.push({ a, p }); return a === 'add_custom_face' ? { emoji_id: 'e1' } : {} } }
   const store = createStickerStore({ dsh: null, getConfig: () => cfg, source: mockStickerSource(onebot), log: { info () {}, warn () {}, debug () {} } })
   return { store, calls }

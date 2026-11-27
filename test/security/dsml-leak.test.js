@@ -88,7 +88,7 @@ function setup(t, { hooks, voice = false, ttsFailure = false } = {}) {
   const file = join(dir, 'voice.wav')
   writeFileSync(file, 'test voice')
   const sent = [], warnings = [], spoken = []
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '1', workspaceDir: dir,
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '1' }], workspaceDir: dir,
     voice: { enabled: voice, autoChance: 0, emojiSeparate: true }, stickers: { enabled: false, faces: false } })
   const log = { info() {}, debug() {}, error() {}, warn: (...args) => warnings.push(args.join(' ')) }
   const hub = createHub({ dsh: {}, getConfig: () => cfg, log, hooks,

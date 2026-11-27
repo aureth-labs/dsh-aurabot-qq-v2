@@ -26,7 +26,7 @@ test('解析：英文、中文别名、全角斜杠、中文命令不加空格',
 })
 
 function deps() {
-  let cfg = normalize({ enabled: true, ownerQQ: '10000001', allow: { groups: ['555'] } })
+  let cfg = normalize({ enabled: true, owners: [{ platform: 'qq', userId: '10000001' }], allow: { groups: ['555'] } })
   const calls = []
   return {
     calls,

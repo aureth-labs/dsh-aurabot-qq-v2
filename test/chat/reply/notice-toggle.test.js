@@ -20,7 +20,7 @@ before(async () => {
     enabled: true,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: ['555'] },
     onebot: { httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9' },
   }))
@@ -41,7 +41,7 @@ test('通知开关只改通知设置，其他配置保持原样', async () => {
   assert.equal(r.json().ok, true, r.raw())
   for (const cfg of [saved(), api.getConfig()]) {
     assert.equal(cfg.notice.approval, false)
-    assert.equal(cfg.ownerQQ, OWNER)
+    assert.equal(cfg.owners[0].userId, OWNER)
     assert.equal(cfg.botQQ, BOT)
     assert.equal(cfg.setupDone, true)
     assert.deepEqual(cfg.allow, { ...cfg.allow, private: [OWNER], groups: ['555'] })
@@ -53,7 +53,7 @@ test('按工作区的通知开关同样不动其他配置', async () => {
   const r = await fake.call('/notice/toggle', { kind: 'question', value: false, workspace })
   assert.equal(r.json().ok, true, r.raw())
   const cfg = saved()
-  assert.equal(cfg.ownerQQ, OWNER)
+  assert.equal(cfg.owners[0].userId, OWNER)
   assert.equal(cfg.notice.approval, false, '前一次改的通知设置也还在')
   assert.ok(Object.values(cfg.notice.workspaces).some((w) => w.question === false))
 })

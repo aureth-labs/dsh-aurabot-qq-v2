@@ -13,7 +13,7 @@ test('主人会话工具修改可持久化、面板能读、旧草稿不能覆�
   process.env.AURABOT_DATA_DIR = root
   process.env.AURABOT_WORKSPACE = join(root, 'workspace')
   writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: false, dryRun: false, setupDone: true,
-    ownerQQ: OWNER, botQQ: '20000002', allow: { groups: [G] }, voice: { enabled: false },
+    owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000002', allow: { groups: [G] }, voice: { enabled: false },
     onebot: {} }))
   const fake = createFakeDsh({ brain: async ({ text, callTool }) => {
     const result = await callTool('qq_group_settings', { action: 'set', group_id: G, proactive: false, engaged: true })

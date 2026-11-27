@@ -13,7 +13,7 @@ function setup({ level = 'full', kind = 'private', ownerAll = true, files = { en
     sendFile: async (chatId) => { sent.push(chatId); return { message_id: 2 } },
     ...hubOver,
   }
-  const cfg = { enabled: true, dryRun: false, ownerQQ: '1', allow: { private: [], groups: ['9'] }, files }
+  const cfg = { enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '1' }], allow: { private: [], groups: ['9'] }, files }
   let build = null
   qqTools.setup({ core: { hub, onebot: { call: async () => ({}) } }, config: () => cfg, tool: (fn) => { build = fn } })
   const tools = build({ chat: { kind, chatId: kind === 'group' ? 'group:9' : 'private:1' }, level, sessionId: 's1' })

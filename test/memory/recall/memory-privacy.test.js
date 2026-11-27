@@ -30,7 +30,7 @@ function freshStore (tag, memory = {}) {
   const dir = join(ROOT, tag)
   mkdirSync(dir, { recursive: true })
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ enabled: true, ownerQQ: OWNER, ownerName: '主人', memory: { enabled: true, recallCount: 20, ...memory } })
+  const cfg = normalize({ enabled: true, owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', memory: { enabled: true, recallCount: 20, ...memory } })
   const hub = { chatLogOf: () => [], chatLogDays: () => [], deleteChatLog: () => {}, speakersOf: () => [] }
   return { dir, cfg, hub, store: createMemoryStore({ dsh: null, getConfig: () => cfg, hub, log }) }
 }
@@ -146,7 +146,7 @@ test('F5：mergeGroups 不跨聊天合并（模型混入跨来源 id 会被拒�
   mkdirSync(dir, { recursive: true })
   process.env.AURABOT_DATA_DIR = dir
   const cfg = normalize({
-    enabled: true, ownerQQ: OWNER, ownerName: '主人', model: { provider: 'fake', model: 'fake-1' },
+    enabled: true, owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', model: { provider: 'fake', model: 'fake-1' },
     memory: { enabled: true, recallCount: 20, mergeGroups: true },
   })
   const hub = { chatLogOf: () => [], chatLogDays: () => [], deleteChatLog: () => {}, groupNames: new Map(), speakersOf: () => [] }

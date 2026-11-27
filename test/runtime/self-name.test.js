@@ -30,7 +30,7 @@ function setup(t, answer) {
     else process.env.AURABOT_DATA_DIR = previous
     cleanupDir(dir)
   })
-  const cfg = normalize({ ownerQQ: OWNER, botQQ: BOT, model: { provider: 'p', model: 'm' },
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, model: { provider: 'p', model: 'm' },
     mood: { enabled: true, judge: true },
     memory: { keepChatlogDays: 0, keepChatlogSet: true, mergeGroups: true },
   })

@@ -1,4 +1,4 @@
-import { reconcileOwnerEdit } from '../owners.ts'
+import { ownerId } from '../owners.ts'
 import { randomUUID } from 'node:crypto'
 import { dataDir, readJson, writeJson } from '../../store/index.ts'
 import { normalize } from './normalize.ts'
@@ -19,7 +19,8 @@ export function loadConfig() {
 
 export function ownerAuthorizationRevision(cfg) {
   const binding = cfg.ownerAuthorization
-  return cfg.ownerQQ && binding?.owner === cfg.ownerQQ && typeof binding.revision === 'string'
+  const owner = ownerId(cfg)
+  return owner && binding?.owner === owner && typeof binding.revision === 'string'
     && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/u.test(binding.revision) ? binding.revision : ''
 }
 
@@ -42,14 +43,14 @@ export function saveConfig(cfg, previous = loadConfig()) {
     if (hasMode || !prevMode || previous?.memory?.vector?.modeExplicit !== true) return cfg
     return { ...(cfg || {}), memory: { ...(cfg?.memory || {}), vector: { ...(cfg?.memory?.vector || {}), mode: prevMode } } }
   })()
-  const c = normalize(reconcileOwnerEdit(input, previous))
+  const c = normalize(input)
   // Only the previous authoritative configuration can carry an authorization forward.
-  if (c.ownerQQ) {
-    const revision = c.ownerQQ === previous.ownerQQ ? ownerAuthorizationRevision(previous) : ''
-    c.ownerAuthorization = { owner: c.ownerQQ, revision: revision || randomUUID() }
+  const owner = ownerId(c)
+  if (owner) {
+    const revision = owner === ownerId(previous) ? ownerAuthorizationRevision(previous) : ''
+    c.ownerAuthorization = { owner, revision: revision || randomUUID() }
   } else delete c.ownerAuthorization
-  const { ownerQQ, ownerIds, ...stored } = withVectorMode(c)
-  writeJson(FILE(), stored)
+  writeJson(FILE(), withVectorMode(c))
   return c
 }
 

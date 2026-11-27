@@ -25,7 +25,7 @@ function makeStore () {
   const cfg = normalize({
     enabled: true,
     dryRun: false,
-    ownerQQ: '10000001',
+    owners: [{ platform: 'qq', userId: '10000001' }],
     stickers: { enabled: true, collect: true, caption: false }, // caption 关掉，测改名就够了
   })
   const onebot = {

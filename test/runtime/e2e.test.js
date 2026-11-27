@@ -128,7 +128,7 @@ before(async () => {
     dryRun: false,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: ['555', '556', '557', '558', '559'] },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0 },

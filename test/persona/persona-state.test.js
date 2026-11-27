@@ -23,7 +23,7 @@ before(async () => {
     enabled: true,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: [] },
     ext: { purpose: { enabled: true } },
     onebot: { httpUrl: 'http://127.0.0.1:9', wsUrl: 'ws://127.0.0.1:9' },

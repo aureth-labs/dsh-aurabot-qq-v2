@@ -25,7 +25,7 @@ function setup(t, answer = () => '[]', patch = {}) {
   process.env.AURABOT_DATA_DIR = dir
   const logs = new Map()
   const calls = []
-  const cfg = normalize({ ownerQQ: OWNER, botQQ: BOT, model: { provider: 'p', model: 'm' }, ...patch })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, model: { provider: 'p', model: 'm' }, ...patch })
   const hub = { chatLogDays: () => [...logs.keys()].sort(), chatLogOf: (d) => logs.get(d) || [], deleteChatLog: (d) => logs.delete(d), speakersOf: () => [] }
   const dsh = { get: () => null, llm: { async *stream({ system, messages }) {
     const text = messages[0].content[0].text

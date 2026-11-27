@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { rulesText } from '../../src/persona/personas.ts'
 
-const base = { ownerQQ: '10001', ownerName: '主人' }
+const base = { owners: [{ platform: 'qq', userId: '10001' }], ownerName: '主人' }
 
 test('social 档要带「人格卡特权条款只对主人生效」的边界规则', () => {
   const social = rulesText('social', base)

@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 // QQ 里的主人命令：/silent /active 之类，直接在 QQ 上管她。只认主人；在总开关关着时也能用（所以 /on 才有用）。
 
 import { runEffortCommand } from './effort-command.ts'
@@ -173,7 +174,7 @@ export async function runCommand(cmd, msg, deps) {
     case 'remember': {
       if (!memory) return '记忆模块关着'
       if (!cmd.arg) return '要我记住什么呀？比如 /remember 我不吃香菜'
-      const r = memory.add({ text: cmd.arg, aboutName: cfg.ownerName || '主人', about: cfg.ownerQQ, importance: 0.8, source: 'panel', chatId: msg.chatId })
+      const r = memory.add({ text: cmd.arg, aboutName: cfg.ownerName || '主人', about: ownerId(cfg), importance: 0.8, source: 'panel', chatId: msg.chatId })
       if (r.ok) return '记住了'
       deps.log?.warn?.('记忆命令失败：', r.message)
       return '这次记忆保存未确认，请先在记忆面板查看；详细原因请主人查看本机日志。'

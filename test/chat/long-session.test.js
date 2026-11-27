@@ -21,7 +21,7 @@ test('召回提示有总长度上限：聊天原文再多也不超过 recallHint
   process.env.AURABOT_DATA_DIR = dir
   const { normalize } = await import('../../src/core/config/index.ts')
   const { createMemoryStore } = await import('../../packages/modules/memory/engine/index.ts')
-  const cfg = normalize({ ownerQQ: '10001', memory: { enabled: true, recallHintMaxChars: 400 } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: '10001' }], memory: { enabled: true, recallHintMaxChars: 400 } })
   assert.equal(normalize({ memory: { recallHintMaxChars: 99 } }).memory.recallHintMaxChars, 300)
   const day = new Date().toISOString().slice(0, 10)
   const lines = Array.from({ length: 300 }, (_, i) => ({ t: Date.now() - i * 1000, chatId: 'private:10001', who: 'n', uid: '10001', text: `奶茶和熬夜的事情聊了很久很久，第 ${i} 句，后面还有很多很多字` }))

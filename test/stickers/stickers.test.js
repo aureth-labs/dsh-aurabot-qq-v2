@@ -27,11 +27,11 @@ function gif(seed) {
 const log = { info() {}, warn() {}, debug() {} }
 
 test('#31 关掉表情包：提示词里不再教她写 <sticker:…>', () => {
-  const on = rulesText('private', normalize({ ownerQQ: '10001' }))
+  const on = rulesText('private', normalize({ owners: [{ platform: 'qq', userId: '10001' }] }))
   assert.match(on, /<sticker:标签>/)
-  const off = rulesText('private', normalize({ ownerQQ: '10001', stickers: { enabled: false } }))
+  const off = rulesText('private', normalize({ owners: [{ platform: 'qq', userId: '10001' }], stickers: { enabled: false } }))
   assert.doesNotMatch(off, /<sticker:/)
-  const moduleOff = rulesText('private', normalize({ ownerQQ: '10001' }), { off: new Set(['stickers']) })
+  const moduleOff = rulesText('private', normalize({ owners: [{ platform: 'qq', userId: '10001' }] }), { off: new Set(['stickers']) })
   assert.doesNotMatch(moduleOff, /<sticker:/)
 })
 

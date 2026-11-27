@@ -8,7 +8,7 @@ import { runCommand, parseCommand } from '../../packages/modules/commands/dispat
 const OWNER = '10000001', OTHER = '10000002', G = '30000003', H = '40000004'
 const chat = { kind: 'private', userId: OWNER, chatId: `private:${OWNER}` }
 function setup(patch = {}, { allOwner = true, beforeSave, failSave = false } = {}) {
-  let cfg = normalize({ ownerQQ: OWNER, botQQ: '20000002', enabled: true, dryRun: false,
+  let cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000002', enabled: true, dryRun: false,
     allow: { groups: [G] }, ...patch })
   let saves = 0
   const warnings = []
@@ -31,10 +31,10 @@ test('只挂主人私聊；名单权限 all 也不开放给别人或群，off �
     assert.equal(groupSettingsTool(s.api, { chat: c, sessionId: 's' }), null)
   }
   assert.equal(setup({ profilePerms: { whitelist: 'off' } }).tool, null)
-  assert.equal(setup({ ownerQQ: '' }).tool, null)
+  assert.equal(setup({ owners: [{ platform: 'qq', userId: '' }] }).tool, null)
 })
 test('执行时复查主人、名单权限与本轮来源，不依赖已经挂好的工具', async () => {
-  for (const patch of [{ ownerQQ: OTHER }, { profilePerms: { whitelist: 'off' } }]) {
+  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { profilePerms: { whitelist: 'off' } }]) {
     const s = setup(); s.set(patch)
     assert.equal((await call(s, { engaged: true })).ok, false)
     assert.equal((await read(s)).ok, false)
@@ -59,7 +59,7 @@ test('严格拒绝错误类型、多个群号、群名、额外参数和混合 g
     { engaged: true, group_id: 'abc30000003def' }, { engaged: true, group_id: 30000003 },
     { engaged: true, group_id: '123' }, { engaged: true, group_id: '030000003' },
     { action: 'delete', engaged: true }, { action: 'get', engaged: true }, { action: 'reset', passive_memory: true },
-    { engaged: true, ownerQQ: OTHER }, { engaged: true, passive_memory: 'false' }]) {
+    { engaged: true, owners: [{ platform: 'qq', userId: String(OTHER) }] }, { engaged: true, passive_memory: 'false' }]) {
     assert.equal((await call(s, args)).ok, false, JSON.stringify(args))
     assert.deepEqual(s.cfg(), before)
   }
@@ -129,7 +129,7 @@ test('保存时在最新配置上规划，保留同时改的其它项', async ()
   assert.deepEqual(s.cfg().memory.passiveGroups, [H, G])
 })
 test('写入边界再次复核权限与调试，发生变化就拒绝', async () => {
-  for (const patch of [{ ownerQQ: OTHER }, { debug: true }, { profilePerms: { whitelist: 'off' } }]) {
+  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { debug: true }, { profilePerms: { whitelist: 'off' } }]) {
     const s = setup({}, { beforeSave: cur => ({ ...cur, ...patch }) })
     assert.equal((await call(s, { engaged: true })).ok, false)
     assert.equal(s.saves(), 0); assert.equal(s.cfg().group.overrides[G], undefined)

@@ -17,7 +17,7 @@ const day = () => {
 }
 
 test('H03：群聊整理不能按 ID 改写主人记忆', async () => {
-  const cfg = normalize({ enabled: true, ownerQQ: owner, ownerName: '主人', model: { provider: 'p', model: 'm' } })
+  const cfg = normalize({ enabled: true, owners: [{ platform: 'qq', userId: String(owner) }], ownerName: '主人', model: { provider: 'p', model: 'm' } })
   const logs = new Map()
   const log = { info () {}, warn () {}, debug () {} }
   const hub = {

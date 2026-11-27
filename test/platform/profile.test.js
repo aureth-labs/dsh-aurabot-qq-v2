@@ -12,7 +12,7 @@ const ownerChat = { kind: 'private', chatId: `private:${OWNER}`, userId: OWNER }
 const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64)])
 
 function setup(overrides = {}) {
-  let cfg = normalize({ botQQ: BOT, ownerQQ: OWNER, model: { vision: 'on' }, ...overrides.cfg })
+  let cfg = normalize({ botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }], model: { vision: 'on' }, ...overrides.cfg })
   const calls = [], rules = [], disposers = [], sends = [], downloads = [], asks = [], attachments = []
   let allOwner = true, builder
   const state = { nickname: '大肥鱼', long_nick: '爱吃白米饭' }
@@ -56,7 +56,7 @@ function setup(overrides = {}) {
 }
 
 function reader(overrides = {}) {
-  let cfg = normalize({ botQQ: BOT, ownerQQ: OWNER, model: { vision: 'on' }, ...overrides.cfg })
+  let cfg = normalize({ botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }], model: { vision: 'on' }, ...overrides.cfg })
   const calls = [], images = [], asks = []
   const r = createQqProfile({
     getConfig: () => cfg,
@@ -98,7 +98,7 @@ test('执行时再次核对主人和本轮发言者，拒绝后不调用网关',
   assert.equal((await tool.execute({})).ok, false)
   assert.equal(s.calls.length, 0)
   const changed = setup(), old = changed.tools().qq_get_profile
-  changed.set({ ownerQQ: '30000003' })
+  changed.set({ owners: [{ platform: 'qq', userId: '30000003' }] })
   assert.equal((await old.execute({})).ok, false)
   assert.equal(changed.calls.length, 0)
 })
@@ -217,7 +217,7 @@ test('头像不是图片、视觉失败或无正文时如实降级，不编造�
 })
 
 test('主人身份在查询期间变化时，不返回查询结果', async () => {
-  const s = setup({ call: () => { s.set({ ownerQQ: '30000003' }); return { user_id: Number(BOT), nickname: '大肥鱼', long_nick: '' } } })
+  const s = setup({ call: () => { s.set({ owners: [{ platform: 'qq', userId: '30000003' }] }); return { user_id: Number(BOT), nickname: '大肥鱼', long_nick: '' } } })
   const r = await s.tools().qq_get_profile.execute({})
   assert.equal(r.ok, false)
   assert.equal(r.profile, undefined)
@@ -328,7 +328,7 @@ test('试运行、调试、总开关关闭不下载或发送头像', async () =>
 })
 
 test('发送执行前重新校验主人、本轮身份及模块是否存活', async () => {
-  for (const change of [(s) => s.mixed(), (s) => s.set({ ownerQQ: '30000003' }), (s) => s.dispose()]) {
+  for (const change of [(s) => s.mixed(), (s) => s.set({ owners: [{ platform: 'qq', userId: '30000003' }] }), (s) => s.dispose()]) {
     const s = setup({ cfg: { enabled: true, dryRun: false } }), tool = s.tools().qq_send_avatar
     change(s)
     const r = await tool.execute({})
@@ -339,7 +339,7 @@ test('发送执行前重新校验主人、本轮身份及模块是否存活', as
 })
 
 test('下载等待期间切换账号、主人、模式、模块或总开关，不继续发送', async () => {
-  for (const change of [(s) => s.set({ botQQ: '30000003' }), (s) => s.set({ ownerQQ: '30000003' }), (s) => s.mixed(), (s) => s.set({ debug: true }), (s) => s.set({ enabled: false }), (s) => s.dispose()]) {
+  for (const change of [(s) => s.set({ botQQ: '30000003' }), (s) => s.set({ owners: [{ platform: 'qq', userId: '30000003' }] }), (s) => s.mixed(), (s) => s.set({ debug: true }), (s) => s.set({ enabled: false }), (s) => s.dispose()]) {
     let release
     const waiting = new Promise((r) => { release = r })
     const s = setup({ cfg: { enabled: true, dryRun: false }, fetchAvatar: () => waiting })

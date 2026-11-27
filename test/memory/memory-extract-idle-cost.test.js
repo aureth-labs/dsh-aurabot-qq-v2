@@ -64,7 +64,7 @@ test('空闲提炼不再按批重扫所有天的聊天流水', async (t) => {
   const cfg = {
     enabled: true,
     model: { provider: 'p', model: 'm' },
-    ownerQQ: owner,
+    owners: [{ platform: 'qq', userId: String(owner) }],
     botQQ: '999',
     memory: {
       enabled: true, shortTerm: false, dailyConsolidate: true, consolidateTimes: [],

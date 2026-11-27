@@ -10,7 +10,7 @@ import { createHub } from '../helpers/hub.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 
 const OWNER = '10000001', GUEST = '10000002'
-const cfg = normalize({ ownerQQ: OWNER })
+const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }] })
 for (const [ids, role, label] of [
   [[OWNER], 'owner', '管理者（程序已核验）'],
   [[GUEST], 'guest', '普通用户'],
@@ -29,7 +29,7 @@ function setup(t, beforeCall) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-request-identity-'))
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const config = normalize({ enabled: true, dryRun: true, setupDone: true, ownerQQ: OWNER,
+  const config = normalize({ enabled: true, dryRun: true, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }],
     botQQ: '20000002', ownerLevel: 'social', workspaceDir: join(dir, 'workspace'),
     voice: { enabled: false }, allow: { groups: ['30000003'] }, history: { enabled: false },
   })

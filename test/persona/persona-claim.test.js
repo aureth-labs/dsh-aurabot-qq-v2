@@ -43,7 +43,7 @@ before(async () => {
     dryRun: false,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: [] },
     persona: { current: 'xiaoxing' },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },

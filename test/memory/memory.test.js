@@ -60,7 +60,7 @@ before(async () => {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-mem-'))
   ;({ createMemoryStore } = await import('../../packages/modules/memory/engine/index.ts'))
   ;({ normalize } = await import('../../src/core/config/index.ts'))
-  cfg = normalize({ model: { provider: 'p', model: 'm' }, ownerQQ: '10000001', ownerName: '主人', allow: { private: ['30000003'] }, memory: { keepChatlogDays: 0, keepChatlogSet: true } })
+  cfg = normalize({ model: { provider: 'p', model: 'm' }, owners: [{ platform: 'qq', userId: '10000001' }], ownerName: '主人', allow: { private: ['30000003'] }, memory: { keepChatlogDays: 0, keepChatlogSet: true } })
   mem = createMemoryStore({ dsh, getConfig: () => cfg, hub, log: { info() {}, warn() {}, debug() {} } })
 })
 
@@ -278,7 +278,7 @@ const groupLog = (gid, who, text, t) => ({ chatId: 'group:' + gid, who, text, t 
 test('主人私聊群聊摘要：默认关，不会把群聊流水补进私聊', () => {
   logs.clear()
   logs.set(day(new Date()), [groupLog('777', '小明', '今晚开黑打本', Date.now() - 60_000)])
-  cfg.ownerQQ = '10000001'
+  cfg.owners = [{ platform: 'qq', userId: '10000001' }]
   cfg.group.ownerBrief.enabled = false
   assert.equal(normalize({}).group.ownerBrief.enabled, true, '本地默认开'); assert.equal(normalize({}).group.ownerBrief.lines, 24, '本地默认 24 行')
   const hint = mem.recallHint({ kind: 'private', userId: '10000001', chatId: 'private:10000001' }, '群里今晚在聊什么')
@@ -292,7 +292,7 @@ test('主人私聊群聊摘要：开启后只在主人问群相关时补最近�
     groupLog('777', '小明', '今晚开黑打本', t0 - 60_000),
     groupLog('777', '阿花', '我晚点到', t0 - 30_000),
   ])
-  cfg.ownerQQ = '10000001'
+  cfg.owners = [{ platform: 'qq', userId: '10000001' }]
   cfg.group.ownerBrief.enabled = true
   cfg.group.ownerBrief.lines = 12
   cfg.group.ownerBrief.groups = []
@@ -315,7 +315,7 @@ test('主人私聊群聊摘要：群白名单与每个群条数限制生效', ()
     groupLog('777', '小明', '777-3', t0 - 30_000),
     groupLog('888', '阿花', '888-1', t0 - 20_000),
   ])
-  cfg.ownerQQ = '10000001'
+  cfg.owners = [{ platform: 'qq', userId: '10000001' }]
   cfg.group.ownerBrief.enabled = true
   cfg.group.ownerBrief.lines = 2
   cfg.group.ownerBrief.groups = ['777']
@@ -400,7 +400,7 @@ test('提炼：非空但截断时放宽预算重试一次（#346）', async () =
   }
   const store = createMemoryStore({
     dsh,
-    getConfig: () => normalize({ model: { provider: 'p', model: 'm' }, ownerQQ: '10000001', ownerName: '主人', allow: { private: ['30000003'] }, memory: { keepChatlogDays: 0, keepChatlogSet: true } }),
+    getConfig: () => normalize({ model: { provider: 'p', model: 'm' }, owners: [{ platform: 'qq', userId: '10000001' }], ownerName: '主人', allow: { private: ['30000003'] }, memory: { keepChatlogDays: 0, keepChatlogSet: true } }),
     hub: localHub,
     log: { info () {}, warn () {}, debug () {} },
     directory: dir,

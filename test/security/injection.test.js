@@ -17,7 +17,7 @@ const stranger = '30000003'
 function cfg () {
   return normalize({
     enabled: true,
-    ownerQQ: owner,
+    owners: [{ platform: 'qq', userId: String(owner) }],
     ownerName: '主人',
     stickers: { enabled: false },
     imageGen: { enabled: false },

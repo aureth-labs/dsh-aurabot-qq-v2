@@ -36,7 +36,7 @@ const segOf = (buf) => ({ type: 'image', data: { file: 'base64://' + buf.toStrin
 /** 只搭表情模块要用的那点 api：工具、路由、配置、日志。 */
 function fixture({ recent = [], uploadBytes = 0 } = {}) {
   const cfg = {
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     dryRun: true,
     stickers: { enabled: true, collect: true, collectMode: 'ask', caption: false, autoChance: 0, maxPerHour: 20, maxLibrary: 300 },
   }

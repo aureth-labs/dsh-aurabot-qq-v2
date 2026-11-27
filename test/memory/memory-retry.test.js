@@ -34,7 +34,7 @@ function setup(answer, idle = false) {
   const day = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const hub = { chatLogDays: () => [day], chatLogOf: () => [{ chatId: 'private:2', who: '阿花', uid: '2', text: '你好', t: Date.now() - 3600_000 }], deleteChatLog() {} }
   const warns = []
-  const cfg = normalize({ model: { provider: 'p', model: 'm' }, ownerQQ: '1' })
+  const cfg = normalize({ model: { provider: 'p', model: 'm' }, owners: [{ platform: 'qq', userId: '1' }] })
   if (idle) Object.assign(cfg.memory, { consolidateTimes: [], extractMinLines: 1, extractIdleMinutes: 1, shortTerm: false })
   const make = () => createMemoryStore({ dsh, getConfig: () => cfg, hub, log: { info() {}, warn: (...a) => warns.push(a.join('')), debug() {} } })
   return { mem: make(), make, calls, warns }

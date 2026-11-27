@@ -6,7 +6,7 @@ import { runPermissionsCommand } from '../../packages/modules/commands/permissio
 const owner = { kind: 'private', userId: '123456' }
 const guest = { kind: 'private', userId: '10000002' }
 function setup() {
-  let config = { ownerQQ: owner.userId, allow: { private: [], groups: [] }, capabilityAllow: { image: [], song: [], video: [] }, commandAllow: {} }
+  let config = { owners: [{ platform: 'qq', userId: String(owner.userId) }], allow: { private: [], groups: [] }, capabilityAllow: { image: [], song: [], video: [] }, commandAllow: {} }
   const deps = { getConfig: () => config, setConfig: (v) => { config = v }, extraCommands: [{ name: 'hello', module: 'probe', delegatable: true }, { name: 'admin', module: 'probe' }] }
   return { deps, config: () => config, call: (arg, msg = owner) => runPermissionsCommand(arg, msg, deps) }
 }

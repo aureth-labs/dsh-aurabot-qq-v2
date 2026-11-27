@@ -1,5 +1,5 @@
 import { isLegacyScope, scopeOfRoom } from '../../../core/bot/room.ts'
-import { isOwnerOf } from '../../../core/config/owners.ts'
+import { isOwnerOf, ownerId } from '../../../core/config/owners.ts'
 
 const scopeOf = (where) => {
   if (where?.platform && where?.botId) return { platform: String(where.platform), botId: String(where.botId) }
@@ -19,7 +19,7 @@ export const LEVELS = ['full', 'social', 'chat']
  */
 export function checkAllowed(cfg, msg) {
   if (!legacy(msg)) return { allowed: true, reason: '身份目录已放行' }
-  const owner = String(cfg.ownerQQ || '')
+  const owner = String(ownerId(cfg) || '')
   if (msg.kind === 'private') {
     if (msg.userId === owner) return { allowed: true, reason: '主人' }
     const list = (cfg.allow?.private || []).map(String)
@@ -82,7 +82,7 @@ export function presetFor(level, cfg, _chat?) {
 
 export function isOwner(cfg, userId, where?) {
   if (String(userId || '') === '') return false
-  if (legacy(where)) return String(userId) === String(cfg.ownerQQ || '')
+  if (legacy(where)) return String(userId) === String(ownerId(cfg) || '')
   const scope = scopeOf(where)
   return isOwnerOf(cfg, String(userId), scope.platform, scope.botId)
 }
@@ -107,7 +107,7 @@ export const permOf = (cfg, key) => {
 export function profileToolVisible(cfg, key, chat) {
   const p = permOf(cfg, key)
   if (p === 'all') return chat.kind === 'private' || chat.kind === 'group'
-  if (p === 'owner') return chat.kind === 'private' && String(chat.userId) === String(cfg.ownerQQ || '')
+  if (p === 'owner') return chat.kind === 'private' && String(chat.userId) === String(ownerId(cfg) || '')
   return false
 }
 

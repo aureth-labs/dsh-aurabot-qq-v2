@@ -21,7 +21,7 @@ function setup(t, memoryOver = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'graph-'))
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ ownerQQ: OWNER, ownerName: '主人', memory: { dailyConsolidate: false, vector: { enabled: false }, ...memoryOver } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', memory: { dailyConsolidate: false, vector: { enabled: false }, ...memoryOver } })
   const mem = createMemoryStore({ dsh: {}, getConfig: () => cfg, hub: { chatLogDays: () => [], chatLogOf: () => [], speakersOf: () => [] }, log })
   t.after(() => {
     if (previous === undefined) delete process.env.AURABOT_DATA_DIR

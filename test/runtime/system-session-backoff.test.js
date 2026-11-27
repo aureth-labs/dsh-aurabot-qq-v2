@@ -24,7 +24,7 @@ function setup(t) {
   const oldDir = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = join(root, 'data')
   const fake = createFakeDsh({ brain: async () => '' })
-  const cfg = normalize({ enabled: true, dryRun: true, setupDone: true, ownerQQ: OWNER, botQQ: BOT,
+  const cfg = normalize({ enabled: true, dryRun: true, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     workspaceDir: join(root, 'workspace'), merge: { enabled: false }, voice: { enabled: false },
     stickers: { autoChance: 0, reactChance: 0 }, allow: { groups: ['777'] },
     bili: { enabled: true, autoBrowse: true, keywords: ['猫'], maxRunsPerDay: 10, intervalHours: 1, reply: true },

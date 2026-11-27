@@ -36,7 +36,7 @@ test('记忆和关系多时，contextFor / recallHint 不按条数反复读库',
   })
   seed(dir)
 
-  const mem = createMemoryStore({ dsh: {}, getConfig: () => ({ memory: { enabled: true }, ownerQQ: owner }), hub: { speakersOf: () => [owner] }, log })
+  const mem = createMemoryStore({ dsh: {}, getConfig: () => ({ memory: { enabled: true }, owners: [{ platform: 'qq', userId: String(owner) }] }), hub: { speakersOf: () => [owner] }, log })
   const chat = { kind: 'private', userId: owner, chatId: 'private:' + owner }
 
   mem.contextFor(chat, 's') // 预热：第一次会把 JSON 记忆迁进 SQLite
@@ -76,7 +76,7 @@ test('聊天流水逐行 rememberedRow 不按每行整库读盘', (t) => {
     text: '流水第 ' + i + ' 条，用来验证逐行过滤不会重复读整库。',
   }))
   const hub = { speakersOf: () => [owner], chatLogDays: () => ['2026-11-14'], chatLogOf: () => rows, chatLogRevision: () => 1 }
-  const mem = createMemoryStore({ dsh: {}, getConfig: () => ({ memory: { enabled: true }, ownerQQ: owner }), hub, log })
+  const mem = createMemoryStore({ dsh: {}, getConfig: () => ({ memory: { enabled: true }, owners: [{ platform: 'qq', userId: String(owner) }] }), hub, log })
   const chat = { kind: 'private', userId: owner, chatId: 'private:' + owner }
 
   mem.recallHint(chat, '流水', '', 's', [owner]) // 预热

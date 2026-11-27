@@ -21,7 +21,7 @@ before(async () => {
     dryRun: false,
     setupDone: true,
     botQQ: '20000002',
-    ownerQQ: '10000001',
+    owners: [{ platform: 'qq', userId: '10000001' }],
     allow: { private: ['10000001'], groups: [] },
     onebot: {},
     voice: { autoChance: 0 },

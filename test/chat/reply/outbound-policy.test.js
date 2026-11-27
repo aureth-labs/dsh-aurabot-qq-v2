@@ -1,3 +1,7 @@
+import { useLegacyRooms } from '../../../src/core/bot/room.ts'
+
+useLegacyRooms('qq', 'adapter-qq-onebot-v11')
+
 // 来源：本仓库自研（2026-11-03 主动发言出站策略）
 // 作用：验证 src/chat/outbound-policy.js 的档位语义、故障语义、因果分类、
 //       账本状态机与上限行为，以及 submit 的「落账 + 投递」完整链路。
@@ -53,11 +57,11 @@ function fakePolicy(name = 'purpose', opts = {}) {
 
 /** 造一份可控配置。 */
 function makeConfig({ tier = 'pass', ownerQQ = '10001' } = {}) {
-  let cfg = { ownerQQ, outboundPolicy: { tier, ownerQQ } }
+  let cfg = { owners: [{ platform: 'qq', userId: ownerQQ }], outboundPolicy: { tier } }
   return {
     get: () => cfg,
     setTier: (t) => { cfg = { ...cfg, outboundPolicy: { ...cfg.outboundPolicy, tier: t } } },
-    setOwner: (qq) => { cfg = { ...cfg, ownerQQ: qq, outboundPolicy: { ...cfg.outboundPolicy, ownerQQ: qq } } },
+    setOwner: (qq) => { cfg = { ...cfg, owners: [{ platform: 'qq', userId: qq }] } },
   }
 }
 
@@ -174,7 +178,7 @@ test('delegation 因果：直接 allow，broker 档也不 defer', () => {
 // ── 6. 非 owner 私聊目标 → allow 不治理 ──────────────────────────────────
 
 test('非 owner 私聊目标：allow，不治理（策略源未被调用）', () => {
-  const { svc } = makeService({ config: makeConfig({ tier: 'broker', ownerQQ: '10001' }) })
+  const { svc } = makeService({ config: makeConfig({ tier: 'broker', owners: [{ platform: 'qq', userId: '10001' }] }) })
   const policy = fakePolicy()
   svc.registerPolicySource(policy)
 
@@ -236,7 +240,7 @@ test('同源合并：同幂等键的旧 pending 置 dropped(superseded)', async 
 // ── 9. ownerQQ 变更 → 旧 pending 作废 ────────────────────────────────────
 
 test('ownerQQ 变更：旧主人的 pending 全部作废 dropped', async () => {
-  const conf = makeConfig({ tier: 'broker', ownerQQ: '10001' })
+  const conf = makeConfig({ tier: 'broker', owners: [{ platform: 'qq', userId: '10001' }] })
   const { svc } = makeService({ config: conf })
   const a = await svc.submit({ moduleId: 'm1', itemId: 'i1', to: 'private:10001', text: 'hi' })
   assert.equal(svc.statusOf(a.deliveryId).state, 'pending')

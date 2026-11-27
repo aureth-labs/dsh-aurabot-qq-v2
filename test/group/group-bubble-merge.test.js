@@ -37,7 +37,7 @@ const REPLY = `翻了，三格：
 
 function config () {
   return normalize({
-    enabled: true, dryRun: false, setupDone: true, ownerQQ: OWNER, botQQ: '20000002',
+    enabled: true, dryRun: false, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000002',
     allow: { private: [OTHER], groups: [GROUP] }, voice: { enabled: false }, merge: { enabled: false },
     stickers: { collect: false, autoChance: 0 }, onebot: {},
   })

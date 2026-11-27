@@ -15,7 +15,7 @@ const otherPm = { kind: 'private', userId: '30003', chatId: 'private:30003' }
 const group = { kind: 'group', userId: OWNER, groupId: '555', chatId: 'group:555' }
 
 function setup({ cfg = {}, allOwner = true, callImpl } = {}) {
-  let config = normalize({ ownerQQ: OWNER, botQQ: BOT, dryRun: false, ...cfg })
+  let config = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, dryRun: false, ...cfg })
   const calls = []
   const sent = []
   const listeners = {}
@@ -312,5 +312,5 @@ test('纯函数：cleanId / planWhitelist', () => {
   assert.equal(cleanId(' 40004 '), '40004')
   assert.equal(cleanId('12'), '')
   assert.equal(cleanId('1234567890123'), '')
-  assert.equal(planWhitelist({ ownerQQ: '1', allow: { private: [], groups: [] } }, { action: 'add', kind: 'group', id: '12345' }).next[0], '12345')
+  assert.equal(planWhitelist({ owners: [{ platform: 'qq', userId: '1' }], allow: { private: [], groups: [] } }, { action: 'add', kind: 'group', id: '12345' }).next[0], '12345')
 })

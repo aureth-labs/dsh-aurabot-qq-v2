@@ -15,7 +15,7 @@ const guest = '10000002'
 const guest2 = '10000003'
 
 test('授权按私聊、命令和 QQ 号分别检查，扩展命令验证模块身份', () => {
-  const cfg = normalize({ ownerQQ: owner, allow: { private: [guest] }, commandAllow: { reset: [guest], 'ext:other:画图': [guest] } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(owner) }], allow: { private: [guest] }, commandAllow: { reset: [guest], 'ext:other:画图': [guest] } })
   const msg = { kind: 'private', userId: guest }
   assert.equal(canUseDelegatedCommand(cfg, msg, 'reset'), true)
   assert.equal(canUseDelegatedCommand(cfg, msg, 'model'), false)
@@ -34,7 +34,7 @@ test('QQ 消息入口执行已授权重开，拒绝未授权的全局开关和�
   process.env.AURABOT_DATA_DIR = dir
   const mock = await startMockOneBot({ selfId: '20000002' })
   t.after(() => mock.close())
-  const config = { enabled: true, ownerQQ: owner, botQQ: '20000002',
+  const config = { enabled: true, owners: [{ platform: 'qq', userId: String(owner) }], botQQ: '20000002',
     allow: { private: [guest], groups: ['30000003'] }, commandAllow: { reset: [guest], model: [guest], 'ext:probe:hello': [guest] },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token }, merge: { enabled: false }, modules: { commands: { enabled: true } } }
   writeFileSync(join(dir, 'config.json'), JSON.stringify(config))

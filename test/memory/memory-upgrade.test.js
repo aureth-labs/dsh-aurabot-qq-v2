@@ -124,7 +124,7 @@ for (const version of versions) {
       const original = recentFixture(version)
       original.processed = { [dayKey()]: Object.values(original.processed)[0] }
       const dir = setup(t, original, backend === 'json')
-      const cfg = normalize({ ownerQQ: '10000001', model: { provider: 'p', model: 'm' }, memory: {
+      const cfg = normalize({ owners: [{ platform: 'qq', userId: '10000001' }], model: { provider: 'p', model: 'm' }, memory: {
         ...fixture(`${version}.config`).normalizedMemory,
         enabled: true, dailyConsolidate: true, consolidateTimes: ['00:00'], keepChatlogDays: -1,
       } })
@@ -166,7 +166,7 @@ for (const version of versions) {
 
   test(`${version} 配置：旧 normalize 的记忆输出交给新版，旧值保留、新键取默认`, () => {
     const { raw, normalizedMemory } = fixture(`${version}.config`)
-    const cfg = normalize({ ownerQQ: raw.ownerQQ, memory: normalizedMemory })
+    const cfg = normalize({ owners: [{ platform: 'qq', userId: String(raw.ownerQQ) }], memory: normalizedMemory })
     for (const [key, value] of Object.entries(normalizedMemory)) assert.deepEqual(cfg.memory[key], value, key)
     for (const [key, value] of Object.entries(DEFAULTS.memory)) {
       if (Object.hasOwn(normalizedMemory, key) || key === 'keepChatlogSet') continue
@@ -423,7 +423,7 @@ for (const backend of ['json', 'sqlite']) {
     state.items.push({ ...template, id: 'core', source: 'auto', tier: 'core', text: '一直保留的重要印象', chatId: 'group:700' })
     state.items.push({ ...template, id: 'numeric-core', source: 'auto', tier: 0, text: '数字永久档也一直保留', chatId: 'group:700' })
     const dir = setup(t, state, backend === 'json')
-    const cfg = normalize({ ownerQQ: '10000001', model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: -1 } })
+    const cfg = normalize({ owners: [{ platform: 'qq', userId: '10000001' }], model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: -1 } })
     const { mem, calls } = business(cfg, [], ({ system }) => system.includes('下面是你记得的一些具体的事') ? '{"text":"朋友们相处融洽，常常一起练习手作"}' : '[]')
     const store = storage(t, dir)
     for (let run = 0; run < 2; run++) {

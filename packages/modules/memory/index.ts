@@ -1,4 +1,4 @@
-import { ownerRoom, primaryOwner } from '../../../src/core/config/owners.ts'
+import { ownerRoom, primaryOwner, ownerId } from '../../../src/core/config/owners.ts'
 // 内置模块：记忆。她自己记下值得记的事、聊天时想起相关的、每天把聊天流水整理进长期记忆，还有每个人的小档案、相处经验、说话方式。
 // 导出 createMemoryStore 的返回值：add / addEvent / recall / list / contextFor / topicScore / consolidate ……
 // 别的模块（空间日记、B 站、翻唱）会往这里记她的经历；记忆模块关着时它们自己跳过。
@@ -129,7 +129,7 @@ export function apply(ctx, config) {
         required: ['who'],
         execute: async ({ who }) => memory.lookupPerson(chat, who, senders()),
       }),
-      ...(chat.kind === 'group' || String(chat.userId) === String(ctx.root.config.ownerQQ || '') ? [defineTool({
+      ...(chat.kind === 'group' || String(chat.userId) === String(ownerId(ctx.root.config) || '') ? [defineTool({
         name: 'chat_impression',
         description: chat.kind === 'group' ? '想一想你对这个群的印象：气氛、常聊什么、怎么相处。' : '查你对某个群的印象。group 写群号或群名，不写就列出有印象的群。',
         properties: chat.kind === 'group' ? {} : { group: str('群号或群名，可选') },
@@ -161,7 +161,7 @@ export function apply(ctx, config) {
         execute: async ({ query, period }) => {
           // 群聊 / 非主人私聊里只翻「这个人自己」的记忆，不能把主人的私事翻出来。
           // F2：群聊的 onlyAbout 必须是本轮说话的人（以前 chat.userId 为空 → 完全不按人物过滤，能翻到不在场的人）。
-          const owner = chat.kind === 'private' && String(chat.userId) === String(ctx.root.config.ownerQQ || '')
+          const owner = chat.kind === 'private' && String(chat.userId) === String(ownerId(ctx.root.config) || '')
           const speakers = owner ? []
             : chat.kind === 'group'
               // 群聊 = 本轮所有说话人；拿不到本轮记录就退回 hub 能提供的说话人（都拿不到时 fail closed）
@@ -174,7 +174,7 @@ export function apply(ctx, config) {
           const window = period ? parsePeriod(period) : null
           if (period && !window) return { ok: false, message: 'period 没认出来，写 2026-03-05 或 2026-03-01..2026-03-31' }
           const vectorHits = await memory.vectorHits(query)
-          const hits = await memory.recallAsync(String(query || ''), { about, onlyAbout, requireAbout: !owner, excludeAbout: owner ? '' : ctx.root.config.ownerQQ, includeGroup: owner, groupChatId: chat.kind === 'group' ? current : '', limit: 8, where: current + '（翻记忆）', vectorHits, period: window ?? undefined })
+          const hits = await memory.recallAsync(String(query || ''), { about, onlyAbout, requireAbout: !owner, excludeAbout: owner ? '' : ownerId(ctx.root.config), includeGroup: owner, groupChatId: chat.kind === 'group' ? current : '', limit: 8, where: current + '（翻记忆）', vectorHits, period: window ?? undefined })
           return hits.length ? { ok: true, message: hits.map((h) => memoryLine(h.it)).join('；') } : { ok: true, message: '没想起相关的事' }
         },
       }),

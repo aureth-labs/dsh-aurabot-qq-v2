@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 // 内置模块：好友 / 加群申请与白名单。
 //  · qq_list_friend_requests：列出收到过的好友申请（QQ 号未知、被 QQ 过滤的也会列出来），按序号 / flag 处理。
 //  · qq_handle_friend_request：通过 / 拒绝别人加她为好友的申请（set_friend_add_request；被 QQ 过滤的「可能认识的人」走 set_doubt_friends_add_request）。
@@ -43,7 +44,7 @@ export function planWhitelist(cfg, { action, kind, id }, selfId = '') {
   if (!n) return { ok: false, message: '号码不对：要 5~12 位数字的 QQ 号 / 群号' }
   const label = k === 'private' ? 'QQ' : '群'
   const listName = k === 'private' ? '私聊白名单' : '群白名单'
-  if (k === 'private' && n === String(cfg.ownerQQ || '')) {
+  if (k === 'private' && n === String(ownerId(cfg) || '')) {
     return act === 'remove'
       ? { ok: false, message: '主人不能被移出私聊白名单' }
       : { ok: true, message: '主人本来就能私聊，不用加白名单' }
@@ -119,9 +120,9 @@ export function apply(ctx, config) {
     list.push(req)
     saveGroupPending(list)
     const cfg = ctx.root.config
-    if (cfg.ownerQQ && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
+    if (ownerId(cfg) && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
       const note = req.comment ? `，验证消息：「${req.comment}」` : ''
-      notifyOwner(cfg.ownerQQ, `${groupRequestText(req, primaryBot()?.selfId)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`)
+      notifyOwner(ownerId(cfg), `${groupRequestText(req, primaryBot()?.selfId)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`)
     }
   }
 
@@ -140,12 +141,12 @@ export function apply(ctx, config) {
       savePending(list)
     }
     const cfg = ctx.root.config
-    if (isNew && cfg.ownerQQ && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
+    if (isNew && ownerId(cfg) && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
       const note = ev.comment ? `，验证消息：「${String(ev.comment).slice(0, 80)}」` : ''
       const how = isUnknownUser(userId)
         ? `现在它是第 ${list.length} 个待处理申请，跟我说「通过第 ${list.length} 个」或「拒绝第 ${list.length} 个」就行。`
         : `要通过就跟我说「通过 ${userId}」，不想加说「拒绝 ${userId}」。`
-      notifyOwner(cfg.ownerQQ, `有人想加我好友：${requestLabel(userId)}${note}。${how}`)
+      notifyOwner(ownerId(cfg), `有人想加我好友：${requestLabel(userId)}${note}。${how}`)
     }
   })
 
@@ -156,7 +157,7 @@ export function apply(ctx, config) {
     return run(args, cfg)
   }
 
-  const groupOwner = (chat) => chat.kind === 'private' && Boolean(ctx.root.config.ownerQQ) && String(chat.userId) === String(ctx.root.config.ownerQQ)
+  const groupOwner = (chat) => chat.kind === 'private' && Boolean(ownerId(ctx.root.config)) && String(chat.userId) === String(ownerId(ctx.root.config))
   const guardedGroup = (chat, sessionId, run) => guarded('qqFriendRequest', chat, sessionId, async (args, cfg) => {
     if (!groupOwner(chat) || !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人私聊才能处理加群申请' }
     return run(args, cfg)

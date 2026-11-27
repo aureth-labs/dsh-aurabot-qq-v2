@@ -1,3 +1,4 @@
+import { ownerRoom } from '../../../core/config/owners.ts'
 // 出站治理的纯函数与类型：不碰状态，只做收敛与判定。
 
 import { CAUSES, DEFAULT_TIER, TIERS } from './constants.ts'
@@ -52,15 +53,10 @@ export function readTier(cfg: Record<string, any>): string {
   return TIERS.includes(tier) ? tier : DEFAULT_TIER
 }
 
-/** 读主人 QQ，统一成字符串去空格（保存值与快照比较都用它）。 */
-export function readOwnerQQ(cfg: Record<string, any>): string {
-  const c = cfg || {}
-  const raw = (c.outboundPolicy && c.outboundPolicy.ownerQQ) ?? c.ownerQQ
-  if (raw === null || raw === undefined) return ''
-  return String(raw).trim()
+export function readOwner(cfg: Record<string, any>): string {
+  return ownerRoom(cfg || {})
 }
 
-/** 把 to 规范化：'private:123456' / 'private: 123456 ' 都收敛成 'private:123456'。 */
 export function normalizeTarget(to: unknown): string {
   if (to === null || to === undefined) return ''
   const s = String(to).trim()
@@ -99,9 +95,8 @@ export function normalizeCause(cause: unknown): Cause {
 
 /**
  * 判定一次发送是否「在治理范围内」。
- * 治理范围：to === 'private:' + ownerQQ（规范化后比较）；delegation 与 reply 另有专门规则。
+ * 治理范围：发给主人私聊；delegation 与 reply 另有专门规则。
  */
-export function isGovernedTarget(to: unknown, ownerQQ: string): boolean {
-  if (!ownerQQ) return false
-  return normalizeTarget(to) === `private:${ownerQQ}`
+export function isGovernedTarget(to: unknown, owner: string): boolean {
+  return Boolean(owner) && normalizeTarget(to) === owner
 }

@@ -33,7 +33,7 @@ test('vector.mode 真的落盘：mergeFromPanel 后 commitConfig 返回 local，
   const oldDir = process.env.AURABOT_DATA_DIR
   try {
     process.env.AURABOT_DATA_DIR = dir
-    const base = normalize({ ownerQQ: '10001', memory: { vector: { enabled: true, baseUrl: 'https://example.invalid/v1', model: 'm', apiKey: 'k' } } })
+    const base = normalize({ owners: [{ platform: 'qq', userId: '10001' }], memory: { vector: { enabled: true, baseUrl: 'https://example.invalid/v1', model: 'm', apiKey: 'k' } } })
     assert.equal(base.memory.vector.mode, 'remote')
     const incoming = structuredClone(publicConfig(base))
     incoming.memory.vector.mode = 'local'
@@ -68,7 +68,7 @@ test('保存回执同步 *Set 标志并在在途草稿里清掉已提交的旧 s
 })
 
 test('旧客户端只传 baseUrl（不带 mode）仍能切到在线服务', () => {
-  const base = normalize({ ownerQQ: '10001', memory: { vector: { enabled: true } } })
+  const base = normalize({ owners: [{ platform: 'qq', userId: '10001' }], memory: { vector: { enabled: true } } })
   assert.equal(base.memory.vector.mode, 'local')
   assert.equal(base.memory.vector.modeExplicit, false)
   const merged = mergeFromPanel(base, { memory: { vector: { enabled: true, baseUrl: 'https://example.invalid/v1', model: 'test' } } })
@@ -84,7 +84,7 @@ test('默认 local 不写盘、旧客户端只传 baseUrl 仍能切在线', () =
   const oldDir = process.env.AURABOT_DATA_DIR
   try {
     process.env.AURABOT_DATA_DIR = dir
-    const base = normalize({ ownerQQ: '10001' })
+    const base = normalize({ owners: [{ platform: 'qq', userId: '10001' }] })
     assert.equal(base.memory.vector.mode, 'local')
     assert.equal(base.memory.vector.modeExplicit, false)
     saveConfig(base, base)

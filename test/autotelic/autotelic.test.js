@@ -260,7 +260,7 @@ test('跨天续链：重启后新一天首条要接昨天文件的链尾（2026-
 })
 
 function contextFor(root, routes, enabled = false) {
-  const rootConfig = { ownerQQ: '' }
+  const rootConfig = { owners: [{ platform: 'qq', userId: '' }] }
   const route = (path, handler) => { routes[path] = handler }
   return {
     dataDir: (...parts) => join(root, 'modules-data', 'autotelic', ...parts),

@@ -16,7 +16,7 @@ const image = (name, sticker = true) => ({ type: 'image', data: { file: name, su
 function setup() {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(tmpdir(), 'aurabot-media-'))
   const dir = process.env.AURABOT_DATA_DIR
-  const cfg = normalize({ botQQ: BOT, ownerQQ: OWNER, enabled: false, dryRun: true, stickers: { collect: false, caption: false }, allow: { private: ['10000002'], groups: ['123'] } })
+  const cfg = normalize({ botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }], enabled: false, dryRun: true, stickers: { collect: false, caption: false }, allow: { private: ['10000002'], groups: ['123'] } })
   const hub = (logger = log) => createHub({ dsh: {}, getConfig: () => cfg, log: logger, onebot: {}, stickers: {} })
   const accountDir = join(dir, 'primary-media', BOT)
   mkdirSync(accountDir, { recursive: true })

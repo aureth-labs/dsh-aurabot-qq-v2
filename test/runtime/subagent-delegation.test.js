@@ -20,7 +20,7 @@ function setup(t, { subagents, capabilities, config } = {}) {
   const oldDir = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = join(root, 'data')
   const fake = createFakeDsh({ brain: async () => '' })
-  const cfg = normalize({ enabled: true, dryRun: true, ownerQQ: OWNER, subagentBackground: true, workspaceDir: join(root, 'workspace'), ...(config || {}) })
+  const cfg = normalize({ enabled: true, dryRun: true, owners: [{ platform: 'qq', userId: String(OWNER) }], subagentBackground: true, workspaceDir: join(root, 'workspace'), ...(config || {}) })
   const log = Object.fromEntries(['info', 'warn', 'error', 'debug'].map((k) => [k, (...v) => fake.logs.push(v.join(' '))]))
   const hub = createHub({
     dsh: fake.ctx,

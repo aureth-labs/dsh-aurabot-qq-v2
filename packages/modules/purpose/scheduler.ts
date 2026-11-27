@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 import { targetKey, type Target } from '../../../src/core/pipeline/target.ts'
 import type { BotLike } from '../../../src/types/adapter/bot.ts'
 import type { PluginContext } from '../../../src/types/plugin/ctx.ts'
@@ -24,7 +25,7 @@ export function createPurposeScheduler(ctx: PluginContext, deps: Dependencies) {
   function entries() {
     const primaryBot = ctx.host.primaryBot?.()
     const owners = ownerTargets(ctx)
-    const legacy = ctx.root.config.ownerQQ
+    const legacy = ownerId(ctx.root.config)
     if (legacy && primaryBot?.status === 'online' && ctx.isOwner(legacy, primaryBot.platform, primaryBot.id) &&
         !owners.some(t => t.platform === primaryBot.platform && t.botId === primaryBot.id && t.id === legacy)) {
       owners.unshift({ platform: primaryBot.platform, botId: primaryBot.id, type: 'private', id: legacy })

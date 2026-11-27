@@ -23,7 +23,7 @@ const event = (text, group = G, extra = []) => ({ post_type: 'message', message_
 const at = { type: 'at', data: { qq: BOT } }
 function setup(t, { patch = {}, brain = async () => '收到', hooks = {} } = {}) {
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(root, 'case-'))
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: OWNER, botQQ: BOT, allow: { groups: [G, H] },
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, allow: { groups: [G, H] },
     group: { moduleOnlyGroups: [G] }, merge: { enabled: false }, voice: { enabled: false },
     chat: { bubbleMinMs: 0, bubbleMaxMs: 0 }, stickers: { collect: false, autoChance: 0 }, ...patch })
   const fake = createFakeDsh({ brain }), calls = [], logs = []

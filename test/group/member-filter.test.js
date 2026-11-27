@@ -14,11 +14,11 @@ const msg = (groupId = G, userId = U) => ({ kind: 'group', groupId, userId })
 
 test('默认空名单；指定群留空或无效不会扩大为所有群；主人和私聊不拦', () => {
   assert.deepEqual(normalize({}).memberFilter, { enabled: true, rules: [] })
-  const c = normalize({ ownerQQ: OWNER, memberFilter: rule() })
+  const c = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], memberFilter: rule() })
   assert.equal(ignoredGroupMember(c, msg()), true)
   assert.equal(ignoredGroupMember(c, msg(H)), false)
   assert.equal(ignoredGroupMember(c, { ...msg(), kind: 'private' }), false)
-  c.ownerQQ = U; assert.equal(ignoredGroupMember(c, msg()), false); c.ownerQQ = OWNER
+  const owners = c.owners; c.owners = [{ platform: 'qq', userId: U }]; assert.equal(ignoredGroupMember(c, msg()), false); c.owners = owners
   for (const r of [rule('groups', []), rule('bad', []), rule('groups', ['invalid'])]) {
     c.memberFilter = normalize({ memberFilter: r }).memberFilter
     assert.equal(ignoredGroupMember(c, msg()), false)
@@ -36,7 +36,7 @@ test('面板输入严格检查，错误号码、重复用户和不明确范围�
 
 function setup(t, listed = true) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-member-filter-')); process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ enabled: true, dryRun: true, ownerQQ: OWNER, botQQ: BOT, workspaceDir: join(dir, 'ws'),
+  const cfg = normalize({ enabled: true, dryRun: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, workspaceDir: join(dir, 'ws'),
     memberFilter: rule(), allow: { groups: listed ? [G, H] : [], private: [U, OWNER] },
     memory: { enabled: true, passiveGroups: [G] }, titleFilter: { enabled: false },
     stickers: { collect: false }, voice: { asr: true }, merge: { enabled: false } })

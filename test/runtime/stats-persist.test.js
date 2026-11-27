@@ -17,7 +17,7 @@ function makeHub() {
   const hub = createHub({
     dsh: { sessions: async () => [], on: () => () => {}, off: () => {}, emit: () => {} },
     onebot: { call: async () => ({}), state: 'connected' },
-    getConfig: () => ({ ownerQQ: '10001', botQQ: '20002', enabled: true, dryRun: true, allow: { private: ['10001'], groups: [] }, group: {}, stickers: { enabled: false }, voice: { enabled: false }, chat: {} }),
+    getConfig: () => ({ owners: [{ platform: 'qq', userId: '10001' }], botQQ: '20002', enabled: true, dryRun: true, allow: { private: ['10001'], groups: [] }, group: {}, stickers: { enabled: false }, voice: { enabled: false }, chat: {} }),
     log: { info() {}, warn() {}, debug() {}, error() {} },
   })
   return hub

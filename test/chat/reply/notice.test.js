@@ -7,7 +7,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const cfg = (over = {}) => ({
   enabled: true,
   dryRun: false,
-  ownerQQ: '10001',
+  owners: [{ platform: 'qq', userId: '10001' }],
   notice: { approval: true, question: true, workspaces: {} },
   ...over,
 })
@@ -22,7 +22,7 @@ test('normalizeWorkspace：大小写、斜杠、末尾分隔符都抹平', () =>
 test('总开关 / 试运行 / 没配主人号时一律不报', () => {
   assert.equal(createNoticeRelay({ getConfig: () => cfg({ enabled: false }) }).enabled('approval', 's'), false)
   assert.equal(createNoticeRelay({ getConfig: () => cfg({ dryRun: true }) }).enabled('approval', 's'), false)
-  assert.equal(createNoticeRelay({ getConfig: () => cfg({ ownerQQ: '' }) }).enabled('approval', 's'), false)
+  assert.equal(createNoticeRelay({ getConfig: () => cfg({ owners: [{ platform: 'qq', userId: '' }] }) }).enabled('approval', 's'), false)
   assert.equal(createNoticeRelay({ getConfig: () => cfg() }).enabled('approval', 's'), true)
 })
 

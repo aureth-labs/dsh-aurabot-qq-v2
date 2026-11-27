@@ -33,7 +33,7 @@ before(async () => {
     setupDone: true,
     gateway: 'onebot',
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: [] },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { enabled: false },

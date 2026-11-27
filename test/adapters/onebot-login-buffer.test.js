@@ -44,7 +44,7 @@ before(async () => {
     dryRun: false,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: [] },
     // 连的是 mock，不是真的协议端
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },

@@ -1,3 +1,4 @@
+import { ownerId } from '../config/owners.ts'
 import { ownerRoom } from '../config/owners.ts'
 // 联动：让 DSH 里别的插件、别的会话，还有电脑上别的程序也能用她。
 //
@@ -106,8 +107,8 @@ export function createBridge ({ ctx, getConfig, setConfig, hub, mods, log, versi
     const cfg = getConfig()
     const [kind, id] = String(target || '').split(':')
     if (!id || !['private', 'group'].includes(kind)) return '目标要写成 private:QQ号 或 group:群号'
-    if (cfg.bridge.allowTargets === 'owner') return kind === 'private' && id === cfg.ownerQQ ? '' : '设置成了只能发给主人'
-    const ok = kind === 'group' ? cfg.allow.groups : [cfg.ownerQQ, ...cfg.allow.private]
+    if (cfg.bridge.allowTargets === 'owner') return kind === 'private' && id === ownerId(cfg) ? '' : '设置成了只能发给主人'
+    const ok = kind === 'group' ? cfg.allow.groups : [ownerId(cfg), ...cfg.allow.private]
     return ok.includes(id) ? '' : '不在白名单里，不能发'
   }
   const ownerTarget = (): string => ownerRoom(getConfig())

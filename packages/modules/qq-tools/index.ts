@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 // 内置模块：基础 QQ 工具。翻聊天记录；主人私聊里还能让她主动给别人发消息、发文件。
 
 import { defineTool, str, int, bool } from '../../../src/tools/index.ts'
@@ -218,7 +219,7 @@ export function apply(ctx, config) {
         const t = String(target || '').trim()
         if (t) {
           const [kind, id] = t.split(':')
-          const okList = kind === 'group' ? cfg.allow.groups : kind === 'private' ? [cfg.ownerQQ, ...cfg.allow.private] : []
+          const okList = kind === 'group' ? cfg.allow.groups : kind === 'private' ? [ownerId(cfg), ...cfg.allow.private] : []
           if (!okList.includes(String(id))) return { ok: false, message: '不在白名单里，不能发' }
           chatId = `${kind}:${id}`
         }
@@ -255,7 +256,7 @@ export function apply(ctx, config) {
         if (chat.kind === 'group' && !hub.turnSendersAllOwner(sessionId)) return { ok: false, message: '只有主人开口时才能往别的聊天发，这一轮不是。' }
         const cfg = ctx.root.config
         const [kind, id] = String(target || '').split(':')
-        const okList = kind === 'group' ? cfg.allow.groups : kind === 'private' ? [cfg.ownerQQ, ...cfg.allow.private] : []
+        const okList = kind === 'group' ? cfg.allow.groups : kind === 'private' ? [ownerId(cfg), ...cfg.allow.private] : []
         if (!okList.map(String).includes(String(id))) return { ok: false, message: '不在白名单里，不能发' }
         if (`${kind}:${id}` === chat.chatId) return { ok: false, message: '这就是当前聊天，直接回话就行，别用这个工具' }
         if (voice !== undefined && typeof voice !== 'boolean') return { ok: false, message: 'voice 要填 true 或 false；还没有发送。' }

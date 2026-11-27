@@ -7,8 +7,6 @@ export interface GlobalConfig {
   middlewareAfterCommand: boolean
   wakeWords: string[]
   owners: Owner[]
-  ownerQQ: string
-  ownerIds: string[]
   ownerName: string
   ownerLevel: 'full' | 'social' | 'chat'
   allow: { private: string[]; groups: string[] }
@@ -19,8 +17,6 @@ export const GLOBAL_CONFIG_DEFAULTS: GlobalConfig = {
   middlewareAfterCommand: false,
   wakeWords: ['大肥鱼', '肥鱼'],
   owners: [],
-  ownerQQ: '',
-  ownerIds: [],
   ownerName: '主人',
   ownerLevel: 'full',
   allow: { private: [], groups: [] },

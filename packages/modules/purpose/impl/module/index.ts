@@ -1,4 +1,4 @@
-import { ownerRoom } from '../../../../../src/core/config/owners.ts'
+import { ownerRoom, ownerId as configOwner } from '../../../../../src/core/config/owners.ts'
 import type { OwnerChannel } from '../../owners.ts'
 import { dataDir, readJson, writeJson } from '../../../../../src/core/store/index.ts'
 import { randomUUID } from 'node:crypto'
@@ -21,7 +21,7 @@ import {
 import { normalizeEmotions, resolveEmotion } from '../../../../../src/persona/emotions.ts'
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
-type PurposeConfigOptions = Partial<Record<'speakUp' | 'ext' | 'enabled' | 'ownerQQ' | 'ownerName', any>>
+type PurposeConfigOptions = Partial<Record<'speakUp' | 'ext' | 'enabled' | 'owners' | 'ownerName', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
 type RunOnceOptions = Partial<Record<'reason' | 'config' | 'state' | 'force' | 'friend', any>>
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -60,7 +60,7 @@ export function purposeConfig(cfg : PurposeConfigOptions = {}) {
       // 键缺省（undefined）= 开；显式 false = 主人关过，尊重不洗回（模块 defaults 填充也只补缺失键）。
       // 与旧的「主动搭话」互不影响——companion 见 ext.purpose.enabled 会自动让位。
       enabled: cfg.enabled !== false && ext.enabled !== false,
-      ownerUin: cfg.ownerQQ,
+      ownerUin: configOwner(cfg),
       gapMinMs: clampInt(ext.minIntervalMinutes ?? su.minIntervalMinutes, 90, 5, 2880) * MINUTE,
       gapMaxMs: clampInt(ext.maxIntervalMinutes ?? su.maxIntervalMinutes, 240, 5, 2880) * MINUTE,
       initialDelayMinMs: clampInt(ext.initialDelayMinutes, 15, 1, 720) * MINUTE,
@@ -106,7 +106,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   const emotionItems = () => normalizeEmotions(getConfig().mood?.emotions)
   const memoryOf = () => { try { return memory?.() || null } catch { return null } }
   // 下面的 friend 是主动搭话白名单里的 QQ 号，不传就是主人。朋友各有各的状态，素材只看和这个人的私聊、关于这个人的记忆。
-  const ownerId = cfg => channel?.target.id || cfg.ownerQQ
+  const ownerId = cfg => channel?.target.id || configOwner(cfg)
   const chatIdOf = (cfg, friend?) => channel?.namespace || (friend ? `private:${friend}` : ownerRoom(cfg))
   const lastPrivateAt = (cfg, friend) => channel ? (channel.recent().at(-1)?.at || 0) : friend ? (hub?.lastPrivateAt?.(friend) || 0) : Math.max(hub?.lastOwnerChatAt || 0, hub?.lastBotToOwner?.at || 0)
   // 内驱力、目标、惦记的事是她自己的，跟着人格走（根目录人格还是老位置，见 personas.js）。
@@ -305,7 +305,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
   }
 
   async function prepare(cfg, config, state, now = Date.now(), friend = '') {
-    const followUp = channel ? null : memoryOf()?.dueFollowUp?.(friend || cfg.ownerQQ, now) || null
+    const followUp = channel ? null : memoryOf()?.dueFollowUp?.(friend || ownerId(cfg), now) || null
     const materials = collectMaterials({
       now, config,
       ownerUin: friend || ownerId(cfg),
@@ -513,7 +513,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
       outcome = genError ? 'failed' : 'silent' // 模型有权跳过（【状态】跳过 / [沉默]），silent 不硬发
     } else {
       const live = getConfig()
-      if (!live.enabled || live.debug || (!channel && (primary !== primaryIdentity?.() || (!friend && cfg.ownerQQ !== live.ownerQQ)))) {
+      if (!live.enabled || live.debug || (!channel && (primary !== primaryIdentity?.() || (!friend && ownerId(cfg) !== ownerId(live))))) {
         Object.assign(state, beforeAttempt)
         saveState(state, friend)
         return { outcome: 'unavailable' }
@@ -957,9 +957,9 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     if (!config.enabled || !ownerId(cfg)) return false
     const ownerConfig = applyPersonaOverrides(config, personaOf(cfg))
     if (channel) return tickOne(cfg, ownerConfig)
-    if (!isMuted?.(chatIdOf(cfg)) && !memoryOf()?.dislikes?.(cfg.ownerQQ) && await tickOne(cfg, ownerConfig)) return true
+    if (!isMuted?.(chatIdOf(cfg)) && !memoryOf()?.dislikes?.(ownerId(cfg)) && await tickOne(cfg, ownerConfig)) return true
     for (const qq of cfg.speakUp?.allow || []) {
-      if (String(qq) === String(cfg.ownerQQ) || isMuted?.(chatIdOf(cfg, qq)) || memoryOf()?.dislikes?.(qq)) continue
+      if (String(qq) === String(ownerId(cfg)) || isMuted?.(chatIdOf(cfg, qq)) || memoryOf()?.dislikes?.(qq)) continue
       if (await tickOne(cfg, config, String(qq))) return true
     }
   }
@@ -970,7 +970,7 @@ export function createPurpose({ getConfig, setConfig, hub, log, isMuted, mood, m
     const config = applyPersonaOverrides(purposeConfig(cfg), personaOf(cfg))
     if (!config.enabled) return { outcome: 'disabled' }
     if (!channel && isMuted?.(chatIdOf(cfg))) return { outcome: 'muted' }
-    if (!channel && memoryOf()?.dislikes?.(cfg.ownerQQ)) return { outcome: 'disliked' }
+    if (!channel && memoryOf()?.dislikes?.(ownerId(cfg))) return { outcome: 'disliked' }
     if (!ownerId(cfg)) return { outcome: 'no-owner' }
     const state = loadState(config)
     return runOnce({ reason, config, state, force: true })

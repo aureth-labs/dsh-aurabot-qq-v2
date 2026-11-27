@@ -18,7 +18,7 @@ const settle = async () => { for (let i = 0; i < 30; i++) await new Promise(setI
 function setup(t, { directory, enabled = true, brain = async () => '已收到', prompt } = {}) {
   const root = directory || mkdtempSync(join(tmpdir(), 'aurabot-context-'))
   process.env.AURABOT_DATA_DIR = root
-  const cfg = normalize({ enabled: true, setupDone: true, dryRun: true, ownerQQ: OWNER, botQQ: BOT,
+  const cfg = normalize({ enabled: true, setupDone: true, dryRun: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     workspaceDir: join(root, 'workspace'), conversationContext: { enabled }, persona: { current: 'paperboat' },
     allow: { private: [OTHER], groups: ['30000003'] }, merge: { enabled: false },
     voice: { enabled: false }, stickers: { autoChance: 0 } })

@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 import { createHash } from 'node:crypto'
 import { acknowledged } from '../../../src/core/bot/send-events.ts'
 import { h } from '../../../src/core/message/element/element.ts'
@@ -28,7 +29,7 @@ export function ownerTargets(ctx: PluginContext): Target[] {
     const candidates = bots.filter(bot => bot.platform === owner.platform && (!owner.botId || owner.botId === bot.id))
     if (candidates.length !== 1) continue
     if (!owner.botId) {
-      if (config.ownerQQ === owner.userId && owner.platform === 'qq' && candidates[0] !== ctx.host.primaryBot?.()) continue
+      if (ownerId(config) === owner.userId && owner.platform === 'qq' && candidates[0] !== ctx.host.primaryBot?.()) continue
       const connections = ctx.host.adapters?.connections?.() ?? []
       if (connections.filter(row => row.platform === owner.platform).length > 1) continue
     }

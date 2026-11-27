@@ -13,7 +13,6 @@ type OwnerInput = { owners?: unknown; ownerQQ?: unknown; ownerIds?: unknown }
 
 const identifier = (value: unknown) => typeof value === 'string' || typeof value === 'number' ? String(value).trim() : ''
 const digits = (value: unknown) => identifier(value).replace(/\D/g, '')
-const legacyEligible = (row: Owner) => row.platform === 'qq' && !row.botId && /^\d+$/.test(row.userId)
 
 function legacyOwners(input: OwnerInput): Owner[] {
   const extra = Array.isArray(input.ownerIds) ? input.ownerIds : String(input.ownerIds || '').split(/[\s,，;；]+/)
@@ -38,20 +37,8 @@ function readOwners(value: unknown): Owner[] {
   return rows
 }
 
-export function ownerFields(input: OwnerInput) {
-  const owners = Object.hasOwn(input, 'owners') ? readOwners(input.owners) : legacyOwners(input)
-  const eligible = owners.filter(legacyEligible).map(row => row.userId)
-  const primary = digits(input.ownerQQ)
-  const ownerQQ = eligible.includes(primary) ? primary : eligible[0] ?? ''
-  return { owners, ownerQQ, ownerIds: eligible.filter(id => id !== ownerQQ) }
-}
-
-export function reconcileOwnerEdit<T extends OwnerInput>(next: T, previous: OwnerInput, explicitOwners = false): T {
-  if (explicitOwners || JSON.stringify(next.owners) !== JSON.stringify(previous.owners)) return next
-  if (next.ownerQQ === previous.ownerQQ && JSON.stringify(next.ownerIds) === JSON.stringify(previous.ownerIds)) return next
-  const old = readOwners(previous.owners)
-  const byId = new Map(old.filter(legacyEligible).map(row => [row.userId, row]))
-  return { ...next, owners: [...old.filter(row => !legacyEligible(row)), ...legacyOwners(next).map(row => byId.get(row.userId) || row)] }
+export function ownersOf(input: OwnerInput): Owner[] {
+  return Object.hasOwn(input, 'owners') ? readOwners(input.owners) : legacyOwners(input)
 }
 
 export function isOwnerOf(cfg: { owners?: Owner[] }, source: OwnerSession | string | number, platform?: string, botId?: string): boolean {
@@ -64,6 +51,10 @@ export function isOwnerOf(cfg: { owners?: Owner[] }, source: OwnerSession | stri
 
 export function primaryOwner(cfg: { owners?: Owner[] }): Owner | undefined {
   return cfg.owners?.find(row => isLegacyScope(row.platform, row.botId ?? (row.platform === 'qq' ? 'adapter-qq-onebot-v11' : undefined))) ?? cfg.owners?.[0]
+}
+
+export function ownerId(cfg: { owners?: Owner[] }): string {
+  return primaryOwner(cfg)?.userId ?? ''
 }
 
 export function ownerRoom(cfg: { owners?: Owner[] }): string {

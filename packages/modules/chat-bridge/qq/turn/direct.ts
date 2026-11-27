@@ -1,4 +1,4 @@
-import { isOwnerRoom } from '../../../../../src/core/config/owners.ts'
+import { isOwnerRoom, ownerId } from '../../../../../src/core/config/owners.ts'
 import { type RunTurnInChatOptions, type ReceiveOwnerMessageOptions } from './options.ts'
 import { checkAllowed } from '../../../../../src/chat/policy/rules/access.ts'
 import { mimeOf } from '../../../../../src/core/message/media/inspect.ts'
@@ -151,12 +151,12 @@ export function createDirectTurns({
       assertAuthorized = () => {},
     }: ReceiveOwnerMessageOptions = {},
   ) {
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     const validate = () => {
       assertActive()
       assertAuthorized()
       const cfg = getConfig()
-      if (!cfg.enabled || !owner || String(cfg.ownerQQ || '') !== owner)
+      if (!cfg.enabled || !owner || String(ownerId(cfg) || '') !== owner)
         throw Object.assign(new Error('请先启用 Aurabot 并配置主人身份'), { status: 503, code: 'not_ready' })
       const match = /^(private|group):(\d+)$/.exec(String(chatId))
       if (!map().chats[chatId]?.sessionId || !match)

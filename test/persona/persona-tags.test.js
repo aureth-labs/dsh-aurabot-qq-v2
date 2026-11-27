@@ -19,7 +19,7 @@ function fixture(t, output = { facts: [] }) {
   const dir = mkdtempSync(join(tmpdir(), 'persona-tags-'))
   process.env.AURABOT_DATA_DIR = dir
   t.after(() => { if (old === undefined) delete process.env.AURABOT_DATA_DIR; else process.env.AURABOT_DATA_DIR = old; cleanupDir(dir) })
-  const cfg = normalize({ ownerQQ: owner, botQQ: bot, model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 7 } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(owner) }], botQQ: bot, model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 7 } })
   const rows = []
   const hub = { chatLogDays: () => [day()], chatLogOf: () => rows, speakersOf: () => [a], groupNames: new Map([['777', '测试群']]) }
   const dsh = { get: () => null, llm: { async *stream({ system }) { yield { type: 'text-delta', text: system.includes('整理长期记忆') ? JSON.stringify(output) : '{"insights":[],"style":[]}' }; yield { type: 'finish', reason: { kind: 'completed' } } } } }
@@ -76,7 +76,7 @@ test('讨厌者静默仍记流水；概率为零和主人不拦', async (t) => {
   cfg.merge.enabled = false
   cfg.memory.dislikeSilence = 1
   const fake = createFakeDsh({ brain: async () => '好' })
-  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log, onebot: { connected: true, call: async () => ({}) }, dislikes: () => true, random: () => 0 })
+  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log, selfId: bot, onebot: { connected: true, call: async () => ({}) }, dislikes: () => true, random: () => 0 })
   t.after(() => { hub.dispose(); fake.dispose() })
   const event = (uid) => ({ post_type: 'message', message_type: 'private', sub_type: 'friend', self_id: Number(bot), user_id: Number(uid), message_id: 1, sender: { user_id: Number(uid), nickname: uid }, message: [{ type: 'text', data: { text: '你好' } }] })
   await hub.onMessage(event(a))
@@ -101,7 +101,7 @@ test('群聊合批中混入其他人时不拦', async (t) => {
   cfg.memory.dislikeSilence = 1
   Object.assign(cfg.merge, { enabled: true, groupWaitSec: 0.1, groupMaxSec: 1 })
   const fake = createFakeDsh({ brain: async () => '好' })
-  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log, onebot: { connected: true, call: async () => ({ group_name: '群' }) }, dislikes: (qq) => qq === a, random: () => 0 })
+  const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log, selfId: bot, onebot: { connected: true, call: async () => ({ group_name: '群' }) }, dislikes: (qq) => qq === a, random: () => 0 })
   t.after(() => { hub.dispose(); fake.dispose() })
   const event = (uid) => ({ post_type: 'message', message_type: 'group', group_id: 777, self_id: Number(bot), user_id: Number(uid), message_id: Number(uid), sender: { user_id: Number(uid), nickname: uid }, message: [{ type: 'at', data: { qq: bot } }, { type: 'text', data: { text: '你好' } }] })
   await hub.onMessage(event(a))

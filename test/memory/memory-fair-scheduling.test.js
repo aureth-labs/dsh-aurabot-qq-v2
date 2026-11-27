@@ -22,7 +22,7 @@ function setup(t, patch = {}) {
   const logs = new Map()
   const calls = []
   const cfg = normalize({
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     botQQ: BOT,
     model: { provider: 'p', model: 'm' },
     memory: {

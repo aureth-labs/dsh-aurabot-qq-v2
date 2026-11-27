@@ -27,7 +27,7 @@ before(async () => {
   // B 群（556）的历史里放 canary；两条群都在白名单里
   mock.state.history = [{ message_id: 556001, sender: { user_id: 999, nickname: 'B群友', card: 'B群友' }, message: [{ type: 'text', data: { text: CANARY } }], time: Math.floor(Date.now() / 1000) }]
   writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
-    enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
+    enabled: true, dryRun: true, setupDone: true, botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [], groups: ['555', '556'] },
     onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token },
     voice: { engine: 'windows', autoChance: 0, enabled: false },

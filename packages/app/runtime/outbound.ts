@@ -1,3 +1,4 @@
+import { ownerRoom, primaryOwner } from '../../../src/core/config/owners.ts'
 import type { ElementSource } from '../../../src/types/core/element.ts'
 import type { ModuleSendOptions } from '../../../src/types/plugin/ctx.ts'
 import { acknowledged } from '../../../src/core/bot/send-events.ts'
@@ -76,7 +77,7 @@ export function createOutboundRuntime({ getConfig, logger, hub, use }) {
     const cfg = getConfig()
     const dir = join(dataDir('modules-data'), 'outbound-policy')
     const say = (msg) => logger.child('出站策略').info(msg)
-    const budget = createSharedBudget({ ownerQQ: cfg.ownerQQ, dataDir: dir, log: say })
+    const budget = createSharedBudget({ ownerQQ: primaryOwner(cfg)?.userId, dataDir: dir, log: say })
     try {
       const pu = use('purpose')
       if (cfg.ext?.purpose?.enabled !== false && pu) {
@@ -98,7 +99,7 @@ export function createOutboundRuntime({ getConfig, logger, hub, use }) {
       }
       outbound.unregisterPolicySource('speakup')
       enginePolicies.delete('speakup')
-      outbound.syncOwnerQQ?.(cfg.ownerQQ)
+      outbound.syncOwner?.(ownerRoom(cfg))
       const rawActive = (cfg.ext?.outboundPolicy && cfg.ext.outboundPolicy.activePolicy) || 'auto'
       outbound.setActivePolicy?.(rawActive === 'speakup' ? 'purpose' : rawActive)
     } catch (error) {

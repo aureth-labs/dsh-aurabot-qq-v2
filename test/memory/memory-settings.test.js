@@ -12,7 +12,7 @@ const { createMemoryStore } = await import('../../packages/modules/memory/engine
 
 const owner = '10000001'
 const log = { info () {}, warn () {}, debug () {} }
-const mk = (memory = {}) => normalize({ enabled: true, ownerQQ: owner, memory: { enabled: true, recallCount: 4, ...memory } })
+const mk = (memory = {}) => normalize({ enabled: true, owners: [{ platform: 'qq', userId: String(owner) }], memory: { enabled: true, recallCount: 4, ...memory } })
 const store = (cfg) => createMemoryStore({ dsh: null, getConfig: () => cfg, hub: null, log })
 
 test('配置：常驻上限默认 1200、范围 200~4000；私人记忆优先默认开', () => {

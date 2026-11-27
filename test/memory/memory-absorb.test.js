@@ -24,7 +24,7 @@ function setup(t, memory = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-memory-absorb-'))
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ ownerQQ: OWNER, ownerName: '主人', allow: { private: [A, B, C] }, model: { provider: 'p', model: 'm' }, memory: { compress: false, keepChatlogDays: -1, ...memory } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', allow: { private: [A, B, C] }, model: { provider: 'p', model: 'm' }, memory: { compress: false, keepChatlogDays: -1, ...memory } })
   const rows = [], calls = []
   let answer = ({ system }) => system.includes('整理长期记忆') ? '{"facts":[]}' : system.includes('压成一句') ? '{"text":"我和朋友聊过茶和旅行"}' : system.includes('人物小档案') ? '朋友喜欢喝茶和旅行' : '{"insights":[],"style":[]}'
   const dsh = { get: () => null, llm: { async *stream({ system, messages }) {

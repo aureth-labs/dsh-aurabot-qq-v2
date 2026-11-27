@@ -1,4 +1,4 @@
-import { isOwnerRoom } from '../../../../../src/core/config/owners.ts'
+import { isOwnerRoom, ownerId } from '../../../../../src/core/config/owners.ts'
 import { isGroupRoom, isPrivateRoom, userOf } from '../../../../../src/core/bot/room.ts'
 import { join } from 'node:path'
 import { dataDir, writeJson } from '../../../../../src/core/store/index.ts'
@@ -87,7 +87,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
     chatLog
 
   function restoreProactiveFromChatLog() {
-    const owner = String(getConfig().ownerQQ || '')
+    const owner = String(ownerId(getConfig()) || '')
     if (!owner || !/^\d+$/.test(owner)) return
     let ownerAt = 0
     let botAt = 0

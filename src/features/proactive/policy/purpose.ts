@@ -1,3 +1,4 @@
+import { isOwnerRoom, primaryOwner } from '../../../core/config/owners.ts'
 // 目的引擎策略源：清醒窗口、每日生成尝试额度与逻辑发言额度。
 
 import { join } from 'node:path'
@@ -127,7 +128,7 @@ export function createPurposePolicy({ getConfig, engine, state, now, dataDir, lo
   let lastDetail = null
   const ownerQQ = (() => {
     try {
-      return String(cfgOf().ownerQQ ?? '')
+      return String(primaryOwner(cfgOf())?.userId ?? '')
     } catch {
       return ''
     }
@@ -287,9 +288,7 @@ export function createPurposePolicy({ getConfig, engine, state, now, dataDir, lo
   function scopeOf(to) {
     const target = String(to ?? '').trim()
     if (!target) return { managed: true }
-    if (!target.startsWith('private:')) return { managed: false, reason: 'out-of-scope' }
-    const qq = target.slice('private:'.length)
-    if (ownerQQ && qq === ownerQQ) return { managed: true }
+    if (isOwnerRoom(cfgOf(), target)) return { managed: true }
     return { managed: false, reason: 'out-of-scope' }
   }
 

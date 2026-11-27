@@ -33,7 +33,7 @@ function setup (tag, { memory = {}, reply } = {}) {
   mkdirSync(dir, { recursive: true })
   process.env.AURABOT_DATA_DIR = dir
   const cfg = normalize({
-    ownerQQ: OWNER, ownerName: '主人', model: { provider: 'p', model: 'm' },
+    owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', model: { provider: 'p', model: 'm' },
     memory: { dailyConsolidate: true, keepChatlogDays: 0, keepChatlogSet: true, ...memory },
   })
   const asked = []

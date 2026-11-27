@@ -22,7 +22,7 @@ const groupChat = { kind: 'group', userId: OTHER, groupId: '44444444', chatId: '
 const groupEvent = (patch = {}) => ({ post_type: 'request', request_type: 'group', sub_type: 'add', user_id: Number(OTHER), group_id: 44444444, flag: '原样:flag/1', comment: '你好', ...patch })
 
 function setupContacts({ cfg = {}, allOwner = true, callImpl } = {}) {
-  let config = normalize({ ownerQQ: OWNER, botQQ: BOT, enabled: true, dryRun: false, ...cfg })
+  let config = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, enabled: true, dryRun: false, ...cfg })
   let owner = allOwner
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-sl-contacts-'))
   const sent = [], calls = []
@@ -161,7 +161,7 @@ test('临时私聊保存来源群，普通好友不带来源群', async (t) => {
   process.env.AURABOT_WORKSPACE = join(root, 'workspace')
   const { createHub } = await import('../helpers/hub.js')
   const fake = createFakeDsh({ brain: async () => '' })
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: OWNER, botQQ: BOT, allow: { private: [OTHER], groups: [] }, stickers: { collect: false } })
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT, allow: { private: [OTHER], groups: [] }, stickers: { collect: false } })
   const calls = []
   const hub = createHub({ dsh: fake.ctx, getConfig: () => cfg, log: { debug() {}, info() {}, warn() {}, error() {} }, onebot: { call: async (action, params) => { calls.push({ action, params }); return { message_id: 1 } } }, hooks: { message: () => true } })
   t.after(() => { hub.dispose(); fake.dispose() })
@@ -341,7 +341,7 @@ test('账号离线只记 warn，不走聊天通知或发送 QQ 消息', { timeou
   const mock = await startMockOneBot({ selfId: BOT })
   const fake = createFakeDsh({ brain: async () => '' })
   t.after(async () => { fake.dispose(); await mock.close() })
-  writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true, gateway: 'onebot', botQQ: BOT, ownerQQ: OWNER, onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token } }))
+  writeFileSync(join(root, 'config.json'), JSON.stringify({ enabled: true, dryRun: false, setupDone: true, gateway: 'onebot', botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }], onebot: { httpUrl: mock.httpUrl, wsUrl: mock.wsUrl, httpToken: mock.token, wsToken: mock.token } }))
   const { apply } = await import('../../packages/app/index.ts')
   const app = apply(fake.ctx)
   await app.ready
@@ -365,7 +365,7 @@ test('卡片里的地址只认网址，本机路径发不出去', async () => {
   let build
   mod.setup({
     core: { hub: { sendSegments: async (c, seg) => { sent.push(seg); return { message_id: 1 } } }, onebot: { call: async () => ({}) } },
-    config: () => ({ enabled: true, dryRun: false, ownerQQ: '1', allow: { private: [], groups: ['9'] }, files: {} }),
+    config: () => ({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '1' }], allow: { private: [], groups: ['9'] }, files: {} }),
     tool: (fn) => { build = fn },
   })
   const card = build({ chat: { kind: 'group', groupId: '9', chatId: 'group:9' }, level: 'social', sessionId: 's' }).find((t) => t.name === 'qq_send_card')
@@ -384,7 +384,7 @@ test('跨聊天发消息：群里只有主人那一轮能发，别人私聊没�
   let build
   mod.setup({
     core: { hub: { turnSendersAllOwner: () => owner, deliver: async (id, text) => { sent.push([id, text]); return { sentTypes: ['text'], queuedTypes: [] } } }, onebot: { call: async () => ({}) } },
-    config: () => ({ enabled: true, ownerQQ: '1', allow: { private: ['2'], groups: ['9', '8'] }, files: {} }),
+    config: () => ({ enabled: true, owners: [{ platform: 'qq', userId: '1' }], allow: { private: ['2'], groups: ['9', '8'] }, files: {} }),
     tool: (fn) => { build = fn },
   })
   const group = { kind: 'group', groupId: '9', chatId: 'group:9' }

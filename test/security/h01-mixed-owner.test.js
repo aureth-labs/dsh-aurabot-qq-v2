@@ -21,7 +21,7 @@ const LIB = join(dataDir, 'stickers', 'index.json')
 writeFileSync(join(dataDir, 'stickers', 'throwaway.png'), Buffer.from('throwaway'))
 writeFileSync(LIB, JSON.stringify({ items: [{ md5: 'throwaway', file: 'throwaway.png', name: '鲸鱼害羞', tags: [] }] }))
 writeFileSync(join(dataDir, 'config.json'), JSON.stringify({
-  enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
+  enabled: true, dryRun: true, setupDone: true, botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }],
   allow: { private: [], groups: [String(GROUP)] },
   onebot: {},
   voice: { enabled: false },

@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../../src/core/config/owners.ts'
 import { workspaceDirOf, WORKSPACE_TITLE, sessionKey } from '../context/context.ts'
 import { mkdirSync } from 'node:fs'
 import { grantOwner } from '../../../../../src/core/runtime/workspace-move.ts'
@@ -63,7 +64,7 @@ export function createSessionManager({
       return `QQ · ${who}${t.startsWith('QQ · ') ? t.slice(5) : t}`
     }
     if (chat.kind === 'group') return `QQ 群 · ${who}${groupNames.get(chat.groupId) || chat.groupId}`
-    return chat.userId === getConfig().ownerQQ
+    return chat.userId === ownerId(getConfig())
       ? `QQ · ${who}${owner}私聊`
       : `QQ 私聊 · ${who}${chat.nickname || chat.userId}`
   }

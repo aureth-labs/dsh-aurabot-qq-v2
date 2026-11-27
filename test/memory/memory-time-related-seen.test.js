@@ -24,7 +24,7 @@ function setup(t, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-time-related-seen-'))
   const previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ ownerQQ: OWNER, ownerName: '主人', model: { provider: 'p', model: 'm' }, memory: { compress: false, mergeGroups: false, keepChatlogDays: -1, ...options.memory } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], ownerName: '主人', model: { provider: 'p', model: 'm' }, memory: { compress: false, mergeGroups: false, keepChatlogDays: -1, ...options.memory } })
   const rows = options.rows || []
   const calls = []
   const dsh = { get: () => null, llm: { async *stream({ system, messages }) {

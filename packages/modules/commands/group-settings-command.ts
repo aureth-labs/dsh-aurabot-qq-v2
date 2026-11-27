@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 // 确定性主人私聊入口；配置和自然语言工具共用规划器，不通过 LLM 执行。
 import { randomInt } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
@@ -88,7 +89,7 @@ function plan(cfg, request, ids) {
 // 只关心会影响这批操作的设置；别的群或模型设置变化不造成冲突，也不会被覆盖。
 function baseline(cfg, ids) {
   const { overrides, moduleOnlyGroups, ...defaults } = cfg.group
-  return structuredClone({ owner: cfg.ownerQQ, defaults, enabled: cfg.enabled, debug: cfg.debug,
+  return structuredClone({ owner: ownerId(cfg), defaults, enabled: cfg.enabled, debug: cfg.debug,
     memoryEnabled: cfg.memory.enabled,
     groups: ids.map(id => ({ id, moduleOnly: (moduleOnlyGroups || []).includes(id), override: overrides[id], allowed: cfg.allow.groups.includes(id), passive: cfg.memory.passiveGroups.includes(id) })) })
 }

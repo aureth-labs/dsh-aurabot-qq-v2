@@ -73,7 +73,7 @@ test('旁听名单默认空，群号归一化；不增加聊天权限', () => {
 function setup(t, patch = {}) {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-passive-'))
   process.env.AURABOT_DATA_DIR = root
-  const cfg = normalize({ enabled: true, dryRun: true, ownerQQ: '10000001', botQQ: BOT,
+  const cfg = normalize({ enabled: true, dryRun: true, owners: [{ platform: 'qq', userId: '10000001' }], botQQ: BOT,
     workspaceDir: join(root, 'workspace'), merge: { enabled: false }, titleFilter: { enabled: false },
     group: { proactiveEnabled: false, engagedEnabled: false },
     memory: { enabled: true, passiveGroups: [G] }, ...patch })

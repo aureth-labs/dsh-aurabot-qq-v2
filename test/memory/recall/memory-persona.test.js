@@ -27,7 +27,7 @@ function setup(t, answer = () => '[]', memory = {}, fetchImpl) {
   const logs = new Map()
   const calls = []
   let speakers = []
-  const cfg = normalize({ ownerQQ: OWNER, botQQ: '20000001', model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 0, keepChatlogSet: true, ...memory } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000001', model: { provider: 'p', model: 'm' }, memory: { keepChatlogDays: 0, keepChatlogSet: true, ...memory } })
   const hub = {
     chatLogDays: () => [...logs.keys()].sort(),
     chatLogOf: (day) => logs.get(day) || [],

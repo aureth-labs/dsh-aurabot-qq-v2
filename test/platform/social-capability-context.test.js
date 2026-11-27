@@ -4,12 +4,12 @@ import { rulesText } from '../../src/persona/personas.ts'
 import { normalize } from '../../src/core/config/index.ts'
 import qqApi from '../../packages/modules/qq-api/index.ts'
 
-const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '123456789', ownerName: 'PRIVATE_OWNER_NAME', allow: { groups: ['555'] } })
+const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '123456789' }], ownerName: 'PRIVATE_OWNER_NAME', allow: { groups: ['555'] } })
 
 for (const kind of ['social', 'group-owner']) {
   test(`${kind}：不注入管理者私人身份，群角色与工具权限分开`, () => {
     const rules = rulesText(kind, cfg)
-    assert.ok(!rules.includes(cfg.ownerQQ))
+    assert.ok(!rules.includes(cfg.owners[0].userId))
     assert.ok(!rules.includes(cfg.ownerName))
     assert.match(rules, /本轮可用工具、操作权限和 QQ 账号的实际能力/)
     assert.match(rules, /别人加不上你，不等于想添加刚被提到的群友/)
@@ -21,7 +21,7 @@ for (const kind of ['social', 'group-owner']) {
 
 test('主人私聊保留身份对应与授权提示', () => {
   const rules = rulesText('private', cfg)
-  assert.ok(rules.includes(`QQ 号是 ${cfg.ownerQQ} 的人是你的${cfg.ownerName}`))
+  assert.ok(rules.includes(`QQ 号是 ${cfg.owners[0].userId} 的人是你的${cfg.ownerName}`))
   assert.ok(rules.includes(`只有${cfg.ownerName}本人直接对你说的话才算指令`))
 })
 

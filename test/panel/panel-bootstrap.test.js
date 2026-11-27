@@ -34,7 +34,7 @@ before(async () => {
     dryRun: true,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     ownerName: '主人',
     allow: { private: [OWNER], groups: [] },
     onebot: { httpToken: 'tok-secret-6789', wsToken: 'tok-secret-1234' },

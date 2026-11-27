@@ -1,3 +1,4 @@
+import { ownerId } from '../../../src/core/config/owners.ts'
 import { readFileSync } from 'node:fs'
 import { defineTool, int, str } from '../../../src/tools/index.ts'
 import { fetchImage } from '../../../src/core/net/index.ts'
@@ -158,7 +159,7 @@ export function primaryTools(ctx, { select, source }: ReturnType<typeof primaryL
         } else {
           const media = hub.recentImages(current)
 
-          const pick = media.filter((x) => x.userId === String(ctx.root.config.ownerQQ)).at(-1) || media.at(-1)
+          const pick = media.filter((x) => x.userId === String(ownerId(ctx.root.config))).at(-1) || media.at(-1)
           if (!pick) return { ok: false, message: '最近半小时这个聊天里没有人发表情或图片，先把那张发过来' }
 
 

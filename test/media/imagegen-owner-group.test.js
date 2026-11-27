@@ -33,7 +33,7 @@ event.id = 100
 function setup(t, { beforeDraw } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-image-owner-'))
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ enabled: true, dryRun: true, setupDone: true, ownerQQ: OWNER, botQQ: BOT,
+  const cfg = normalize({ enabled: true, dryRun: true, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     ownerLevel: 'social', workspaceDir: join(dir, 'workspace'), allow: { groups: [GROUP] }, voice: { enabled: false },
     merge: { enabled: true, groupWaitSec: 0.02, groupMaxSec: 0.04 }, imageGen: { enabled: true, ownerOnly: true },
   })

@@ -121,13 +121,12 @@ test('#191：命令替换 / 常见嵌套执行里出现危险命令仍拦（单�
 // ---- #190：进程级钩子的作用域 + 本 PR 修的 fail-open ----
 function makeScopedGuard ({ owned = () => true, timeoutMs = 5000 } = {}) {
   const delivered = []
-  const cfg = { security: { dangerConfirm: true } }
+  const cfg = { security: { dangerConfirm: true }, owners: [{ platform: 'qq', userId: OWNER }] }
   const guard = createDangerGuard({
     getConfig: () => cfg,
     deliver: async (chatId, text) => { delivered.push({ chatId, text }) },
     chatOfSession: (sid) => (sid === 'sid-owner' ? ownerChat : sid === 'sid-group' ? 'group:123' : ''),
     isOwnedSession: safeOwnedSession(owned),
-    ownerQQ: () => OWNER,
     timeoutMs,
   })
   return { guard, delivered }
@@ -167,7 +166,6 @@ test('safeOwnedSession：判断不出来按 owned=true（fail-closed），只有
     deliver: async () => {},
     chatOfSession: () => '',
     isOwnedSession: safeOwnedSession(() => { throw new Error('boom') }),
-    ownerQQ: () => OWNER,
     timeoutMs: 30,
   })
   const d = await guard.preExecute(execOf('rm -rf /', 'sid-unknown'), () => 'NEXT')

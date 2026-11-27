@@ -7,7 +7,7 @@ import { canUseDelegatedCommand, delegatedCommandKey } from '../../src/chat/poli
 const OWNER = '10000001', G = '30000003', H = '40000004', OTHER = '10000002'
 const owner = { kind: 'private', userId: OWNER }
 function setup(patch = {}) {
-  let cfg = normalize({ ownerQQ: OWNER, enabled: true, dryRun: false, allow: { groups: [G] }, ...patch }), saves = 0, calls = 0
+  let cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], enabled: true, dryRun: false, allow: { groups: [G] }, ...patch }), saves = 0, calls = 0
   const deps = { getConfig: () => cfg, setConfig: next => { cfg = normalize(next); saves++ },
     onebot: { call: async action => { assert.equal(action, 'get_group_list'); calls++; return [{ group_id: G, group_name: '甲' }, { group_id: H, group_name: '乙' }] } },
     mutes: { until: () => undefined }, log: { warn() {} } }
@@ -117,7 +117,7 @@ test('全部读取失败不假装完成、不泄露错误；空列表和批量�
   assert.match(await x.run('修改 全部 主动 关'), /最多修改 100/); assert.equal(x.saves(), 0)
 })
 test('查询等待期间换主人、关闭指令或收到更新指令，旧操作不能生成有效预览', async () => {
-  for (const patch of [{ ownerQQ: OTHER }, { group: { privateCommandsEnabled: false } }]) {
+  for (const patch of [{ owners: [{ platform: 'qq', userId: String(OTHER) }] }, { group: { privateCommandsEnabled: false } }]) {
     const x = setup(); x.deps.onebot.call = async () => { x.patch(patch); return [{ group_id: G }] }
     assert.match(await x.run('修改 全部 主动 关'), /权限、开关或当前指令已变化/); assert.equal(x.saves(), 0)
   }

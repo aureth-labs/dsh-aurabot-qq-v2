@@ -1,3 +1,4 @@
+import { ownerId } from '../../../../src/core/config/owners.ts'
 import { createMessageMedia } from './media/context.ts'
 import { createTimeline } from './store/timeline.ts'
 import { createSessionReset } from './session/reset.ts'
@@ -146,7 +147,7 @@ export function createHub({
   const saidElsewhere = new Map() // chatId → [{ at, text }]  别处安排她在这里发的话，下次这个聊天交给她时补进去
   const proactiveLogAt = new Map() // chatId → 已从流水补进过一次的最大时间戳（重启后回捞用，避免同一批重复注入）
   const { outputSources, outputScope, sourcesFor, cleaningFor } = createDeliverySources(
-    () => getConfig().ownerQQ,
+    () => ownerId(getConfig()),
     (chatId) => hooks?.secrets?.({ chatId }) ?? [],
     (message) => log.warn(message),
   )

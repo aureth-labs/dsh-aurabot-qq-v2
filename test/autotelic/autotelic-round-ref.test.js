@@ -22,7 +22,7 @@ test('runRound 真实回路：观察窗口足够时走到决策环，不因 plan
     route: (path, fn) => { routes[path] = fn },
     every: () => {},
     tool: () => {},
-    config: () => ({ ownerQQ: '' }),
+    config: () => ({ owners: [{ platform: 'qq', userId: '' }] }),
     log: { debug: () => {}, info: () => {}, warn: () => {} },
     // hub 回包不含 JSON 数组 → planner 按契约返回 parse-fail（这正是「走通了决策环」的证据）
     core: { hub: { runSystemTurn: async () => '今天天气不错。' } },

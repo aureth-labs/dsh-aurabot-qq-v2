@@ -1,3 +1,4 @@
+import { ownerId } from '../../core/config/owners.ts'
 
 
 /** 迁移期选项对象：属性名固定，值按调用方传。 */
@@ -43,7 +44,7 @@ export function createNoticeRelay({ getConfig, workspaceOf, compose, log, window
   /** 这个会话的这一类事要不要上报：先看总开关，再看工作区覆盖。没配主人号就不报（发不出去）。 */
   function enabled(kind, sessionId) {
     const cfg = getConfig?.() || {}
-    if (disposed || !cfg.enabled || !cfg.ownerQQ) return false
+    if (disposed || !cfg.enabled || !ownerId(cfg)) return false
     const n = cfg.notice || {}
     if (n.enabled === false) return false
     if (n[kind] === false) return false

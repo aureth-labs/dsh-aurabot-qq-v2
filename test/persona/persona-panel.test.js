@@ -66,7 +66,7 @@ function setup(t) {
       { uid: ALICE, who: 'bot', t: now - 10 },
     ],
   }
-  const cfg = normalize({ ownerQQ: OWNER, allow: { private: [ALICE, BOB, '424242'] }, memory: { dailyConsolidate: false } })
+  const cfg = normalize({ owners: [{ platform: 'qq', userId: String(OWNER) }], allow: { private: [ALICE, BOB, '424242'] }, memory: { dailyConsolidate: false } })
   const make = () => createMemoryStore({ getConfig: () => cfg, hub, log })
   const state = () => readMemoryState(dir)
   t.after(() => {
@@ -409,7 +409,7 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
   const debugSession = 'old-alice-debug-session'
   writeFileSync(join(dir, 'sessions.json'), JSON.stringify({ chats: { [chatId]: { sessionId: oldSession, sessions: { live: oldSession, debug: debugSession } } } }))
   writeFileSync(join(dir, 'config.json'), JSON.stringify({ enabled: true, dryRun: true, setupDone: true,
-    ownerQQ: OWNER, botQQ: '20000002', allow: { private: [ALICE, BOB] }, workspaceDir: join(dir, 'workspace'),
+    owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: '20000002', allow: { private: [ALICE, BOB] }, workspaceDir: join(dir, 'workspace'),
     onebot, chat: { seedHistory: true }, conversationContext: { enabled: true }, memory: { dailyConsolidate: false } }))
   const fake = createFakeDsh({ brain: async () => '' })
   try {
@@ -480,7 +480,7 @@ test('面板一键清理按 QQ 隔离，旧流水不再读入，下一条私聊�
     assert.equal((await fake.call('/persona/person/reset', { qq: BOB }, headers)).json().ok, true)
     assert.equal(memory.remembers(BOB), false)
     assert.equal((await fake.call('/persona/person/reset', { qq: OWNER }, headers)).json().ok, true)
-    assert.equal(api.getConfig().ownerQQ, OWNER)
+    assert.equal(api.getConfig().owners[0].userId, OWNER)
     assert.equal(memory.remembers(OWNER), true)
   } finally { fake.dispose() }
 })

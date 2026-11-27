@@ -47,7 +47,7 @@ import { createLocal } from '../../src/local/index.ts'
 import { createSendEvents } from '../../src/core/bot/send-events.ts'
 import { listHostModels } from '../../src/core/llm/catalog.ts'
 import { defaultModel, type AskModelOptions } from '../../src/core/llm/index.ts'
-import { isOwnerOf } from '../../src/core/config/owners.ts'
+import { isOwnerOf, ownerId } from '../../src/core/config/owners.ts'
 import { createDialogue } from '../../src/core/llm/session-turn.ts'
 import { createMediaAccess } from '../../src/core/message/media/media.ts'
 import { dataDir, ensureDir } from '../../src/core/store/index.ts'
@@ -112,7 +112,7 @@ export function apply(ctx) {
   migrateConfig()
   let cfg = loadConfig()
   debugSwitch.on = Boolean(cfg.debug)
-  if (cfg.ownerQQ && !ownerAuthorizationRevision(cfg)) {
+  if (ownerId(cfg) && !ownerAuthorizationRevision(cfg)) {
     try { cfg = commitConfig(cfg, cfg) }
     catch { log.warn('初始化主人授权记录失败，本次启动使用会话授权') }
   }
@@ -294,7 +294,7 @@ export function apply(ctx) {
     defaultModel: () => defaultModel(ctx, { model: {} }),
     http: { body: readBody, raw: readRaw, query, send },
     media: createMediaAccess({ root: ROOT, use, config: getConfig }),
-    identity: { owner: () => String(cfg.ownerQQ || '') },
+    identity: { owner: () => String(ownerId(cfg) || '') },
     personas: {
       list: listPersonas, read: readPersona, current: () => currentPersonaText(cfg.persona.current),
       look: (sessionId) => {

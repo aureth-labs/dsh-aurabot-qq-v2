@@ -1,4 +1,4 @@
-import { ownerRoom, primaryOwner } from '../../../../../src/core/config/owners.ts'
+import { ownerRoom, primaryOwner, ownerId } from '../../../../../src/core/config/owners.ts'
 import { type ReplyWait, sessionKey, SOURCE_KIND } from '../context/context.ts'
 import { randomUUID } from 'node:crypto'
 import { type RunSystemTurnOptions } from './options.ts'
@@ -91,7 +91,7 @@ export function createBackgroundTurns({
     assertActive()
     const cfg = getConfig()
     if (!cfg.debug) return { ok: false, message: '没开调试模式' }
-    if (!cfg.ownerQQ) return { ok: false, message: '还没填主人 QQ' }
+    if (!ownerId(cfg)) return { ok: false, message: '还没填主人 QQ' }
     const chat = {
       kind: 'private',
       chatId: ownerRoom(cfg),
@@ -117,7 +117,7 @@ export function createBackgroundTurns({
     assertActive()
     const cfg = getConfig()
     if (!cfg.debug) return { ok: false, message: '没开调试模式' }
-    if (!cfg.ownerQQ) return { ok: false, message: '还没填主人 QQ' }
+    if (!ownerId(cfg)) return { ok: false, message: '还没填主人 QQ' }
     const say = String(text || '')
       .trim()
       .slice(0, 2000)
@@ -137,8 +137,8 @@ export function createBackgroundTurns({
       if (st.system) return { ok: false, message: '上一轮还没结束' }
       turnState.set(key, st)
       st.lastText = say
-      st.senders = new Set([String(cfg.ownerQQ)])
-      st.speakers = [String(cfg.ownerQQ)]
+      st.senders = new Set([String(ownerId(cfg))])
+      st.speakers = [String(ownerId(cfg))]
       let timer
       let rejectWait
       const base = new Promise((resolve, reject) => {

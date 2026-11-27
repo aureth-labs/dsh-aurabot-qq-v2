@@ -31,7 +31,7 @@ const legacyRemindersPath = () => join(process.env.AURABOT_DATA_DIR, 'speakup-re
 function setup({ remind = {}, extPurpose = {}, onTurnEnd = () => ({ ok: true }) } = {}) {
   const cfg = normalize({
     enabled: true,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     ownerName: '主人',
     speakUp: {
       awakeFrom: 0,

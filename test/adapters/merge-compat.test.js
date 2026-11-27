@@ -51,7 +51,7 @@ function setup(t, { config = {}, brain = async () => '', hooks = {}, buildTools 
   process.env.AURABOT_DATA_DIR = mkdtempSync(join(root, 'data-'))
   clearVisionCache()
   clearReasoningCache()
-  let cfg = normalize({ enabled: true, dryRun: true, setupDone: true, ownerQQ: OWNER, botQQ: BOT,
+  let cfg = normalize({ enabled: true, dryRun: true, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     model: { provider: 'p', model: 'blind', reasoningEffort: 'low' },
     voice: { enabled: false }, stickers: { enabled: false, collect: false }, merge: { enabled: false },
     allow: { groups: ['777'] }, ...config })

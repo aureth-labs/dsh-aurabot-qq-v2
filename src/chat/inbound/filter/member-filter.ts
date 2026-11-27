@@ -1,3 +1,5 @@
+import type { Owner } from '../../../core/config/owners.ts'
+import { ownerId } from '../../../core/config/owners.ts'
 // 群消息入口过滤；纯配置判断，不联网、不创建计时器。
 
 /** 一条「不回应」规则：在哪些群里不理这个人。 */
@@ -21,7 +23,7 @@ interface RawMemberFilter {
 
 /** 过滤判断只需要这两段配置。 */
 interface FilterConfig {
-  ownerQQ?: string
+  owners?: Owner[]
   memberFilter?: MemberFilterConfig
 }
 
@@ -62,7 +64,7 @@ export function ignoredGroupMember (cfg: FilterConfig, msg: FilterMessage | null
   if (msg?.kind !== 'group' || cfg.memberFilter?.enabled !== true) return false
   const user = String(msg.userId || '')
   const group = String(msg.groupId || '')
-  if (!id(user) || !id(group) || user === String(cfg.ownerQQ || '')) return false
+  if (!id(user) || !id(group) || user === String(ownerId(cfg) || '')) return false
   return (cfg.memberFilter.rules || []).some(r => r.userId === user &&
     (r.scope === 'all' || (r.scope === 'groups' && r.groups.includes(group))))
 }

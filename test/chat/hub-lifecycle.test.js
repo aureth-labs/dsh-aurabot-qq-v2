@@ -163,7 +163,7 @@ test('工具调 markSlowNotice 后，慢工具兜底不再发她当轮正文', a
 })
 
 function config(patch = {}) {
-  return normalize({ enabled: true, dryRun: true, setupDone: true, ownerQQ: OWNER, botQQ: BOT,
+  return normalize({ enabled: true, dryRun: true, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     allow: { private: [OTHER], groups: [] }, voice: { enabled: false }, merge: { enabled: false },
     stickers: { collect: true, collectMode: 'ask', caption: false, autoChance: 0 },
     onebot: {}, ...patch })
@@ -580,7 +580,7 @@ test('敏感命令执行前发现授权代次已变化', async (t) => {
   Object.assign(cfg, saveConfig(cfg, cfg))
   const work = hub.onMessage(event('/events'))
   await entered.promise
-  for (const ownerQQ of [OTHER, OWNER]) Object.assign(cfg, saveConfig({ ...cfg, ownerQQ }, cfg))
+  for (const ownerQQ of [OTHER, OWNER]) Object.assign(cfg, saveConfig({ ...cfg, owners: [{ platform: 'qq', userId: String(ownerQQ) }] }, cfg))
   resume.resolve()
   await work
   assert.equal(executed, false)

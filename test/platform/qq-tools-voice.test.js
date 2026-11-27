@@ -19,7 +19,7 @@ function setup(t, { patch = {}, synthFails = false, sendFails = false, outbox, h
   const file = join(dir, 'voice.wav')
   writeFileSync(file, 'test audio')
   const calls = [], spoken = []
-  const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: '1', allow: { groups: ['9'], private: [] }, workspaceDir: dir,
+  const cfg = normalize({ enabled: true, dryRun: false, owners: [{ platform: 'qq', userId: '1' }], allow: { groups: ['9'], private: [] }, workspaceDir: dir,
     voice: { enabled: true, autoChance: 0 }, stickers: { enabled: false }, ...patch })
   const onebot = { async call(action, params) {
     calls.push({ action, params })
@@ -179,7 +179,7 @@ test('两个目标并发投递的回执不串台', async t => {
 
 test('跨聊天发送抛异常也不透传路径或代码，不自动重发',async()=>{
   let build, calls=0
-  qqTools.setup({core:{hub:{deliver:async()=>{calls++;throw Error('ENOENT /home/private/voice.js at send()')}},onebot:{}},config:()=>normalize({ownerQQ:'1',allow:{groups:['9']}}),tool:f=>build=f,log:{warn(){}}})
+  qqTools.setup({core:{hub:{deliver:async()=>{calls++;throw Error('ENOENT /home/private/voice.js at send()')}},onebot:{}},config:()=>normalize({owners: [{ platform: 'qq', userId: '1' }],allow:{groups:['9']}}),tool:f=>build=f,log:{warn(){}}})
   const tool=build({chat:{kind:'private',chatId:'private:1'},level:'full',sessionId:'s'}).find(t=>t.name==='qq_send_message')
   const r=await tool.execute({target:'group:9',text:'你好',voice:true})
   assert.equal(r.ok,false);assert.match(r.message,/发送结果未确认/);assert.doesNotMatch(r.message,/private|ENOENT|voice\.js|send\(\)/);assert.equal(calls,1)

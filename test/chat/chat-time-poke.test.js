@@ -42,7 +42,7 @@ function setup(t, { brain = async () => '收到啦', hooks, patch = {}, call, se
     mkdirSync(join(dataDir, 'chatlog'), { recursive: true })
     writeFileSync(join(dataDir, 'chatlog', seedLog.day + '.jsonl'), seedLog.rows.map((r) => JSON.stringify(r)).join('\n') + '\n')
   }
-  const cfg = normalize({ enabled: true, dryRun: false, setupDone: true, ownerQQ: OWNER, botQQ: BOT,
+  const cfg = normalize({ enabled: true, dryRun: false, setupDone: true, owners: [{ platform: 'qq', userId: String(OWNER) }], botQQ: BOT,
     allow: { groups: [GROUP], private: [] }, merge: { enabled: false },
     group: { interjectChance: 0, quietHours: [0, 0] },
     voice: { enabled: false }, stickers: { enabled: false, collect: false, reactChance: 0 },

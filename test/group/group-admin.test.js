@@ -13,7 +13,7 @@ function boot ({ ownerTurn = true, dryRun = false } = {}) {
   const cfg = normalize({
     enabled: true,
     dryRun,
-    ownerQQ: '10000001',
+    owners: [{ platform: 'qq', userId: '10000001' }],
     allow: { groups: [GROUP] },
   })
   const api = {

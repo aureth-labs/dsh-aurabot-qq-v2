@@ -17,7 +17,7 @@ const log = { info() {}, warn() {}, debug() {}, error() {} }
 test('真实收图→合批→提示：混合照片/表情与下载失败不会错配编号', async t => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-image-ref-flow-')), previous = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
-  const cfg = normalize({ enabled: true, dryRun: true, setupDone: true, botQQ: BOT, ownerQQ: OWNER,
+  const cfg = normalize({ enabled: true, dryRun: true, setupDone: true, botQQ: BOT, owners: [{ platform: 'qq', userId: String(OWNER) }],
     workspaceDir: join(dir, 'workspace'), allow: { groups: [GROUP] }, voice: { enabled: false },
     merge: { enabled: true, groupWaitSec: 0.01, groupMaxSec: 0.02 }, imageGen: { enabled: true },
     titleFilter: { enabled: false }, stickers: { collect: false },

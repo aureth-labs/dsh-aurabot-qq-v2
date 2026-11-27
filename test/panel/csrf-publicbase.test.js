@@ -30,7 +30,7 @@ before(async () => {
     dryRun: true,
     setupDone: true,
     botQQ: BOT,
-    ownerQQ: OWNER,
+    owners: [{ platform: 'qq', userId: String(OWNER) }],
     allow: { private: [OWNER], groups: [] },
     onebot: {},
     voice: { engine: 'windows', autoChance: 0 },
