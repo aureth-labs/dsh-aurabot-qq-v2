@@ -32,10 +32,10 @@ export function sessionOf(bot, event) {
 
 const noticeOf = (event, notice_type, sub_type) => chatNotice({ post_type: 'notice', notice_type, sub_type, ...event })
 
-export function createHub({ onebot, bot, ...options } = {}) {
+export function createHub({ onebot, bot, selfId = '20000002', ...options } = {}) {
   useLegacyRooms('qq', BOT_ID)
   let instance
-  const botOf = bot ?? (() => instance ??= qqBot(onebot, options.getConfig?.().botQQ))
+  const botOf = bot ?? (() => instance ??= qqBot(onebot, selfId))
   const hub = createEngine({ ...options, bot: botOf })
   const onMessage = hub.onMessage
   return Object.assign(hub, {

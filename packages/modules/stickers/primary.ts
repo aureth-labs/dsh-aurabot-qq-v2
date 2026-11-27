@@ -17,7 +17,7 @@ export function primaryLibrary(ctx: PluginContext) {
   function select() {
     if (!active) throw Error('表情库已卸载')
     const self = source()?.selfId
-    const expected = String(ctx.root.config.botQQ || '')
+    const expected = String(ctx.root.config.ext?.['adapter-qq-onebot-v11']?.selfId || '')
     if (self && !bound && (self === expected || !existsSync(join(home, 'index.json')))) {
       writeJson(bindingFile, { selfId: self })
       bound = self

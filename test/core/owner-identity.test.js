@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { loadConfig, saveConfig, mergeFromPanel, normalize, publicConfig } from '../../src/core/config/index.ts'
 import { isOwnerOf } from '../../src/core/config/owners.ts'
+import { migrateConfig } from '../../packages/app/migrations/config.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
-test('QQ 授权迁移保留原文件，旧面板换主人保留其他平台与限实例条目', t => {
+test('V2 配置迁移保留原文件，旧面板换主人保留其他平台与限实例条目', t => {
   const dir = mkdtempSync(join(tmpdir(), 'aurabot-owners-'))
   const oldDir = process.env.AURABOT_DATA_DIR
   process.env.AURABOT_DATA_DIR = dir
@@ -17,10 +18,15 @@ test('QQ 授权迁移保留原文件，旧面板换主人保留其他平台与�
     cleanupDir(dir)
   })
   const file = join(dir, 'config.json')
-  const original = JSON.stringify({ ownerQQ: '123', ownerIds: ['123', '456'] })
+  const original = JSON.stringify({ ownerQQ: '123', ownerIds: ['123', '456'], botQQ: '10001', onebot: { wsUrl: 'ws://x', wsToken: 't' } })
   writeFileSync(file, original)
+  migrateConfig(dir)
+  const migrated = JSON.parse(readFileSync(file, 'utf8'))
+  assert.deepEqual(migrated.ext['adapter-qq-onebot-v11'], { wsUrl: 'ws://x', wsToken: 't', selfId: '10001' })
+  for (const key of ['ownerQQ', 'ownerIds', 'botQQ', 'onebot']) assert.equal(Object.hasOwn(migrated, key), false)
   const cfg = loadConfig()
-  assert.equal(readFileSync(file + '.before-platform-owners', 'utf8'), original)
+  assert.equal(cfg.ownerQQ, '123')
+  assert.equal(readFileSync(file + '.before-v2', 'utf8'), original)
   assert.deepEqual(cfg.owners.map(row => row.userId), ['123', '456'])
   assert.equal(isOwnerOf(cfg, '123', 'matrix'), false)
   const matrix = { platform: 'matrix', botId: 'work', userId: '@Alice:chat' }
@@ -36,7 +42,7 @@ test('QQ 授权迁移保留原文件，旧面板换主人保留其他平台与�
   saveConfig(mergeFromPanel(changed, { owners: [] }), changed)
   assert.deepEqual(loadConfig().owners, [])
   assert.equal(loadConfig().ownerQQ, '')
-  assert.equal(readFileSync(file + '.before-platform-owners', 'utf8'), original)
+  assert.equal(readFileSync(file + '.before-v2', 'utf8'), original)
 })
 
 test('凭据按插件实例遮罩与回填，离线未知插件配置只留在服务端', () => {

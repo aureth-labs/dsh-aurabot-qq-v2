@@ -12,8 +12,8 @@ export function registerDiagnostics({ http, getConfig, endpoint, onebot, primary
     add(
       'bot-qq',
       '机器人 QQ',
-      Boolean(getConfig().botQQ),
-      getConfig().botQQ || '还没填',
+      Boolean(endpoint().selfId),
+      endpoint().selfId || '还没填',
       '在「连接」页填机器人号',
     )
     const ep = endpoint()
@@ -58,12 +58,12 @@ export function registerDiagnostics({ http, getConfig, endpoint, onebot, primary
   /** 连不上 OneBot 时，按顺序找卡在哪一步，给一句人话。 */
   async function connectionProblem() {
     if (!getConfig().enabled) return '总开关关着（右上角），打开后才会连'
-    if (!getConfig().botQQ) return '还没填机器人 QQ 号'
+    if (!endpoint().selfId) return '还没填机器人 QQ 号'
     const ep = endpoint()
     if (!ep.wsUrl)
       return '还没填 OneBot 的 WebSocket 地址：在「连接」页填你的 OneBot v11 正向 WebSocket 地址（收消息要靠它；HTTP 可以不填）'
     if (onebot.wrongAccount)
-      return `连上的是 ${onebot.wrongAccount}，不是机器人号 ${getConfig().botQQ}，已经断开：让你的 OneBot 服务登录机器人号，再点「重新连接」`
+      return `连上的是 ${onebot.wrongAccount}，不是机器人号 ${endpoint().selfId}，已经断开：让你的 OneBot 服务登录机器人号，再点「重新连接」`
     if (warmSince() && Date.now() - warmSince() < 300_000) {
       const sec = Math.max(1, Math.round((Date.now() - warmSince()) / 1000))
       const label = warmPhase().label || '正在等 OneBot 会话'
@@ -88,11 +88,11 @@ export function registerDiagnostics({ http, getConfig, endpoint, onebot, primary
       const info = await primaryBot().internal('get_login_info', {}, { timeoutMs: 8000 })
       const uin = String(info?.user_id ?? '')
       return {
-        ok: uin === getConfig().botQQ,
+        ok: uin === endpoint().selfId,
         message:
-          uin === getConfig().botQQ
+          uin === endpoint().selfId
             ? `连上了：${info.nickname}（${uin}）`
-            : `连上的是 ${uin}，不是机器人号 ${getConfig().botQQ}！`,
+            : `连上的是 ${uin}，不是机器人号 ${endpoint().selfId}！`,
         info,
       }
     } catch (error) {

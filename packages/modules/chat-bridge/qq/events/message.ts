@@ -141,7 +141,7 @@ export function createIncomingMessages({
     const quotedBot = msg.kind === 'group' && msg.replyId ? !quoteDeleted && await repliedToBot(msg.replyId, msg) : false
     if (isDisposed() || wasCleared()) return
     const interaction = msg.kind === 'private' || msg.mentioned || quotedBot ? [msg.userId] : []
-    const originId = chatMessageOrigin(msg.chatId, msg.messageId, 'in', cfg.botQQ)?.originId
+    const originId = chatMessageOrigin(msg.chatId, msg.messageId, 'in', activity.selfId)?.originId
     const logIncoming = (text = msg.text) =>
       logChat(msg.chatId, msg.nickname, text, msg.userId, {
         interaction,

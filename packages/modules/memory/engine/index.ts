@@ -20,7 +20,8 @@ import type { ClearPersonMemoryOptions, CompressionClustersOptions, CompressDeta
 export * from './query/query.ts'
 import { NATIVE_MEMORY_VIEW, isSelfFact, NO_ARRAY, EXTRACT_RETRY_TOKENS, VIA_NAMES, RELATED_MIN_SCORE, RELATED_LIMIT, ASSOC_MIN_SIM, ASSOC_LIMIT, ASSOC_RECALL_LIMIT, ASSOC_HOPS, ASSOC_HOP_DECAY, ASSOC_BUMP, ASSOC_BUMP_EVERY, TIER_GROW, validFromOf, validUntilOf, isCurrent, FOLLOW_UP_DELAYS, followUpChatAllowed, followUpPerson, parseFollowUpAt, parseValidityDate, validityText, eventText, seenMeta, pastWindow, cleanRelated, assocSignature, cleanAssocMap, tokenize, similarity, conflicting, sameFact, buildIndex, memoryVisible, search, isPersonalMemory, AGREEMENT_QUERY, isAgreementMemory, EVENT_QUERY, agoText, whenText, saidTime, parseSaidAt, stamp, memoryLine, shouldForget, RETENTION_BASE, retention, parseMemoryCommand, looksLikeRuleMemory, stripMemoryHints, matchesMemoryKeyword, parseReflection, parseExtraction, normalizeRelation, relationText, relationPair, relationHas, COMPRESS, compressionClusters, parseAbstract, checkAbstractText, ExtractionFormatError } from './query/query.ts'
 
-export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, options), getConfig, hub, log, fetchImpl, setConfig = null, directory = dataDir(), blocked = null }) {
+export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, options), getConfig, hub, log, fetchImpl, setConfig = null, directory = dataDir(), blocked = null, selfIds = () => [] }) {
+  const isSelf = (id) => Boolean(id) && selfIds().includes(String(id))
   /** 流水尾巴与跨会话提示的短期缓存，写操作时整份作废。 */
   const hintCache: { tail: any; cross: any } = { tail: null, cross: null }
   // 用 ByMode：beta 的 createVectorIndex 只会走在线服务，本地 bge-small 模型完全用不上，
@@ -336,7 +337,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
         temperature: 0.2,
       })
       const m = String(r).match(/\[[\s\S]*\]/)
-      try { for (const x of m ? JSON.parse(m[0]) : []) if (x && x.text && !isSelfFact(x, getConfig())) out.push({ text: String(x.text).slice(0, 200), aboutName: String(x.about || ''), importance: Math.max(0, Math.min(1, Number(x.importance) || 0.5)) }) } catch (error) {}
+      try { for (const x of m ? JSON.parse(m[0]) : []) if (x && x.text && !isSelfFact(x, getConfig(), selfIds())) out.push({ text: String(x.text).slice(0, 200), aboutName: String(x.about || ''), importance: Math.max(0, Math.min(1, Number(x.importance) || 0.5)) }) } catch (error) {}
     }
     // 和已有记忆、彼此之间去重
     const have = load().items
@@ -349,7 +350,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
   function importCommit(items) {
     let n = 0
     for (const c of items || []) {
-      if (!c || isSelfFact(c, getConfig())) continue
+      if (!c || isSelfFact(c, getConfig(), selfIds())) continue
       if (add({ text: c.text, aboutName: c.aboutName || '', importance: c.importance ?? 0.5, source: 'import' }).id) n++
     }
     return n
@@ -1117,7 +1118,7 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
       .map((l) => ({ ...l, text: stripMemoryHints(l.text) })).filter((l) => l.text)
     const isQzone = chatId === 'qzone'
     if (!talk.length) { checkpoint(); return { ok: true, added: 0, insights: 0 } }
-    const human = talk.filter((l) => l.who !== 'bot' && (!getConfig().botQQ || String(l.uid || '') !== String(getConfig().botQQ)))
+    const human = talk.filter((l) => l.who !== 'bot' && !isSelf(l.uid))
     const speakers = new Set(human.map((l) => String(l.uid || (isPrivateRoom(chatId) ? roomId(chatId) : ''))).filter(Boolean))
     const owner = String(getConfig().ownerQQ || '')
     const ownerNames = isGroupRoom(chatId) && owner ? human.filter((l) => String(l.uid || '') === owner).map((l) => String(l.who || '')).filter((name) => name && name !== owner) : []
@@ -1238,18 +1239,18 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
       saveImpressions(chatId, result, human)
       for (const x of arr.slice(0, 12)) {
         if (!x || !x.text || !hasHuman) continue
-        if (isSelfFact(x, getConfig())) continue
+        if (isSelfFact(x, getConfig(), selfIds())) continue
         if (!ownerScope && looksLikeRuleMemory(x.text)) continue
         if (x.speaker && !/^\d+$/.test(String(x.speaker).trim())) continue
         const rawSpeaker = String(x.speaker ?? '').replace(/\D/g, '')
-        if (rawSpeaker && (rawSpeaker === String(cfg.botQQ || '') || !speakers.has(rawSpeaker))) continue
+        if (rawSpeaker && (isSelf(rawSpeaker) || !speakers.has(rawSpeaker))) continue
         if (!rawSpeaker && speakers.size > 1) continue
         const speaker = rawSpeaker || (isPrivateRoom(chatId) ? roomId(chatId) : speakers.size === 1 ? String([...speakers][0]) : '')
         const scope = x.scope === 'group' && isGroupRoom(chatId) && cfg.memory.groupMemory !== false ? 'group' : ''
         if (x.scope === 'group' && (!scope || x.about_qq || x.about || /主人/.test(String(x.text)) || (ownerQQ && String(x.text).includes(ownerQQ)) || (cfg.ownerName && String(x.text).includes(cfg.ownerName)) || ownerNames.some((name) => String(x.text).includes(name)))) continue
         if (x.about_qq && !/^\d+$/.test(String(x.about_qq).trim())) continue
         const qq = String(x.about_qq ?? '').replace(/\D/g, '')
-        if (qq && qq === String(cfg.botQQ || '')) continue
+        if (isSelf(qq)) continue
         const about = scope ? '' : qq.length >= 5 ? qq : isPrivateRoom(chatId) ? roomId(chatId) : ''
         let status = ['fact', 'hearsay', 'guess'].includes(x.status) ? x.status : 'fact'
         if (speaker && about && speaker !== about && speaker !== ownerQQ) status = 'hearsay'
@@ -1397,8 +1398,8 @@ export function createMemoryStore({ dsh, generate = (options) => askModel(dsh, o
     return true
   }
   function chatSignature(rows) {
-    const { ownerQQ, ownerName, botQQ } = getConfig()
-    return digest({ rows, ownerQQ, ownerName, botQQ, selfName: selfName(getConfig()) })
+    const { owners, ownerName } = getConfig()
+    return digest({ rows, owners, ownerName, self: selfIds(), selfName: selfName(getConfig()) })
   }
   function currentChat(day, chatId, signature, version) {
     return getConfig().memory.gistEnabled !== false && version === forgetVersion && chatSignature(hub.chatLogOf(day).filter((l) => l.chatId === chatId)) === signature

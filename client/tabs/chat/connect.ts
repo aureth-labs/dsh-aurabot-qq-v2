@@ -6,10 +6,10 @@ import { Btn, Card, Row, cx, h, useField } from '../../core/ui/ui.ts'
 
 function OneBotFields({ draft, f }) {
   return h(Fragment, null,
-    h(Row, { label: 'WebSocket 地址', hint: '正向 WebSocket（OneBot v11），收消息靠它，必填。DSH 在 Docker 里的话，要填 DSH 容器能访问到的地址' }, f.text('onebot.wsUrl', { size: 'wide', placeholder: 'ws://127.0.0.1:3001' })),
-    h(Row, { label: 'WebSocket 令牌', hint: '对方设了 access_token 就填，没设留空' }, f.text('onebot.wsToken', { type: 'password', placeholder: '没有就留空' })),
-    h(Row, { label: 'HTTP 地址', hint: '可选。填了就用 HTTP 调接口，不填就都走 WebSocket' }, f.text('onebot.httpUrl', { size: 'wide', placeholder: 'http://127.0.0.1:3000' })),
-    h(Row, { label: 'HTTP 令牌' }, f.text('onebot.httpToken', { type: 'password', placeholder: '没有就留空' })))
+    h(Row, { label: 'WebSocket 地址', hint: '正向 WebSocket（OneBot v11），收消息靠它，必填。DSH 在 Docker 里的话，要填 DSH 容器能访问到的地址' }, f.text('ext.adapter-qq-onebot-v11.wsUrl', { size: 'wide', placeholder: 'ws://127.0.0.1:3001' })),
+    h(Row, { label: 'WebSocket 令牌', hint: '对方设了 access_token 就填，没设留空' }, f.text('ext.adapter-qq-onebot-v11.wsToken', { type: 'password', placeholder: '没有就留空' })),
+    h(Row, { label: 'HTTP 地址', hint: '可选。填了就用 HTTP 调接口，不填就都走 WebSocket' }, f.text('ext.adapter-qq-onebot-v11.httpUrl', { size: 'wide', placeholder: 'http://127.0.0.1:3000' })),
+    h(Row, { label: 'HTTP 令牌' }, f.text('ext.adapter-qq-onebot-v11.httpToken', { type: 'password', placeholder: '没有就留空' })))
 }
 
 function Connect({ st, draft, setDraft, toast, reload }) {
@@ -23,10 +23,10 @@ function Connect({ st, draft, setDraft, toast, reload }) {
     h(Btn, { small: true, onClick: async () => { const r = await get('/onebot/test'); toast(r.message) } }, '测试连接'),
     h(Btn, { small: true, onClick: async () => { const r = await post('/onebot/reconnect'); toast(r.message, r.ok ? 'ok' : 'err'); reload() } }, '重新连接'))
   return h('div', { className: 'ab-grid' },
-    h(Card, { title: '接上 QQ（OneBot v11）', desc: '让你的 OneBot 服务（NapCat / LLOneBot / Lagrange / Docker 里的实现等）登录机器人号 ' + (draft.botQQ || '') + '，把它的正向 WebSocket 地址填在这里，保存后插件就会去连。插件只连接，不会启动或注入任何东西；连上后会先核对登录的是不是机器人号，不是就断开。',
+    h(Card, { title: '接上 QQ（OneBot v11）', desc: '让你的 OneBot 服务（NapCat / LLOneBot / Lagrange / Docker 里的实现等）登录机器人号 ' + (draft.ext?.['adapter-qq-onebot-v11']?.selfId || '') + '，把它的正向 WebSocket 地址填在这里，保存后插件就会去连。插件只连接，不会启动或注入任何东西；连上后会先核对登录的是不是机器人号，不是就断开。',
       right: h('a', { className: 'ab-small', href: 'https://github.com/aureth-labs/dsh-aurabot-qq-v2', target: '_blank', rel: 'noreferrer' }, '接入文档 ↗') },
       h(OneBotFields, { draft, f }),
-      h(Row, { label: '机器人 QQ 号' }, f.text('botQQ')),
+      h(Row, { label: '机器人 QQ 号' }, f.text('ext.adapter-qq-onebot-v11.selfId')),
       testBtns),
     h(Card, { title: 'QQ 会话放在哪', desc: '每个 QQ 私聊 / 群都是 DSH 里「Aurabot · QQ」工作区下的一个会话，ta在会话里读写文件也在这个文件夹。改了以后新开的会话放到新位置；已有的会话还在原来的地方，想全部挪过去就在「概览」点「重新开始所有 QQ 会话」。' },
       h(Row, { label: '工作区文件夹', hint: '填完整路径（比如 D:\\Aurabot\\qq-chats）；留空 = 默认位置' }, f.text('workspaceDir', { size: 'wide', placeholder: st.workspaceDir || '' })),
@@ -42,7 +42,7 @@ function Connect({ st, draft, setDraft, toast, reload }) {
     h(Card, { title: '连接状态' },
       h('div', { className: 'ab-kv' },
         h('span', null, 'QQ 网关'), h('span', null, h('span', { className: 'ab-flex' }, h('i', { className: cx('ab-dot', conn ? 'ok' : st.onebot.state === 'connecting' ? 'warn' : 'err') }), { connected: '已连上', connecting: '连接中', disconnected: '断开了，正在重连', stopped: '没启动（总开关关着）', unconfigured: '还没配置' }[st.onebot.state] || st.onebot.state)),
-        h('span', null, '登录的号'), h('span', null, login ? login.nickname + '（' + login.uin + '）' + (login.uin !== draft.botQQ ? ' ⚠ 不是机器人号！' : '') : '—'),
+        h('span', null, '登录的号'), h('span', null, login ? login.nickname + '（' + login.uin + '）' + (login.uin !== draft.ext?.['adapter-qq-onebot-v11']?.selfId ? ' ⚠ 不是机器人号！' : '') : '—'),
         h('span', null, 'HTTP'), h('span', null, st.onebot.endpoint.httpUrl || '—'),
         h('span', null, 'WebSocket'), h('span', null, st.onebot.endpoint.wsUrl || '—'),
       ),

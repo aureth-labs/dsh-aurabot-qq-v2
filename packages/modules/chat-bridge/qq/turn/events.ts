@@ -17,6 +17,7 @@ import { redact } from '../../../../../src/core/support/log/redact.ts'
 
 export function createTurnEvents({
   isDisposed,
+  selfId,
   sessionToChat,
   sessionTarget,
   store,
@@ -225,7 +226,7 @@ export function createTurnEvents({
             text,
             id: key + ':turn:' + d.turn,
             contextAt: st.archiveContextAt,
-            speakerId: getConfig().botQQ || '',
+            speakerId: selfId() || '',
           })
         } catch (error) {
           log.warn('对话记忆保存失败：', error.message)

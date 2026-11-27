@@ -196,7 +196,7 @@ export function createGroupRoles({ bot, getConfig, log }) {
   const inflight = new Map()
 
   async function fetchRole(gid) {
-    const r = await bot().internal('get_group_member_info', { group_id: Number(gid), user_id: Number(bot().selfId || getConfig().botQQ), no_cache: true }, { timeoutMs: 8000 })
+    const r = await bot().internal('get_group_member_info', { group_id: Number(gid), user_id: Number(bot().selfId), no_cache: true }, { timeoutMs: 8000 })
     const role = ['owner', 'admin', 'member'].includes(r && r.role) ? r.role : 'member'
     cache.set(String(gid), { role, at: Date.now() })
     return role

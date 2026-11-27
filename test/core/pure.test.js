@@ -355,17 +355,10 @@ test('#6 头像来源：显式网址直接给网关；「刚才那张」和「�
   assert.equal(avatarSource('base64://AAAA').ok, false)
 })
 
-test('#28 QQ 网关：配置统一到 onebot 段；老的 snowluma 段只迁移连接地址', async () => {
+test('#28 核心配置不再携带 QQ 连接段，旧段由启动迁移搬进适配器设置', async () => {
   const { normalize } = await import('../../src/core/config/index.ts')
-  assert.equal(normalize({}).onebot.wsUrl, '')
-  assert.equal(normalize({ onebot: { wsUrl: 'ws://napcat:3001' } }).onebot.wsUrl, 'ws://napcat:3001')
-  const migrated = normalize({ snowluma: { httpUrl: 'http://127.0.0.1:3000', wsUrl: 'ws://127.0.0.1:3001', httpToken: 'a', wsToken: 'b', dir: 'C:/SnowLuma', autoStart: true } })
-  assert.equal(migrated.onebot.httpUrl, 'http://127.0.0.1:3000')
-  assert.equal(migrated.onebot.wsUrl, 'ws://127.0.0.1:3001')
-  assert.equal(migrated.onebot.httpToken, 'a')
-  assert.equal(migrated.onebot.wsToken, 'b')
-  assert.equal(Object.hasOwn(migrated, 'snowluma'), false)
-  assert.equal(Object.hasOwn(migrated, 'gateway'), false)
+  const cfg = normalize({ onebot: { wsUrl: 'ws://napcat:3001' }, snowluma: { wsUrl: 'x' }, gateway: {}, botQQ: '1' })
+  for (const key of ['onebot', 'snowluma', 'gateway', 'botQQ']) assert.equal(Object.hasOwn(cfg, key), false)
 })
 
 test('#32 工作区位置：面板填的绝对路径优先，相对路径 / 乱填的当没填', async () => {

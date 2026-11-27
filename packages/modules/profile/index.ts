@@ -109,7 +109,7 @@ export function apply(ctx, config) {
         try {
           if (!allowed()) throw new Error('只有主人 QQ 私聊时才能发送我的 QQ 头像')
           const ready = () => {
-            reader.assertCurrent(String(ctx.root.config.botQQ || ''))
+            reader.assertCurrent(String(primaryBot()?.selfId || ''))
             if (!ctx.root.config.enabled) throw new Error('插件总开关已关闭，未发送头像')
             return ctx.root.config.debug
           }

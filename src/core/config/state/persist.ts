@@ -1,5 +1,4 @@
 import { reconcileOwnerEdit } from '../owners.ts'
-import { constants, copyFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { dataDir, readJson, writeJson } from '../../store/index.ts'
 import { normalize } from './normalize.ts'
@@ -13,12 +12,8 @@ export const OPT_IN_ON_UPDATE = ['douyin']
 export function loadConfig() {
   const file = FILE()
   const raw = readJson(file, {})
-  if (raw && !Object.hasOwn(raw, 'owners') && (raw.ownerQQ || raw.ownerIds?.length)) {
-    try { copyFileSync(file, file + '.before-platform-owners', constants.COPYFILE_EXCL) }
-    catch (error) { if (error.code !== 'EEXIST') throw error }
-  }
   // 更新插件后新增的、会公开发东西的功能：老用户先关着，等他们自己在面板里打开（新安装照常默认开）
-  if (raw && raw.ownerQQ) for (const k of OPT_IN_ON_UPDATE) if (raw[k] === undefined) raw[k] = { enabled: false }
+  if (raw?.owners?.length) for (const k of OPT_IN_ON_UPDATE) if (raw[k] === undefined) raw[k] = { enabled: false }
   return normalize(raw)
 }
 
@@ -53,7 +48,8 @@ export function saveConfig(cfg, previous = loadConfig()) {
     const revision = c.ownerQQ === previous.ownerQQ ? ownerAuthorizationRevision(previous) : ''
     c.ownerAuthorization = { owner: c.ownerQQ, revision: revision || randomUUID() }
   } else delete c.ownerAuthorization
-  writeJson(FILE(), withVectorMode(c))
+  const { ownerQQ, ownerIds, ...stored } = withVectorMode(c)
+  writeJson(FILE(), stored)
   return c
 }
 

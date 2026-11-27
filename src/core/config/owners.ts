@@ -41,7 +41,7 @@ export function ownerFields(input: OwnerInput) {
   const owners = Object.hasOwn(input, 'owners') ? readOwners(input.owners) : legacyOwners(input)
   const eligible = owners.filter(legacyEligible).map(row => row.userId)
   const primary = digits(input.ownerQQ)
-  const ownerQQ = eligible.includes(primary) ? primary : ''
+  const ownerQQ = eligible.includes(primary) ? primary : eligible[0] ?? ''
   return { owners, ownerQQ, ownerIds: eligible.filter(id => id !== ownerQQ) }
 }
 

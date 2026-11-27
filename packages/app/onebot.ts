@@ -22,8 +22,6 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
       const current = getConfig()
       if (ctx.instanceId !== defaultOneBotId) return adapter.apply(ctx, settings)
       if (!current.enabled) return
-      const overrides = current.ext?.[defaultOneBotId] ?? {}
-      const config = { ...current.onebot, selfId: current.botQQ, ...overrides } as adapter.Config
       const media = createMediaScope(() => {
         const connection = ctx.services.get<Connection>('onebot/' + ctx.instanceId)
         return connection?.verified ? connection.login.uin : null
@@ -32,7 +30,7 @@ export function defaultOneBot(getConfig: () => AurabotConfig) {
       ctx.provide('primary-sticker-source', { capture: () => ctx.get<ReturnType<typeof stickerSource>>(stickerService('qq', ctx.instanceId))?.capture(), botId: ctx.instanceId, platform: 'qq' })
       ctx.effect(() => media.dispose())
       ctx.on('onebot/connection', (id, state) => { if (id === ctx.instanceId && state !== 'connected') media.reset() })
-      return adapter.apply(ctx, config)
+      return adapter.apply(ctx, settings)
     },
   }
 }

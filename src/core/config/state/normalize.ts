@@ -71,17 +71,7 @@ function normalizeNotice (v: unknown, legacyNotify: unknown): AurabotConfig['not
 
 export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   const c = deepMerge<AurabotConfig>(DEFAULTS, raw)
-  // v1 的 snowluma 段只保留连接地址，迁到通用的 onebot 段；其余启动/注入字段一律丢弃。
-  const legacySnow = isObj(raw?.snowluma) ? raw.snowluma : {}
-  const rawOnebot = isObj(raw?.onebot) ? raw.onebot : legacySnow
-  c.onebot = {
-    httpUrl: String(rawOnebot.httpUrl || '').trim(),
-    wsUrl: String(rawOnebot.wsUrl || '').trim(),
-    httpToken: String(rawOnebot.httpToken || '').trim(),
-    wsToken: String(rawOnebot.wsToken || '').trim(),
-  }
-  delete (c as RawConfig).snowluma
-  delete (c as RawConfig).gateway
+  for (const key of ['snowluma', 'gateway', 'onebot', 'botQQ']) delete (c as RawConfig)[key]
   // 几个老字段是从原始配置里直接读的（不经过 deepMerge），先摘出来，免得每处都判一遍
   const rawMemory = isObj(raw?.memory) ? raw.memory : {} as RawConfig
   const rawDouyin = isObj(raw?.douyin) ? raw.douyin : {} as RawConfig
@@ -98,7 +88,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
   c.commandPrefixes = cleaned.length ? cleaned : [null, '/']
   c.middlewareAfterCommand = bool(c.middlewareAfterCommand, false)
   c.conversationContext = { enabled: bool(c.conversationContext?.enabled, false) }
-  c.botQQ = qq(c.botQQ)
   Object.assign(c, ownerFields(raw || {}))
   c.approvalNotify = bool(c.approvalNotify, true)
   // 老配置只有 approvalNotify：没写过 notice 时用它当审批上报的默认值，免得更一次版本被重新打开

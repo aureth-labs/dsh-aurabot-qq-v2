@@ -104,7 +104,7 @@ export function createHub({
   const legacyScope = !scope || isLegacyScope(scope.platform, scope.botId)
   const scopeDir = legacyScope ? [] : ['bots', `${scope.platform}-${scope.botId}`.replace(/[^\w.-]/g, '_')]
   const localMedia = hooks?.media ? undefined : createMediaScope(
-    () => legacyScope ? String(getConfig().botQQ || '') : botOf()?.status === 'online' ? String(botOf().selfId || '') || null : null,
+    () => botOf()?.status === 'online' ? String(botOf().selfId || '') || null : null,
     log, [...scopeDir, 'primary-media'])
   let previousMedia: AccountMedia | undefined
   function clearGroupMedia() {
@@ -514,6 +514,7 @@ export function createHub({
   })
   const { onSessionEvent } = createTurnEvents({
     isDisposed,
+    selfId: () => activity.selfId,
     sessionToChat,
     sessionTarget,
     store,

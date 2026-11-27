@@ -22,11 +22,11 @@ export function createQqProfile({ getConfig, bot, dsh, fetchAvatar = fetchImage,
   let disposed = false
   const current = (qq) => {
     if (disposed) throw new Error('资料模块已关闭或卸载')
-    if (String(getConfig().botQQ || '') !== qq) throw new Error('机器人 QQ 已变化，请重新查询')
+    if (String(bot()?.selfId || '') !== qq) throw new Error('机器人 QQ 已变化，请重新查询')
   }
 
   const configuredQq = () => {
-    const qq = String(getConfig().botQQ || '')
+    const qq = String(bot()?.selfId || '')
     current(qq)
     if (!/^\d{5,12}$/.test(qq)) throw new Error('还没有配置有效的机器人 QQ 号')
     return qq

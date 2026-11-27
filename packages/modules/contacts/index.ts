@@ -34,7 +34,7 @@ export function requestLabel(userId) {
 }
 
 /** 白名单增删的纯逻辑：返回 { ok, message, next? }。next = 改完后的这张表（没变化时不给）。 */
-export function planWhitelist(cfg, { action, kind, id }) {
+export function planWhitelist(cfg, { action, kind, id }, selfId = '') {
   const act = String(action || '').trim().toLowerCase()
   if (!['add', 'remove'].includes(act)) return { ok: false, message: 'action 只能是 add 或 remove' }
   const k = String(kind || '').trim().toLowerCase()
@@ -48,7 +48,7 @@ export function planWhitelist(cfg, { action, kind, id }) {
       ? { ok: false, message: '主人不能被移出私聊白名单' }
       : { ok: true, message: '主人本来就能私聊，不用加白名单' }
   }
-  if (k === 'private' && act === 'add' && n === String(cfg.botQQ || '')) return { ok: false, message: '这是我自己的号，不用加' }
+  if (k === 'private' && act === 'add' && n === String(selfId)) return { ok: false, message: '这是我自己的号，不用加' }
   const list = (k === 'private' ? cfg.allow?.private : cfg.allow?.groups) || []
   const has = list.map(String).includes(n)
   const modeNote = k === 'group' && (cfg.group?.moduleOnlyGroups || []).includes(n) ? '；仍为仅模块，@ 也不触发 AI。要恢复 AI 聊天，请修改群响应模式' : ''
@@ -121,7 +121,7 @@ export function apply(ctx, config) {
     const cfg = ctx.root.config
     if (cfg.ownerQQ && (cfg.profilePerms?.qqFriendRequest || 'owner') !== 'off') {
       const note = req.comment ? `，验证消息：「${req.comment}」` : ''
-      notifyOwner(cfg.ownerQQ, `${groupRequestText(req, cfg.botQQ)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`)
+      notifyOwner(cfg.ownerQQ, `${groupRequestText(req, primaryBot()?.selfId)}${note}。可以让我列出待处理的加群申请并通过或拒绝。`)
     }
   }
 
@@ -269,7 +269,7 @@ export function apply(ctx, config) {
         description: '列出收到过、尚未处理的加群申请和邀请，处理时使用列表中的 flag。',
         execute: guardedGroup(chat, sessionId, async (_args, c) => {
           const list = loadGroupPending()
-          return { ok: true, message: list.length ? list.map((r) => `${groupRequestText(r, c.botQQ)}${r.comment ? `，验证消息：「${r.comment}」` : ''}（flag: ${r.flag}）`).join('\n') : '现在没有待处理的加群申请或邀请' }
+          return { ok: true, message: list.length ? list.map((r) => `${groupRequestText(r, primaryBot()?.selfId)}${r.comment ? `，验证消息：「${r.comment}」` : ''}（flag: ${r.flag}）`).join('\n') : '现在没有待处理的加群申请或邀请' }
         }),
       }))
       tools.push(defineTool({
@@ -285,7 +285,7 @@ export function apply(ctx, config) {
           const req = wanted ? list.find((x) => x.flag === wanted) : list[0]
           if (!req) return { ok: false, message: '没找到这条待处理的加群申请或邀请' }
           const verb = approve ? '通过' : '拒绝'
-          const label = groupRequestText(req, c.botQQ)
+          const label = groupRequestText(req, primaryBot()?.selfId)
           if (groupInFlight.has(req.flag)) return { ok: false, message: '这条申请正在处理' }
           groupInFlight.add(req.flag)
           try {
@@ -304,13 +304,13 @@ export function apply(ctx, config) {
       properties: { action: str('add 加进 / remove 移出'), kind: str('private 私聊的人 / group 群'), id: str('QQ 号或群号（数字）') },
       required: ['action', 'kind', 'id'],
       execute: guarded('whitelist', chat, sessionId, async (args, c) => {
-        const plan = planWhitelist(c, args)
+        const plan = planWhitelist(c, args, primaryBot()?.selfId)
         if (!plan.ok || !plan.changed) return plan
         const key = String(args.kind).trim().toLowerCase() === 'private' ? 'private' : 'groups'
         // 用保存那一刻最新的配置再算一遍，免得盖掉面板刚改的
         let result = plan
         ctx.root.update((cur) => {
-          result = planWhitelist(cur, args)
+          result = planWhitelist(cur, args, primaryBot()?.selfId)
           if (!result.ok || !result.changed) return cur
           return { ...cur, allow: { ...cur.allow, [key]: result.next } }
         })

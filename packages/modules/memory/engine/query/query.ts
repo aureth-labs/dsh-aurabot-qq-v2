@@ -16,9 +16,9 @@ export type CompressionClustersOptions = Partial<Record<'now' | 'afterDays' | 'm
 export const NATIVE_MEMORY_VIEW = Symbol('nativeMemoryView')
 
 /** 自己不能变成第三人的档案；无主语字段时也挡住模型补出的「有个叫…的人」。 */
-export function isSelfFact(fact, cfg) {
+export function isSelfFact(fact, cfg, selfIds: string[] = []) {
   if ([fact.about, fact.aboutName, fact.about_qq].some((name) => isSelfName(name, cfg))) return true
-  if (cfg.botQQ && String(fact.about_qq || fact.about || '') === String(cfg.botQQ)) return true
+  if (selfIds.includes(String(fact.about_qq || fact.about || ''))) return true
   if (fact.about || fact.aboutName || fact.about_qq) return false
   const text = String(fact.text || '').trim().toLowerCase()
   return selfNames(cfg).some((name) => {

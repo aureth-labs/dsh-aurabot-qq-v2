@@ -40,7 +40,6 @@ export const DEFAULTS = {
   enabled: false, // 总开关：关着一句都不发
   debug: false, // 调试：不写记忆/流水，只在日志里看；debug 日志只写进日志
   communityMigrated: {} as Record<string, string>, // 搬到社区库的模块处理过没有（id → installed / skipped / kept），只处理一次
-  botQQ: '', // 机器人 QQ 号（OneBot 配置里也会覆盖）
   approvalNotify: true, // DSH 要授权时把请求发到主人私聊
   // 什么情况往主人 QQ 上报：enabled 是总开关，approval = 工具要授权，question = 她要向人提问选选项。
   // workspaces 按工作区单独覆盖：{ "<工作区路径>": { approval?: bool, question?: bool } }，没写的项跟随总开关。
@@ -55,8 +54,6 @@ export const DEFAULTS = {
   // 后台子智能体委派（默认关）：模块用 hub.runSubagentTurn 派子智能体时，正常要求「主人开口」的来源；
   // 定时任务这类没人应答的场合，只有打开这个开关才允许派活。关着 = 一律拒绝（一审 #177 的审批策略）。
   subagentBackground: false,
-  // OneBot v11 连接：NapCat、LLOneBot、Lagrange、Docker 里的协议端都行，插件只连接。
-  onebot: { httpUrl: '', wsUrl: '', httpToken: '', wsToken: '' },
   workspaceDir: '', // QQ 会话放在哪个文件夹（DSH 里的「Aurabot · QQ」工作区）；留空 = 默认（用户目录下 Aurabot\\qq-chats）
   // 发文件（#52）：默认开但限制很多——她只能把 QQ 工作区（workspaceDir）和 dirs 里列的目录中的文件当文件发出去；
   // 单个文件有大小上限；主人私聊里能触发，群里只在主人开口那一轮能触发（可以发给白名单里的人和群）。日志里会记下发了什么。

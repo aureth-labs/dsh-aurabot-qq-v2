@@ -27,11 +27,11 @@ import { registerModelRoutes } from './panel/agent/models.ts'
 import { registerAvatarRoutes } from './panel/platform/avatar.ts'
 import { migrateBilibili } from './migrations/bilibili.ts'
 import { migrateQzone } from './migrations/qzone.ts'
+import { migrateConfig } from './migrations/config.ts'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROOT as packageRoot } from '../../src/core/support/util/root.ts'
 import { spawn } from 'node:child_process'
-import { isDeepStrictEqual } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { loadConfig, commitConfig, publicConfig, ownerAuthorizationRevision } from '../../src/core/config/index.ts'
 import { quietWindowOf } from '../../src/core/support/time/time-window.ts'
@@ -109,6 +109,7 @@ export function apply(ctx) {
   } catch (error) { log.error('恢复备份失败：', error.message) }
   migrateBilibili()
   migrateQzone()
+  migrateConfig()
   let cfg = loadConfig()
   debugSwitch.on = Boolean(cfg.debug)
   if (cfg.ownerQQ && !ownerAuthorizationRevision(cfg)) {
@@ -127,21 +128,21 @@ export function apply(ctx) {
   // 主动发言出站策略服务，装配在模块之前
   // 已注册的策略源实例（name → policy），给 deliver 的 enginePolicy 解析用
   const getConfig = () => cfg
-  const personaMemoryRuntime = createPersonaMemoryRuntime({ getConfig })
+  const personaMemoryRuntime = createPersonaMemoryRuntime({ getConfig, selfId: () => primaryBot()?.selfId ?? '' })
   setSsrpMode(() => (getConfig().security && getConfig().security.ssrfMode === 'loose' ? 'loose' : 'strict'))
   const secrets = () => {
     registerSecret(cfg.voice?.fishApiKey)
     for (const pool of Object.values(cfg.voice?.keyPools || {})) {
       for (const account of pool.accounts || []) registerSecret(account.apiKey)
     }
-    for (const k of ['httpToken', 'wsToken']) registerSecret(cfg.onebot[k]); registerSecret(cfg.imageGen.apiKey); for (const e of cfg.imageGen.fallbacks || []) registerSecret(e.apiKey); registerSecret(cfg.bridge.token); registerSecret(cfg.backup?.remote?.token); registerSecret(cfg.backup?.remote?.webdav?.password) } // backup 令牌/WebDAV 密码也按密钥脱敏（云备份）
+    for (const k of ['httpToken', 'wsToken']) registerSecret(cfg.ext?.[defaultOneBotId]?.[k]); registerSecret(cfg.imageGen.apiKey); for (const e of cfg.imageGen.fallbacks || []) registerSecret(e.apiKey); registerSecret(cfg.bridge.token); registerSecret(cfg.backup?.remote?.token); registerSecret(cfg.backup?.remote?.webdav?.password) } // backup 令牌/WebDAV 密码也按密钥脱敏（云备份）
   const setConfig = (next) => {
     const before = cfg
     // 统一提交函数（方案 §2.2）：落盘 + 发布 + configRevision 递增都收敛在 commitConfig 里；
     // 值与已发布配置完全一致时不落盘不递增（面板「只提交没变化字段」回执取接纳时版本）。
     cfg = commitConfig(next, before)
     debugSwitch.on = Boolean(cfg.debug)
-    const reconnectQQ = before.botQQ !== cfg.botQQ || before.enabled !== cfg.enabled || !isDeepStrictEqual(before.onebot, cfg.onebot)
+    const reconnectQQ = before.enabled !== cfg.enabled
     secrets()
     if (bridge && (before.bridge.dshTools !== cfg.bridge.dshTools || before.persona.current !== cfg.persona.current)) bridge.refresh()
     if (mods && (JSON.stringify(before.modules) !== JSON.stringify(cfg.modules) || before.safeMode !== cfg.safeMode)) mods.sync().catch(() => {})
@@ -180,7 +181,7 @@ export function apply(ctx) {
   })
 
   // ---------- QQ 网关 ----------
-  const endpoint = () => ({ ...cfg.onebot, ...cfg.ext?.[defaultOneBotId] })
+  const endpoint = () => ({ wsUrl: '', httpUrl: '', selfId: '', ...cfg.ext?.[defaultOneBotId] })
   const sendEvents = createSendEvents(
     (name, data) => mods?.claim(name, data) ?? Promise.resolve(false),
     (name, data) => mods?.emit(name, data),

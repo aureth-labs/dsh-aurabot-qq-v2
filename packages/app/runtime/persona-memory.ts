@@ -13,7 +13,7 @@ const sameScope = (a, b) => Boolean(a && b && a.chatId === b.chatId && a.persona
  * Beta preview for the currently selected persona and the owner's exact QQ private chat.
  * The host keeps the transport side of this object. Modules get only forModule().
  */
-export function createPersonaMemoryRuntime({ getConfig }) {
+export function createPersonaMemoryRuntime({ getConfig, selfId }) {
   let subscription = null
   let nativePreview = null
 
@@ -21,7 +21,7 @@ export function createPersonaMemoryRuntime({ getConfig }) {
     const cfg = getConfig()
     const owner = String(cfg.ownerQQ || '')
     const personaId = safeId(cfg.persona?.current)
-    const botQQ = String(cfg.botQQ || '')
+    const botQQ = String(selfId() || '')
     if (cfg.safeMode || cfg.debug || !dataOwner(cfg) || !personaId || !/^\d+$/.test(owner) || chatId !== `private:${owner}`) return null
     return { chatId, personaId, botQQ }
   }

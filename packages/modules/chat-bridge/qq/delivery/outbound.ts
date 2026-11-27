@@ -136,7 +136,7 @@ export function createOutbound(deps: OutboundDeps) {
       return settleOutboundFailed(verdict)
     }
     const deliveryScope = !sensitive && !cfg.debug
-      ? hooks?.deliveryScope?.(chatId, pnow(), cfg.botQQ)
+      ? hooks?.deliveryScope?.(chatId, pnow(), botOf()?.selfId)
       : null
     try {
       const r: any = await transmit(tgt, message, timeoutMs)
