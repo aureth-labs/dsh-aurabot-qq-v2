@@ -165,7 +165,7 @@ function groupIds(ids) {
 }
 
 export async function runGroupSettingsCommand(arg, msg, deps) {
-  const { getConfig, setConfig, onebot, mutes } = deps
+  const { getConfig, setConfig, bot, mutes } = deps
   const allowed = () => msg?.kind === 'private' && isOwner(getConfig(), msg.userId) && (deps.ownerStillCurrent?.() ?? true)
   if (!allowed()) return '群设置指令只能由主人私聊使用。'
   let session = sessions.get(getConfig)
@@ -197,7 +197,7 @@ export async function runGroupSettingsCommand(arg, msg, deps) {
     let ids = request.ids
     if (!ids) {
       let rows
-      try { rows = await onebot.call('get_group_list', {}, { timeoutMs: 10000, retries: 0 }) }
+      try { rows = (await bot().getGuildList()).map(g => ({ group_id: g.id, group_name: g.name })) }
       catch { return '暂时读不到所在群列表，本次未完成，未修改设置。稍后重试，或直接指定群号。' }
       if (!stillCurrent()) return '查询期间权限、开关或当前指令已变化，本次未继续。'
       if (!Array.isArray(rows) || rows.some(r => !r || !/^[1-9]\d{4,11}$/.test(String(r.group_id)))) return '群列表不完整，本次未完成，未修改设置。请稍后重试。'

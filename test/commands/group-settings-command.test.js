@@ -11,6 +11,7 @@ function setup(patch = {}) {
   const deps = { getConfig: () => cfg, setConfig: next => { cfg = normalize(next); saves++ },
     onebot: { call: async action => { assert.equal(action, 'get_group_list'); calls++; return [{ group_id: G, group_name: '甲' }, { group_id: H, group_name: '乙' }] } },
     mutes: { until: () => undefined }, log: { warn() {} } }
+  deps.bot = () => ({ getGuildList: async () => (await deps.onebot.call('get_group_list')).map(row => ({ id: row?.group_id === undefined ? undefined : String(row.group_id), name: row?.group_name })) })
   return { deps, cfg: () => cfg, saves: () => saves, calls: () => calls,
     patch: p => { cfg = normalize({ ...cfg, ...p }) }, run: (arg, msg = owner) => runGroupSettingsCommand(arg, msg, deps) }
 }

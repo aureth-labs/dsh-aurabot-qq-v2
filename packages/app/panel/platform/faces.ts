@@ -1,7 +1,7 @@
 import { FACE_TABLE } from '../../../adapters/qq/onebot-v11/src/face/table.ts'
 import { buildFaceIndex } from '../../../adapters/qq/onebot-v11/src/face/index.ts'
 
-export function registerFaceRoutes({ http, onebot, logger }) {
+export function registerFaceRoutes({ http, bot, logger }) {
   const { route } = http
 
   // 贴表情：面板要展示「当前有哪些表情可以贴」——内置常用 + 网关系统表情目录（取不到就只用内置）
@@ -26,7 +26,7 @@ export function registerFaceRoutes({ http, onebot, logger }) {
     // 先用内置整表（329 条）打底：网关取不到目录时，面板也不会只剩 65 个常用表情
     let byId = new Map(FACE_TABLE.map((f) => [String(f.id), f.name]))
     try {
-      const r = await onebot.call('fetch_sys_faces', {}, { timeoutMs: 8000 })
+      const r = await bot().internal('fetch_sys_faces', {}, { timeoutMs: 8000 })
       const built = buildFaceIndex(r?.packs ? r : r?.data)
       if (built.byId.size) byId = new Map([...byId, ...built.byId])
     } catch (error) {

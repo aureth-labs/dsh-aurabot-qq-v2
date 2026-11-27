@@ -7,6 +7,7 @@ import { voiceSource } from './voice.ts'
 import { chatNotice, oneBotNotice } from './notices.ts'
 import { inboundOf, isMessageEvent } from './inbound.ts'
 import type { OneBotBot } from './bot.ts'
+import { createWarmup } from './warmup.ts'
 
 import { Schema } from '../../../../../src/core/config/shape/schema.ts'
 
@@ -35,6 +36,9 @@ export const config = Schema.object({
 export function apply(ctx: PluginContext, config: Config) {
   if (!config.wsUrl) return
   let connection: ReturnType<typeof createOneBotConnection>
+  const warmup = createWarmup(() => config.wsUrl, ctx.logger)
+  ctx.provide('onebot-warmup/' + ctx.instanceId, warmup)
+  ctx.setInterval(2000, () => warmup.probe().catch(() => {}))
   const spec: AdapterSpec = {
     platform: 'qq',
     name,
@@ -55,12 +59,16 @@ export function apply(ctx: PluginContext, config: Config) {
         onOffline: (_, reason) => runtime.statusChanged?.(reason),
         onReady: async () => ctx.emit('onebot/ready', ctx.instanceId),
         onState(state, detail) {
+          warmup.state(state, detail)
           ctx.emit('onebot/connection', ctx.instanceId, state, detail)
           if (state === 'stopped') ready.reject(new Error(connection.wrongAccount ? '网关登录账号不匹配' : 'OneBot 连接已停止'))
         },
         onEvent(event) {
           if (isMessageEvent(event)) runtime.emitMessage({ ...inboundOf(event), sn: ++sn })
           else {
+            const raw = event as { post_type?: string; notice_type?: string; tag?: string; message?: string }
+            if (raw.post_type === 'notice' && raw.notice_type === 'bot_offline')
+              ctx.logger.warn(`QQ 账号离线${raw.tag ? '（' + String(raw.tag).slice(0, 100) + '）' : ''}${raw.message ? '：' + String(raw.message).slice(0, 300) : ''}`)
             const notice = oneBotNotice(event, ++sn)
             if (notice) runtime.emitEvent?.(notice.type, notice)
             const chat = chatNotice(event)

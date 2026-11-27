@@ -130,7 +130,7 @@ export function groupSettingsTool(env, { chat, sessionId }) {
         const badOffset = typeof offset !== 'number' || !Number.isSafeInteger(offset) || offset < 0
         if (Object.keys(args).some(k => !['action', 'offset'].includes(k)) || badOffset) return { ok: false, message: '全群总览只用于查询，不能同时指定群号或修改开关。请重新查询。' }
         let rows
-        try { rows = await env.host.onebot.call('get_group_list', {}, { timeoutMs: 10000, retries: 0 }) }
+        try { rows = (await env.host.primaryBot().getGuildList()).map(g => ({ group_id: g.id, group_name: g.name })) }
         catch (error) {
           env.logger.warn('读取全群列表失败：', error.message)
           return { ok: false, message: '暂时读取不到所在群列表，本次未完成全群查询。可稍后重试，或指定群号单独查看。' }

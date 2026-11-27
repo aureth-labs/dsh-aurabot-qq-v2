@@ -18,7 +18,7 @@ function checkAccount(data, qq) {
   }
 }
 
-export function createQqProfile({ getConfig, onebot, dsh, fetchAvatar = fetchImage, ask = askModel, log }) {
+export function createQqProfile({ getConfig, bot, dsh, fetchAvatar = fetchImage, ask = askModel, log }) {
   let disposed = false
   const current = (qq) => {
     if (disposed) throw new Error('资料模块已关闭或卸载')
@@ -58,7 +58,7 @@ export function createQqProfile({ getConfig, onebot, dsh, fetchAvatar = fetchIma
     let signature = null
     const warnings = []
     try {
-      const info = await onebot.call('get_stranger_info', { user_id: Number(qq), no_cache: true }, { timeoutMs: 8000, retries: 0 })
+      const info = await bot().internal('get_stranger_info', { user_id: Number(qq), no_cache: true }, { timeoutMs: 8000, retries: 0 })
       current(qq)
       checkAccount(info, qq)
       nickname = textField(info, ['nickname'])
@@ -72,7 +72,7 @@ export function createQqProfile({ getConfig, onebot, dsh, fetchAvatar = fetchIma
     }
     if (nickname === null) {
       try {
-        const login = await onebot.call('get_login_info', {}, { timeoutMs: 8000, retries: 0 })
+        const login = await bot().internal('get_login_info', {}, { timeoutMs: 8000, retries: 0 })
         current(qq)
         checkAccount(login, qq)
         nickname = textField(login, ['nickname'])

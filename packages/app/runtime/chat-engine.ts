@@ -18,7 +18,6 @@ export function createChatHub({
   getConfig,
   setConfig,
   logger,
-  onebot,
   stickers,
   tts,
   modules,
@@ -99,7 +98,7 @@ export function createChatHub({
         setConfig,
         mutes,
         hub,
-        onebot,
+        bot,
         ownerStillCurrent,
         log: logger,
         mood: use('mood'),
@@ -134,7 +133,7 @@ export function createChatHub({
       poke: (ev) => modules().claim('poke', ev),
       journal: (row) => modules()?.emit('chat/log', row),
       deliveryScope: (chatId, personaId, botQQ) =>
-        primary && onebot.verified && onebot.login.uin === botQQ
+        primary && bot()?.status === 'online' && bot().selfId === botQQ
           ? personaMemoryRuntime.captureDelivery(chatId, personaId, botQQ)
           : null,
       delivery: personaMemoryRuntime.confirmDelivery,

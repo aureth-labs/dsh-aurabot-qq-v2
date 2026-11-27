@@ -47,8 +47,8 @@ export const version = '1.2.0'
 export const description = '主人私聊时查看自己的 QQ 资料与头像图片（qq_get_profile）、发送当前头像（qq_send_avatar）；按权限修改 QQ 资料'
 
 export function apply(ctx, config) {
-  const { hub, onebot } = ctx.host
-  const reader = createQqProfile({ getConfig: ctx.root.read, onebot, dsh: ctx.harness, log: ctx.logger })
+  const { hub, primaryBot } = ctx.host
+  const reader = createQqProfile({ getConfig: ctx.root.read, bot: primaryBot, dsh: ctx.harness, log: ctx.logger })
   ctx.effect(reader.dispose)
   ctx.rule((kind) => kind === 'private' ? '主人谈到你自己的 QQ 昵称、个性签名或头像时，可以主动用 qq_get_profile 查看当前资料，不必等主人明确说“查询”。例如“你现在叫什么”“签名是什么”“喜欢这个头像吗”。问头像画面时传 view_avatar=true，依据本次头像附件和描述回答；查不到就如实说明，不凭旧聊天记录猜。主人明确说“把现在头像发出来”“发你的头像给我”时，用 qq_send_avatar 直接发送，不必先识图；只有工具报告 sent=true 才能说发出去了，成功后不要再用链接或 Markdown 重复发图。查询不会发送图片或修改资料；普通无关聊天无需查询。' : '')
 
@@ -64,7 +64,7 @@ export function apply(ctx, config) {
       writeFileSync(tmp, small)
       for (const file of [`base64://${small.toString('base64')}`, tmp]) {
         try {
-          await onebot.call('set_qq_avatar', { file }, { timeoutMs: 30000 })
+          await primaryBot().internal('set_qq_avatar', { file }, { timeoutMs: 30000 })
           return { ok: true, message: okMessage }
         } catch (error) {
           lastError = error
@@ -137,7 +137,7 @@ export function apply(ctx, config) {
         const nick = String(name || '').trim()
         if (!nick) return { ok: false, message: '昵称不能是空的' }
         if ([...nick].length > NICK_MAX) return { ok: false, message: `昵称最多 ${NICK_MAX} 个字` }
-        await onebot.call('set_qq_profile', { nickname: nick }, { timeoutMs: 15000 })
+        await primaryBot().internal('set_qq_profile', { nickname: nick }, { timeoutMs: 15000 })
         return { ok: true, message: `QQ 昵称改好了：${nick}` }
       }),
     }))
@@ -150,7 +150,7 @@ export function apply(ctx, config) {
         const sign = String(text || '').trim()
         if (!sign) return { ok: false, message: '签名不能是空的' }
         if ([...sign].length > SIGN_MAX) return { ok: false, message: `签名最多 ${SIGN_MAX} 个字` }
-        await onebot.call('set_self_longnick', { longNick: sign }, { timeoutMs: 15000 })
+        await primaryBot().internal('set_self_longnick', { longNick: sign }, { timeoutMs: 15000 })
         return { ok: true, message: `QQ 签名改好了：${sign}` }
       }),
     }))
@@ -170,7 +170,7 @@ export function apply(ctx, config) {
           if (!pick) return { ok: false, message: '最近半小时这个聊天里没人发过图片，先把图发过来' }
           let buf
           try {
-            buf = await elementBytes(pick.element, onebot.bot, { maxBytes: 10 * 1024 * 1024 })
+            buf = await elementBytes(pick.element, primaryBot(), { maxBytes: 10 * 1024 * 1024 })
           } catch (error) {
             return { ok: false, message: '这张图我拿不到：' + error.message }
           }
@@ -180,7 +180,7 @@ export function apply(ctx, config) {
         if (/^https?:\/\//i.test(raw)) {
           const src = avatarSource(raw)
           if (!src.ok) return src
-          await onebot.call('set_qq_avatar', { file: src.file }, { timeoutMs: 30000 })
+          await primaryBot().internal('set_qq_avatar', { file: src.file }, { timeoutMs: 30000 })
           return { ok: true, message: 'QQ 头像换好了' }
         }
         // ③ 自己画的图：只认「画作」「画作 #1」「#1」或完整文件名；绝对路径一律不认

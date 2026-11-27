@@ -3,7 +3,7 @@ import { statSync, existsSync, readFileSync, writeFileSync, unlinkSync } from 'n
 import { mimeOf } from '../../../../src/core/message/media/inspect.ts'
 import { join } from 'node:path'
 
-export function registerAvatarRoutes({ http, ROOT, log, onebot }) {
+export function registerAvatarRoutes({ http, ROOT, log, bot }) {
   const { route, send, readBody } = http
 
   // 形象图
@@ -47,7 +47,7 @@ export function registerAvatarRoutes({ http, ROOT, log, onebot }) {
       ? readFileSync(AVATAR())
       : readFileSync(join(ROOT, 'assets', 'dafeiyu.jpg'))
     try {
-      await onebot.call('set_qq_avatar', { file: 'base64://' + buf.toString('base64') })
+      await bot().internal('set_qq_avatar', { file: 'base64://' + buf.toString('base64') })
       return { ok: true, message: '已经设成机器人号的 QQ 头像' }
     } catch (error) {
       return { ok: false, message: 'QQ 头像没换成：' + error.message }

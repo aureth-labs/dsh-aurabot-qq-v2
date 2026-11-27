@@ -1,7 +1,7 @@
 import { tcpOpen } from '../../support.ts'
 import { defaultOneBotId } from '../../onebot.ts'
 
-export function registerDiagnostics({ http, getConfig, endpoint, onebot, warmSince, warmPhase, mods, hub }) {
+export function registerDiagnostics({ http, getConfig, endpoint, onebot, primaryBot, warmSince, warmPhase, mods, hub }) {
   const { route } = http
 
   /** 一键诊断：把「连不上 OneBot」卡在哪一步逐项列出来，用户发截图就能定位。 */
@@ -85,7 +85,7 @@ export function registerDiagnostics({ http, getConfig, endpoint, onebot, warmSin
   })
   route('/onebot/test', async () => {
     try {
-      const info = await onebot.call('get_login_info', {}, { timeoutMs: 8000 })
+      const info = await primaryBot().internal('get_login_info', {}, { timeoutMs: 8000 })
       const uin = String(info?.user_id ?? '')
       return {
         ok: uin === getConfig().botQQ,

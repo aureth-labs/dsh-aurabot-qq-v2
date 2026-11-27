@@ -28,7 +28,7 @@ export function ownerTargets(ctx: PluginContext): Target[] {
     const candidates = bots.filter(bot => bot.platform === owner.platform && (!owner.botId || owner.botId === bot.id))
     if (candidates.length !== 1) continue
     if (!owner.botId) {
-      if (config.ownerQQ === owner.userId && owner.platform === 'qq' && candidates[0] !== ctx.host.onebot?.bot) continue
+      if (config.ownerQQ === owner.userId && owner.platform === 'qq' && candidates[0] !== ctx.host.primaryBot?.()) continue
       const connections = ctx.host.adapters?.connections?.() ?? []
       if (connections.filter(row => row.platform === owner.platform).length > 1) continue
     }

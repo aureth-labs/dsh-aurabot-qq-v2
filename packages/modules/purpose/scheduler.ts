@@ -11,7 +11,7 @@ type Dependencies = Parameters<typeof createPurpose>[0]
 export function createPurposeScheduler(ctx: PluginContext, deps: Dependencies) {
   let login: { bot: BotLike; self: string } | undefined
   const primaryIdentity = () => {
-    const bot = ctx.host.onebot?.bot
+    const bot = ctx.host.primaryBot?.()
     if (!active || bot?.status !== 'online') return undefined
     if (login?.bot !== bot || login.self !== bot.selfId) login = { bot, self: bot.selfId }
     return login
@@ -22,7 +22,7 @@ export function createPurposeScheduler(ctx: PluginContext, deps: Dependencies) {
   ctx.effect(() => { active = false; engines.clear() })
 
   function entries() {
-    const primaryBot = ctx.host.onebot?.bot
+    const primaryBot = ctx.host.primaryBot?.()
     const owners = ownerTargets(ctx)
     const legacy = ctx.root.config.ownerQQ
     if (legacy && primaryBot?.status === 'online' && ctx.isOwner(legacy, primaryBot.platform, primaryBot.id) &&

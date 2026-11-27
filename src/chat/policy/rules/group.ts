@@ -191,12 +191,12 @@ type RoleQueryOptions = Partial<Record<'fresh', boolean>>
 const ROLE_TTL = 10 * 60_000
 export const ROLE_LABEL = { owner: '群主', admin: '管理员', member: '普通成员' }
 
-export function createGroupRoles({ onebot, getConfig, log }) {
+export function createGroupRoles({ bot, getConfig, log }) {
   const cache = new Map() // groupId → { role, at }
   const inflight = new Map()
 
   async function fetchRole(gid) {
-    const r = await onebot.call('get_group_member_info', { group_id: Number(gid), user_id: Number(getConfig().botQQ), no_cache: true }, { timeoutMs: 8000 })
+    const r = await bot().internal('get_group_member_info', { group_id: Number(gid), user_id: Number(bot().selfId || getConfig().botQQ), no_cache: true }, { timeoutMs: 8000 })
     const role = ['owner', 'admin', 'member'].includes(r && r.role) ? r.role : 'member'
     cache.set(String(gid), { role, at: Date.now() })
     return role

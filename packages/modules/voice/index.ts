@@ -52,7 +52,7 @@ export const description = '发语音条：把她的话念出来（关掉后想�
 export const tab = 'voice'
 
 export function apply(ctx, config) {
-  const { hub, onebot, local, http } = ctx.host
+  const { hub, primaryBot, local, http } = ctx.host
 
   async function speak(text, voice = ctx.root.config.voice, { useLocal = true } : SpeakOptions = {}) {
     if (useLocal && local.active('tts')) {
@@ -169,7 +169,7 @@ export function apply(ctx, config) {
   ctx.server.post('/voice/asr-last', async (req) => {
     const b = await http.body(req)
     const uid = Number(b.userId || ctx.root.config.ownerQQ)
-    const bot = onebot.bot
+    const bot = primaryBot()
     if (!bot) return { ok: false, message: '机器人不在线' }
     const list = await bot.getMessageList(String(uid), { channelType: 'private', limit: 30 })
     const recs = list.filter((m) => String(m.userId) === String(uid)).flatMap((m) => (m.elements || []).filter((el) => el.type === 'voice').map((el) => ({ element: el, time: (m.createdAt || 0) / 1000 })))

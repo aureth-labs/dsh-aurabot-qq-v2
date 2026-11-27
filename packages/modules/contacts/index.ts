@@ -67,9 +67,9 @@ export const version = '1.0.0'
 export const description = '处理好友申请、加群申请和邀请，改私聊 / 群白名单；主人私聊可管理群接话与旁听；权限在「权限」页'
 
 export function apply(ctx, config) {
-  const { hub, onebot } = ctx.host
+  const { hub, primaryBot } = ctx.host
   function notifyOwner(userId: string, content: string) {
-    const bot = onebot.bot
+    const bot = primaryBot()
     if (bot) void ctx.sendTo({ platform: bot.platform, botId: bot.id, type: 'private', id: userId }, content)
       .catch(error => ctx.logger.warn('发送申请通知失败', error.message))
   }
@@ -168,7 +168,7 @@ export function apply(ctx, config) {
   /** QQ 过滤的「可能认识的人」：uid 就是 set_friend_add_request / set_doubt_friends_add_request 的 flag。 */
   async function loadDoubtCandidates(pending) {
     let doubt = []
-    try { doubt = (await onebot.call('get_doubt_friends_add_request', { count: 50 }, { timeoutMs: 15000 })) || [] } catch (error) { doubt = [] }
+    try { doubt = (await primaryBot().internal('get_doubt_friends_add_request', { count: 50 }, { timeoutMs: 15000 })) || [] } catch (error) { doubt = [] }
     if (!Array.isArray(doubt)) doubt = []
     const seen = new Set(pending.map((x) => x.flag))
     const out = []
@@ -252,8 +252,8 @@ export function apply(ctx, config) {
           const verb = approve ? '通过' : '拒绝'
           const label = requestLabel(req.userId)
           try {
-            if (req.via === 'event') await onebot.call('set_friend_add_request', { flag: req.flag, approve }, { timeoutMs: 15000 })
-            else await onebot.call('set_doubt_friends_add_request', { flag: req.flag, approve }, { timeoutMs: 15000 })
+            if (req.via === 'event') await primaryBot().internal('set_friend_add_request', { flag: req.flag, approve }, { timeoutMs: 15000 })
+            else await primaryBot().internal('set_doubt_friends_add_request', { flag: req.flag, approve }, { timeoutMs: 15000 })
           } catch (error) {
             return { ok: false, message: `${verb} ${label} 的好友申请没成功：${error.message}` }
           }
@@ -289,7 +289,7 @@ export function apply(ctx, config) {
           if (groupInFlight.has(req.flag)) return { ok: false, message: '这条申请正在处理' }
           groupInFlight.add(req.flag)
           try {
-            await onebot.call('set_group_add_request', { flag: req.flag, sub_type: req.subType, approve, ...(reason && !approve ? { reason: String(reason) } : {}) }, { timeoutMs: 15000 })
+            await primaryBot().internal('set_group_add_request', { flag: req.flag, sub_type: req.subType, approve, ...(reason && !approve ? { reason: String(reason) } : {}) }, { timeoutMs: 15000 })
             saveGroupPending(loadGroupPending().filter((x) => x.flag !== req.flag))
             return { ok: true, message: `已${verb}「${label}」` }
           } catch (error) {

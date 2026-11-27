@@ -4,7 +4,7 @@ import { useLegacyRooms } from '../../src/core/bot/room.ts'
 import { createPluginJournal } from './runtime/journal.ts'
 import { createOutboundRuntime } from './runtime/outbound.ts'
 import { createTransport } from './runtime/transport.ts'
-import { createPrimaryGateway } from './runtime/primary-gateway.ts'
+import { createChatGateway } from './runtime/chat-gateway.ts'
 import { registerUpdateRoutes } from './panel/system/update.ts'
 import { registerDiagnostics } from './panel/platform/diagnostics.ts'
 import { registerBackups } from './panel/system/backups.ts'
@@ -37,7 +37,7 @@ import { loadConfig, commitConfig, publicConfig, ownerAuthorizationRevision } fr
 import { quietWindowOf } from '../../src/core/support/time/time-window.ts'
 import { createLogger } from '../../src/core/support/log/logger.ts'
 import { registerSecret } from '../../src/core/support/log/redact.ts'
-import { defaultOneBot, defaultOneBotId, primaryOneBot } from './onebot.ts'
+import { defaultOneBot, defaultOneBotId, oneBotStatus } from './onebot.ts'
 import { workspaceDirOf } from '../modules/chat-bridge/qq/index.ts'
 import { createPersonaMemoryRuntime } from './runtime/persona-memory.ts'
 import { realWorkspace } from '../../src/core/runtime/workspace-move.ts'
@@ -185,20 +185,20 @@ export function apply(ctx) {
     (name, data) => mods?.claim(name, data) ?? Promise.resolve(false),
     (name, data) => mods?.emit(name, data),
   )
-  const onebot = primaryOneBot(() => mods?.services.get('onebot/' + defaultOneBotId),
-    () => botRegistry.get(defaultOneBotId, 'qq'), sendEvents)
+  const onebot = oneBotStatus({ get: name => mods?.services.get(name) })
+  const primaryBot = () => botRegistry.get(defaultOneBotId, 'qq')
   let hub = null
   let dangerGuard = null // 危险命令确认（security.dangerConfirm 开着才生效）
   let approvalRelay = null // DSH 要授权时在 QQ 私聊问主人（approvalViaQQ 开着才生效）
   const directory = createIdentityDirectory(() => { ensureDir(dataDir()); return dataDir('identity.sqlite') }, getConfig)
-  const gateway = createPrimaryGateway({
-    directory,
-    ctx, onebot, logger, getConfig, endpoint, personaMemoryRuntime,
+  const gateway = createChatGateway({
+    directory, ctx, logger, getConfig, personaMemoryRuntime, primaryBot,
     getHub: () => hub,
-    emit: (...args) => mods?.emit(...args),
     claimReply: (chat, userId, text) => dangerGuard?.handleReply(chat, userId, text) || approvalRelay?.handleReply(chat, userId, text),
   })
-  const { outbox, connectionChanged, flushOutbox, warmSince, warmPhase } = gateway
+  const { outbox, flushOutbox } = gateway
+  const warmSince = () => onebot.warmup().since
+  const warmPhase = () => onebot.warmup()
   const { botRegistry, adapterRegistry, pipeline, dispatchInbound, closeQuoteHistory } = createTransport({
     directory, getConfig, log: logger.child('adapter'),
     speak: async text => { const voice = await tts.speak(text); return typeof voice === 'string' ? voice : String(voice?.file ?? '') },
@@ -215,7 +215,7 @@ export function apply(ctx) {
   ctx.effect(() => botRegistry.on('offline', (bot, reason) => mods?.emit('bot/offline', bot, reason)))
   ctx.effect(() => () => adapterRegistry.stopAll(), 'aurabot: 适配器下线')
 
-  const groupRoles = createGroupRoles({ onebot, getConfig, log: logger.child('chat') })
+  const groupRoles = createGroupRoles({ bot: primaryBot, getConfig, log: logger.child('chat') })
   const local = createLocal({ getConfig, log: logger })
   const mutes = createMutes()
 
@@ -258,7 +258,7 @@ export function apply(ctx) {
     registry: botRegistry, primaryId: defaultOneBotId, log: logger.child('chat'),
     create: (bot, primary) => createChatHub({
       bot, primary, outbox: primary ? outbox : undefined,
-      local, ctx, getConfig, setConfig, logger, onebot, stickers, tts, use, mutes, listModels, personaMemoryRuntime, generate,
+      local, ctx, getConfig, setConfig, logger, stickers, tts, use, mutes, listModels, personaMemoryRuntime, generate,
       modules: () => mods, models: () => modelCache, deniedTools: () => bridge?.deniedTools() || [],
     }),
   })
@@ -269,10 +269,10 @@ export function apply(ctx) {
 
   // ---------- 模块 ----------
   const core = {
-    hub, onebot, local, groupRoles, mutes, logger, bridge: null as unknown,
+    hub, primaryBot, local, groupRoles, mutes, logger, bridge: null as unknown,
     // S0：v2 发送面。ctx.bots[0] / ctx.bots('号') / ctx.bots.list()
     bots: createBotsAccessor(botRegistry),
-    canReadMedia: (bot, message) => bot !== onebot.bot || checkAllowed(getConfig(), {
+    canReadMedia: (bot, message) => bot !== primaryBot() || checkAllowed(getConfig(), {
       kind: message.type, groupId: message.channelId, userId: message.userId,
     }).allowed,
     // S5：入站管线（ctx.middleware / ctx.command 挂在这上面）
@@ -413,8 +413,7 @@ export function apply(ctx) {
 
   let unloaded = false
   const community = createCommunity({ mods, getConfig, setConfig, log, version: VERSION })
-  mods.listen('onebot/connection', connectionChanged)
-  mods.listen('onebot/ready', id => { if (id === defaultOneBotId) return flushOutbox() })
+  mods.listen('bot/online', bot => { if (bot === primaryBot()) return flushOutbox() })
   const booted = mods.boot()
   booted.then(() => { modsReady = true /* 模块目录就绪：bootstrap 的 modulesReady 转 true */ }).catch(() => {})
   booted.then(() => injectPetPort()).catch(() => {})
@@ -477,12 +476,7 @@ export function apply(ctx) {
   // ---------- 面板接口 ----------
   async function overview() {
     let login = null
-    if (onebot.state === 'connected') {
-      try {
-        const info = await onebot.call('get_login_info', {}, { timeoutMs: 5000 })
-        login = { uin: String(info?.user_id ?? ''), nickname: info?.nickname || '' }
-      } catch (error) {}
-    }
+    if (onebot.verified) login = { uin: onebot.login.uin, nickname: onebot.login.nickname }
     const memory = use('memory')
     const moodState = use('mood')?.state?.() ?? { value: 0, label: '心情模块关着', reason: '', history: [] }
     const { history: _moodHistory, ...moodSummary } = moodState
@@ -593,9 +587,9 @@ export function apply(ctx) {
   registerOutboundPolicyRoutes({ http, getConfig, setConfig, outbound, log })
   registerPetControls({ http, setConfig, getConfig, log, petStatus, use, redactTokens, publicBaseUrlOf, ctx, PREFIX })
   registerPetBehavior({ http, use, redactTokens, getConfig, setConfig, log })
-  registerPermissionRoutes({ http, logger, mods, directory, getConfig, setConfig, bots: botRegistry, defaultBot: () => onebot.bot })
+  registerPermissionRoutes({ http, logger, mods, directory, getConfig, setConfig, bots: botRegistry, defaultBot: primaryBot })
   registerUpdateRoutes({ PKG, log, getConfig, http, ROOT, VERSION })
-  const { connectionProblem } = registerDiagnostics({ http, getConfig, endpoint, onebot, warmSince, warmPhase, mods, hub })
+  const { connectionProblem } = registerDiagnostics({ http, getConfig, endpoint, onebot, primaryBot, warmSince, warmPhase, mods, hub })
   registerPersonaRoutes({ http, ctx, generate, getConfig, bridge, use, hub, setConfig, log })
 
   route('/permissions/groups', async () => {
@@ -618,16 +612,16 @@ export function apply(ctx) {
   registerLocalRoutes({ http, local, openFolder, getConfig })
   registerContributors({ http, log })
   registerModuleRoutes({ http, mods, getConfig, community, setConfig, log, openFolder, hub, use })
-  registerFaceRoutes({ http, onebot, logger })
+  registerFaceRoutes({ http, bot: primaryBot, logger })
   registerBridgeRoutes({ http, getConfig, bridge })
   registerModelRoutes({ http, listModels, generate })
-  const { avatarInfo } = registerAvatarRoutes({ http, ROOT, log, onebot })
+  const { avatarInfo } = registerAvatarRoutes({ http, ROOT, log, bot: primaryBot })
 
   backup?.scheduleRemoteBackup() // 云备份：到点自动打包推送（配置里关着就是空操作）
   log.info(`Aurabot v${VERSION} 已加载｜总开关 ${cfg.enabled ? '开' : '关'}｜工作区 ${workspaceDirOf(cfg)}`)
 
   return {
-    hub, onebot, getConfig, setConfig, logger, modules: mods, bridge, ready: booted,
+    hub, onebot, primaryBot, getConfig, setConfig, logger, modules: mods, bridge, ready: booted,
     get stickers() { return use('stickers') },
     get mood() { return use('mood') },
     get memory() { return use('memory') },

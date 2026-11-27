@@ -9,7 +9,7 @@ export const version = '1.0.0'
 export const description = '主人要求时禁言 / 解禁 / 踢人 / 改头衔 / 发公告（qq_group_admin）；告诉她自己在群里有没有管理权限'
 
 export function apply(ctx, config) {
-  const { hub, onebot, groupRoles } = ctx.host
+  const { hub, primaryBot, groupRoles } = ctx.host
 
   ctx.prompt(({ chat }) => {
     if (chat.kind !== 'group') return ''
@@ -47,14 +47,14 @@ export function apply(ctx, config) {
         if (role && !groupRoles.canManage(role)) return { ok: false, message: '我在这个群只是普通成员，没有管理权限' }
         if (role === 'admin' && action === 'title') return { ok: false, message: '改专属头衔要群主才行，我只是管理员' }
         switch (action) {
-          case 'ban': await onebot.call('set_group_ban', { group_id: gid, user_id: uid, duration: Math.max(1, Number(minutes) || 10) * 60 }); break
-          case 'unban': await onebot.call('set_group_ban', { group_id: gid, user_id: uid, duration: 0 }); break
+          case 'ban': await primaryBot().internal('set_group_ban', { group_id: gid, user_id: uid, duration: Math.max(1, Number(minutes) || 10) * 60 }); break
+          case 'unban': await primaryBot().internal('set_group_ban', { group_id: gid, user_id: uid, duration: 0 }); break
           // 全体禁言：整个群禁言 / 解除（OneBot v11 的 set_group_whole_ban）
-          case 'whole_ban': await onebot.call('set_group_whole_ban', { group_id: gid, enable: true }); break
-          case 'whole_unban': await onebot.call('set_group_whole_ban', { group_id: gid, enable: false }); break
-          case 'kick': await onebot.call('set_group_kick', { group_id: gid, user_id: uid, reject_add_request: false }); break
-          case 'title': await onebot.call('set_group_special_title', { group_id: gid, user_id: uid, special_title: String(text || '') }); break
-          case 'notice': await onebot.call('_send_group_notice', { group_id: gid, content: String(text || '') }); break
+          case 'whole_ban': await primaryBot().internal('set_group_whole_ban', { group_id: gid, enable: true }); break
+          case 'whole_unban': await primaryBot().internal('set_group_whole_ban', { group_id: gid, enable: false }); break
+          case 'kick': await primaryBot().internal('set_group_kick', { group_id: gid, user_id: uid, reject_add_request: false }); break
+          case 'title': await primaryBot().internal('set_group_special_title', { group_id: gid, user_id: uid, special_title: String(text || '') }); break
+          case 'notice': await primaryBot().internal('_send_group_notice', { group_id: gid, content: String(text || '') }); break
           default: return { ok: false, message: '不认识的操作' }
         }
         return { ok: true, message: '做好了' }

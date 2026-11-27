@@ -100,7 +100,7 @@ export function createMutes() {
 
 /**
  * 执行命令，返回要回给主人的话。
- * @param {object} deps { getConfig, setConfig, mutes, hub, mood, memory, onebot }
+ * @param {object} deps { getConfig, setConfig, mutes, hub, mood, memory, bot }
  */
 export async function runCommand(cmd, msg, deps) {
   const { getConfig, setConfig, mutes, hub, mood, memory } = deps
