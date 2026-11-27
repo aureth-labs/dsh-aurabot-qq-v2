@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { createMemoryStore } from '../../packages/modules/memory/engine/index.ts'
 
 test('短期状态读取跨午夜的流水并去掉记忆提示', async (t) => {

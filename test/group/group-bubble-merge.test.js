@@ -12,7 +12,7 @@ process.env.AURABOT_DATA_DIR = mkdtempSync(join(root, 'data-'))
 
 const { normalize } = await import('../../src/core/config/index.ts')
 const { createFakeDsh } = await import('../helpers/fake-dsh.js')
-const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
+const { createHub } = await import('../helpers/hub.js')
 
 const OWNER = '10000001'
 const OTHER = '10000002'

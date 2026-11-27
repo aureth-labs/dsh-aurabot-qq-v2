@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../../helpers/hub.js'
 import { normalize } from '../../../src/core/config/index.ts'
 import { OneBotError } from '../../../packages/adapters/qq/onebot-v11/src/client.ts'
 
@@ -55,7 +55,7 @@ for (const [name, make] of [['超时', timeout], ['发送后断线', disconnecte
     const s = setup(t, make())
     await assert.rejects(s.hub.sendFile('private:1', s.file), /发文件失败/)
     assert.equal(s.calls.length, 1)
-    assert.equal(s.calls[0].params.file, s.file)
+    assert.equal(s.calls[0].params.message[0].data.file, pathToFileURL(s.file).href)
     assert.ok(s.logs.some((line) => line.includes('不再重发')))
   })
 }
@@ -71,8 +71,8 @@ for (const [name, make] of [['明确拒绝', refused], ['没连上', notConnecte
     const s = setup(t, make())
     await s.hub.sendFile('private:1', s.file)
     assert.equal(s.calls.length, 2)
-    assert.equal(s.calls[0].params.file, s.file)
-    assert.match(s.calls[1].params.file, /^base64:\/\//)
+    assert.equal(s.calls[0].params.message[0].data.file, pathToFileURL(s.file).href)
+    assert.match(s.calls[1].params.message[0].data.file, /^base64:\/\//)
   })
 }
 

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { requestIdentity } from '../../packages/modules/chat-bridge/qq/context/identity.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 
 const OWNER = '10000001', GUEST = '10000002'

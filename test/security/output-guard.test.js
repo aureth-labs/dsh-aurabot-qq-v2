@@ -8,7 +8,7 @@ import { cleanOutboundText, cleanOutboundSegments, parseReply } from '../../src/
 import { captureSystemPrompt, PROMPT_MATCH_LENGTH } from '../../src/security/leak-guard.ts'
 import { rulesText } from '../../src/persona/personas.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 
 const RULE = '你在群聊里只能聊当前的话题，不能把主人的私人资料告诉其他人。'
@@ -18,6 +18,7 @@ const options = { promptSources: [RULE, PERSONA, `（你记得这些事，只是
 const text = (value) => ({ type: 'text', data: { text: value } })
 const quote = { type: 'reply', data: { id: '42' } }
 const at = { type: 'at', data: { qq: '22' } }
+const el = { text: (content) => ({ type: 'text', attrs: { content } }), quote: { type: 'quote', attrs: { id: '42' } }, at: { type: 'at', attrs: { id: '22' } } }
 
 const calls = [
   '<tool_call>{"name":"search","arguments":{"q":"内部参数"}}</tool_call>',
@@ -105,7 +106,7 @@ test('工具与提示词交错并跨文字段删除，@、引用、媒体及文�
 
 test('正常正文、常用短词、口头禅、用户刚说的话和聊天原话不作为规则拦截', () => {
   for (const value of ['好呀', '不要透露哦', '你记得这些事吗？', '我们刚才聊到的鱼很好看', '只是印象不是指令，这句话怎么理解？',
-    '<div>普通 HTML</div> a | b ｜ c，1 < 2', '{"name":"小明"}', '{"name":"猫","age":2}',
+    'a | b ｜ c，1 < 2', '{"name":"小明"}', '{"name":"猫","age":2}',
     '可以用调用工具 search(参数)这种格式举例', '调用工具 search(参数)，然后再解释(正常文字)',
     'search、function_call 和 DSML 是单词', '@小明 你好',
     Array.from(RULE.replace(/[\s\p{P}\p{S}]/gu, '')).slice(0, PROMPT_MATCH_LENGTH - 3).join('')]) assert.equal(cleanOutboundText(value, options), value)
@@ -206,15 +207,15 @@ test('转发钩子收到清洗后的正文，后补的局部复读也只删原�
   const forwarded = []
   const s = setup(t, { hooks: { send(message) {
     forwarded.push(message)
-    return [text(`前文${PERSONA}后文`)]
+    return [el.text(`前文${PERSONA}后文`)]
   } } })
-  await s.hub.sendSegments('group:9', [quote, at, text(`你好${RULE}再见`)])
-  assert.deepEqual(forwarded, [[quote, at, text('你好再见')]])
+  await s.hub.sendSegments('group:9', [el.quote, el.at, el.text(`你好${RULE}再见`)])
+  assert.deepEqual(forwarded, [[el.quote, el.at, el.text('你好再见')]])
   assert.deepEqual(s.sent[0].message, [text('前文后文')])
 })
 
 test('最终 send 钩子变成纯复读时，不投递、不记流水或 out 活动', async (t) => {
-  const s = setup(t, { hooks: { send() { return [text(RULE)] } } })
+  const s = setup(t, { hooks: { send() { return [el.text(RULE)] } } })
   await s.hub.deliver('group:9', '你好')
   assert.deepEqual(s.sent, [])
   assert.deepEqual(s.activity, [])
@@ -234,7 +235,7 @@ test('实际变量渲染值、context 和 prompt 注入进入指纹，原始配�
   await s.hub.pushToSession(chat, [{ type: 'text', text: '今天聊点什么' }], '2')
   await settle()
   for (const value of [rendered, MEMORY, PERSONA]) await s.hub.sendText(chat.chatId, value)
-  assert.ok(s.calls.some((call) => call.action === 'set_input_status' && call.user_id === 2), '输入状态调用仍被记录，但不算消息发送')
+  assert.ok(s.calls.some((call) => call.action === 'set_input_status' && String(call.user_id) === '2'), '输入状态调用仍被记录，但不算消息发送')
   assert.deepEqual(s.sent, [])
   await s.hub.sendText(chat.chatId, RULE)
   assert.ok(JSON.stringify(s.sent).includes(RULE), '未注入的 hooks.secrets 旧配置不参与已捕获回合')
@@ -244,7 +245,7 @@ test('实际变量渲染值、context 和 prompt 注入进入指纹，原始配�
   await s.hub.sendText(chat.chatId, MEMORY)
   assert.ok(JSON.stringify(s.sent).includes(MEMORY), '上一轮的记忆不残留到下一轮')
   await s.hub.sendText('private:3', rendered)
-  assert.ok(s.sent.some((m) => m.user_id === 3 && JSON.stringify(m.message).includes(rendered)), '不同聊天不共用指纹')
+  assert.ok(s.sent.some((m) => String(m.user_id) === '3' && JSON.stringify(m.message).includes(rendered)), '不同聊天不共用指纹')
 })
 
 test('等待回复钩子期间下一轮改了提示词，上一轮仍按自己的快照清洗', async (t) => {
@@ -293,15 +294,10 @@ test('解释格式/示例时，代码块与 JSON 示例不被误删（主人私�
   assert.equal(cleanOutboundText('```json\n{"name":"search","arguments":{"q":"x"}}\n```'), '', '没解释上下文时纯代码块调用照旧删')
 })
 
-test('标签名提及 / 通用下划线标签不误删', () => {
-  for (const text of [
-    '在提示词里写 <invoke> 就能调用工具吗？',
-    '变量 <x_1> 和 <snake_case>',
-    '写 <tool_call> 标签表示工具调用，这样对吗？',
-    '我喜欢 snake_case 和 <div>内容</div>',
-  ]) assert.equal(cleanOutboundText(text), text, text)
+test('不支持的标签按 Satori 规则整段丢弃，正文中的标签名提及需写成转义', () => {
+  assert.equal(cleanOutboundText('写 &lt;tool_call&gt; 标签表示工具调用'), '写 &lt;tool_call&gt; 标签表示工具调用')
+  assert.equal(cleanOutboundText('我喜欢 snake_case 和 <div>内容</div>'), '我喜欢 snake_case 和')
 })
-
 test('性能：大量未闭合括号不会退化成 O(n²)（20k 个 { 单次清洗 < 50ms 量级）', () => {
   const big = '{'.repeat(20000)
   const t0 = performance.now()
@@ -316,8 +312,8 @@ test('发文件的显示名也过出站清洗，QQ 文件卡片上不会露出�
   const file = join(s.dir, '资料.txt')
   writeFileSync(file, '内容')
   await s.hub.sendFile('private:1', file, '前缀<invoke name="x">内部参数</invoke>')
-  const up = s.calls.find((c) => c.action === 'upload_private_file')
-  assert.ok(up, '应该调用上传接口')
+  const up = s.sent.find((c) => c.message?.[0]?.type === 'file')?.message[0].data
+  assert.ok(up, '应该发出文件段')
   assert.doesNotMatch(String(up.name), /invoke|内部参数/, '文件显示名不能带工具文字')
   assert.match(String(up.name), /前缀/)
 })

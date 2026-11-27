@@ -6,7 +6,7 @@ import { readMemoryState, writeMemoryState } from '../helpers/memory-state.js'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { buildIndex, createMemoryStore, memoryLine, parseMemoryCommand, search, shouldForget, tokenize } from '../../packages/modules/memory/engine/index.ts'
 
 const OWNER = '10000001'

@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../../helpers/hub.js'
 import { createOutboundPolicy } from '../../../src/chat/policy/outbound/index.ts'
 import { scopeCoreForModule } from '../../../src/core/module/index.ts'
 
@@ -718,7 +718,11 @@ async function startProbeModule(t, coreExtra = {}, id = 'probe-mod') {
     setConfig: () => {},
     logger: { child: () => ({ info() {}, warn() {}, debug() {}, error() {} }) },
     version: 'test',
-    builtins: [{ id, name: id, setup(api) { captured = api; return {} } }],
+    builtins: [{ id, name: id, apply(ctx) {
+      const hub = ctx.host.hub
+      captured = { proactive: ctx.proactive, sendText: (...a) => hub.sendText(...a), sendImage: (...a) => hub.sendImage(...a), sendFile: (...a) => hub.sendFile(...a) }
+      return {}
+    } }],
   })
   t.after(() => {
     modules.dispose()

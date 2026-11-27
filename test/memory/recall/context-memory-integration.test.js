@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../../helpers/fake-dsh.js'
 import { normalize } from '../../../src/core/config/index.ts'
-import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../../helpers/hub.js'
 import { createConversationArchive, queriesFor, retrieve } from '../../../packages/modules/chat-bridge/recall.ts'
 import { memoryPromptRanges, promptFingerprint } from '../../../src/security/leak-guard.ts'
 

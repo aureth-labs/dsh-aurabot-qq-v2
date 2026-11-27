@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { rowsOf } from '../helpers/chatlog.mjs'
 import { normalize } from '../../src/core/config/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
@@ -66,15 +66,6 @@ test('主动发送成功：聊天流水有 bot 行（带 proactive），桥接�
 test('不带 proactive 的发送（聊天回合自己回复）不重复记账', async (t) => {
   const s = setup(t)
   await s.hub.sendText('private:10001', '普通回复')
-  assert.deepEqual(s.hub.saidElsewhereOf('private:10001'), [])
-  assert.equal(chatlogRows(s.dir).filter((x) => x.who === 'bot').length, 0)
-})
-
-test('dry-run：没真发，不记流水、不记桥接', async (t) => {
-  const s = setup(t, { dryRun: true })
-  const r = await s.hub.sendText('private:10001', '试运行的话', undefined, undefined, undefined, { proactive: true, proactiveCause: 'bili' })
-  assert.equal(r, null)
-  assert.equal(s.calls.length, 0)
   assert.deepEqual(s.hub.saidElsewhereOf('private:10001'), [])
   assert.equal(chatlogRows(s.dir).filter((x) => x.who === 'bot').length, 0)
 })

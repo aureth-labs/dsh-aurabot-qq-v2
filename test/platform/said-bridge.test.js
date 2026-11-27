@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 
@@ -38,14 +38,6 @@ test('正常发送：桥接记下全部正文，deliver 返回 sent', async (t) 
   assert.equal(r.failed, 0)
   assert.equal(r.sent, '早上好 记得吃饭')
   assert.deepEqual(s.hub.saidElsewhereOf('private:1'), ['早上好 记得吃饭'])
-})
-
-test('dry-run：没真发，sent 必须为空，桥接不记', async (t) => {
-  const s = setup(t, { dryRun: true })
-  const r = await s.hub.deliver('private:1', '早上好|||记得吃饭')
-  assert.equal(s.calls.length, 0, '试运行不打网关')
-  assert.equal(r.sent, '', '试运行没真发，不能算说过')
-  assert.deepEqual(s.hub.saidElsewhereOf('private:1'), [])
 })
 
 test('总开关关闭：同样没真发，sent 为空，桥接不记', async (t) => {

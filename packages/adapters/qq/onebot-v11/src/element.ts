@@ -84,7 +84,7 @@ export function toOneBot(source: ElementSource): OneBotSegment[] {
           emoji_package_id: Number(element.attrs['qq:pack']) || 0, key: String(element.attrs['qq:key'] || ''), summary } }
         return { type, data: { file, sub_type: 1, summary } }
       }
-      return { type, data: { file } }
+      return { type, data: element.type === 'file' && element.attrs.name ? { file, name: String(element.attrs.name) } : { file } }
     }
     if (element.type === 'quote') return { type: 'reply', data: { id: String(element.attrs.id ?? '') } }
     return { type, data: { ...element.attrs } }

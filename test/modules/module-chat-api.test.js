@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { confirmedChatDelivery } from '../../packages/modules/chat-bridge/qq/turn/receipts.ts'
 import { createRecognizer } from '../../packages/modules/asr/recognize.ts'
 import { buildWav } from '../../src/core/message/media/wav.ts'
@@ -62,7 +62,7 @@ test('流水通知与落盘同源：来源端标记不落盘，监听失败不�
   // sendText 只负责网关发送；正常回复由 deliver 统一记账，避免分条/语音重复落盘。
   const delivered = await s.hub.deliver(CHAT, '实际发出的消息')
   assert.equal(delivered.sent, '实际发出的消息')
-  assert.deepEqual(s.calls, [{ action: 'send_private_msg', params: { user_id: Number(OWNER), message: [{ type: 'text', data: { text: '实际发出的消息' } }] } }])
+  assert.deepEqual(s.calls, [{ action: 'send_private_msg', params: { user_id: OWNER, message: [{ type: 'text', data: { text: '实际发出的消息' } }] } }])
   const replies = s.rows.filter((r) => r.who === 'bot')
   assert.equal(replies.length, 1)
   assert.equal(replies[0].text, '实际发出的消息')
@@ -110,7 +110,7 @@ test('已确认的 OneBot 送达使用稳定来源 ID，模拟或失败不会产
     if (failed) throw new Error('fixture transport failed')
     return { message_id: -123 }
   } })
-  const message = [{ type: 'text', data: { text: '送达测试' } }]
+  const message = [{ type: 'text', attrs: { content: '送达测试' } }]
   await s.hub.sendSegments(CHAT, message, '测试')
   await s.hub.sendSegments(CHAT, message, '测试')
   assert.equal(s.deliveries.length, 2)

@@ -5,7 +5,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSyn
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { createImageGen, customRequest, resolveDrawImage } from '../../packages/modules/imagegen/engine.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { createLocal } from '../../src/local/index.ts'
 import { savePainting } from '../../src/features/media/generate/paintings.ts'
@@ -283,7 +283,7 @@ test('qq_draw_image 的 image 可选；quote 来源传递；沿用发送、存�
   assert.equal(s.generated[0].args.image, b64)
   assert.equal(s.sent.length, 1)
   assert.equal(s.sent[0][0], privateChat.chatId)
-  assert.equal(s.sent[0][1][0].data.file, 'base64://' + OTHER.toString('base64'))
+  assert.equal(s.sent[0][1][0].attrs.url, 'base64://' + OTHER.toString('base64'))
   assert.deepEqual(readFileSync(out.path), OTHER)
   assert.equal(readdirSync(join(dir, 'imagegen')).length, 1)
   assert.match(s.events[0].text, /^参考了一张图画了/)

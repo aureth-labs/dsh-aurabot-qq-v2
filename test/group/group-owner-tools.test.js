@@ -115,7 +115,7 @@ test('闸门：群里非主人说话时本机工具被收走', async () => {
   const { join } = await import('node:path')
   process.env.AURABOT_WORKSPACE = mkdtempSync(join(tmpdir(), 'aurabot-group-gate-'))
   const { createFakeDsh } = await import('../helpers/fake-dsh.js')
-  const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
+  const { createHub } = await import('../helpers/hub.js')
 
   const OWNER = '10001'
   const OTHER = '20002'
@@ -148,7 +148,7 @@ test('工具闸：新会话第一条消息就按说话人判定（首轮不再�
   const { join } = await import('node:path')
   process.env.AURABOT_WORKSPACE = mkdtempSync(join(tmpdir(), 'aurabot-group-tools-first-'))
   const { createFakeDsh } = await import('../helpers/fake-dsh.js')
-  const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
+  const { createHub } = await import('../helpers/hub.js')
 
   const OWNER = '10001'
   const OTHER = '30003'

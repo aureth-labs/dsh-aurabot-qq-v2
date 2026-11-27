@@ -20,7 +20,7 @@ import assert from 'node:assert/strict'
 import { cleanOutboundText, cleanOutboundSegments, parseReply, stripAcpLeak, hasAcpResidue, hasSuspectTagShape } from '../../src/chat/reply/index.ts'
 import { guardOutgoing } from '../../src/chat/inbound/hooks/guard.ts'
 import { normalize } from '../../src/core/config/index.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 
 // 2026-11-22 真机实况三条样本（逐字，勿改）
 const SAMPLE_ATTR_TAIL = '="text" time="2026-11-22 17:26:47">>'

@@ -7,7 +7,7 @@ import { join } from 'node:path'
 
 import { DatabaseSync } from 'node:sqlite'
 import { createMessageLogScope } from '../../src/core/store/messages.ts'
-import { createHub } from '../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../helpers/hub.js'
 import { normalize } from '../../src/core/config/index.ts'
 import { cleanupDir } from '../helpers/cleanup.js'
 

@@ -32,6 +32,8 @@ export type {
 } from '../../types/adapter/bot.ts'
 
 export class BotStateError extends Error {
+  readonly code = 'AURABOT_DELIVERY'
+  readonly outcome = 'rejected'
   constructor(bot: BotLike, action: string) {
     super(`bot ${bot.id}（${bot.platform}）当前状态 ${bot.status}，不能执行 ${action}`)
     this.name = 'BotStateError'

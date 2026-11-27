@@ -159,7 +159,7 @@ test('临时私聊保存来源群，普通好友不带来源群', async (t) => {
   const root = mkdtempSync(join(tmpdir(), 'aurabot-sl-temp-'))
   process.env.AURABOT_DATA_DIR = join(root, 'data')
   process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-  const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
+  const { createHub } = await import('../helpers/hub.js')
   const fake = createFakeDsh({ brain: async () => '' })
   const cfg = normalize({ enabled: true, dryRun: false, ownerQQ: OWNER, botQQ: BOT, allow: { private: [OTHER], groups: [] }, stickers: { collect: false } })
   const calls = []

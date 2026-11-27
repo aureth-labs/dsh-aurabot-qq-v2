@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../../helpers/hub.js'
 import { normalize } from '../../../src/core/config/index.ts'
 import { apply as installStickers } from '../../../packages/modules/stickers/index.ts'
 
@@ -65,11 +65,11 @@ test('恢复时保留原始时间，不因重启重新获得半小时', async (t
 test('恢复时清掉已过期、未来时间、坏条目，保留有效图片和商城表情', (t) => {
   const s = setup(), now = 1_800_000_000_000
   t.mock.method(Date, 'now', () => now)
-  const item = (at, seg = image('valid.png')) => ({ seg, userId: OWNER, at, sticker: true })
+  const item = (at, element = { type: 'image', attrs: { url: 'valid.png', sticker: true } }) => ({ element, userId: OWNER, at, sticker: true })
   const valid = item(now - 1000)
-  const market = item(now, { type: 'mface', data: { emoji_id: '123', key: 'market-key' } })
+  const market = item(now, { type: 'image', attrs: { url: '', sticker: true, 'qq:emoji': '123', 'qq:pack': '', 'qq:key': 'market-key' } })
   writeFileSync(s.file, JSON.stringify({
-    [CHAT]: [null, item(now - 30 * 60_000), item(now + 1), item('bad'), item(now, { type: 'text', data: { text: '不是图片' } }), valid, market],
+    [CHAT]: [null, item(now - 30 * 60_000), item(now + 1), item('bad'), item(now, { type: 'text', attrs: { content: '不是图片' } }), valid, market],
     'group:123': '坏列表', 'private:10000002': [],
   }))
   const hub = s.hub()
@@ -85,7 +85,7 @@ test('每张图片单独计时，后来的新图不能延长旧图的有效期',
   now += 10 * 60_000
   await send(hub, image('new.png', false))
   now += 20 * 60_000
-  assert.deepEqual(hub.recentMedia(CHAT).map((x) => [x.seg.data.file, x.sticker]), [['new.png', false]])
+  assert.deepEqual(hub.recentMedia(CHAT).map((x) => [x.element.attrs.url, x.sticker]), [['new.png', false]])
   assert.equal(JSON.parse(readFileSync(s.file, 'utf8'))[CHAT].length, 1)
 })
 
@@ -95,7 +95,7 @@ test('重启后按私聊 / 群聊和发图人隔离，维持每个聊天的顺�
   await send(before, image('other-private.png'), '10000002')
   await send(before, image('owner-group.png'), OWNER, '123')
   await send(before, image('other-group.png'), '10000002', '123')
-  const after = s.hub(), files = (chat, user) => after.recentMedia(chat, user).map((x) => x.seg.data.file)
+  const after = s.hub(), files = (chat, user) => after.recentMedia(chat, user).map((x) => x.element.attrs.url)
   assert.deepEqual(files(CHAT), ['owner-private.png'])
   assert.deepEqual(files('private:10000002'), ['other-private.png'])
   assert.deepEqual(files('group:123'), ['owner-group.png', 'other-group.png'])
@@ -119,7 +119,7 @@ test('每个聊天只保留最近 6 张，纯文字不覆盖暂存或更新时�
   const disk = readFileSync(s.file, 'utf8')
   await send(hub, { type: 'text', data: { text: '存一下刚才的表情' } })
   assert.equal(readFileSync(s.file, 'utf8'), disk)
-  assert.deepEqual(s.hub().recentMedia(CHAT).map((x) => x.seg.data.file), ['2.png', '3.png', '4.png', '5.png', '6.png', '7.png'])
+  assert.deepEqual(s.hub().recentMedia(CHAT).map((x) => x.element.attrs.url), ['2.png', '3.png', '4.png', '5.png', '6.png', '7.png'])
 })
 
 test('缺失或损坏的暂存文件不影响聊天，新图片会重建文件', async () => {
@@ -129,7 +129,7 @@ test('缺失或损坏的暂存文件不影响聊天，新图片会重建文件',
     const hub = s.hub()
     assert.deepEqual(hub.recentMedia(CHAT), [])
     await send(hub, image('recovered.png'))
-    assert.equal(s.hub().recentMedia(CHAT)[0].seg.data.file, 'recovered.png')
+    assert.equal(s.hub().recentMedia(CHAT)[0].element.attrs.url, 'recovered.png')
   }
 })
 
@@ -138,7 +138,7 @@ test('磁盘写入失败仍保留本次内存引用，并记录原因', async ()
   mkdirSync(s.file) // 故意令目标成为目录，使原子替换失败。
   const hub = s.hub({ ...log, warn: (...args) => warnings.push(args.join(' ')) })
   await send(hub, image('memory-only.png'))
-  assert.equal(hub.recentMedia(CHAT)[0].seg.data.file, 'memory-only.png')
+  assert.equal(hub.recentMedia(CHAT)[0].element.attrs.url, 'memory-only.png')
   assert.match(warnings.join('\n'), /暂存写入失败/)
 })
 
@@ -151,7 +151,7 @@ test('媒体缓存关闭后旧实例不可取图，迟到消息不再改写暂�
   assert.deepEqual(hub.recentMedia(CHAT), [])
   await send(hub, image('late.png'))
   assert.equal(readFileSync(s.file, 'utf8'), disk)
-  assert.deepEqual(s.hub().recentMedia(CHAT).map((x) => x.seg.data.file), ['before-dispose.png'])
+  assert.deepEqual(s.hub().recentMedia(CHAT).map((x) => x.element.attrs.url), ['before-dispose.png'])
 })
 
 function saveTool(hub, cfg, chat = { kind: 'private', chatId: CHAT, userId: OWNER }) {
@@ -217,11 +217,14 @@ test('宿主卸载会关闭媒体缓存，旧中枢不能继续读写暂存文�
   try {
     await api.ready
     await api.modules.use('adapter-qq-onebot-v11').ready
-    await send(api.hub, image('before-unload.png'))
+    const push = (seg) => gateway.push({ post_type: 'message', message_type: 'private', self_id: Number(BOT), user_id: Number(OWNER), message_id: 1, message: [seg], sender: { nickname: '测试' } })
+    push(image('before-unload.png'))
+    for (let i = 0; i < 100 && !existsSync(s.file); i++) await new Promise(r => setTimeout(r, 10))
     const disk = readFileSync(s.file, 'utf8')
     fake.dispose()
     assert.deepEqual(api.hub.recentMedia(CHAT), [])
-    await send(api.hub, image('late-after-unload.png'))
+    push(image('late-after-unload.png'))
+    await new Promise(r => setTimeout(r, 100))
     assert.equal(readFileSync(s.file, 'utf8'), disk)
   } finally { fake.dispose(); await gateway.close() }
 })
@@ -236,7 +239,7 @@ test('同一实例切换登录后，旧读取无法把后到的图片交给新�
     hooks: { media: () => scope.current() }, onebot: { async call() { started.resolve(); return downloaded.promise } } })
   t.after(() => { scope.dispose(); hub.dispose() })
   const first = scope.current()
-  first.images.remember(CHAT, [{ userId: OWNER, sticker: false, seg: image('file-id') }])
+  first.images.remember(CHAT, [{ userId: OWNER, sticker: false, element: { type: 'image', attrs: { url: 'file-id', file: 'file-id' } } }])
   const reading = hub.referenceImage({ chatId: CHAT }, 'last')
   await started.promise
   self = '20000003'
@@ -245,5 +248,5 @@ test('同一实例切换登录后，旧读取无法把后到的图片交给新�
   await assert.rejects(reading, /登录账号已改变/)
   first.images.clear(CHAT)
   self = BOT
-  assert.equal(hub.recentMedia(CHAT)[0].seg.data.file, 'file-id')
+  assert.equal(hub.recentMedia(CHAT)[0].element.attrs.url, 'file-id')
 })

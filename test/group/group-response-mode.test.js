@@ -12,7 +12,7 @@ import { createFakeDsh } from '../helpers/fake-dsh.js'
 import { cleanupDir } from '../helpers/cleanup.js'
 const root = mkdtempSync(join(tmpdir(), 'aurabot-group-mode-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
+const { createHub } = await import('../helpers/hub.js')
 after(() => cleanupDir(root))
 const G = '30000003', H = '40000004', OWNER = '10000001', BOT = '20000002'
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
@@ -127,10 +127,10 @@ test('单独 @ 仍唤醒，正文不伪称有图片；真实图片按原样呈�
   const s = setup(t)
   await s.hub.onMessage(event(' ', H, [at])); await settle()
   const turn = s.fake.turns[0]
-  assert.match(turn.userText, /^\[1\].*@了你$/m)
+  assert.match(turn.userText, /^\[1\].*@了你(?: \{"messageId":"\d+"\})?$/m)
   assert.equal(turn.images, 0)
   await s.hub.onMessage({ ...event('', H, [at, { type: 'image', data: { sub_type: 0, file: 'base64://iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5S8AAAAASUVORK5CYII=' } }]), message_id: 2 }); await settle()
-  assert.match(s.fake.turns[1].userText, /^\[1\].*@了你：\[图片\]$/m)
+  assert.match(s.fake.turns[1].userText, /^\[1\].*@了你：\[图片\](?: \{"messageId":"\d+"\})?$/m)
   await s.hub.onMessage({ ...event('（没有文字）', H, [at]), message_id: 3 }); await settle()
-  assert.match(s.fake.turns[2].userText, /^\[1\].*@了你：（没有文字）$/m)
+  assert.match(s.fake.turns[2].userText, /^\[1\].*@了你：（没有文字）(?: \{"messageId":"\d+"\})?$/m)
 })

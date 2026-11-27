@@ -5,7 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from '../../../src/core/config/index.ts'
-import { createHub } from '../../../packages/modules/chat-bridge/qq/index.ts'
+import { createHub } from '../../helpers/hub.js'
 import { apply as applyImagegen } from '../../../packages/modules/imagegen/index.ts'
 import { createFakeDsh } from '../../helpers/fake-dsh.js'
 
@@ -34,7 +34,7 @@ test('真实收图→合批→提示：混合照片/表情与下载失败不会�
     } },
     hooks: { groupDecide: () => ({ reply: true, mode: 'must' }), prompt: (content, info) => prompt(content, info) },
   })
-  applyImagegen({ root: {read: () => cfg, config:cfg}, logger:log, harness:fake.ctx, lazy: () => ({}), server:{get() {}}, effect:fn=>t.after(fn), prompt() {}, tool() {},
+  applyImagegen({ root: {read: () => cfg, config:cfg}, logger:log, harness:fake.ctx, lazy: () => ({}), server:{get() {}, post() {}}, effect:fn=>t.after(fn), prompt() {}, tool() {}, provide() {}, bots: { get: () => undefined }, isOwner: () => true,
     on: (event, fn) => { if (event === 'prompt') prompt = fn }, host: { hub, local: { active: () => true } },
   })
   fake.ctx.effect(() => fake.ctx.on('session/event', hub.onSessionEvent))

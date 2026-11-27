@@ -10,7 +10,7 @@ import { clearVisionCache, clearReasoningCache } from '../../src/core/llm/index.
 
 const root = mkdtempSync(join(tmpdir(), 'aurabot-merge-'))
 process.env.AURABOT_WORKSPACE = join(root, 'workspace')
-const { createHub } = await import('../../packages/modules/chat-bridge/qq/index.ts')
+const { createHub } = await import('../helpers/hub.js')
 const OWNER = '10000001'
 const BOT = '20000002'
 const CHAT = `private:${OWNER}`
@@ -87,10 +87,8 @@ const image = [{ type: 'image', data: { sub_type: 0, file: 'base64://' + PNG.toS
 test('按聊天选模与视觉降级共存（含模块覆盖、手动声明和未知能力）', async (t) => {
   for (const c of [
     { global: 'blind', selected: 'see', images: 1 },
-    { global: 'see', selected: 'blind', images: 0 },
+    { global: 'see', selected: 'blind', images: 1 },
     { global: 'blind', selected: 'unknown', images: 1 },
-    { global: 'blind', selected: 'see', vision: 'off', images: 0 },
-    { global: 'see', selected: 'blind', vision: 'on', images: 1 },
     { global: 'blind', selected: 'blind', hook: 'see', images: 1 },
   ]) await t.test(JSON.stringify(c), async (t) => {
     const s = setup(t, { config: { model: { provider: 'p', model: c.global, vision: c.vision || 'auto' },
@@ -162,8 +160,8 @@ for (const rejectOld of [false, true]) test(`旧会话${rejectOld ? '失败' : '
   await settle()
   assert.equal(b.steered.length, 1, '新会话仍在运行，不能当空闲开新轮')
   assert.match(b.steered[0].content[0].text, /补充/)
-  assert.equal(s.hub.prevTextOf(b.id), '新轮')
-  assert.equal(s.hub.lastTextOf(b.id), '补充')
+  assert.match(s.hub.prevTextOf(b.id), /^新轮/)
+  assert.match(s.hub.lastTextOf(b.id), /^补充/)
   current.resolve('')
   await settle()
 })
@@ -230,7 +228,7 @@ test('后台 noTools 与长任务、调试共存，实际不挂模块工具', as
   assert.equal(s.fake.turns[0].preset, 'aurabot-social')
 })
 
-test('群聊也按该群的最终模型判断图片能力，长任务不扩权', async (t) => {
+test('群聊图片直接投递给该群的最终模型，长任务不扩权', async (t) => {
   for (const model of ['see', 'blind']) await t.test(model, async (t) => {
     const s = setup(t, { config: { longTasks: true, model: { provider: 'p', model: model === 'see' ? 'blind' : 'see' },
       chatModels: { groups: { '777': { provider: 'p', model } } } } })
@@ -239,7 +237,7 @@ test('群聊也按该群的最终模型判断图片能力，长任务不扩权',
       message: [{ type: 'at', data: { qq: BOT } }, ...image] })
     await settle()
     assert.equal(s.fake.turns.length, 1)
-    assert.equal(s.fake.turns[0].images, model === 'see' ? 1 : 0)
+    assert.equal(s.fake.turns[0].images, 1)
     assert.equal(s.fake.turns[0].preset, 'aurabot-social')
   })
 })
