@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from './ui/react.ts'
-import { navIcon } from './ui/icons.ts'
+import { WhaleIcon, navIcon } from './ui/icons.ts'
 import { Btn, Card, cx, h } from './ui/ui.ts'
 
 // ---------------- 标签页 ----------------
@@ -108,23 +108,24 @@ function NavBar({ tabs, cur, go, mark }) {
   })).filter(group => group.pages.length)
   const select = page => { go(page.id); setQuery(''); drawer.current?.close() }
   const navigation = h('nav', { className: 'ab-directory', 'aria-label': '功能导航' },
+    h('div', { className: 'ab-brand' }, h('span', null, h(WhaleIcon, { size: 25 })), 'AuraBot'),
     h('input', { type: 'search', className: 'ab-input', ref: search, placeholder: '查找功能', 'aria-label': '查找功能', value: query,
       onChange: event => setQuery(event.target.value), onKeyDown: event => {
         if (event.key === 'Enter' && groups.length) select(groups[0].pages[0])
       } }),
-    groups.map(group => h('section', { key: group.id },
+    groups.map(group => h('section', { key: group.id, 'data-group': group.id },
       h('h2', null, navIcon(group.icon), group.label),
       group.pages.map(page => h('button', { key: page.id, type: 'button', 'aria-current': page.id === cur.id ? 'page' : undefined,
         onClick: () => select(page) }, page.label, mark(page))))),
     groups.length ? null : h('p', { role: 'status' }, '没有匹配的页面'))
   if (!mobile) return h('aside', { className: 'ab-sidebar' }, navigation)
   return h('div', { className: 'ab-menu-bar' },
-    h('button', { type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': opened, onClick: open }, '☰　菜单'),
+    h('button', { type: 'button', 'aria-label': '打开菜单', 'aria-haspopup': 'dialog', 'aria-expanded': opened, onClick: open }, navIcon('M4 6h16M4 12h11M4 18h16')),
     h('span', null, cur.label),
     h('dialog', { className: 'ab-drawer', ref: drawer, 'aria-label': '功能菜单',
       onClose: () => { setOpened(false); setQuery('') },
       onClick: event => { if (event.target === drawer.current && event.clientX >= drawer.current.getBoundingClientRect().right) drawer.current.close() } },
-      h('button', { type: 'button', onClick: () => drawer.current.close() }, '关闭菜单'), navigation))
+      h('button', { type: 'button', className: 'ab-drawer-close', 'aria-label': '关闭菜单', onClick: () => drawer.current.close() }, navIcon('m7 7 10 10M17 7 7 17')), navigation))
 }
 
 function ModOff({ name }) {

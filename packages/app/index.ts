@@ -50,7 +50,6 @@ import { isOwnerOf } from '../../src/core/config/owners.ts'
 import { createDialogue } from '../../src/core/llm/session-turn.ts'
 import { createMediaAccess } from '../../src/core/message/media/media.ts'
 import { dataDir, ensureDir } from '../../src/core/store/index.ts'
-import { createUsageFx } from '../../src/core/llm/usage/fx.ts'
 import { initUsage, usageReport, closeUsage } from '../../src/core/llm/usage/usage.ts'
 import { createBotsAccessor } from '../../src/core/bot/instance/registry.ts'
 import { registerDebugRoutes } from './debug.ts'
@@ -153,8 +152,7 @@ export function apply(ctx) {
   }
   secrets()
   seedPersonas()
-  // token 用量与花费（面板「概览」）：价格表可以在 config.usage.pricing 里覆盖
-  initUsage(cfg.usage?.pricing)
+  initUsage()
 
   // ---------- 人格与规则：通过提示词变量注入到 Aurabot 的两个 preset ----------
   const variable = (n, fn) => ctx.effect(() => ctx.systemPrompt.variable(n, (...args) => captureSystemPrompt(n, cleanText(fn(...args)))), `aurabot: 变量 ${n}`)
@@ -559,8 +557,11 @@ export function apply(ctx) {
   route('/state', async () => overview())
   // token 用量与花费：今日 / 昨日 / 近 7 天 / 近 30 天，各带模块明细
   // ?range=today|yesterday|7|30|all —— 面板点哪张指标卡就按哪个区间出明细
-  const getUsageFx = createUsageFx()
-  route('/usage', async (req) => ({ ok: true, fx: await getUsageFx(query(req).fx === 'refresh'), ...usageReport({ range: query(req).range || '7' }) }))
+  route('/usage', async req => {
+    const { range, from, to } = query(req)
+    try { return { ok: true, ...usageReport({ range, from, to }) } }
+    catch (error) { return { ok: false, message: error instanceof RangeError ? error.message : '用量暂时无法读取' } }
+  })
   registerConfigRoutes({ bootId, http, getConfig, setConfig, mods, log, hub, overview })
 
   route('/debug/session', async () => {

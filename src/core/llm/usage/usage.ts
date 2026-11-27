@@ -1,28 +1,12 @@
-// Only provider-reported usage; no text/token estimation and no guessed gateway prices.
-import { dataDir, readJson, writeJson } from '../../store/index.ts'
-import { officialCost, REFERENCE_DATE } from '../../support/time/official-reference.ts'
+import { dataDir, ensureDir } from '../../store/index.ts'
 import { beijingDayKey } from './offpeak.ts'
+import { openUsage, count } from './store.ts'
+
 export const KEEP_DAYS = 90
-export const DEFAULT_PRICING = { currency: '元', models: {} }
 const DAY_MS = 86_400_000
+let store: ReturnType<typeof openUsage> | undefined
+let writeFailed = false
 
-/** 价格表里的一条（每百万 token 的价格，元）。缺项的记录按「未定价」处理。 */
-export interface PriceEntry {
-  in?: number
-  out?: number
-  cached?: number
-  cacheWrite?: number
-  /** 从哪天起生效（'YYYY-MM-DD'）。 */
-  from?: string
-  provider?: string
-  peak?: unknown
-  match?: unknown
-}
-
-/** 自定义费率表（config.usage.pricing 归一化后的形状）。 */
-export interface Pricing { currency: string; models: Record<string, PriceEntry> }
-
-/** 一次模型调用报上来的用量。 */
 export interface ModelUsage {
   inputTokens?: number
   outputTokens?: number
@@ -30,7 +14,6 @@ export interface ModelUsage {
   cacheWriteTokens?: number
 }
 
-/** usage.json 里的一行：一次（或合并后的一次）调用的记账。 */
 export interface UsageRow {
   at: number
   module: string
@@ -56,31 +39,6 @@ export interface SessionCursor {
   tool?: { module: string; turn?: number } | null
 }
 
-/** usage.json 的整体形状。 */
-export interface UsageState {
-  version: number
-  startedAt: number
-  days: Record<string, UsageRow[]>
-  sessions: Record<string, SessionCursor>
-  [key: string]: unknown
-}
-
-/** 汇总后的一组数字；算不出总价时 cost / officialUSD 是 null（不装成 0）。 */
-export interface UsageTotals {
-  runs: number
-  promptTokens: number
-  completionTokens: number
-  cachedTokens: number
-  cacheWriteTokens: number
-  totalTokens: number
-  cost: number | null
-  unpricedCalls: number
-  officialUSD: number | null
-  officialMissing: number
-  cacheHitRate: number | null
-  pricedCost: number | null
-}
-
 /** DSH 会话事件里我们会读的字段。 */
 interface SessionEventData {
   provider?: string
@@ -96,26 +54,6 @@ interface SessionEventData {
 /** 一条 DSH 会话事件。 */
 interface SessionEvent { seq: number; time?: number; type: string; data?: SessionEventData }
 
-let state: UsageState | null = null
-let pricing: Pricing = DEFAULT_PRICING
-let timer: NodeJS.Timeout | null = null
-let writeFailed = false
-const indexed = new Map<string, UsageRow>()
-const file = (): string => dataDir('usage.json')
-const count = (v: unknown): number => typeof v === 'number' && Number.isSafeInteger(v) && v >= 0 ? v : 0
-const dayKey = (at: number): string => beijingDayKey(at)
-
-// Explicit provider + exact model only. A reseller model name does not establish its tariff.
-export function priceOf (model: string | undefined, at = Date.now(), p: Pricing = pricing, provider = ''): PriceEntry | null {
-  if (!provider || !model) return null
-  const entry = p.models?.[provider + '::' + model] || p.models?.[model]
-  if (!entry || entry.peak || entry.match || entry.provider !== provider || (entry.from && at < Date.parse(entry.from))) return null
-  if (!['in', 'out', 'cached'].every(k => typeof entry[k] === 'number' && Number.isFinite(entry[k]) && entry[k] >= 0)) return null
-  if (entry.from && !Number.isFinite(Date.parse(entry.from))) return null
-  return entry
-}
-
-// 记账用的模块名：模块 id → 中文；system:xxx 的后台轮次标成「xxx（后台）」
 const MODULE_LABELS = {
   memory: '记忆', mood: '心情', diary: '空间日记', purpose: '目的引擎', 'purpose-nudge': '目的引擎（追问）',
   stickers: '表情包', imagegen: '生图', bili: '刷 B 站', heybox: '刷小黑盒', douyin: '刷抖音', video: '生视频',
@@ -191,40 +129,17 @@ export function moduleOf (row: UsageRow | null | undefined): string {
 }
 
 
-export function costOf (row: UsageRow | null | undefined, at: number = row?.at ?? 0) {
-  const p = priceOf(row?.model, at, pricing, row?.provider)
-  const written = count(row?.written)
-  const unknown = { cost: 0, fresh: 0, cached: 0, output: 0, write: 0, unpriced: true }
-  if (!p || (written && !(typeof p.cacheWrite === 'number' && Number.isFinite(p.cacheWrite) && p.cacheWrite >= 0))) return unknown
-  const fresh = count(row.in) * p.in / 1e6
-  const cached = count(row.cached) * p.cached / 1e6
-  const output = count(row.out) * p.out / 1e6
-  const write = written ? written * p.cacheWrite / 1e6 : 0
-  const cost = fresh + cached + output + write
-  return Number.isFinite(cost) ? { cost, fresh, cached, output, write, unpriced: false } : unknown
-}
-
-function totalsOf (rows: UsageRow[]): UsageTotals {
-  const t: UsageTotals = { runs: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cacheWriteTokens: 0, totalTokens: 0, cost: 0, unpricedCalls: 0, officialUSD: 0, officialMissing: 0, cacheHitRate: null, pricedCost: null }
-  for (const r of rows) {
-    const c = costOf(r)
-    t.runs += count(r.runs) || 1
-    t.promptTokens += count(r.in) + count(r.cached) + count(r.written)
-    t.completionTokens += count(r.out)
-    t.cachedTokens += count(r.cached)
-    t.cacheWriteTokens += count(r.written)
-    const usd = officialCost(r)
-    if (usd === null) t.officialMissing += count(r.runs) || 1
-    else t.officialUSD += usd
-    t.cost += c.cost
-    if (c.unpriced) t.unpricedCalls += count(r.runs) || 1
+function totalsOf(rows: UsageRow[]) {
+  const t = { runs: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cacheWriteTokens: 0, totalTokens: 0, cacheHitRate: null as number | null }
+  for (const row of rows) {
+    t.runs += count(row.runs) || 1
+    t.promptTokens += count(row.in) + count(row.cached) + count(row.written)
+    t.completionTokens += count(row.out)
+    t.cachedTokens += count(row.cached)
+    t.cacheWriteTokens += count(row.written)
   }
   t.totalTokens = t.promptTokens + t.completionTokens
   t.cacheHitRate = t.promptTokens ? t.cachedTokens / t.promptTokens : null
-  // An incomplete subtotal is not a total price. Unknown is never shown as free.
-  if (t.officialMissing === t.runs) t.officialUSD = null
-  t.pricedCost = t.runs > t.unpricedCalls ? t.cost : null
-  if (!t.runs || t.unpricedCalls) t.cost = null
   return t
 }
 function groupBy (rows: UsageRow[], keyOf: (row: UsageRow) => string) {
@@ -236,51 +151,20 @@ function groupBy (rows: UsageRow[], keyOf: (row: UsageRow) => string) {
   }
   return [...groups].map(([key, rs]) => ({ key, ...totalsOf(rs) })).sort((a,b) => b.totalTokens-a.totalTokens || a.key.localeCompare(b.key))
 }
-function prune (now = Date.now()): void {
-  if (!state) return
-  const cut = dayKey(now - (KEEP_DAYS - 1) * DAY_MS)
-  for (const [day, rows] of Object.entries(state.days)) if (day < cut) {
-    for (const r of rows) if (r.id) indexed.delete(r.id)
-    delete state.days[day]
+export function closeUsage() { store?.close(); store = undefined }
+
+export function initUsage() {
+  closeUsage()
+  try {
+    store = openUsage(ensureDir(dataDir()))
+    store.prune(dayStart(beijingDayKey(Date.now())) - (KEEP_DAYS - 1) * DAY_MS)
+    writeFailed = false
+  } catch (error) {
+    writeFailed = true
+    process.emitWarning('用量数据库打开失败：' + String(error))
   }
-  for (const [id, cursor] of Object.entries(state.sessions)) if (dayKey(cursor.at || 0) < cut) delete state.sessions[id]
 }
-export function flushUsage (): void {
-  if (timer) clearTimeout(timer)
-  timer = null
-  if (!state) return
-  try { writeJson(file(), state); writeFailed = false } catch { writeFailed = true }
-}
-export function closeUsage (): void { flushUsage(); state = null; indexed.clear() }
-function saveSoon (): void {
-  if (timer) return
-  timer = setTimeout(flushUsage, 1500)
-  timer.unref?.()
-}
-export function initUsage (override?: Partial<Pricing> | null): UsageState {
-  if (state) flushUsage()
-  const raw = readJson(file(), {}) as UsageState
-  const days: Record<string, UsageRow[]> = {}
-  for (const [day, value] of Object.entries(raw.days || {})) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue
-    if (Array.isArray(value)) days[day] = (value as UsageRow[]).filter(r => r && Number.isFinite(r.at))
-    else {
-      // Older totals are already sums: don't divide by calls and lose most of the usage.
-      days[day] = Object.entries((value || {}) as Record<string, { in?: number; out?: number; hit?: number; calls?: number }>).map(([module, b]) => ({
-        at: Date.parse(day + 'T00:00:01+08:00'), module, chat: '', model: '', provider: '',
-        in: count(b?.in), out: count(b?.out), cached: count(b?.hit), runs: count(b?.calls) || 1,
-      }))
-    }
-  }
-  state = { ...raw, version: 2, startedAt: raw.startedAt || Date.now(), days, sessions: raw.sessions || {} }
-  pricing = override && typeof override === 'object' ? { ...DEFAULT_PRICING, ...override } : DEFAULT_PRICING
-  indexed.clear()
-  prune()
-  for (const rows of Object.values(days)) for (const r of rows) if (r.id) indexed.set(r.id, r)
-  saveSoon()
-  return state
-}
-/** recordUsage 的入参。 */
+
 export interface RecordUsageOptions {
   module?: string
   task?: string
@@ -292,28 +176,22 @@ export interface RecordUsageOptions {
   id?: string
 }
 
-export function recordUsage ({ module = '其他后台任务', task = '', chat = '', provider = '', model = '', usage, at = Date.now(), id = '' }: RecordUsageOptions = {}): UsageRow | null {
-  if (!state || !usage || !Number.isFinite(at)) return null
+function persistUsage ({ module = '其他后台任务', task = '', chat = '', provider = '', model = '', usage, at = Date.now(), id = '' }: RecordUsageOptions = {}): UsageRow | null {
+  if (!store || !usage || !Number.isFinite(at)) return null
   const row: UsageRow = { at, module, chat: String(chat || ''), provider: String(provider || ''), model: String(model || ''),
     in: count(usage.inputTokens), out: count(usage.outputTokens), cached: count(usage.cacheReadTokens), written: count(usage.cacheWriteTokens) }
-  const previous = id && indexed.get(id)
-  if (!row.in && !row.out && !row.cached && !row.written && !previous) return null
-  if (module === '记忆' && typeof task === 'string' && task) row.task = task
+  if (!row.in && !row.out && !row.cached && !row.written && !(id && store.module(id) !== undefined)) return null
+  if (module === '记忆' && task) row.task = task
   if (id) row.id = id
-  if (previous) {
-    // A revised settlement replaces the same billable attempt, including its timestamp.
-    const oldRows = state.days[dayKey(previous.at)]
-    const pos = oldRows?.indexOf(previous) ?? -1
-    if (pos >= 0) oldRows.splice(pos, 1)
-  }
-  ;(state.days[dayKey(at)] ||= []).push(row)
-  if (id) indexed.set(id, row)
-  prune()
-  saveSoon()
+  store.put(row)
   return row
 }
 
-// Embedding / rerank endpoints report input-only usage; the endpoint URL is not a billing provider ID.
+export function recordUsage(options: RecordUsageOptions = {}) {
+  try { return persistUsage(options) }
+  catch { writeFailed = true; return null }
+}
+
 export function recordRetrievalUsage (task: string, model: string, usage: { prompt_tokens?: number; total_tokens?: number } | null | undefined): void {
   const tokens = usage?.prompt_tokens ?? usage?.total_tokens
   if (count(tokens)) recordUsage({ module: '记忆', task, model, usage: { inputTokens: tokens } })
@@ -322,11 +200,18 @@ export function recordRetrievalUsage (task: string, model: string, usage: { prom
 // Mirrors DSH's tokenUsage fold: last settlement wins within a turn/step; retry starts a new charge.
 // Stored cursors make a repeated event / a resumed session idempotent without retaining chat content.
 export function recordSessionUsage (sessionId: string, chat: string, event: SessionEvent | null | undefined, target: { model?: string; provider?: string } = {}): void {
-  if (!state || !sessionId || !event || !Number.isSafeInteger(event.seq)) return
-  const old = state.sessions[sessionId]
+  if (!store || !sessionId || !event || !Number.isSafeInteger(event.seq)) return
+  if (!observed.has(event.type)) return
+  try {
+    store.transaction(() => fold(sessionId, chat, event, target))
+  } catch { writeFailed = true }
+}
+
+const observed = new Set(['model/selection','request/header','tool/call','llm/retry-started','assistant/message','assistant/attempt','compaction/summary'])
+function fold(sessionId: string, chat: string, event: SessionEvent, target: { model?: string; provider?: string }) {
+  const old = store.cursor(sessionId)
   if (old && event.seq <= old.seq) return
   const c: SessionCursor = old || { seq: -1, at: 0, model: '', provider: '', last: null }
-  state.sessions[sessionId] = c
   c.seq = event.seq
   c.at = Number.isFinite(event.time) ? event.time : Date.now()
   const d = event.data || {}
@@ -343,38 +228,48 @@ export function recordSessionUsage (sessionId: string, chat: string, event: Sess
     const usage = d.usage ?? (Array.isArray(chunks) ? chunks.findLast(x => x?.type === 'usage')?.usage : null)
     const summary = event.type === 'compaction/summary'
     if (usage) {
-      const replaces = !summary && c.last?.turn === d.turn && c.last?.step === d.step
+      const replaces = !summary && c.last && c.last.turn === d.turn && c.last?.step === d.step
       const id = replaces ? c.last.id : sessionId + ':' + event.seq
-      const module = summary ? '对话整理' : (replaces ? indexed.get(id)?.module : '') || (!chat.startsWith('system:') && c.tool?.turn === d.turn ? c.tool.module : '') || moduleLabel(chat)
-      recordUsage({ id, chat, module,
+      const module = summary ? '对话整理' : (replaces ? store.module(id) : '') || (!chat.startsWith('system:') && c.tool && c.tool.turn === d.turn ? c.tool.module : '') || moduleLabel(chat)
+      persistUsage({ id, chat, module,
         model: summary ? d.model || '' : c.model || target.model || '',
         provider: summary ? d.provider || '' : c.provider || target.provider || '', usage, at: c.at })
       if (!summary) { c.last = { turn: d.turn, step: d.step, id }; c.tool = null }
     }
   }
   // Only numeric accounting metadata is persisted, never event messages or headers.
-  saveSoon()
+  store.save(sessionId, c)
 }
-export function usageReport ({ now = Date.now(), range = '7' }: { now?: number; range?: string } = {}) {
-  prune(now)
-  const all = Object.values(state?.days || {}).flat().filter(r => r.at <= now)
-  const startToday = Date.parse(dayKey(now) + 'T00:00:00+08:00')
-  const bounds = { today: [startToday, now], yesterday: [startToday - DAY_MS, startToday - 1],
-    '7': [startToday - 6 * DAY_MS, now], '30': [startToday - 29 * DAY_MS, now], all: [0, now] }
-  const pick = Object.hasOwn(bounds, String(range)) ? String(range) : '7'
-  const rowsFor = key => all.filter(r => r.at >= bounds[key][0] && r.at <= bounds[key][1])
-  const rows = rowsFor(pick)
-  return {
-    referenceDate: REFERENCE_DATE, currency: pricing.currency || '元', days: KEEP_DAYS, range: pick, startedAt: state?.startedAt,
-    firstRecordAt: all.length ? all.reduce((n,r) => Math.min(n,r.at), Infinity) : null,
-    writeFailed,
-    ranges: Object.fromEntries([['today','today'],['yesterday','yesterday'],['last7','7'],['last30','30'],['all','all']].map(([label,key]) => [label,totalsOf(rowsFor(key))])),
+
+function dayStart(date: string): number {
+  const at = Date.parse(date + 'T00:00:00+08:00')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(at) || beijingDayKey(at) !== date) throw RangeError('日期须为有效的 YYYY-MM-DD')
+  return at
+}
+interface Query { now?: number; range?: string; from?: string; to?: string }
+export function usageReport({ now = Date.now(), range = '7', from = '', to = '' }: Query = {}) {
+  const today = dayStart(beijingDayKey(now)), first = today - (KEEP_DAYS - 1) * DAY_MS
+  store?.prune(first)
+  const bounds: Record<string, [number, number]> = { today: [today, now], yesterday: [today - DAY_MS, today - 1],
+    '7': [today - 6 * DAY_MS, now], '30': [today - 29 * DAY_MS, now], all: [first, now] }
+  if (range === 'custom') {
+    const start = dayStart(from), end = dayStart(to) + DAY_MS - 1
+    if (end < start) throw RangeError('结束日期须大于或等于开始日期')
+    bounds.custom = [Math.max(start, first), Math.min(end, now)]
+  }
+  if (!Object.hasOwn(bounds, range)) range = '7'
+  const rows = store?.rows(...bounds[range]) || []
+  const days = store?.days(first, now) || []
+  const ranges = Object.fromEntries(Object.entries({ today: 'today', yesterday: 'yesterday', last7: '7', last30: '30', all: 'all' }).map(([key,id]) => {
+    const [a,b] = bounds[id]
+    return [key, totalsOf(days.filter(d => d.day >= beijingDayKey(a) && d.day <= beijingDayKey(b)))]
+  }))
+  const conversation = (row: UsageRow) => Boolean(row.chat && !row.chat.startsWith('system:'))
+  return { range, days: KEEP_DAYS, startedAt: store?.startedAt, firstRecordAt: store?.first() ?? null, writeFailed, ranges,
     current: { ...totalsOf(rows),
-      byChat: groupBy(rows.filter(r => /^(group|private):/.test(r.chat || '')), r => r.chat),
-      background: totalsOf(rows.filter(r => !/^(group|private):/.test(r.chat || ''))),
-      byModule: groupBy(rows, moduleOf),
-      byMemoryTask: groupBy(rows.filter(r => moduleOf(r) === '记忆'), r => r.task || '未细分'),
-      byModel: groupBy(rows, r => [r.provider, r.model].filter(Boolean).join(' / ') || '未记录模型'),
+      byChat: groupBy(rows.filter(conversation), row => row.chat), background: totalsOf(rows.filter(row => !conversation(row))),
+      byModule: groupBy(rows, moduleOf), byMemoryTask: groupBy(rows.filter(row => moduleOf(row) === '记忆'), row => row.task || '未细分'),
+      byModel: groupBy(rows, row => [row.provider, row.model].filter(Boolean).join(' / ') || '未记录模型'),
     },
   }
 }

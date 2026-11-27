@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from './react.ts'
+import { consoleTheme } from './console-theme.ts'
 import { get } from '../api/api.ts'
 import { getPath, pct, setPath } from './format.ts'
 
@@ -535,6 +536,7 @@ body[data-ds-dark-theme] .ab-root,.ab-root.ab-dark{--ab-shadow:0 1px 2px rgba(0,
 .ab-grp-row>.ab-row{flex-direction:column;align-items:flex-start;gap:4px}
 .ab-grp-row>.ab-row>.ab-ctl{width:100%}
 .ab-code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:var(--ab-card-2);border:1px solid var(--ab-line);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-all;margin:6px 0 0}
+${consoleTheme}
 `
 
 function useStyle() {

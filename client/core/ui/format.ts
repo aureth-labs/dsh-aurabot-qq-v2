@@ -26,17 +26,6 @@ const fmtTokens = (n) => {
   if (scaled >= 1000 && unit < units.length - 1) { scaled = Number((scaled / 1000).toFixed(2)); unit++ }
   return String(scaled) + units[unit]
 }
-/**
- * 花费：「0.05 元」——「元」放后面（中文习惯），货币符号（¥ / $）才放前面。
- * 小于 1 分保留 4 位并去掉多余的 0（0.008 元），别显示成 0.00。
- */
-
-const fmtCost = (n, currency = '元') => {
-  const v = Number(n) || 0
-  if (v > 0 && v < 0.0001) return '< ' + fmtCost(0.0001, currency)
-  const text = v === 0 ? '0' : v < 0.01 ? v.toFixed(4).replace(/0+$/, '').replace(/\.$/, '') : v.toFixed(2)
-  return /[\u3400-\u9fff]/.test(String(currency)) ? text + ' ' + currency : String(currency) + text
-}
 /** chatId → 好认的名字：group:602656027 → 「群 602656027」，system:bili → 「后台 · bili」 */
 
 const chatLabel = (k) => {
@@ -72,4 +61,4 @@ const fmtDur = (ms) => { const sec = Math.max(0, Math.round(ms / 1000)); return 
 
 /** 装到哪里：列出每个盘和剩余空间，点一下选；也可以自己填路径。 */
 
-export { ptrToDots, setPath, fmtTokens, fmtCost, chatLabel, getPath, pct, timeAgo, copy, fmtBytes, fmtDur }
+export { ptrToDots, setPath, fmtTokens, chatLabel, getPath, pct, timeAgo, copy, fmtBytes, fmtDur }

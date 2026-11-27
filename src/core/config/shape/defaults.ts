@@ -32,7 +32,6 @@ export type ModuleSwitchTable = Record<string, ModuleSwitch>
 /** 自己写的模块的设置：{ 模块id: {...} }。 */
 export type ModuleSettings = Record<string, Record<string, unknown>>
 /** 自定义渠道费率：{ 渠道: { 完整模型名: 费率 } }。 */
-export type UsagePricing = Record<string, Record<string, number>>
 /** 按工作区单独覆盖的上报开关。 */
 export interface NoticeWorkspace { approval?: boolean; question?: boolean }
 
@@ -385,8 +384,6 @@ export const DEFAULTS = {
   modules: { commands: { enabled: false } } as ModuleSwitchTable,
   safeMode: false, // 安全模式：自己写的模块一个都不加载（排查问题用）
   ext: {} as ModuleSettings, // 自己写的模块的设置：{ 模块id: {...} }
-  // 自定义渠道费率按渠道和完整模型名匹配，与内置的官方美元参考价分开。
-  usage: { pricing: {} as UsagePricing },
   // 联动：让别的程序、DSH 里别的会话和插件也能用她
   bridge: {
     dshTools: false, // DSH 里别的会话（比如你平时写代码的会话）能用工具让她发 QQ、查记忆

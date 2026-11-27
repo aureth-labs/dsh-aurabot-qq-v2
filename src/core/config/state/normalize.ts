@@ -648,9 +648,6 @@ export function normalize (raw: RawConfig | null | undefined): AurabotConfig {
     for (const [k, v] of Object.entries(legacy)) if (!Object.hasOwn(autotelicExt, k)) autotelicExt[k] = v
   }
   c.safeMode = bool(c.safeMode, false)
-  // 花费估算的价格表：仅用于渠道估算；留空不影响官方参考费用
-  if (!isObj(c.usage)) c.usage = { pricing: {} }
-  if (!isObj(c.usage.pricing)) c.usage.pricing = {}
   c.bridge.dshTools = bool(c.bridge.dshTools, false)
   c.bridge.http = bool(c.bridge.http, false)
   c.bridge.token = String(c.bridge.token || '')
