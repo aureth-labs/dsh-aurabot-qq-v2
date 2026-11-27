@@ -144,9 +144,9 @@ export function registerModuleRoutes({
     sent.map((s) => ({
       chatId: s.chatId,
       note: s.note,
-      text: s.message.some((seg) => seg.type === 'text')
+      text: s.message.some((part) => part.type === 'text')
         ? s.message
-            .map((seg) => (seg.type === 'text' ? seg.data.text : seg.type === 'reply' ? '' : `[${seg.type}]`))
+            .map((part) => (part.type === 'text' ? part.attrs.content : part.type === 'quote' ? '' : `[${part.type}]`))
             .join('')
         : s.note,
     }))

@@ -1,3 +1,4 @@
+import { isPrivateRoom } from '../../../../../src/core/bot/room.ts'
 // 聊天流水：写一行、按天读、删一天、重启后回捞主动发言。
 // 只依赖传进来的取配置 / 取目录 / 清理规则，不碰 hub 的其他状态。
 
@@ -66,7 +67,7 @@ export function createChatLog(deps: ChatLogDeps) {
       const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       const dir = chatDir()
       mkdirSync(dir, { recursive: true })
-      const forgotten = String(chatId).startsWith('private:') && getConfig().memory?.enabled && getConfig().memory?.instantCommands !== false && parseMemoryCommand(text)?.action === 'forget'
+      const forgotten = isPrivateRoom(chatId) && getConfig().memory?.enabled && getConfig().memory?.instantCommands !== false && parseMemoryCommand(text)?.action === 'forget'
       const pics = chatImageRefs(images)
       const row = { t: timestamp, chatId, who, ...(uid ? { uid: String(uid) } : {}), text: redact(String(text).slice(0, 500)), ...(mid ? { mid: String(mid) } : {}), ...(pics.length ? { images: pics } : {}), ...(via ? { via } : {}), ...(proactive ? { proactive } : {}), ...(interaction?.length ? { interaction: [...new Set(interaction.map(String))] } : {}), ...(forgotten ? { forgottenAt: Date.now() } : {}) }
       openLog(dir).append(day, row)
@@ -94,10 +95,10 @@ export function createChatLog(deps: ChatLogDeps) {
     const said = (Array.isArray(message) ? message : [])
       .map((s) => {
         const type = s && s.type
-        if (type === 'text') return String(s.data?.text || '')
+        if (type === 'text') return String(s.attrs?.content ?? s.data?.text ?? '')
         if (type === 'image') return '[图片]'
         if (type === 'file') return '[文件]'
-        if (type === 'record') return '[语音]'
+        if (type === 'voice' || type === 'record') return '[语音]'
         return ''
       })
       .filter(Boolean)

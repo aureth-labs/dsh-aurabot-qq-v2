@@ -254,7 +254,7 @@ export function apply(ctx, config) {
       const bufs = (Array.isArray(buf) ? buf : [buf]).filter((item) => Buffer.isBuffer(item) && item.length)
       if (!bufs.length) { await progress(new Error('生图接口没有返回图片'), false); return { ok: false, message: '生图失败：生图接口没有返回图片。已尝试告知对方，请结合情况回应，不要说画好了。' } }
       if (!current()) return changed
-      const sent = await hub.sendSegments(chat.chatId, bufs.map((item) => ({ type: 'image', data: { file: 'base64://' + item.toString('base64') } })), `[生图] ${String(prompt).slice(0, 30)}`)
+      const sent = await hub.sendSegments(chat.chatId, bufs.map((item) => ({ type: 'image', attrs: { url: 'base64://' + item.toString('base64') } })), `[生图] ${String(prompt).slice(0, 30)}`)
       // 调试 / 调试模式下本来就不真发（sendSegments 只记日志、返回 null）：
       // 这一轮仍算画好了 —— 存盘、给编号、能看图，只是 QQ 里收不到；不能当失败。
       // 只有 null 才是“调试拦下”；明确的 false 仍按发送失败处理。

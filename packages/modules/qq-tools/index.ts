@@ -270,13 +270,13 @@ export function apply(ctx, config) {
         }
         if (!r) return { ok: false, message: '没发出去：这条被拦下了，或者内容是空的' }
         const sentTypes = r.sentTypes || [], queuedTypes = r.queuedTypes || []
-        const labels = { record: '语音', text: '文字', image: '图片', face: '表情', poke: '戳一戳' }
+        const labels = { voice: '语音', text: '文字', image: '图片', face: '表情', poke: '戳一戳' }
         const sent = sentTypes.length ? '已发送：' + [...new Set(sentTypes.map((t) => labels[t] || '其他消息'))].join('、') + '。' : ''
         if (r.failed) return { ok: false, sentTypes, queuedTypes, message: sent + (queuedTypes.length ? '还有消息在等待补发。' : '') + '部分发送失败或结果未确认；不要宣称全部成功，也不要自动重发整条消息，以免重复。' }
         if (queuedTypes.length) return { ok: true, sentTypes, queuedTypes, message: sent + '还有消息已排队等待补发，尚未确认送达，请勿重复发送。' }
         if (!sentTypes.length) return { ok: false, message: '没有确认发出的消息；可能被拦下、处于调试模式或总开关关闭，不能说已发送。' }
         const expectedVoice = voice === true || /<voice>/.test(body)
-        const fallback = expectedVoice && !sentTypes.includes('record') ? '本次没有发出语音；若已发文字，不要称为语音成功。' : ''
+        const fallback = expectedVoice && !sentTypes.includes('voice') ? '本次没有发出语音；若已发文字，不要称为语音成功。' : ''
         const mentions = r.missedAt?.length ? `但 ${r.missedAt.map((n) => '@' + n).join('、')} 没对上群里的人，只是文字、对方收不到提醒；真 @ 需要 <at:QQ号>。` : ''
         return { ok: true, sentTypes, queuedTypes, message: sent + fallback + mentions }
       },

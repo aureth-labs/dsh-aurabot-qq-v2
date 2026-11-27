@@ -32,14 +32,14 @@ export const sessionKey = (id) => {
  *   groupDecide(decision, info) → 改群聊「回不回、怎么回」的决定 { reply, mode, reason }
  *   prompt(content, info) → 改交给她的内容（文字 / 图片块）；返回 null 表示这次不交给她
  *   items(items, info) → 改拆好的回复（每条 { kind: text|voice|sticker|poke|image, value, replyTo }）
- *   send(message, info) → 改最终发出去的 OneBot 消息段；返回 null 表示不发
+ *   send(message, info) → 改最终发出去的消息元素；返回 null 表示不发
  *   model(selection, chat) → 这个聊天用哪个模型 { provider, model, reasoningEffort }（同步）；selection 已经按主人「按聊天选模型」的设置算过
  *   poke(event) → true 表示戳一戳被模块接管了
  */
-/** 一条出站消息段（OneBot v11 形状；各平台由适配器翻译）。 */
 export interface OutSegment {
   type: string
-  data?: Record<string, any>
+  attrs?: Record<string, any>
+  children?: OutSegment[]
 }
 export type OutMessage = OutSegment[]
 

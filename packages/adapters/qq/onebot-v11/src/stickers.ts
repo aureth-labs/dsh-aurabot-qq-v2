@@ -1,5 +1,5 @@
 import type { StickerSource } from '../../../../../src/core/message/media/sticker.ts'
-import { segmentBytes } from '../../../../../src/core/net/index.ts'
+import { elementBytes } from '../../../../../src/core/net/index.ts'
 import type { createOneBotConnection } from './connection.ts'
 
 export function stickerSource(connection: ReturnType<typeof createOneBotConnection>) {
@@ -18,10 +18,10 @@ export function stickerSource(connection: ReturnType<typeof createOneBotConnecti
       }
       return {
         selfId, active,
-        read: (el, maxBytes) => segmentBytes({ data: {
+        read: (el, maxBytes) => elementBytes({ attrs: {
           url: String(el.attrs.url || '').replace(/^data:image\/[\w.+-]+;base64,/i, 'base64://'),
           file: String(el.attrs.file || el.attrs.url || ''),
-        } }, { call }, { maxBytes, allowLocal: false, timeoutMs: 5000 }),
+        } }, { internal: (action, params) => call(action, params ?? {}) as any }, { maxBytes, allowLocal: false, timeoutMs: 5000 }),
         add: async path => String((await call('add_custom_face', { file: path }))?.emoji_id ?? ''),
         rename: async (id, name) => { await call('modify_custom_face', { emoji_id: id, desc: name.slice(0, 20) }) },
         remove: async id => { await call('delete_custom_face', { emoji_id: id }) },

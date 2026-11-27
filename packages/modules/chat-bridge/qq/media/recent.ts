@@ -1,12 +1,11 @@
-// 最近图片 / 表情的短期引用：按聊天保留 6 张，重启恢复时不重置 30 分钟有效期。
 import { readJson, writeJson } from '../../../../../src/core/store/index.ts'
-import type { OutSegment } from '../context/context.ts'
+import type { Element } from '../../../../../src/types/core/element.ts'
 
 export interface RecentItem {
   at: number
   userId: string
   sticker: boolean
-  seg: OutSegment
+  element: Element
   messageId?: string
   imageIndex?: number
 }
@@ -22,7 +21,7 @@ export function createRecentMedia({ file, log }: Options = {}) {
   function valid(item: RecentItem, now: number) {
     return item && Number.isFinite(item.at) && item.at > 0 && item.at <= now && now - item.at < TTL
       && typeof item.userId === 'string' && item.userId.length > 0 && typeof item.sticker === 'boolean'
-      && ['image', 'mface'].includes(item.seg?.type) && item.seg.data && typeof item.seg.data === 'object' && !Array.isArray(item.seg.data)
+      && item.element?.type === 'image' && item.element.attrs && typeof item.element.attrs === 'object' && !Array.isArray(item.element.attrs)
   }
 
   function save() {
@@ -42,7 +41,6 @@ export function createRecentMedia({ file, log }: Options = {}) {
     return changed
   }
 
-  // 缺失或损坏的文件当作空缓存，不影响聊天；收到新图片时会重建。
   const raw = file ? readJson(file, () => ({})) : {}
   let invalid = false
   for (const [chatId, items] of Object.entries(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {})) {

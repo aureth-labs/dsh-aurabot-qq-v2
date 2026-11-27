@@ -42,7 +42,7 @@ export function createPrimaryChat({
     dsh: ctx,
     getConfig,
     log: logger.child('chat'),
-    onebot,
+    bot: () => onebot.bot,
     outbox,
     stickers,
     tts,
@@ -112,14 +112,14 @@ export function createPrimaryChat({
     toolsGeneration: () => (modules() ? modules().generation?.() || 0 : 0),
     hooks: {
       media: () => modules()?.services.get('primary-chat-media')?.current(),
-      message: (msg) => modules().claim('onebot/message', msg),
+      message: (msg) => modules().claim('chat/message', msg),
       reply: (text, info) => modules().filter('reply', text, info),
       secrets: () => [],
       deniedTools: () => deniedTools(),
       groupDecide: (decision, info) => modules().filter('group/decide', decision, info),
       prompt: (content, info) => modules().filter('prompt', content, primaryContext(info)),
       items: (items, info) => modules().filter('reply/items', items, info),
-      send: (message, info) => modules().filter('onebot/before-send', message, info),
+      send: (message, info) => modules().filter('chat/before-send', message, info),
       model: (sel, chat) => {
         const { target } = primaryContext({ chat })
         const self = onebot.bot?.selfId

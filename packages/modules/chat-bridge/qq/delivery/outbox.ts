@@ -1,25 +1,18 @@
-// 网关未就绪时的本地发送队列：只在“确定没发出去”时入队，连接后补发。
-// 不处理超时/不确定的调用，避免重复发消息。
-
 import { chmodSync, existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
 import { dataDir, ensureDir } from '../../../../../src/core/store/index.ts'
 
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
 type CreateOutboxOptions = Partial<Record<'file' | 'log' | 'now' | 'maxItems' | 'maxBytes', any>>
-/** 迁移期选项对象：属性名固定，值按调用方传。 */
-type AddOptions = Partial<Record<'action' | 'params' | 'chatId' | 'note' | 'kind' | 'ttlMs' | 'incomingReply' | 'deliveryScope' | 'proactive', any>>
+type AddOptions = Partial<Record<'message' | 'chatId' | 'note' | 'kind' | 'ttlMs' | 'incomingReply' | 'deliveryScope' | 'proactive', any>>
 
 const DEFAULT_TTL = 5 * 60_000
 const DEFAULT_MAX_ITEMS = 100
 const DEFAULT_MAX_BYTES = 4 * 1024 * 1024
 
-/** 一条待补发的消息（落盘在 dataDir/outbox/queue.json）。 */
 export interface OutboxItem {
   id: string
-  action: string
-  params: { message?: Array<{ type: string; data?: Record<string, unknown> }>; [key: string]: unknown }
+  message: Array<{ type: string; attrs?: Record<string, unknown> }>
   chatId: string
   note: string
   kind: string
@@ -30,7 +23,6 @@ export interface OutboxItem {
   expiresAt: number
   attempts: number
   nextAt: number
-  /** 补发失败的原因（只在内存里，不入队文件）。 */
   lastError?: string
 }
 
@@ -50,7 +42,7 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
     try {
       if (!existsSync(file)) return
       const parsed = JSON.parse(readFileSync(file, 'utf8'))
-      items = Array.isArray(parsed) ? parsed.filter((x) => x && x.id && x.action) : []
+      items = Array.isArray(parsed) ? parsed.filter((x) => x && x.id && Array.isArray(x.message) && x.chatId) : []
     } catch (error) {
       log?.warn?.('发送队列读不出来，已忽略旧文件：', error.message)
       items = []
@@ -81,21 +73,14 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
     return items.map((x) => ({ ...x }))
   }
 
-  /**
-   * 加入一条待发送消息。只接受 send_private_msg / send_group_msg；
-   * 图片 base64 等过大内容不入队，避免队列文件失控。
-   */
-  function add ({ action, params, chatId = '', note = '', kind = 'reply', ttlMs, incomingReply = false, deliveryScope, proactive = '' } : AddOptions = {}) {
-    if (action !== 'send_private_msg' && action !== 'send_group_msg') {
-      return { ok: false, message: '不是可补发的消息类型' }
-    }
-    // 媒体消息（语音 / 图片 / 文件）不落盘补发：体积大，且可能已经过了合适的时机。
-    const segs = Array.isArray(params?.message) ? params.message : []
-    if (segs.some((seg) => !seg || !['text', 'at', 'reply'].includes(seg.type))) {
+  function add ({ message, chatId = '', note = '', kind = 'reply', ttlMs, incomingReply = false, deliveryScope, proactive = '' } : AddOptions = {}) {
+    const parts = Array.isArray(message) ? message : []
+    if (!chatId || !parts.length) return { ok: false, message: '不是可补发的消息' }
+    if (parts.some((part) => !part || !['text', 'at', 'quote', 'face'].includes(part.type))) {
       return { ok: false, message: '媒体消息不放进补发队列' }
     }
     load()
-    const text = JSON.stringify(params || {})
+    const text = JSON.stringify(parts)
     if (Buffer.byteLength(text, 'utf8') > maxBytes) return { ok: false, message: '消息太大，不放进补发队列' }
     prune()
     if (items.length >= maxItems) {
@@ -106,14 +91,12 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
     const at = now()
     const item = {
       id: randomUUID(),
-      action,
-      params: params || {},
+      message: parts,
       chatId: String(chatId || ''),
       note: String(note || '').slice(0, 120),
       kind,
       ...(incomingReply ? { incomingReply: true } : {}),
       ...(deliveryScope ? { deliveryScope } : {}),
-      // 主动发言的来路（#327）：补发成功后要按原规则留痕，否则她断线恢复后不记得自己发过什么。
       ...(proactive ? { proactive: String(proactive).slice(0, 40) } : {}),
       createdAt: at,
       expiresAt: at + Math.max(10_000, Number(ttlMs) || ttlForKind(kind)),
@@ -132,13 +115,8 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
     if (items.length !== before) save()
   }
 
-  /**
-   * 连接后按顺序补发。call(action, params, { retries: 0 }) 由调用方提供。
-   * maySend(item) 返回 false 的条目丢弃（beta 的模式切换规则）；onFlushed(item, result) 在补发成功后回调送达回执。
-   * 仅 transport 失败保留；uncertain / 业务错误丢弃，避免重复发或永远堵住队列。
-   */
   async function flush (
-    call: (action: string, params: OutboxItem['params'], opts: { retries: number; timeoutMs: number }) => Promise<unknown>,
+    call: (item: OutboxItem) => Promise<unknown>,
     maySend: (item: OutboxItem) => boolean = () => true,
     onFlushed?: (item: OutboxItem, result: unknown) => void,
   ) {
@@ -150,7 +128,7 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
       if (item.expiresAt <= at) {
         remove(item.id)
         dropped++
-        log?.warn?.(`补发过期，丢弃：${item.note || item.chatId || item.action}`)
+        log?.warn?.(`补发过期，丢弃：${item.note || item.chatId}`)
         continue
       }
       if (!maySend(item)) {
@@ -160,21 +138,20 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
       }
       if (Number(item.nextAt) > at) continue
       try {
-        const result = await call(item.action, item.params, { retries: 0, timeoutMs: 30_000 })
+        const result = await call(item)
         remove(item.id)
         if (result && typeof result === 'object' && 'ok' in result && result.ok === false) {
           dropped++
           continue
         }
         sent++
-        log?.info?.(`补发成功：${item.note || item.chatId || item.action}`)
+        log?.info?.(`补发成功：${item.note || item.chatId}`)
         try { onFlushed?.(item, result) } catch (error) { log?.warn?.('补发回执通知失败：', error?.message || error) }
       } catch (error) {
         if (error?.uncertain) {
-          // 可能已经发出去了，宁可少发一次，不能重复。
           remove(item.id)
           dropped++
-          log?.warn?.(`补发结果不确定，丢弃避免重复：${item.note || item.chatId || item.action}`)
+          log?.warn?.(`补发结果不确定，丢弃避免重复：${item.note || item.chatId}`)
           continue
         }
         if (!error?.transport) {
@@ -191,7 +168,7 @@ export function createOutbox ({ file = dataDir('outbox', 'queue.json'), log, now
           raw.nextAt = item.nextAt
           save()
         }
-        log?.warn?.(`补发时网关仍不可用，留队重试：${item.note || item.chatId || item.action}`)
+        log?.warn?.(`补发时网关仍不可用，留队重试：${item.note || item.chatId}`)
         break
       }
     }

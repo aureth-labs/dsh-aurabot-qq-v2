@@ -21,12 +21,11 @@ export interface FetchOptions {
 /** fetchGuarded 额外允许注入 fetch（测试用）。 */
 interface GuardedOptions extends FetchOptions { fetchImpl?: typeof fetch }
 
-/** 一个 OneBot 消息段里我们关心的字段。 */
-interface ImageSegment { data?: { url?: string; file?: string; path?: string } | null }
+interface MediaElement { type?: string; attrs?: { url?: unknown; file?: unknown; path?: unknown } | null }
 
-/** 需要网关换真实地址时用的最小接口。 */
-export interface OneBotGateway {
-  call(action: string, params: Record<string, unknown>, opts?: { timeoutMs?: number }): Promise<{ file?: string; url?: string } | null | undefined>
+export interface MediaResolver {
+  supports?(capability: string): boolean
+  internal?<T = any>(action: string, params?: Record<string, unknown>, options?: { timeoutMs?: number }): Promise<T>
 }
 
 /** IPv4 地址是不是内网 / 本机 / 保留地址。 */
@@ -166,13 +165,9 @@ export async function fetchGuarded (url: string, o: GuardedOptions = {}): Promis
   throw new Error('重定向次数太多')
 }
 
-/**
- * 取一个 OneBot 图片 / 表情段的字节：先试 url，再试 file；都不行就问网关 get_image 换真实地址。
- * （部分协议端对内联来源的图片只给 `file: <md5>.png`，url 为空。）
- */
-export async function segmentBytes (seg: ImageSegment | null | undefined, onebot?: OneBotGateway | null, o: FetchOptions = {}): Promise<Buffer> {
-  const d = (seg && seg.data) || {}
-  const tries = [d.url, d.file, d.path].filter((x) => typeof x === 'string' && x.trim())
+export async function elementBytes (el: MediaElement | null | undefined, bot?: MediaResolver | null, o: FetchOptions = {}): Promise<Buffer> {
+  const attrs = (el && el.attrs) || {}
+  const tries = [attrs.url, attrs.file, attrs.path].filter((x): x is string => typeof x === 'string' && Boolean(x.trim()))
   let lastErr = null
   for (const src of tries) {
     try {
@@ -181,9 +176,9 @@ export async function segmentBytes (seg: ImageSegment | null | undefined, onebot
       lastErr = error
     }
   }
-  if (onebot && d.file) {
+  if (bot?.internal && typeof attrs.file === 'string' && attrs.file) {
     try {
-      const info = await onebot.call('get_image', { file: d.file }, { timeoutMs: 15000 })
+      const info = await bot.internal<{ file?: string; url?: string }>('get_image', { file: attrs.file }, { timeoutMs: 15000 })
       for (const src of [info?.file, info?.url].filter(Boolean)) {
         try {
           return await fetchImage(src, o)
@@ -195,7 +190,7 @@ export async function segmentBytes (seg: ImageSegment | null | undefined, onebot
       lastErr = error
     }
   }
-  throw lastErr || new Error('这个图片段没有可用的地址')
+  throw lastErr || new Error('这个图片没有可用的地址')
 }
 
 /** 把字节数写成「10.3MB」这种人话。错误信息里带上实际大小和上限，模型才知道该怎么补救。 */

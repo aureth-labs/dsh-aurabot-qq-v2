@@ -1,3 +1,4 @@
+import { isGroupRoom, isPrivateRoom, userOf } from '../../../../../src/core/bot/room.ts'
 // 会话表与聊天流水按人格分开存：入口固定了人格，这里按「这件事的人格」取目录。
 
 import { readJson, writeJson } from '../../../../../src/core/store/index.ts'
@@ -24,7 +25,7 @@ export function createSessionStore({ getConfig }: CreateSessionStoreOptions) {  
   }
   const memoryResetAt = (qq) => Number(memoryCutoffs()[qq]) || 0
   function chatMemoryCutoff(chatId, uid) {
-    const qq = chatId.startsWith('private:') ? chatId.slice(8) : chatId.startsWith('group:') ? uid : ''
+    const qq = isPrivateRoom(chatId) ? userOf(chatId) : isGroupRoom(chatId) ? uid : ''
     return memoryResetAt(qq)
   }
   function isBeforeMemoryReset(chatId, uid, at) {

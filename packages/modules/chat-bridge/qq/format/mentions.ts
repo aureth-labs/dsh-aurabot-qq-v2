@@ -39,10 +39,10 @@ function longestName(rest, byName) {
 export function expandMentions(segs, members, missed = []) {
   const byName = memberNames(members)
   const out = []
-  const pushText = (t) => { if (t) out.push({ type: 'text', data: { text: t } }) }
+  const pushText = (t) => { if (t) out.push({ type: 'text', attrs: { content: t } }) }
   for (const seg of segs) {
     if (seg.type !== 'text') { out.push(seg); continue }
-    const s = seg.data.text
+    const s = String(seg.attrs?.content ?? seg.data?.text ?? '')
     let buf = ''
     let i = 0
     while (i < s.length) {
@@ -50,7 +50,7 @@ export function expandMentions(segs, members, missed = []) {
       const tag = s[i] === '<' ? AT_TAG.exec(s) : null
       if (tag && tag.index === i) {
         const qq = resolveMember(tag[1], byName)
-        if (qq) { pushText(buf); buf = ''; out.push({ type: 'at', data: { qq } }) }
+        if (qq) { pushText(buf); buf = ''; out.push({ type: 'at', attrs: { id: qq } }) }
         else { missed.push(tag[1].replace(/^@/, '')); buf += '@' + tag[1].replace(/^@/, '') }
         i += tag[0].length
         continue
@@ -59,7 +59,7 @@ export function expandMentions(segs, members, missed = []) {
         const hit = longestName(s.slice(i + 1), byName)
         if (hit) {
           pushText(buf); buf = ''
-          out.push({ type: 'at', data: { qq: hit.qq } })
+          out.push({ type: 'at', attrs: { id: hit.qq } })
           i += 1 + hit.len
           if (i < s.length && !/\s/.test(s[i])) buf += ' '
           continue

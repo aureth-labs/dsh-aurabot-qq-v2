@@ -759,41 +759,39 @@ export function cleanOutboundText(text, { warn, promptSources, fingerprint, user
 /** 出站正文上限：模型失控时（2026-11-13 08:02 一次吐出 48263 字「在吗」）别把整段原样甩给 OneBot。 */
 export const MAX_OUTBOUND_CHARS = 1500
 
-/** 超过上限就把文字段按顺序截断，引用/@/媒体段原样保留。 */
+const isElementPart = (part) => Boolean(part?.attrs) && !part.data
+const partText = (part) => String((isElementPart(part) ? part.attrs.content : part.data?.text) ?? '')
+const withPartText = (part, text) => isElementPart(part)
+  ? { ...part, attrs: { ...part.attrs, content: text } }
+  : { ...part, data: { ...part.data, text } }
+
 export function capOutboundSegments (message, max = MAX_OUTBOUND_CHARS) {
-  const total = message.filter((seg) => seg.type === 'text').reduce((n, seg) => n + String(seg.data?.text || '').length, 0)
+  const total = message.filter((part) => part.type === 'text').reduce((n, part) => n + partText(part).length, 0)
   if (total <= max) return { message, trimmed: false, total }
   let left = max
   const out = []
-  for (const seg of message) {
-    if (seg.type !== 'text') { out.push(seg); continue }
+  for (const part of message) {
+    if (part.type !== 'text') { out.push(part); continue }
     if (left <= 0) continue
-    const text = String(seg.data?.text || '')
-    const keep = text.slice(0, left)
+    const keep = partText(part).slice(0, left)
     left -= keep.length
-    if (keep) out.push({ ...seg, data: { ...seg.data, text: keep } })
+    if (keep) out.push(withPartText(part, keep))
   }
-  if (!out.some((seg) => seg.type === 'text')) return { message: [], trimmed: true, total }
+  if (!out.some((part) => part.type === 'text')) return { message: [], trimmed: true, total }
   return { message: out, trimmed: true, total }
 }
 
-/** 最终平台出口：合并检查整条消息的文字段，避免调用被拆段绕过；引用、@ 和媒体段原样保留。 */
 export function cleanOutboundSegments(message, options) {
-  const texts = message.filter((seg) => seg.type === 'text')
-  if (!texts.length) return message
-  // 相邻 text 段直接拼；中间隔着 image / at / reply 时插入换行当段边界。
-  // 假媒体动作的括号正则不跨换行，所以「（图片」+ 真图 +「发出）」不会被拼成假动作；
-  // 工具调用/提示词等其它清洗仍允许跨段识别（它们本来就可能在多个 text 段里被拆开）。
+  if (!message.some((part) => part.type === 'text')) return message
   let raw = ''
   const spans = []
   let prevText = false
-  for (const seg of message) {
-    if (seg.type !== 'text') { prevText = false; continue }
+  for (const part of message) {
+    if (part.type !== 'text') { prevText = false; continue }
     if (raw && !prevText) raw += '\n'
-    const start = raw.length
-    const value = String(seg.data?.text || '')
-    raw += value
-    spans.push({ seg, start, end: start + value.length })
+    const begin = raw.length
+    raw += partText(part)
+    spans.push({ start: begin, end: raw.length })
     prevText = true
   }
   let ranges
@@ -801,12 +799,11 @@ export function cleanOutboundSegments(message, options) {
   if (clean === raw) return message
   const result = []
   let spanIndex = 0
-  for (const seg of message) {
-    if (seg.type !== 'text') { result.push(seg); continue }
+  for (const part of message) {
+    if (part.type !== 'text') { result.push(part); continue }
     const span = spans[spanIndex++]
     const value = clean ? withoutToolRanges(raw, ranges, span.start, span.end) : ''
-    if (value) result.push({ ...seg, data: { ...seg.data, text: value } })
+    if (value) result.push(withPartText(part, value))
   }
-  // 只剩引用和 @ 不能单独发，尤其是自动 @ 后面只跟着一个结束标记时。
-  return result.some((seg) => seg.type === 'text' ? seg.data.text.trim() : !['reply', 'at'].includes(seg.type)) ? result : []
+  return result.some((part) => part.type === 'text' ? partText(part).trim() : !['reply', 'quote', 'at'].includes(part.type)) ? result : []
 }

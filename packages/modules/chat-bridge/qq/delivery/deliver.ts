@@ -1,3 +1,4 @@
+import { isGroupRoom, groupOf } from '../../../../../src/core/bot/room.ts'
 // 一条回复的落地：清洗、污染闸、拆条、语音/表情概率、逐条发送、回执与流水。
 // 发送原语在 outbound.ts；这里只决定「发什么、怎么拆、哪些真发出去了」。
 
@@ -195,7 +196,7 @@ export function createDeliver(deps: DeliverDeps) {
       if (all.length <= cfg.voice.autoMaxChars && Math.random() < cfg.voice.autoChance * mood().voice) items = [{ kind: 'voice', value: all }]
     }
     items = limitReplyStickers(items)
-    const inGroup = chatId.startsWith('group:')
+    const inGroup = isGroupRoom(chatId)
     // 群里别刷屏：一段最多 3 条。超了不静默截断——整段并成一条发出去，条数照样不涨
     if (inGroup && items.length > 3) {
       const mergedText = items.filter((i) => i.kind === 'text').map((i) => i.value.trim()).filter(Boolean).join('\n')
@@ -231,13 +232,13 @@ export function createDeliver(deps: DeliverDeps) {
     // 钩子改写后仍走同一个清洗，保留每条的语音/引用元数据。
     items = cleanOutboundSegments(items.map((item) => ({
       type: ['text', 'voice'].includes(item.kind) ? 'text' : item.kind,
-      data: { text: item.value }, item,
+      attrs: { content: item.value }, item,
     })), { ...cleaningFor(chatId), allowPromptEcho: false, onPromptDecision: (allow) => { outputScope.getStore().allowPromptEcho = allow } })
-      .map((seg) => seg.type === 'text' ? { ...seg.item, value: seg.data.text } : seg.item)
+      .map((part) => part.type === 'text' ? { ...part.item, value: part.attrs.content } : part.item)
     if (!items.length) return silenceTurn(chatId, stickersFiltered ? '本轮表情被概率过滤，没有消息可发' : '回复清理后为空，没有消息可发')
     // 一段只有一个人明确 @ / 引用她时，第一条回复引用并 @ 那个人；多人同时叫她不猜。
     // 模型明确选了引用编号时尊重它，不再自动引用另一条。
-    const refs = inGroup ? groupRefs.get(chatId.slice(6)) || {} : {}
+    const refs = inGroup ? groupRefs.get(groupOf(chatId)) || {} : {}
     const turnRefs = new Map<string, { mid: string; uid?: string; direct?: boolean }>((opts.quoteIds || []).map(id => [String(id), { mid: String(id) }]))
     for (const ref of Object.values(refs) as { mid: string }[]) {
       if (turnRefs.has(String(ref.mid))) turnRefs.set(String(ref.mid), ref)
@@ -296,7 +297,7 @@ export function createDeliver(deps: DeliverDeps) {
     const receipt = { sentTypes: [...outputScope.getStore().sentTypes], queuedTypes: [...outputScope.getStore().queuedTypes] }
     if (failures.length && failures.length >= items.filter((i) => i.kind !== 'poke').length) return { missedAt, failed: failures.length, errors: failures, sent: sentTexts.join(' '), ...receipt }
     if (inGroup) {
-      const gid = chatId.slice(6)
+      const gid = groupOf(chatId)
       const said = (groupSaid.get(gid) || []).filter((t) => Date.now() - t < 3600_000)
       said.push(Date.now())
       groupSaid.set(gid, said)

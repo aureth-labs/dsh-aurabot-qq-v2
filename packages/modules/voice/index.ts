@@ -169,12 +169,14 @@ export function apply(ctx, config) {
   ctx.server.post('/voice/asr-last', async (req) => {
     const b = await http.body(req)
     const uid = Number(b.userId || ctx.root.config.ownerQQ)
-    const h = await onebot.call('get_friend_msg_history', { user_id: uid, count: 30 })
-    const recs = (h?.messages || []).filter((m) => String(m.user_id) === String(uid)).flatMap((m) => (m.message || []).filter((s) => s.type === 'record').map((s) => ({ seg: s, time: m.time })))
+    const bot = onebot.bot
+    if (!bot) return { ok: false, message: '机器人不在线' }
+    const list = await bot.getMessageList(String(uid), { channelType: 'private', limit: 30 })
+    const recs = list.filter((m) => String(m.userId) === String(uid)).flatMap((m) => (m.elements || []).filter((el) => el.type === 'voice').map((el) => ({ element: el, time: (m.createdAt || 0) / 1000 })))
     const last = recs.at(-1)
     if (!last) return { ok: false, message: '最近的聊天里没有对方发的语音' }
     const t = Date.now()
-    const text = await hub.localTranscribe(last.seg)
+    const text = await hub.localTranscribe(last.element)
     return { ok: Boolean(text), heard: text, at: new Date(last.time * 1000).toLocaleString(), ms: Date.now() - t }
   })
   ctx.server.post('/voice/asr-test', async (req) => {

@@ -13,7 +13,7 @@ export function createTurnSubmission({
   getConfig,
   log,
   dsh,
-  onebot,
+  bot: botOf,
   activity,
   targetOf,
   assertActive,
@@ -66,7 +66,7 @@ export function createTurnSubmission({
       const count = Math.min(50, Math.max(1, Number(cfg.chat?.seedHistoryCount) || 20))
       const tgt = targetOf(chat.chatId)
       if (!tgt) return content
-      const bot = onebot.bot
+      const bot = botOf()
       if (!bot) return content
       const list = await bot.getMessageList(tgt.id, { channelType: tgt.kind, limit: count })
       const lines = flatHistory(filterHistory(chat.chatId, list), bot.selfId, {

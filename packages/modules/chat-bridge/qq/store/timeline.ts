@@ -1,3 +1,4 @@
+import { isGroupRoom, isPrivateRoom, userOf } from '../../../../../src/core/bot/room.ts'
 import { join } from 'node:path'
 import { dataDir, writeJson } from '../../../../../src/core/store/index.ts'
 import { existsSync, readFileSync } from 'node:fs'
@@ -40,7 +41,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
       (r) =>
         (message.contextAt ?? message.at) <= r.at &&
         (chatId === 'private:' + r.qq ||
-          (chatId.startsWith('group:') && message.role === 'user' && message.speakerId === r.qq)) &&
+          (isGroupRoom(chatId) && message.role === 'user' && message.speakerId === r.qq)) &&
         (!r.query || matchesMemoryKeyword(message.text, r.query)),
     )
 
@@ -123,7 +124,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
         marked += store.mutate(day, (row) => {
           const own =
             row.chatId === `private:${qq}` ||
-            (String(row.chatId).startsWith('group:') && String(row.uid || '') === String(qq))
+            (isGroupRoom(row.chatId) && String(row.uid || '') === String(qq))
           if (!own || row.forgottenAt || (query && !matchesMemoryKeyword(row.text, query))) return
           return { ...row, forgottenAt: Date.now() }
         })
@@ -138,7 +139,7 @@ export function createTimeline({ getConfig, log, store, hooks, saidElsewhere, pr
 
   function noteTurnActivity(chatId, sentItems) {
     activity.lastChatAt = Date.now()
-    if (chatId.startsWith('private:')) activity.lastPrivateAt.set(chatId.slice(8), Date.now())
+    if (isPrivateRoom(chatId)) activity.lastPrivateAt.set(userOf(chatId), Date.now())
     if (chatId === `private:${getConfig().ownerQQ}`) {
       activity.lastBotToOwner = {
         at: Date.now(),

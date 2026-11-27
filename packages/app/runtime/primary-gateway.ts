@@ -1,5 +1,5 @@
-import { createOutbox } from '../../adapters/qq/onebot-v11/src/outbox.ts'
-import { eventForHub } from '../../adapters/qq/onebot-v11/src/index.ts'
+import { createOutbox } from '../../modules/chat-bridge/qq/delivery/outbox.ts'
+import { groupOf, isGroupRoom, isPrivateRoom } from '../../../src/core/bot/room.ts'
 import { Session } from '../../../src/core/pipeline/session.ts'
 import { groupResponseMode } from '../../../src/chat/policy/rules/access.ts'
 import { toText } from '../../../src/core/message/element/element.ts'
@@ -49,7 +49,6 @@ export function createPrimaryGateway({
         .catch((error) => log.debug('处理通知出错：', error.message))
     }
   }
-  // 网关未就绪时先攒着：只有「确定没发出去」的消息才入队，连接后按 TTL 补发。
   const outbox = createOutbox({ log: logger.child('outbox') })
   // 网关预热：从第一次 connecting 到 connected 之间的时间，用于面板显示「已等 N 秒」而不是干等
   let gatewayWarmSince = 0
@@ -79,31 +78,26 @@ export function createPrimaryGateway({
     if (flushingOutbox || onebot.state !== 'connected' || !onebot.verified) return
     flushingOutbox = true
     try {
-      const r = await outbox.flush(
-        (action, params, opts) => onebot.call(action, params, { ...opts, retries: 0 }),
+      const hub = getHub()
+      if (!hub) return
+      const r = await hub.flushOutbox(
         (item) =>
           !item.incomingReply ||
-          item.action !== 'send_group_msg' ||
-          groupResponseMode(getConfig(), item.params?.group_id) === 'chat',
+          !isGroupRoom(item.chatId) ||
+          groupResponseMode(getConfig(), groupOf(item.chatId)) === 'chat',
         (item, result) => {
-          // #327：主动发言入队时带了来路，补发成功后要补回聊天流水与「别处说过」，否则断线恢复后她不记得发过什么。
           if (item.proactive) {
             try {
-              getHub().noteProactive(item.chatId, item.params?.message || [], {
+              hub.noteProactive(item.chatId, item.message || [], {
                 proactiveCause: item.proactive,
               })
             } catch (error) {
               logger.child('outbox').warn('补发后补记主动发言失败：', error.message)
             }
           }
-          if (
-            item.action !== 'send_private_msg' ||
-            item.chatId !== `private:${item.params?.user_id}` ||
-            (item.deliveryScope as any)?.botQQ !== onebot.login.uin ||
-            (result as any)?.queued
-          )
-            return
-          personaMemoryRuntime.confirmDelivery(item.chatId, (result as any)?.message_id, item.deliveryScope)
+          if (!isPrivateRoom(item.chatId) || (item.deliveryScope as any)?.botQQ !== onebot.login.uin || (result as any)?.queued) return
+          const sent = Array.isArray(result) ? result[0] : (result as any)?.message_id ?? (result as any)?.id
+          personaMemoryRuntime.confirmDelivery(item.chatId, sent, item.deliveryScope)
         },
       )
       if (r.sent || r.dropped || r.left)
@@ -159,15 +153,13 @@ export function createPrimaryGateway({
   )
 
   function respond(session, registry) {
-    const event =
+    const primarySession =
       session instanceof Session &&
       session.bot.platform === 'qq' &&
       session.bot.id === defaultOneBotId &&
       registry.get(defaultOneBotId, 'qq') === session.bot
-        ? eventForHub(session)
-        : undefined
     const hub = getHub()
-    if (event && hub) {
+    if (primarySession && hub) {
       if (session.sentLog?.length) {
         const chatId = session.type === 'private' ? `private:${session.userId}` : `group:${session.channelId}`
         for (const item of session.sentLog.splice(0)) {
@@ -178,7 +170,7 @@ export function createPrimaryGateway({
           }
         }
       }
-      return { result: hub.onMessage(event, Boolean(session.quote?.deletedAt)) }
+      return { result: hub.onMessage(session, Boolean(session.quote?.deletedAt)) }
     }
   }
   return {

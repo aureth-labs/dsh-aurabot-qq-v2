@@ -1,7 +1,6 @@
 import { mediaLimits } from '../../../../../src/core/message/media/limits.ts'
 import { personaScope } from '../../../../../src/persona/personas.ts'
-import { fromOneBot } from '../../../../adapters/qq/onebot-v11/src/element.ts'
-import { parseMessageEvent } from '../../../../adapters/qq/onebot-v11/src/message/parse.ts'
+import { parseInbound } from './parse.ts'
 import { ignoredGroupMember } from '../../../../../src/chat/inbound/filter/member-filter.ts'
 import { isOwner, checkAllowed, shouldObserveGroup, groupResponseMode } from '../../../../../src/chat/policy/rules/access.ts'
 import { ownerAuthorizationRevision } from '../../../../../src/core/config/index.ts'
@@ -49,22 +48,23 @@ export function createIncomingMessages({
     quotes,
   } = media
   const { info: quotedInfo, inline: quoteInline, images: quoteImages } = quotes
-  const { stats, privateSources, logChat, refreshFriends, repliedToBot, sendSegments } = conversation
+  const { stats, logChat, refreshFriends, repliedToBot, sendSegments } = conversation
 
-  function onMessage(event, quoteDeleted = false) {
-    return personaScope.run(pnow(), () => onPersonaMessage(event, quoteDeleted))
+  function onMessage(session, quoteDeleted = false) {
+    return personaScope.run(pnow(), () => onPersonaMessage(session, quoteDeleted))
   }
 
-  async function onPersonaMessage(event, quoteDeleted: boolean) {
+  async function onPersonaMessage(session, quoteDeleted: boolean) {
     if (isDisposed()) return
     const account = currentMedia()
-    if (!account || (account.selfId && event.self_id && account.selfId !== String(event.self_id))) return
-    activity.selfId = String(event.self_id || activity.selfId || getConfig().botQQ)
+    const self = String(session.bot?.selfId || '')
+    if (!account || (account.selfId && self && account.selfId !== self)) return
+    activity.selfId = self || activity.selfId
     const cfg = getConfig()
-    const msg = parseMessageEvent(event, activity.selfId, { faceName: faces.nameOf })
+    const msg = parseInbound(session, faces.nameOf)
     if (msg.userId === activity.selfId) return
     const limits = mediaLimits(cfg.media)
-    const incoming = msg.segments.filter(seg => msg.images.includes(seg) || msg.stickers.includes(seg))
+    const incoming = msg.media
     const accepted = new Set(limits.receiveImages ? incoming.slice(0, limits.maxImages) : [])
     msg.images = msg.images.filter(seg => accepted.has(seg))
     msg.stickers = msg.stickers.filter(seg => accepted.has(seg))
@@ -103,11 +103,6 @@ export function createIncomingMessages({
     }
 
     const allowed = checkAllowed(cfg, msg)
-    if (msg.kind === 'private' && (allowed.allowed || event.sub_type === 'friend')) {
-      privateSources.delete(msg.userId)
-      if (allowed.allowed && msg.sourceGroupId) privateSources.set(msg.userId, msg.sourceGroupId)
-      if (privateSources.size > 500) privateSources.delete(privateSources.keys().next().value)
-    }
 
     let stickerPick = 0
     const collectMode = cfg.stickers.collectMode || 'auto'
@@ -117,7 +112,7 @@ export function createIncomingMessages({
         if (collectMode === 'auto') {
           for (const s of msg.stickers)
             stickers
-              .collect(fromOneBot([s])[0], msg.chatId, () => currentMedia() === account && !wasCleared())
+              .collect(s, msg.chatId, () => currentMedia() === account && !wasCleared())
               .then((r) => {
                 if (!r.ok) log.debug('没收这张表情：', r.reason)
               })
@@ -166,12 +161,12 @@ export function createIncomingMessages({
     if (msg.stickers.length || msg.images.length) {
       account.images.remember(
         msg.chatId,
-        msg.segments
-          .filter((seg) => msg.images.includes(seg) || msg.stickers.includes(seg))
-          .map((seg, index) => ({
-            seg,
+        msg.media
+          .filter((element) => msg.images.includes(element) || msg.stickers.includes(element))
+          .map((element, index) => ({
+            element,
             userId: msg.userId,
-            sticker: msg.stickers.includes(seg),
+            sticker: msg.stickers.includes(element),
             messageId: String(msg.messageId || ''),
             imageIndex: index + 1,
           })),
@@ -200,7 +195,7 @@ export function createIncomingMessages({
           log.info(sensitiveCommand || `QQ 命令 ${msg.text.trim().slice(0, 30)} → ${reply.split('\n')[0]}`)
           await sendSegments(
             msg.chatId,
-            [{ type: 'text', data: { text: reply } }],
+            [{ type: 'text', attrs: { content: reply } }],
             sensitiveCommand || reply.slice(0, 60),
             {
               force: true,
@@ -216,7 +211,7 @@ export function createIncomingMessages({
         const detail = sensitiveCommand || error.message
         log.warn('执行命令出错：', detail)
         const text = '命令没执行成功，请先查看当前状态再决定是否重试；详细原因请主人查看本机日志。'
-        await sendSegments(msg.chatId, [{ type: 'text', data: { text } }], '命令出错', {
+        await sendSegments(msg.chatId, [{ type: 'text', attrs: { content: text } }], '命令出错', {
           force: true,
           sensitive: Boolean(sensitiveCommand),
           isCurrent: sensitiveCommand ? ownerStillCurrent : null,
@@ -285,7 +280,7 @@ export function createIncomingMessages({
 
     if (hooks?.message) {
       try {
-        if (await hooks.message({ ...msg, raw: event })) {
+        if (await hooks.message({ ...msg, session, raw: session.raw })) {
           if (isDisposed() || wasCleared()) return
           logIncoming()
           return

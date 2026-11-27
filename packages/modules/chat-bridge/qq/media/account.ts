@@ -1,6 +1,6 @@
 import { dataDir } from '../../../../../src/core/store/index.ts'
 import { createRecentMedia } from './recent.ts'
-import type { OutSegment } from '../context/context.ts'
+import type { Element } from '../../../../../src/types/core/element.ts'
 import { createStickerStash } from '../format/sticker.ts'
 
 interface Log { warn(message: string, reason: string): void }
@@ -12,12 +12,12 @@ export interface CachedQuote {
   uid?: string
   time?: number
   at?: number
-  images?: OutSegment[]
-  stickers?: OutSegment[]
+  images?: Element[]
+  stickers?: Element[]
 }
 
 function openMedia(selfId: string, log: Log) {
-  const path = (name: string) => /^\d+$/.test(selfId) ? dataDir('primary-media', selfId, name) : undefined
+  const path = (name: string) => /^[\w.-]+$/.test(selfId) ? dataDir('primary-media', selfId, name) : undefined
   const lifetime = new AbortController()
   const images = createRecentMedia({ file: path('recent-media.json'), log })
   const stickers = createStickerStash(path('sticker-stash.json'))

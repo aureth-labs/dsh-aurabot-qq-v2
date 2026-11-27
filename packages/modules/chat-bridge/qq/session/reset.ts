@@ -1,3 +1,4 @@
+import { userOf } from '../../../../../src/core/bot/room.ts'
 import { sessionKey, workspaceDirOf } from '../context/context.ts'
 import { personaDataRoots } from '../../../../../src/persona/personas.ts'
 import type { createSessionStore } from '../store/sessions.ts'
@@ -31,7 +32,7 @@ export function createSessionReset({
     const m = map()
     const entry = m.chats[chatId]
     if (!entry && !cutoff) return false
-    const qq = chatId.slice(8)
+    const qq = userOf(chatId)
     if (cutoff) m.memoryCutoffs = { ...memoryCutoffs(), [qq]: cutoff }
     delete m.chats[chatId]
     saveMap(m)

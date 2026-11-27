@@ -1,3 +1,4 @@
+import { roomOf, isGroupRoom, groupOf } from '../../../../../src/core/bot/room.ts'
 // 轮次共享状态与守卫：谁在忙、这一轮还作不作数、卡住多久算超时。
 // 队列内容本身留在 hub/index.ts，这里只提供状态与判定。
 
@@ -20,7 +21,7 @@ export function createTurnState(deps: TurnStateDeps) {
   const running = new Map() // chatId → 仍在模型 / 工具阶段的 sessionKey
   function turnSignature(chatId) {
     const cfg = getConfig()
-    const [kind, id] = chatId.split(':')
+    const { kind, id } = roomOf(chatId) ?? { kind: '', id: '' }
     const level = levelFor(cfg, { kind, userId: kind === 'private' ? id : '', groupId: kind === 'group' ? id : '' })
     return `${cfg.debug ? 'debug' : 'live'}:${level}:${presetFor(level, cfg)}`
   }
@@ -28,7 +29,7 @@ export function createTurnState(deps: TurnStateDeps) {
     const cfg = getConfig()
     const cur = map().chats[chatId]
     if (!cur || sessionKey(cur.sessionId) !== key || (cur.mode || 'live') !== (cfg.debug ? 'debug' : 'live')) return false
-    const [kind, id] = chatId.split(':')
+    const { kind, id } = roomOf(chatId) ?? { kind: '', id: '' }
     if (kind === 'private' || kind === 'group') {
       const chat = { kind, userId: kind === 'private' ? id : '', groupId: kind === 'group' ? id : '' }
       const level = levelFor(cfg, chat)
@@ -37,7 +38,7 @@ export function createTurnState(deps: TurnStateDeps) {
     return true
   }
   function groupChatAllowed(chatId) {
-    return !chatId.startsWith('group:') || groupResponseMode(getConfig(), chatId.slice(6)) === 'chat'
+    return !isGroupRoom(chatId) || groupResponseMode(getConfig(), groupOf(chatId)) === 'chat'
   }
   function checkTurn(chatId, token) {
     assertActive()

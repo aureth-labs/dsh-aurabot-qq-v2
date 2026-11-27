@@ -9,7 +9,7 @@ import { isOwner, profileToolVisible, profilePermits } from '../../../src/chat/p
 import { createQqProfile } from './src/qq-profile.ts'
 import { resolvePainting } from '../../../src/features/media/generate/paintings.ts'
 import { findFfmpeg, findSharp, shrinkImage, shrinkWithSharp } from '../../../src/core/message/media/img.ts'
-import { segmentBytes } from '../../../src/core/net/index.ts'
+import { elementBytes } from '../../../src/core/net/index.ts'
 import { dataDir } from '../../../src/core/store/index.ts'
 
 const NICK_MAX = 36
@@ -118,7 +118,7 @@ export function apply(ctx, config) {
           reader.assertCurrent(avatar.qq)
           if (!allowed()) throw new Error('主人身份已变化，未发送头像')
           if (ready()) return { ok: true, sent: false, simulated: true, message: '已切换到调试模式或调试模式，未发送头像' }
-          const sent = await hub.sendSegments(chat.chatId, [{ type: 'image', data: { file: 'base64://' + avatar.bytes.toString('base64') } }], '[当前 QQ 头像]')
+          const sent = await hub.sendSegments(chat.chatId, [{ type: 'image', attrs: { url: 'base64://' + avatar.bytes.toString('base64') } }], '[当前 QQ 头像]')
           if (sent?.message_id == null) throw new Error('未收到 QQ 网关的头像发送确认，请检查连接；不要重复发送')
           ctx.logger?.info?.('当前 QQ 头像已发送给主人私聊')
           return { ok: true, sent: true, messageId: sent.message_id, message: '当前 QQ 头像图片已发送给本次主人私聊，不要再用链接或 Markdown 重复发图' }
@@ -170,7 +170,7 @@ export function apply(ctx, config) {
           if (!pick) return { ok: false, message: '最近半小时这个聊天里没人发过图片，先把图发过来' }
           let buf
           try {
-            buf = await segmentBytes(pick.seg, onebot, { maxBytes: 10 * 1024 * 1024 })
+            buf = await elementBytes(pick.element, onebot.bot, { maxBytes: 10 * 1024 * 1024 })
           } catch (error) {
             return { ok: false, message: '这张图我拿不到：' + error.message }
           }

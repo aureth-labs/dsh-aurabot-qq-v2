@@ -1,3 +1,4 @@
+import { isGroupRoom } from '../../../../../src/core/bot/room.ts'
 import { sessionKey, assistantReplyText, SOURCE_KIND } from '../context/context.ts'
 import { recordSessionUsage } from '../../../../../src/core/llm/usage/usage.ts'
 import { personaScope } from '../../../../../src/persona/personas.ts'
@@ -185,7 +186,7 @@ export function createTurnEvents({
                   kind: SOURCE_KIND,
                   speaker: {
                     role: 'system',
-                    chat: String(chatId).startsWith('group:') ? 'group' : 'private',
+                    chat: isGroupRoom(chatId) ? 'group' : 'private',
                   },
                 },
               }

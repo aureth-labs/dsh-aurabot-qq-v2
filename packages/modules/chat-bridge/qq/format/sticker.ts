@@ -1,11 +1,10 @@
-// 「她挑 / 只听主人的」：这一轮收到的表情按会话记着，她想收时凭编号来取。落盘一份，DSH 重启不丢。
 import { readJson, writeJson } from '../../../../../src/core/store/index.ts'
-import type { OutSegment } from '../context/context.ts'
+import type { Element } from '../../../../../src/types/core/element.ts'
 
 const TTL = 30 * 60_000
 
 export function createStickerStash(file?: string) {
-  const stash = new Map<string, { at: number; segs: OutSegment[] }>()
+  const stash = new Map<string, { at: number; items: Element[] }>()
   let disposed = false
   let loaded = false
 
@@ -16,8 +15,8 @@ export function createStickerStash(file?: string) {
       const raw = readJson(file, () => ({}))
       const now = Date.now()
       for (const [chatId, v] of Object.entries(raw && typeof raw === 'object' ? raw as Record<string, any> : {})) {
-        if (v && Array.isArray(v.segs) && v.segs.length && Number.isFinite(v.at) && v.at <= now && now - v.at < TTL) {
-          stash.set(chatId, { at: Number(v.at) || now, segs: v.segs })
+        if (v && Array.isArray(v.items) && v.items.length && Number.isFinite(v.at) && v.at <= now && now - v.at < TTL) {
+          stash.set(chatId, { at: Number(v.at) || now, items: v.items })
         }
       }
     } catch (error) {}
@@ -32,23 +31,21 @@ export function createStickerStash(file?: string) {
   }
 
   return {
-    /** 记下这一轮收到的表情，返回张数。 */
-    remember (chatId: string, segs: unknown[]) {
+    remember (chatId: string, items: Element[]) {
       if (disposed) return 0
       load()
-      const list = (segs || []).slice(0, 4)
+      const list = (items || []).slice(0, 4)
       if (!list.length) return 0
-      stash.set(chatId, { at: Date.now(), segs: list as OutSegment[] })
+      stash.set(chatId, { at: Date.now(), items: list })
       save()
       return list.length
     },
-    /** 取第 index 张（从 1 开始）。过期或没有就返回 null。 */
     of (chatId: string, index: unknown) {
       load()
       const s = stash.get(chatId)
       if (!s || Date.now() - s.at > TTL) return null
       const i = Number(index) - 1
-      return Number.isInteger(i) && i >= 0 && i < s.segs.length ? s.segs[i] : null
+      return Number.isInteger(i) && i >= 0 && i < s.items.length ? s.items[i] : null
     },
     clear(chatId: string) { load(); if (stash.delete(chatId)) save() },
     dispose() { disposed = true; stash.clear() },

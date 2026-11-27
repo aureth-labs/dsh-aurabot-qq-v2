@@ -1,4 +1,3 @@
-import { fromOneBot } from '../../../adapters/qq/onebot-v11/src/element.ts'
 import { createMessageMedia } from './media/context.ts'
 import { createTimeline } from './store/timeline.ts'
 import { createSessionReset } from './session/reset.ts'
@@ -47,7 +46,7 @@ export function createHub({
   dsh,
   getConfig,
   log,
-  onebot,
+  bot: botOf,
   outbox,
   stickers,
   tts,
@@ -98,9 +97,7 @@ export function createHub({
   const { groupBuf, groupInterjects, groupSaid, groupRefs, groupEngaged, groupEngagedRun, groupNames } =
     groups
   const ENGAGE_MS = 3 * 60_000
-  const botOf = () => onebot?.bot
   const { refreshFriends, isFriend, membersOf, userName } = createDirectory(botOf, log)
-  const privateSources = new Map()
 
   const localMedia = hooks?.media ? undefined : createMediaScope(() => String(getConfig().botQQ || ''), log)
   let previousMedia: AccountMedia | undefined
@@ -137,7 +134,7 @@ export function createHub({
     next.then(done, done)
     return next
   }
-  const faces = createFaces({ onebot, log }) // QQ 系统表情：<face:名字> ↔ 编号
+  const faces = createFaces({ bot: botOf, log })
   const { maybeReact } = createReact({ getConfig, log, botOf, faces, mood })
   const noticesFor = new Map() // chatId → [一句话]  下次交给她时带上的群事件（撤回、禁言、进群……）
   const saidElsewhere = new Map() // chatId → [{ at, text }]  别处安排她在这里发的话，下次这个聊天交给她时补进去
@@ -204,7 +201,7 @@ export function createHub({
   const outbound = createOutbound({
     getConfig,
     log,
-    onebot,
+    bot: botOf,
     outbox,
     stickers,
     tts,
@@ -212,7 +209,6 @@ export function createHub({
     isDisposed,
     bump: stats.bump,
     pnow,
-    privateSources,
     sentIds,
     outputScope,
     outputSources,
@@ -245,6 +241,7 @@ export function createHub({
     sendImage,
     silenceTurn,
     checkSendableFile,
+    flushOutbox,
   } = outbound
 
   const bindings = createSessionBindings({
@@ -345,7 +342,7 @@ export function createHub({
     currentMedia,
     getConfig,
     log,
-    onebot,
+    bot: botOf,
     store,
     groups,
     turnGuard,
@@ -369,6 +366,7 @@ export function createHub({
     isDisposed,
     getConfig,
     getSelfId: () => activity.selfId,
+    bot: botOf,
     userName,
     hooks,
     lastPoker,
@@ -390,7 +388,7 @@ export function createHub({
     pushToSession: (chat, content, senderId, options) => pushToSession(chat, content, senderId, options),
   })
 
-  const typing = createTyping({ isDisposed, getConfig, onebot })
+  const typing = createTyping({ isDisposed, getConfig, bot: botOf })
   const { startTyping, stopTyping } = typing
 
   const {
@@ -425,7 +423,7 @@ export function createHub({
     getConfig,
     log,
     dsh,
-    onebot,
+    bot: botOf,
     activity,
     targetOf,
     assertActive,
@@ -544,7 +542,7 @@ export function createHub({
       memoryScore,
     },
     media: { ...media, faces, stickers, currentMedia },
-    conversation: { stats, privateSources, logChat, refreshFriends, repliedToBot, sendSegments },
+    conversation: { stats, logChat, refreshFriends, repliedToBot, sendSegments },
     enqueue,
   })
 
@@ -576,7 +574,6 @@ export function createHub({
     turnState.clear()
     outputSources.clear()
     disposeSessions()
-    privateSources.clear()
     previousMedia?.signal.removeEventListener('abort', clearGroupMedia)
     localMedia?.dispose()
     clearGroupMedia()
@@ -596,8 +593,8 @@ export function createHub({
     modelFor: targetModel,
 
     recentMedia: recentMediaOf,
-    recentImages: (id: string) => recentMediaOf(id).map(({ seg, ...ref }) => ({ ...ref, element: fromOneBot([seg])[0] })),
-    stickerElement: (id: string, index: number) => fromOneBot([currentMedia()?.stickers.of(id, index)].filter(Boolean))[0],
+    recentImages: (id: string) => recentMediaOf(id),
+    stickerElement: (id: string, index: number) => currentMedia()?.stickers.of(id, index),
     referenceImage,
     recentFiles: (chatId) => currentMedia()?.files.get(chatId) || [],
     stickerOf: (chatId, index) => currentMedia()?.stickers.of(chatId, index) ?? null,
@@ -622,6 +619,7 @@ export function createHub({
     sendImage,
     checkSendableFile,
     sendSegments,
+    flushOutbox,
 
     noteProactive,
     pushToSession,

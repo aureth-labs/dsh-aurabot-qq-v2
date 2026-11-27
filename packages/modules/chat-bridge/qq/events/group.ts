@@ -2,6 +2,7 @@ export interface GroupEventDeps {
   isDisposed: () => boolean
   getConfig: () => any
   getSelfId: () => string
+  bot: () => any
   userName(userId: string, guildId?: string): Promise<string>
   hooks: any
   lastPoker: Map<string, string>
@@ -12,10 +13,12 @@ export interface GroupEventDeps {
 }
 
 export function createGroupEvents (deps: GroupEventDeps) {
-  const pokeAt = new Map() // chatId → 上次处理戳一戳的时间
+  const pokeAt = new Map()
+  const account = () => {
+    const bot = deps.bot()
+    return { platform: bot?.platform || 'qq', id: bot?.id || '', selfId: String(bot?.selfId || deps.getSelfId() || '') }
+  }
 
-  // ---------- 戳一戳 ----------
-  /** 有人戳了她：当成一条对她说的话交给她（群里也一定回），同一个聊天 20 秒内只算一次。 */
   async function onGroupFile(ev) {
     if (deps.isDisposed() || !ev.file?.name) return
     if (deps.ignoredGroupMember(deps.getConfig(), { kind: 'group', groupId: ev.group_id, userId: ev.user_id })) return
@@ -24,15 +27,14 @@ export function createGroupEvents (deps: GroupEventDeps) {
       nickname = await deps.userName(String(ev.user_id), String(ev.group_id)) || nickname
     } catch (error) {}
     await deps.onMessage({
-      post_type: 'message', message_type: 'group', sub_type: 'normal', self_id: ev.self_id, group_id: ev.group_id, user_id: ev.user_id, message_id: 0,
-      sender: { user_id: ev.user_id, nickname },
-      message: [{ type: 'file', data: { name: ev.file.name, size: ev.file.size, id: ev.file.id, busid: ev.file.busid } }],
+      bot: account(), type: 'group', channelId: String(ev.group_id), userId: String(ev.user_id), userName: nickname, messageId: '0',
+      elements: [{ type: 'file', attrs: { name: ev.file.name, size: ev.file.size, id: ev.file.id, busid: ev.file.busid } }],
     })
   }
 
   async function onPoke(ev) {
     if (deps.isDisposed()) return
-    const self = String(ev.self_id || deps.getSelfId() || deps.getConfig().botQQ)
+    const self = String(ev.self_id || account().selfId)
     if (String(ev.target_id) !== self) return
     if (deps.ignoredGroupMember(deps.getConfig(), { kind: ev.group_id ? 'group' : 'private', groupId: ev.group_id, userId: ev.user_id })) return
     if (deps.hooks?.poke) {
@@ -55,10 +57,8 @@ export function createGroupEvents (deps: GroupEventDeps) {
     if (deps.isDisposed()) return
     deps.log.info(`${chatId}：${nickname} 戳了戳她`)
     await deps.onMessage({
-      post_type: 'message', message_type: group ? 'group' : 'private', sub_type: group ? 'normal' : 'friend',
-      self_id: Number(self), user_id: Number(poker), ...(group ? { group_id: Number(group) } : {}), message_id: 0,
-      sender: { user_id: Number(poker), nickname, card: nickname },
-      message: [{ type: 'at', data: { qq: self } }, { type: 'text', data: { text: ev.action ? ' [' + ev.action + (ev.suffix || '') + '（这是戳一戳的动作）]' : ' [戳了戳你]' } }],
+      bot: { ...account(), selfId: self }, type: group ? 'group' : 'private', channelId: group || poker, userId: poker, userName: nickname, messageId: '0',
+      elements: [{ type: 'at', attrs: { id: self } }, { type: 'text', attrs: { content: ev.action ? ' [' + ev.action + (ev.suffix || '') + '（这是戳一戳的动作）]' : ' [戳了戳你]' } }],
     })
   }
 
